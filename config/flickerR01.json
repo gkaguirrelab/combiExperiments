@@ -1,0 +1,29 @@
+[
+    {
+        "flavor": "",
+        "hook": "",
+        "importance": "",
+        "localHookTemplate": "config/flickerR01LocalHookTemplate.m",
+        "printLocalHookOutput": "1",
+        "name": "flickerR01",
+        "pathPlacement": "append",
+        "subfolder": "code",
+        "toolboxRoot": "",
+        "type": "git",
+        "update": "",
+        "url": ""
+    },
+    {
+        "flavor": "",
+        "hook": "",
+        "importance": "",
+        "localHookTemplate": "",
+        "name": "combiLEDToolbox",
+        "pathPlacement": "append",
+        "subfolder": "code",
+        "toolboxRoot": "#",
+        "type": "git",
+        "update": "",
+        "url": "https:\/\/github.com\/gkaguirrelab\/combiLEDToolbox"
+    }
+]
