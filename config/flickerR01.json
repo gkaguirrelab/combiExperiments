@@ -25,5 +25,18 @@
         "type": "git",
         "update": "",
         "url": "https:\/\/github.com\/gkaguirrelab\/combiLEDToolbox"
+    },
+    {
+        "flavor": "",
+        "hook": "",
+        "importance": "",
+        "localHookTemplate": "",
+        "name": "mQUESTPlus",
+        "pathPlacement": "append",
+        "subfolder": "",
+        "toolboxRoot": "",
+        "type": "git",
+        "update": "",
+        "url": "https://github.com/brainardlab/mQUESTPlus.git"
     }
 ]
