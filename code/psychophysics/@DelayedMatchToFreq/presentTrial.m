@@ -1,4 +1,4 @@
-function validResponse = presentTrial(obj)
+function presentTrial(obj)
 
 % Create a figure that will be used to collect key presses
 currKeyPress='0';
@@ -21,7 +21,7 @@ trialData = obj.trialData;
 if isempty(trialData)
     currTrialIdx = 1;
 else
-    currTrialIdx = size(trialData,1)+1;
+    currTrialIdx = length(trialData)+1;
 end
 
 % Pick a reference frequency from a uniform distribution of log frequencies
@@ -29,12 +29,12 @@ end
 refFreqRangeHz = obj.refFreqRangeHz;
 refFreq = 10^(rand()*diff(log10(refFreqRangeHz))+log10(min(refFreqRangeHz)));
 
-% Pick the initial state of the test stimulus, which will be a frequency
-% within a uniform distribution of log frequencies around the reference
-% stimulus
+% Pick the initial state of the test stimulus, which is selected from a
+% uniform log distribution around the reference frequency. The width of the
+% distribution is set by the testRangeDecibels parameter.
 testRangeDecibels = obj.testRangeDecibels;
-testFreqRangeHz = [refFreq/db2mag(testRangeDecibels), ...
-    refFreq*db2mag(testRangeDecibels)];
+testFreqRangeHz = [min(refFreqRangeHz)/db2mag(testRangeDecibels), ...
+    max(refFreqRangeHz)*db2mag(testRangeDecibels)];
 testFreq = 10^(rand()*diff(log10(testFreqRangeHz))+log10(min(testFreqRangeHz)));
 
 % Save the initial testFreqState
@@ -46,8 +46,9 @@ testFreqChangeRateDbsPerSec = obj.testFreqChangeRateDbsPerSec;
 testRefreshIntervalSecs = obj.testRefreshIntervalSecs;
 testFreqChangePerRefresh = testFreqChangeRateDbsPerSec / (1 / testRefreshIntervalSecs);
 
-% Get the desired stimulus contrast
-stimContrast = obj.stimContrast;
+% Get the desired reference and test contrast
+refContrast = obj.refContrast;
+testContrast = obj.testContrast;
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -77,40 +78,44 @@ else
     testPhase = 0;
 end
 
+% Store the trial start time
+trialData(currTrialIdx).trialStartTime = datetime();
+
+
 %% Present the reference
+% Adjust the contrast of the stimulus to account for device attenuation of
+% the modulation at high temporal frequencies
+refContrastAdjusted = refContrast / contrastAttentionByFreq(refFreq);
 
-    % Adjust the contrast of the stimulus to account for device attenuation of
-    % the modulation at high temporal frequencies
-    stimContrastAdjusted = stimContrast / contrastAttentionByFreq(refFreq);
+% Prepare the reference stimulus
+obj.CombiLEDObj.setContrast(refContrastAdjusted);
+obj.CombiLEDObj.setFrequency(refFreq);
+obj.CombiLEDObj.setPhaseOffset(refPhase);
 
-    % Prepare the reference stimulus
-    obj.CombiLEDObj.setContrast(stimContrastAdjusted);
-    obj.CombiLEDObj.setFrequency(refFreq);
-    obj.CombiLEDObj.setPhaseOffset(refPhase);
+% Alert the subject the trial is about to start
+audioObjs.ready.play;
+stopTimeSeconds = cputime() + 2;
+obj.waitUntil(stopTimeSeconds);
 
-    % Alert the subject the trial is about to start
-    audioObjs.ready.play;
-    stopTimeSeconds = cputime() + 2;
-    obj.waitUntil(stopTimeSeconds);
+% Present the reference stimulus
+audioObjs.correct.play;
+stopTimeSeconds = cputime() + obj.refDurationSecs;
+obj.CombiLEDObj.startModulation;
+obj.waitUntil(stopTimeSeconds);
+obj.CombiLEDObj.stopModulation;
 
-    % Present the reference stimulus
-    audioObjs.correct.play;
-    stopTimeSeconds = cputime() + obj.refDurationSecs;
-    obj.CombiLEDObj.startModulation;
-    obj.waitUntil(stopTimeSeconds);
-    obj.CombiLEDObj.stopModulation;
-
-    % Wait for the inter-stimulus interval
-    stopTimeSeconds = cputime() + obj.interStimulusIntervalSecs;
-    obj.waitUntil(stopTimeSeconds);
+% Wait for the inter-stimulus interval
+stopTimeSeconds = cputime() + obj.interStimulusIntervalSecs;
+obj.waitUntil(stopTimeSeconds);
 
 
-%% Adjust the test    
-
+%% Present the test
 % Start the test stimulus
 audioObjs.correct.play;
 obj.CombiLEDObj.setFrequency(testFreq);
 obj.CombiLEDObj.setPhaseOffset(testPhase);
+testContrastAdjusted = testContrast / contrastAttentionByFreq(testFreq);
+obj.CombiLEDObj.updateContrast(testContrastAdjusted);
 obj.CombiLEDObj.startModulation;
 
 % Start the response interval
@@ -121,42 +126,50 @@ while stillWaiting
     if cputime() > (lastRefreshTime + testRefreshIntervalSecs)
         drawnow
         switch currKeyPress
-            case 'uparrow'
+            case {'rightarrow'}
                 testFreq = testFreq * db2mag(testFreqChangePerRefresh);
-            case 'downarrow'
+            case {'leftarrow'}
                 testFreq = testFreq / db2mag(testFreqChangePerRefresh);
-            case {'space','return'}
+            case {'space','return','downarrow'}
                 stillWaiting = false;
         end
 
+        % Clear the keypress
         currKeyPress = '';
 
         % Keep the test frequency in bounds
         testFreq = min([testFreq,max(testFreqRangeHz)]);
         testFreq = max([testFreq,min(testFreqRangeHz)]);
-        
+
         % Update the frequency
         obj.CombiLEDObj.updateFrequency(testFreq);
 
         % Adjust the contrast for the current frequency
-        stimContrastAdjusted = stimContrast / contrastAttentionByFreq(testFreq);
-        obj.CombiLEDObj.updateContrast(stimContrastAdjusted);
+        testContrastAdjusted = testContrast / contrastAttentionByFreq(testFreq);
+        obj.CombiLEDObj.updateContrast(testContrastAdjusted);
 
         % Update the refresh timer
         lastRefreshTime = cputime();
     end
 
+    % Check if we have exceeded the response interval
     if cputime()>stopTimeSeconds
         stillWaiting = false;
     end
 
 end
+
+% Stop the modulation
 obj.CombiLEDObj.stopModulation;
+
+% Store the end time
+trialData(currTrialIdx).trialStartTime = datetime();
 
 % Close the keypress window
 close(S.fh);
 
 % Store the trial information
+trialData(currTrialIdx).blockIdx = obj.blockIdx;
 trialData(currTrialIdx).refFreq = refFreq;
 trialData(currTrialIdx).refPhase = refPhase;
 trialData(currTrialIdx).testFreq = testFreq;
@@ -166,7 +179,7 @@ obj.trialData = trialData;
 
 % Handle verbosity
 if obj.verbose
-    fprintf('trial: %d, contrast %2.1f, test freq Hz = %2.1f, choice Hz = %2.1f, initial Hz = %2.1f \n', currTrialIdx, stimContrast, refFreq, testFreq, testFreqInitial);
+    fprintf('trial: %d, contrast %2.1f, test freq Hz = %2.1f, choice Hz = %2.1f, initial Hz = %2.1f \n', currTrialIdx, testContrast, refFreq, testFreq, testFreqInitial);
 end
 
 end
@@ -174,13 +187,14 @@ end
 %% LOCAL FUNCTIONS
 
 function  f_capturekeystroke(H,E)
-% capturing and logging keystrokes
+% Get the keystroke
 S2 = guidata(H);
-P = get(S2.fh,'position');
 set(S2.tx,'string',E.Key)
-assignin('caller','currKeyPress',E.Key)    % passing 1 keystroke to workspace variable
+% Pass it back to the calling function
+assignin('caller','currKeyPress',E.Key)
 end
 
 function f_closecq(src,callbackdata)
+% Clean up for the window. Not doing anything currently.
 delete(gcf)
 end

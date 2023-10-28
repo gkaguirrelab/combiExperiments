@@ -15,7 +15,8 @@ classdef DelayedMatchToFreq < handle
     properties (SetAccess=private)
 
         refFreqRangeHz
-        stimContrast
+        refContrast
+        testContrast
         testRangeDecibels
         randomizePhase
         trialData
@@ -38,12 +39,14 @@ classdef DelayedMatchToFreq < handle
 
         % Verbosity
         verbose = true;
+        blockIdx = 1;
         blockStartTimes = datetime();
 
-        % We allow this to be modified so we
-        % can set it to be brief during object
-        % initiation when we clear the responses
-        testDurationSecs = 500;
+        % We allow this to be modified so we can set it to be brief during
+        % object initiation when we clear the responses. Set to an
+        % arbitrarily large number to allow the subject unbounded time to
+        % respond.
+        testDurationSecs = inf;
         
     end
 
@@ -51,13 +54,14 @@ classdef DelayedMatchToFreq < handle
 
         % Constructor
         % logTestBound = 
-        function obj = DelayedMatchToFreq(CombiLEDObj,refFreqRangeHz,stimContrast,varargin)
+        function obj = DelayedMatchToFreq(CombiLEDObj,refFreqRangeHz,testContrast,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('randomizePhase',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
+            p.addParameter('refContrast',0.75,@isnumeric);
             p.addParameter('testRangeDecibels',6,@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
@@ -65,7 +69,8 @@ classdef DelayedMatchToFreq < handle
             % Place various inputs and options into object properties
             obj.CombiLEDObj = CombiLEDObj;
             obj.refFreqRangeHz = refFreqRangeHz;
-            obj.stimContrast = stimContrast;
+            obj.testContrast = testContrast;
+            obj.refContrast = p.Results.refContrast;
             obj.testRangeDecibels = p.Results.testRangeDecibels;
             obj.randomizePhase = p.Results.randomizePhase;
             obj.simulateResponse = p.Results.simulateResponse;
@@ -91,16 +96,18 @@ classdef DelayedMatchToFreq < handle
             % amount of boost varying by frequency. We need to check for
             % the highest frequency that we will present that the boosted
             % contrast is not greater than unity.
-            highestFreq = max(refFreqRangeHz)*db2mag(obj.testRangeDecibels);
-            if (stimContrast / contrastAttentionByFreq(highestFreq)) > 1
-                error('The specified stimulus contrast is greater than can be presented for the highest frequency')
+            highestTestFreq = max(refFreqRangeHz)*db2mag(obj.testRangeDecibels);
+            if (obj.testContrast / contrastAttentionByFreq(highestTestFreq)) > 1
+                error('The specified stimulus contrast is greater than can be presented for the highest test frequency')
             end
-
+            if (obj.refContrast / contrastAttentionByFreq(max(refFreqRangeHz))) > 1
+                error('The specified stimulus contrast is greater than can be presented for the highest ref frequency')
+            end
         end
 
         % Required methds
         initializeDisplay(obj)
-        validResponse = presentTrial(obj)
+        presentTrial(obj)
         [intervalChoice, responseTimeSecs] = getResponse(obj)
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,ref1Interval)
         waitUntil(obj,stopTimeMicroSeconds)
