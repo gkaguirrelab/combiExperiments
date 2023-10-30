@@ -61,8 +61,8 @@ classdef DelayedMatchToFreq < handle
             p.addParameter('randomizePhase',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
-            p.addParameter('refContrast',0.75,@isnumeric);
-            p.addParameter('testRangeDecibels',6,@isnumeric);
+            p.addParameter('refContrast',0.5,@isnumeric);
+            p.addParameter('testRangeDecibels',8,@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 

@@ -33,8 +33,8 @@ refFreq = 10^(rand()*diff(log10(refFreqRangeHz))+log10(min(refFreqRangeHz)));
 % uniform log distribution around the reference frequency. The width of the
 % distribution is set by the testRangeDecibels parameter.
 testRangeDecibels = obj.testRangeDecibels;
-testFreqRangeHz = [min(refFreqRangeHz)/db2mag(testRangeDecibels), ...
-    max(refFreqRangeHz)*db2mag(testRangeDecibels)];
+testFreqRangeHz = [refFreq/db2mag(testRangeDecibels), ...
+    refFreq*db2mag(testRangeDecibels)];
 testFreq = 10^(rand()*diff(log10(testFreqRangeHz))+log10(min(testFreqRangeHz)));
 
 % Save the initial testFreqState
