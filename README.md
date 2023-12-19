@@ -1,2 +1,2 @@
-# flickerR01
-Code related to the preparation and execution of the project "Flicker photophobia as an experience of inefficient coding"
+# combiLEDExperiments
+Code to conduct experiments using the combiLEDToolbox. This includes psychophysics, pupillometric, fMRI, and electrophysiologic studies.
