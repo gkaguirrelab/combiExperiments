@@ -1,0 +1,29 @@
+[
+    {
+        "flavor": "",
+        "hook": "",
+        "importance": "",
+        "localHookTemplate": "config/combiLEDExperimentsLocalHookTemplate.m",
+        "printLocalHookOutput": "1",
+        "name": "combiLEDExperiments",
+        "pathPlacement": "append",
+        "subfolder": "code",
+        "toolboxRoot": "",
+        "type": "git",
+        "update": "",
+        "url": ""
+    },
+    {
+        "flavor": "",
+        "hook": "",
+        "importance": "",
+        "localHookTemplate": "",
+        "name": "combiLEDToolbox",
+        "pathPlacement": "append",
+        "subfolder": "",
+        "toolboxRoot": "",
+        "type": "include",
+        "update": "",
+        "url": ""
+    }
+]

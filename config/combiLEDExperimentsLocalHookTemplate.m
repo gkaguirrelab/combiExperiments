@@ -1,13 +1,13 @@
-function flickerR01LocalHook
+function combiLEDExperimentsLocalHook
 
-%  flickerR01LocalHook
+%  combiLEDExperimentsLocalHook
 %
 % As part of the setup process, ToolboxToolbox will copy this file to your
 % ToolboxToolbox localToolboxHooks directory (minus the "Template" suffix).
 % The defalt location for this would be
-%   ~/localToolboxHooks/flickerR01LocalHook.m
+%   ~/localToolboxHooks/combiLEDExperimentsLocalHook.m
 %
-% Each time you run tbUseProject('flickerR01'), ToolboxToolbox will
+% Each time you run tbUseProject('combiLEDExperiments'), ToolboxToolbox will
 % execute your local copy of this file to do setup.
 %
 % You should edit your local copy with values that are correct for your
@@ -16,7 +16,7 @@ function flickerR01LocalHook
 
 
 % Say hello.
-projectName = 'flickerR01';
+projectName = 'combiLEDExperiments';
 
 % Delete any old prefs
 if (ispref(projectName))
