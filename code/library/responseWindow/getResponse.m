@@ -7,7 +7,7 @@ responseTimeSecs = nan;
 
 % Enter a while loop
 waitingForKey = true;
-intervalStartSecs = double(cputime());
+intervalStartSecs = second(datetime(),'secondofday');
 while waitingForKey
 
     % Refresh the response window object
@@ -18,14 +18,14 @@ while waitingForKey
         case validResponseSet
             waitingForKey = false;
             keyPress = currKeyPress;
-            responseTimeSecs = double(cputime()) - intervalStartSecs;
+            responseTimeSecs = second(datetime(),'secondofday') - intervalStartSecs;
     end
 
     % Clear the keypress
     currKeyPress = '';
 
     % Check if the response interval has elapsed
-    if double(cputime())>(intervalStartSecs+responseDurSecs)
+    if second(datetime(),'secondofday')>(intervalStartSecs+responseDurSecs)
         waitingForKey = false;
     end
 

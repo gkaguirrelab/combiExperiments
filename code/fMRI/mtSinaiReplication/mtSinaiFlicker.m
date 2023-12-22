@@ -6,7 +6,7 @@ clc
 rng(rand()); % Ensure that the attention events differ each time
 
 % Flag to simulate the combiLED
-simulateCombiLED = false;
+simulateCombiLED = true;
 
 % The name of the calibration file to use
 calName = 'CombiLED_shortLLG_cassetteND1_longRandomA_stubby7TEyePiece_ND0';
@@ -167,7 +167,7 @@ for aa=1:nAcqsPerBlock
 
     % Start the timer for this acquisition
     acqStartTimeDateTime = datetime();
-    acqStartTimeSecs = second(datetime(),'secondofday');
+    acqStartTimeSecs = second(datetime(),'secondofday');    
     trialStartTimeSecs = acqStartTimeSecs;
     trialCounter = 1;
     attentionEventCounter = 1;
@@ -175,8 +175,9 @@ for aa=1:nAcqsPerBlock
     % Loop over trials in the acquisition
     while trialCounter <= nTrialsPerAcq
 
-        % How long this trial will last
-        trialStopTimeSecs = trialStartTimeSecs+trialDurSecs;
+        % How long this trial will last?
+        trialStartTimeSecs = second(datetime(),'secondofday');
+        trialStopTimeSecs = acqStartTimeSecs+trialDurSecs*trialCounter;
 
         % Announce the trial to the console
         fprintf('%d ',trialCounter);
@@ -206,9 +207,10 @@ for aa=1:nAcqsPerBlock
         attentionEventFlag = rand()<attentionEventProbPerTrial;
         if attentionEventFlag
             % Define and wait until the attention event time
-            attentionEventTimeSecs = trialStartTimeSecs + halfCosineRampDurSecs + rand()*(trialDurSecs-halfCosineRampDurSecs*2-blinkDurSecs);
-            while second(datetime(),'secondofday')<attentionEventTimeSecs
+            attentionTriggerTimeSecs = trialStartTimeSecs + halfCosineRampDurSecs + rand()*(trialDurSecs-halfCosineRampDurSecs*2-blinkDurSecs);
+            while second(datetime(),'secondofday')<attentionTriggerTimeSecs
             end
+            attentionEventTimeSecs = second(datetime(),'secondofday');
             % Blink and wait for the responseDur
             if ~simulateCombiLED
                 obj.blink
@@ -236,7 +238,6 @@ for aa=1:nAcqsPerBlock
 
         % Stop the modulation; update the timer and counter
         if ~simulateCombiLED; obj.stopModulation; end
-        trialStartTimeSecs = trialStartTimeSecs+trialDurSecs;
         trialCounter = trialCounter+1;
     end
 
