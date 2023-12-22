@@ -3,7 +3,7 @@
 clear
 close all
 clc
-rng(rand()); % Ensure that the attention events differ each time
+rng(cputime); % Ensure that the attention events differ each time
 
 % Flag to simulate the combiLED
 simulateCombiLED = true;
