@@ -23,21 +23,21 @@ if (ispref(projectName))
     rmpref(projectName);
 end
 
-% Handle hosts with custom dropbox locations
-[~, userName] = system('whoami');
-userName = strtrim(userName);
-switch userName
-    case 'aguirre'
-        dropBoxUserFullName = 'Geoffrey Aguirre';
-        dropboxBaseDir = fullfile(filesep,'Users',userName,...
-            'Aguirre-Brainard Lab Dropbox',dropBoxUserFullName);
-    otherwise
-        dropboxBaseDir = ...
-            fullfile('/Users', userName, ...
-            'Aguirre-Brainard Lab Dropbox',userName);
+% Get the DropBox path
+if ismac
+    dbJsonConfigFile = '~/.dropbox/info.json';
+    fid = fopen(dbJsonConfigFile);
+    raw = fread(fid,inf);
+    str = char(raw');
+    fclose(fid);
+    val = jsondecode(str);
+    dropboxBaseDir = val.business.path;
+else
+    error('Need to set up DropBox path finding for non-Mac machine')
 end
 
-% Set preferences for project output
+% Set the prefs
 setpref(projectName,'dropboxBaseDir',dropboxBaseDir); % main directory path 
+
 
 end
