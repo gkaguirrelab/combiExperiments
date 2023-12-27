@@ -30,7 +30,7 @@ stimDirs = {'LightFlux','MLplusS','MLminusS'};
 blockDirections = [1 2 3];
 desiredContrastLevelsByDir = [0.95,0.3,0.25]; % The photoreceptor contrast levels we had in the original Mt Sinai data
 freqHzByDir = [16,32,4];
-trialDurSecs = 12;
+trialDurSecs = 6;
 trialDurShrink = 0.95; % Set the actual stimulus profile be slightly less than 12 seconds to allow time for updating settings in between blocks
 halfCosineRampDurSecs = 1.5;
 seq = [1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0];
@@ -206,12 +206,13 @@ while notDone
     save(fullfile(resultDir,filename),'results');
 
     % Announce that we are done this acquisition
-    fprintf('Finished acquisition. Press space to prepare for the next acquisition, or q to quit...')
+    fprintf('\nFinished acquisition. Press space to prepare for the next acquisition, or q to quit...')
     keyPress = getResponse(currKeyPress,Inf,{'space','q'});
     switch keyPress
         case 'q'
             notDone = false;
         otherwise
+            acqIdx = acqIdx + 1;
             fprintf('preparing\n')
     end
 end
