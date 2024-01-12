@@ -6,10 +6,10 @@ clc
 rng(cputime); % Ensure that the attention events differ each time
 
 % Flag to simulate the combiLED
-simulateCombiLED = true;
+simulateCombiLED = false;
 
 % The name of the calibration file to use
-calName = 'CombiLED_shortLLG_cassetteND1_longRandomA_stubby7TEyePiece_ND0';
+calName = 'CombiLED_shortLLG_cassetteND1_longRandomA_classicEyePiece_ND0';
 
 % Get observer properties
 observerID = GetWithDefault('Subject ID','xxxx');
@@ -30,7 +30,7 @@ stimDirs = {'LightFlux','MLplusS','MLminusS'};
 blockDirections = [1 2 3];
 desiredContrastLevelsByDir = [0.95,0.3,0.25]; % The photoreceptor contrast levels we had in the original Mt Sinai data
 freqHzByDir = [16,32,4];
-trialDurSecs = 6;
+trialDurSecs = 12;
 trialDurShrink = 0.95; % Set the actual stimulus profile be slightly less than 12 seconds to allow time for updating settings in between blocks
 halfCosineRampDurSecs = 1.5;
 seq = [1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0];
