@@ -27,7 +27,7 @@ end
 % Define some experiment properties
 % 36 trials per acquition. Start with "on" (flicker) trial, then alternate
 stimDirs = {'LightFlux','MLplusS','MLminusS'};
-blockDirections = [1 2 3];
+blockDirections = [2 3 1]; % Collect the acquisitions in the order L+S, L-S, LF
 desiredContrastLevelsByDir = [0.95,0.3,0.25]; % The photoreceptor contrast levels we had in the original Mt Sinai data
 freqHzByDir = [16,32,4];
 trialDurSecs = 12;
