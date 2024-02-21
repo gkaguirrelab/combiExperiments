@@ -44,11 +44,9 @@ universalKeyValues = {...
 % Get the DropBox base directory
 dropboxBaseDir = getpref('combiLEDToolbox','dropboxBaseDir');
 
-inputBaseDir = fullfile(dropboxBaseDir,'MELA_data', 'combiLED', ...
-                        'HERO_gka1', pathParams.Subject, 'ssVEPTCSF', 'rawPupilVideos');
+inputBaseDir = fullfile(pathParams.dataDir, 'rawPupilVideos');
 
-outputBaseDir = fullfile(dropboxBaseDir,'MELA_analysis', 'combiLED', ...
-                        'HERO_gka1', pathParams.Subject, 'ssVEPTCSF', 'rawPupilVideos');
+outputBaseDir = fullfile(pathParams.analysisDir, 'rawPupilVideos');
 
 % If the outputBaseDir does not exist, make it
 if ~exist(outputBaseDir)

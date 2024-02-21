@@ -17,7 +17,6 @@ pathParams.Subject = 'test';
 pathParams.dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_data/combiLED/test/IncrementDecrementPupil/SminusMel/2024-02-20';
 pathParams.analysisDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_analysis/combiLED/test/IncrementDecrementPupil/SminusMel/2024-02-20';
 
-mdkri()
 
 %% Analysis Notes
 
@@ -25,30 +24,9 @@ mdkri()
 
 videoNameStems = {};
 
-for ii = 1:80
-    
-    if ismember(ii,[2,10,16,23,35,36,47,51,59,65,72])
-        ss = 'freq_3.0';
-    elseif ismember(ii,[7,8,18,25,32,37,46,56,57,67,74])
-        ss = 'freq_4.7';
-    elseif ismember(ii,[5,14,15,27,31,38,48,54,63,64,76,80])
-        ss = 'freq_7.5';
-    elseif ismember(ii,[1,12,19,24,30,40,49,50,61,68,73,79])
-        ss = 'freq_11.7';
-    elseif ismember(ii,[4,9,17,28,29,41,44,53,58,66,77,78])
-        ss = 'freq_18.5';
-    elseif ismember(ii,[3,13,21,22,33,39,45,52,62,70,71])
-        ss = 'freq_29.2';
-    elseif ismember(ii,[6,11,20,26,34,42,43,55,60,69,75])
-        ss = 'freq_46.0';
-    end
-    
-    if ii < 10
-        vidName = [ss '_trial_0' num2str(ii)];
-    else
-        vidName = [ss '_trial_' num2str(ii)];
-    end
-    videoNameStems{end+1} = vidName;
+for ii = 1:20
+
+     videoNameStems{ii} = sprintf('trial_%02d_trial_%02d',ii,ii);
     
 end
 
