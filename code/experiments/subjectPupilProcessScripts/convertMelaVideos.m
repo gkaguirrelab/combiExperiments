@@ -37,6 +37,6 @@ p.parse(videoInFileName, videoOutFileName, varargin{:})
 
 %% Convert the video with ffmpeg
 ffmpegCommand = [p.Results.ffmpegPath 'ffmpeg -i' ' ' '"' videoInFileName '"' ' ' '-c copy ' ' ' '"' videoOutFileName '"'];
-system(ffmpegCommand)
+system(ffmpegCommand);
 
 end

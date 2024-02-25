@@ -4,16 +4,10 @@ observerAgeInYears = 53;
 pupilDiameterMm = 3;
 photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
 whichDirection = 'SminusMel';
-backgroundPrimary = [
-    0.2150
-    0
-    0
-    0.0302
-    0.0068
-    0.5006
-    0.2998
-    0.0147];
-modResult = designModulation(whichDirection,photoreceptors,cal,'searchBackground',true,'contrastMatchConstraint',-10,'backgroundPrimary',backgroundPrimary);
+modResult = designModulation(whichDirection,photoreceptors,cal,...
+    'searchBackground',true,'contrastMatchConstraint',0,...
+    'primariesToMaximize',[2,3,4]);%, ...
+%    'backgroundPrimary',backgroundPrimary);
 plotModResult(modResult);
 
 % Open a CombiLEDcontrol object

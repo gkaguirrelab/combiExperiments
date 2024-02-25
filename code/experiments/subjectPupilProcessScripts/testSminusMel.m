@@ -32,16 +32,19 @@ end
 
 % Mask bounds, pupil Frame mask defined in the loop as it is different for
 % different videos.
-glintFrameMask = [344    44   133   636];
-pupilFrameMask = [344   211    85   440];
+glintFrameMask = [150   167   243   434];
+pupilFrameMask = [222   481   118   182];
 
 % Pupil settings
 pupilCircleThreshSet = 0.004;
-pupilRangeSets = [30 40];
-ellipseEccenLBUB = [0.2 2];
-ellipseAreaLB = 0;
-ellipseAreaUP = 90000;
-pupilGammaCorrection = 0.35;
+pupilRangeSets = [20 40];
+adaptivePupilRangeFlag = false;
+ellipseEccenLBUB = [0 1];
+ellipseAreaLB = 500;
+ellipseAreaUP = 25000;
+pupilGammaCorrection = 0.85;
+maskBox = [20 30];
+nOtsu = 3;
 
 % Glint settings
 glintPatchRadius = 45;
@@ -54,14 +57,9 @@ candidateThetas = pi;
 minRadiusProportion = 0.8;
 cutErrorThreshold = 5; % 0.25 old val
 
-vids = 1:80;
 %% Loop through video name stems get each video and its corresponding masks
-for ii = vids
+for ii = 4:20
     
-    if ii > 50
-        pupilRangeSets = [40 55];
-    end
-        
     pupilCircleThresh = pupilCircleThreshSet;
     pupilRange = pupilRangeSets;
     videoName = {videoNameStems{ii}};
@@ -78,9 +76,12 @@ for ii = vids
         'nFrames', Inf, ...
         'glintFrameMask',glintFrameMask,...
         'glintGammaCorrection',0.75,...
+        'nOtsu',nOtsu,...
         'glintThreshold',glintThreshold,...
         'pupilFrameMask',pupilFrameMask,...
+        'adaptivePupilRangeFlag',adaptivePupilRangeFlag,...
         'pupilRange',pupilRange,...
+        'maskBox',maskBox,...
         'pupilCircleThresh',pupilCircleThresh,...
         'glintPatchRadius',glintPatchRadius,...
         'candidateThetas',candidateThetas,...
