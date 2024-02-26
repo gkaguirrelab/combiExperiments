@@ -135,7 +135,7 @@ classdef mtSinaiMultiTR < handle
             % Required
             p.addRequired('data',@iscell);
             p.addRequired('stimulus',@iscell);
-            p.addRequired('tr',@isscalar);
+            p.addRequired('tr',@isnumeric);
             
             p.addParameter('stimTime',{},@iscell);
             p.addParameter('stimLabels',{},@iscell);

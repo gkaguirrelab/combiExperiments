@@ -38,7 +38,9 @@ antsApplyTransformsPath = fullfile(filesep,'Users','aguirre','Downloads','ants-2
 tedanaPath = fullfile(filesep,'Users','aguirre','.pyenv','shims','tedana');
 icaReclassifyPath = fullfile(filesep,'Users','aguirre','.pyenv','shims','ica_reclassify');
 
-% Paths to an MNI
+% Silence a warning when we load tables
+warnState = warning();
+warning('off','ModifiedAndSavedVarnames');
 
 % Loop through the fmriprep repos
 for ii = 1:length(dirNames)
@@ -60,6 +62,9 @@ for ii = 1:length(dirNames)
     % Loop over the acquisitions
     for jj = 1:nRuns(ii)
 
+        % Update the console
+        fprintf('%d...%d \n',ii,jj);
+
         % All files for this run start with this name
         nameStemFunc = ['sub-',subIDs{ii},'_ses-',sesIDs{ii},'_task-trigem_acq-me_run-'];
 
@@ -72,7 +77,7 @@ for ii = 1:length(dirNames)
         refFile = fullfile(repoFmapDir,[nameStem,'_acq-meSe_fmapid-auto00000_desc-epi_fieldmap.nii.gz']);
         maskFile = [tempname,'.nii.gz'];
         command = [antsApplyTransformsPath ' -e 3 -i ' sourceFile ' -r ' refFile ' -o ' maskFile ' - t ' xfmName_T12Scanner];
-        system(command);
+        [returncode, outputMessages] = system(command);
 
         % Run the tedana analysis
         command = [tedanaPath ' -d'];
@@ -82,7 +87,7 @@ for ii = 1:length(dirNames)
         command = [command ' -e 11.00 24.07 37.14 50.21 63.28 --out-dir ' fullfile(repoTdnaDir,sprintf('run-%d',jj)) ];
         command = [command ' --prefix ' sprintf([nameStemFunc,'%d'],jj) ];
         command = [command ' --mask ' maskFile];
-        system(command);
+        [returncode, outputMessages] = system(command);
 
         % Load the tedana matrix output
         resultMetricsFile = fullfile(repoTdnaDir,sprintf('run-%d',jj),sprintf([nameStemFunc '%d_desc-tedana_metrics.tsv'],jj));
@@ -117,18 +122,20 @@ for ii = 1:length(dirNames)
         command = [command ' --prefix ' sprintf([nameStemFunc,'%d'],jj) ];
         command = [command ' --prefix ' sprintf([nameStemFunc,'%d'],jj) ];
         command = [command ' ' registryFile ];
-        system(command);
+        [returncode, outputMessages] = system(command);
 
         % Produce the tedana output in MNI space
         sourceFile = fullfile(repoTdnaDir,sprintf('run-%d',jj),sprintf([nameStemFunc '%d_desc-optcomDenoised_bold.nii.gz'],jj));
-        refFile = fullfile(repoAnatDir,[nameStem,'_space-MNI152NLin2009cAsym_dseg.nii.gz']);
+        refFile = fullfile(repoFuncDir,sprintf([nameStemFunc,'%d_space-MNI152NLin2009cAsym_boldref.nii.gz'],jj));
         outFile = fullfile(repoTdnaDir,sprintf('run-%d',jj),sprintf([nameStemFunc '%d_space-MNI152NLin2009cAsym_desc-optcomDenoised_bold.nii.gz'],jj));
         command = [antsApplyTransformsPath ' -e 3 -i ' sourceFile ' -r ' refFile ' -o ' outFile ' - t ' xfmName_scanner2T1 ' ' xfmName_T12MNI];
-        system(command);
+        [returncode, outputMessages] = system(command);
 
     end
 
-
 end
+
+% Restore warning state
+warning(warnState);
 
 

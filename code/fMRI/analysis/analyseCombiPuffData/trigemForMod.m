@@ -1,83 +1,116 @@
-stimulusCoarse = [0,0,0,0,1,4,4,3,1,1,3,4,3,1,3,0,4,3,4,2,0,0,2,1,0,3,3,0,3,4,0,2,4,2,1,3,3,1,2,4,1,3,3,1,4,4,2,0,0,2,1,3,0,0,4,2,0,4,2,1,2,2,4,0,2,2,0,1,3,1,4,4,2,0,3,3,1,0,2,2,1,4,1,0,0,0,0];
-isi = 4.25;
-dT = 0.25;
-initialDelay = 1;
-smoothSD = '0.25';
 
+% Housekeeping
+clear
+close all
 
-stimVecLength = length(stimulusCoarse)*(isi/dT);
-stimulus = zeros(4,stimVecLength);
-carryOver = zeros(1,stimVecLength);
-newStim = zeros(1,stimVecLength);
-for ii = 1:length(stimulusCoarse)
-    if stimulusCoarse(ii)~=0
-        idx = (ii-1)*(isi/dT)+(initialDelay/dT);
-        stimulus(stimulusCoarse(ii),idx) = 1;
-        if ii > 1
-            if stimulusCoarse(ii-1) ~=0
-                carryOver(idx) = stimulusCoarse(ii) - stimulusCoarse(ii-1);
-            else
-                newStim(idx) = 1;
-            end
-        end
+% Whole brain or one voxel?
+fitOneVoxel = false;
+
+% The smoothing kernel for the fMRI data in space
+smoothSD = 0;
+
+% The polynomial degree used for high-pass filtering of the timeseries
+polyDeg = 1;
+
+% Set the typicalGain, which is about 0.1 as we have converted the data to
+% proportion change
+typicalGain = 0.1;
+
+% Basic properties of the data
+dirNames = {'65da1a5ee843c3c62f739bdf','65da4a256da124f01b739bf1'};%,'65da51a06da124f01b739bf4'};
+subIDs = {'001','001','001'};
+sesIDs = {'20240222','20240213','20231114'};
+trVals = [2140,2140,2040];
+nRuns = [5,2,5];
+nAcqs = sum(nRuns);
+
+% Define the top-level data directory
+rawDataPath = fullfile(filesep,'Users','aguirre','Downloads');
+
+% Define a place to save the results
+saveDir = rawDataPath;
+
+% Create the list of filenames and the vector of trs
+tr = 2140;
+dataFileNames = {};
+for ii=1:length(dirNames)
+    for jj = 1:nRuns(ii)
+        nameStemFunc = ['sub-',subIDs{ii},'_ses-',sesIDs{ii},'_task-trigem_acq-me_run-'];
+        dataFileNames{end+1} = fullfile(...
+            dirNames{ii},...
+            ['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'tdna',...
+            sprintf('run-%d',jj),sprintf([nameStemFunc '%d_space-MNI152NLin2009cAsym_desc-optcomDenoised_bold.nii.gz'],jj));
     end
 end
-idx = carryOver ~= 0;
-carryOver(idx) = carryOver(idx) - mean(carryOver(idx));
 
-idx = newStim == 0;
-newStim(idx) = -mean(newStim);
+% Load the data
+[data,templateImage] = parseDataFiles(rawDataPath,dataFileNames,smoothSD);
 
-stimulus = [stimulus];%; carryOver; newStim];
+% Create the stimulus description
+[stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs);
 
-stimTime = -isi:dT:(length(stimulus)-(isi/dT)-1)*dT;
+% Pick the voxels to analyze
+xyz = templateImage.volsize;
+if fitOneVoxel
+    % A single voxel
+    vxs = 4532740;
+    averageVoxels = false;
+    for ii = 1:nAcqs
+        subData{ii} = data{ii}(4532740,:);
+    end
+    vxs = 1;
+else
+    % Create a mask of brain voxels
+    brainThresh = 2000;
+    vxs = find(reshape(templateImage.vol, [prod(xyz), 1]) > brainThresh);
+    averageVoxels = false;
+end
 
-stimFilePath = '/Users/aguirre/Downloads/trigemStim.mat';
-save(stimFilePath,'stimulus','stimTime');
+% Create the model opts, which includes stimLabels and typicalGain. The
+% paraSD key-value controls how varied the HRF solutions can be. A value of
+% 3 is fairly conservative and will keep the HRFs close to a canonical
+% shape. This is necessary for the current experiment as the stimulus
+% sequence does not uniquely constrain the temporal delay in the HRF.
+modelOpts = {'stimLabels',stimLabels,'typicalGain',typicalGain,'paraSD',3,'polyDeg',polyDeg};
 
-funcZipPath = '/Users/aguirre/Downloads/tedanaOutput.zip';
-maskFilePath = '/Users/aguirre/Downloads/656a130eacf7f8b0b0d1845d/sub-001/ses-20231114/fmap/sub-001_ses-20231114_acq-meSe_fmapid-mask.nii.gz';
-maskFilePath = '/Users/aguirre/Downloads/65d8ecc1367208b4d14e21de/sub-001/ses-20240222/fmap/sub-001_ses-20240222_acq-meSe_fmapid-mask.nii.gz';
+% Define the modelClass
+modelClass = 'glm';
 
-workbenchPath = 'Na';
-convertToPercentChange = true;
-averageAcquisitions = true;
+% Call the forwardModel
+results = forwardModel(subData,stimulus,tr,...
+    'stimTime',stimTime,...
+    'vxs',vxs,...
+    'averageVoxels',averageVoxels,...
+    'verbose',true,...
+    'modelClass',modelClass,...
+    'modelOpts',modelOpts);
 
-[~, ~, data, vxs, templateImage] = handleInputs(workbenchPath, {funcZipPath}, stimFilePath, ...
-    'dataFileType', 'volumetric', ...
-    'dataSourceType', 'tedana', ...
-    'smoothSD',smoothSD,...
-    'convertToPercentChange',convertToPercentChange,...
-    'averageAcquisitions',averageAcquisitions);
+% Show the results figures
+figFields = fieldnames(results.figures);
+if ~isempty(figFields)
+    for ii = 1:length(figFields)
+        figHandle = struct2handle(results.figures.(figFields{ii}).hgS_070000,0,'convert');
+        figHandle.Visible = 'on';
+    end
+end
 
-%vxsPath = '/Users/aguirre/Downloads/vxs.mat';
-%load(vxsPath,'vxs');
+% Save some files if we processed the whole brain
+if ~fitOneVoxel
 
+    % Save the results
+    fileName = fullfile(saveDir,[subjectID '_trigemResults.mat']);
+    save(fileName,'results');
 
-stimLabels = {'3','7','15','30'};%,'co','ns'};
-confoundStimLabel = '';
-avgAcqIdx = {[1:177]};%,[178:354],[355:531],[532:708],[709:885]};
-polyDeg = 10;
-typicalGain = 3e3;
-modelOpts = {'polyDeg',polyDeg,'typicalGain',typicalGain,...
-    'stimLabels',stimLabels,'confoundStimLabel',confoundStimLabel,'avgAcqIdx',avgAcqIdx};
+    % Save the template image
+    fileName = fullfile(saveDir,[subjectID '_epiTemplate.nii']);
+    MRIwrite(templateImage, fileName);
 
+    % Save a map of R2 values
+    newImage = templateImage;
+    volVec = results.R2;
+    volVec(isnan(volVec)) = 0;
+    newImage.vol = reshape(volVec,xyz(1),xyz(2),xyz(3));
+    fileName = fullfile(saveDir,[subjectID '_trigem_R2.nii']);
+    MRIwrite(newImage, fileName);
 
-tr = 2.140;
-
-
-results = forwardModel(data, stimulus, tr, ...
-    'stimTime', stimTime, ...
-     'vxs',vxs, ...
-'modelClass','glm');
-%   'modelClass','mtSinai',...
-%   'modelOpts',modelOpts);
-
-
-outPath = '/Users/aguirre/Downloads';
-Subject = 'sub-001';
-
-mapOutDirName = handleOutputs(results, templateImage, outPath, Subject, workbenchPath, ...
-        'dataFileType', 'volumetric');
-
-
+end
