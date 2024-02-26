@@ -1,13 +1,13 @@
-function combiLEDExperimentsLocalHook
+function combiExperimentsLocalHook
 
-%  combiLEDExperimentsLocalHook
+%  combiExperimentsLocalHook
 %
 % As part of the setup process, ToolboxToolbox will copy this file to your
 % ToolboxToolbox localToolboxHooks directory (minus the "Template" suffix).
 % The defalt location for this would be
-%   ~/localToolboxHooks/combiLEDExperimentsLocalHook.m
+%   ~/localToolboxHooks/combiExperimentsLocalHook.m
 %
-% Each time you run tbUseProject('combiLEDExperiments'), ToolboxToolbox will
+% Each time you run tbUseProject('combiExperiments'), ToolboxToolbox will
 % execute your local copy of this file to do setup.
 %
 % You should edit your local copy with values that are correct for your
@@ -16,7 +16,7 @@ function combiLEDExperimentsLocalHook
 
 
 % Say hello.
-projectName = 'combiLEDExperiments';
+projectName = 'combiExperiments';
 
 % Delete any old prefs
 if (ispref(projectName))

@@ -3,9 +3,9 @@
         "flavor": "",
         "hook": "",
         "importance": "",
-        "localHookTemplate": "config/combiLEDExperimentsLocalHookTemplate.m",
+        "localHookTemplate": "config/combiExperimentsLocalHookTemplate.m",
         "printLocalHookOutput": "1",
-        "name": "combiLEDExperiments",
+        "name": "combiExperiments",
         "pathPlacement": "append",
         "subfolder": "code",
         "toolboxRoot": "",
@@ -38,5 +38,31 @@
 	"type": "include",
 	"update": "",
 	"url": ""
+	},
+	{
+		"flavor": "",
+		"hook": "",
+		"importance": "",
+		"localHookTemplate": "",
+		"name": "forwardModel",
+		"pathPlacement": "append",
+		"subfolder": "",
+		"toolboxRoot": "",
+		"type": "include",
+		"update": "",
+		"url": ""
+	},
+	{
+		"flavor": "",
+		"hook": "",
+		"importance": "",
+		"localHookTemplate": "",
+		"name": "freesurferMatlab",
+		"pathPlacement": "append",
+		"subfolder": "matlab",
+		"toolboxRoot": "",
+		"type": "git",
+		"update": "",
+		"url": "https:\/\/github.com\/freesurfer\/freesurfer"
 	}
 ]
