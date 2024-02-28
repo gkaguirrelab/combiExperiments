@@ -168,7 +168,7 @@ classdef mtSinaiMultiTR < handle
             
             % The number of params is the number of stim types, plus three
             % for the form of the HRF
-            obj.nParams = nStimTypes+3;
+            obj.nParams = nStimTypes+5;
             
             % Define the stimLabels
             if ~isempty(p.Results.stimLabels)
@@ -206,8 +206,8 @@ classdef mtSinaiMultiTR < handle
             % Define the fix and float param sets
             % In this model, only the HRF parameters float. The gain
             % parameters are derived by regression
-            obj.fixSet = {1:obj.nParams-3, 1:obj.nParams-3};
-            obj.floatSet = {obj.nParams-2:obj.nParams, obj.nParams-2:obj.nParams};
+            obj.fixSet = {1:obj.nParams-5, 1:obj.nParams-5};
+            obj.floatSet = {obj.nParams-4:obj.nParams, obj.nParams-4:obj.nParams};
             
             % Create the stimAcqGroups variable. Concatenate the cells and
             % store in the object.

@@ -32,8 +32,13 @@ lb = nan(1,nParams);
 ub = nan(1,nParams);
 
 % The gain parameters are unbounded
-lb(1:nParams-3) = -Inf;             % gain
-ub(1:nParams-3) = Inf;              % gain
+lb(1:nParams-5) = -Inf;             % gain
+ub(1:nParams-5) = Inf;              % gain
+
+% Allow up to 10 seconds forwards or backtwards shift
+lb(nParams-4:nParams-3) = -10;
+ub(nParams-4:nParams-3) = 10;
+
 
 % The HRF shape parameters vary by model type
 switch obj.hrfType

@@ -5,6 +5,8 @@ subIDs = {'001','001','001'};
 sesIDs = {'20240222','20240213','20231114'};
 nRuns = [5,2,5];
 
+rawDataPath = fullfile(filesep,'Users','aguirre','Downloads');
+
 % Custom ICA component assignment
 acceptSet{1,1} = [];
 rejectSet{1,1} = [10 12];
@@ -34,24 +36,24 @@ acceptSet{3,5} = [];
 rejectSet{3,5} = [1 9 13];
 
 % Paths to the routines we will run
-antsApplyTransformsPath = fullfile(filesep,'Users','aguirre','Downloads','ants-2.5.1-arm','bin','antsApplyTransforms');
+antsApplyTransformsPath = fullfile(rawDataPath,'ants-2.5.1-arm','bin','antsApplyTransforms');
 tedanaPath = fullfile(filesep,'Users','aguirre','.pyenv','shims','tedana');
 icaReclassifyPath = fullfile(filesep,'Users','aguirre','.pyenv','shims','ica_reclassify');
 
 % Silence a warning when we load tables
 warnState = warning();
-warning('off','ModifiedAndSavedVarnames');
+warning('off','MATLAB:table:ModifiedAndSavedVarnames');
 
 % Loop through the fmriprep repos
 for ii = 1:length(dirNames)
 
     % Define the repo directories
-    repoAnatDir = fullfile(filesep,'Users','aguirre','Downloads',dirNames{ii},['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'anat');
-    repoFuncDir = fullfile(filesep,'Users','aguirre','Downloads',dirNames{ii},['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'func');
-    repoFmapDir = fullfile(filesep,'Users','aguirre','Downloads',dirNames{ii},['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'fmap');
+    repoAnatDir = fullfile(rawDataPath,dirNames{ii},['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'anat');
+    repoFuncDir = fullfile(rawDataPath,dirNames{ii},['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'func');
+    repoFmapDir = fullfile(rawDataPath,dirNames{ii},['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'fmap');
 
     % Create a directory for tedana output
-    repoTdnaDir = fullfile(filesep,'Users','aguirre','Downloads',dirNames{ii},['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'tdna');
+    repoTdnaDir = fullfile(rawDataPath,dirNames{ii},['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'tdna');
     mkdir(repoTdnaDir);
 
     % Get the xfms for MNI space
@@ -77,7 +79,7 @@ for ii = 1:length(dirNames)
         refFile = fullfile(repoFmapDir,[nameStem,'_acq-meSe_fmapid-auto00000_desc-epi_fieldmap.nii.gz']);
         maskFile = [tempname,'.nii.gz'];
         command = [antsApplyTransformsPath ' -e 3 -i ' sourceFile ' -r ' refFile ' -o ' maskFile ' - t ' xfmName_T12Scanner];
-        [returncode, outputMessages] = system(command);
+        [returncode, outputMessages] = system(command);        
 
         % Run the tedana analysis
         command = [tedanaPath ' -d'];
@@ -126,10 +128,19 @@ for ii = 1:length(dirNames)
 
         % Produce the tedana output in MNI space
         sourceFile = fullfile(repoTdnaDir,sprintf('run-%d',jj),sprintf([nameStemFunc '%d_desc-optcomDenoised_bold.nii.gz'],jj));
-        refFile = fullfile(repoFuncDir,sprintf([nameStemFunc,'%d_space-MNI152NLin2009cAsym_boldref.nii.gz'],jj));
+        refFile = fullfile(repoFuncDir,sprintf([nameStemFunc,'%d_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz'],jj));
         outFile = fullfile(repoTdnaDir,sprintf('run-%d',jj),sprintf([nameStemFunc '%d_space-MNI152NLin2009cAsym_desc-optcomDenoised_bold.nii.gz'],jj));
         command = [antsApplyTransformsPath ' -e 3 -i ' sourceFile ' -r ' refFile ' -o ' outFile ' - t ' xfmName_scanner2T1 ' ' xfmName_T12MNI];
         [returncode, outputMessages] = system(command);
+
+        % Load the refFile and use this to define a mask across the entire
+        % dataset
+        refData = MRIread(refFile);
+        if ii == 1 && jj == 1
+            maskVol(:,:,:,1) = refData.vol;
+        else
+            maskVol(:,:,:,end+1) = refData.vol;
+        end
 
     end
 
@@ -138,4 +149,10 @@ end
 % Restore warning state
 warning(warnState);
 
+% Process and save the maskVol
+maskVol = squeeze(sum(maskVol,4));
+maskVol(maskVol<sum(nRuns))=0;
+maskVol(maskVol==sum(nRuns))=1;
+saveName = fullfile(rawDataPath,[subIDs{1} '_acrossSessionMask.mat']);
+save(saveName,'maskVol');
 

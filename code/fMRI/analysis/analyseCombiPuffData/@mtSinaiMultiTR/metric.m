@@ -1,4 +1,4 @@
-function [metric, signal, modelFit] = metric(obj, signal, x)
+function [metric, signal, modelFit,avgDataTime] = metric(obj, signal, x)
 % Evaluates the match between a signal and a model fit
 %
 % Syntax:
@@ -38,18 +38,31 @@ end
 % Obtain the model fit
 modelFit = obj.forward(x);
 
-% Average across acquisition repetitions
-avgAcqIdx = obj.avgAcqIdx;
-if ~isempty(avgAcqIdx)
-    avgSignal = zeros(length(avgAcqIdx{1}),1);
-    avgModelFit = zeros(length(avgAcqIdx{1}),1);
-    for ii = 1:length(avgAcqIdx)
-        avgSignal = avgSignal + signal(avgAcqIdx{ii});
-        avgModelFit = avgModelFit + modelFit(avgAcqIdx{ii});
+% Average across acquisitions, resampling if necessary for differing TRs
+dataAcqGroups = obj.dataAcqGroups;
+dataTime = obj.dataTime;
+
+for ii=1:max(dataAcqGroups)
+    idx = dataAcqGroups == ii;
+    thisFit = modelFit(idx);
+    thisSignal = signal(idx);
+    if ii == 1
+        avgFit = thisFit;
+        avgSignal = thisSignal;
+        avgDataTime = dataTime(dataAcqGroups==1);
+    else
+        if length(thisFit) ~= length(avgFit)
+            avgDataTime = dataTime(dataAcqGroups==1);
+            acqSourceTime = dataTime(dataAcqGroups==ii);
+            thisFit = interp1(acqSourceTime, thisFit,avgDataTime,'linear',0);
+            thisSignal = interp1(acqSourceTime, thisSignal,avgDataTime,'linear',0);            
+        end
+        avgFit = avgFit + thisFit;
+        avgSignal = avgSignal + thisSignal;
     end
-    signal = avgSignal ./ length(avgAcqIdx);
-    modelFit = avgModelFit ./ length(avgAcqIdx);
 end
+modelFit = avgFit / max(dataAcqGroups);
+signal = avgSignal / max(dataAcqGroups);
 
 % Implement an R^2 metric
 metric = calccorrelation(signal, modelFit)^2;

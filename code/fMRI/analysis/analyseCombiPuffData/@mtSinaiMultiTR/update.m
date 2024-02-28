@@ -39,7 +39,7 @@ if (nParams-length(floatSet)) ~= stimCols
 end
 
 % Create the HRF
-hrf = obj.flobsbasis*x';
+hrf = obj.flobsbasis*x(3:5)';
 
 % Normalize the kernel to have unit area
 hrf = hrf/sum(abs(hrf));
@@ -47,17 +47,26 @@ hrf = hrf/sum(abs(hrf));
 % Create a regression matrix for the HRF implied by the FLOBS params
 X = zeros(size(obj.dataTime,1),stimCols);
 
+% Adjust the stimTime for the lag params
+idx = stimAcqGroups <=5;
+stimTime(idx) = stimTime(idx)+x(1);
+idx = stimAcqGroups == 6;
+stimTime(idx) = stimTime(idx)+x(2);
+idx = stimAcqGroups == 7;
+stimTime(idx) = stimTime(idx)+x(2);
+
 for ss = 1:size(stimulus,2)
     
     % Grab this stimulus row
     neuralSignal = stimulus(:,ss);
-    
+
     % Convolve the neuralSignal by the hrf, respecting acquisition boundaries
     fit = conv2run(neuralSignal,hrf,stimAcqGroups);
     
     % If the stimTime variable is not empty, resample the fit to match
     % the temporal support of the data.
     if ~isempty(stimTime)
+        % Now resample
         dataAcqGroups = obj.dataAcqGroups;
         dataTime = obj.dataTime;
         fit = resamp2run(fit,stimAcqGroups,stimTime,dataAcqGroups,dataTime);

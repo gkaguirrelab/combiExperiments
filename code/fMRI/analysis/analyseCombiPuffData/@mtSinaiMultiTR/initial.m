@@ -31,7 +31,10 @@ nParams = obj.nParams;
 x0 = zeros(1,nParams);
 
 % Assemble X0
-x0(1:nParams-3) = typicalGain;
+x0(1:nParams-5) = typicalGain;
+
+% The temporal shift params are initialized to zero
+x0(nParams-4:nParams-3) = 0;
 
 % Flobs population mean amplitudes
 x0(nParams-2:nParams) = [0.86, 0.09, 0.01]; % FLOBS eigen1, 2, 3

@@ -1,6 +1,6 @@
 % Object to control the collection of pupillometry data for increments and
 % decrements of a modulation around a spectral background
-classdef IncrementDecrementPupil < handle
+classdef IncrementPupil < handle
 
     properties (Constant)
     end
@@ -14,13 +14,16 @@ classdef IncrementDecrementPupil < handle
         pupilObj
         dataOutDir
         pupilVidStartDelaySec
+        pupilVidStopDelaySec
         simulateStimuli
         simulateRecording
 
         % Some stimulus properties
+        modDirection
         halfCosineRampDurSecs
         trialData
         preTrialJitterRangeSecs
+        prePulseRecordingDurSecs
         pulseDurSecs
         postPulseRecordingDurSecs
     end
@@ -33,9 +36,8 @@ classdef IncrementDecrementPupil < handle
         % to collect data
         CombiLEDObj
 
-        % We can adjust the trialIdx if we are continuing data collection
-        % after a break
-        trialIdx = 1;
+        % Incremented with each tril
+        trialIdx = 0;
 
         % The stimuli
         stimContrast
@@ -51,21 +53,23 @@ classdef IncrementDecrementPupil < handle
     methods
 
         % Constructor
-        function obj = IncrementDecrementPupil(CombiLEDObj,subjectID,modResult,varargin)
+        function obj = IncrementPupil(CombiLEDObj,subjectID,modResult,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('pupilVidStartDelaySec',5.0,@isnumeric);
+            p.addParameter('pupilVidStopDelaySec',4.0,@isnumeric);
             p.addParameter('preTrialJitterRangeSecs',[0 1],@isnumeric);
+            p.addParameter('prePulseRecordingDurSecs',2,@isnumeric);
             p.addParameter('pulseDurSecs',6.0,@isnumeric);
             p.addParameter('postPulseRecordingDurSecs',10,@isnumeric);
             p.addParameter('stimContrast',1.0,@isnumeric);
-            p.addParameter('halfCosineRampDurSecs',0.25,@isnumeric);
+            p.addParameter('halfCosineRampDurSecs',0.5,@isnumeric);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('simulateRecording',false,@islogical);
             p.addParameter('dropBoxBaseDir',fullfile(getpref('combiLEDToolbox','dropboxBaseDir'),'MELA_data'),@ischar);
             p.addParameter('projectName','combiLED',@ischar);
-            p.addParameter('experimentName','IncrementDecrementPupil',@ischar);
+            p.addParameter('experimentName','IncrementPupil',@ischar);
             p.addParameter('sessionID',string(datetime('now','Format','yyyy-MM-dd')),@ischar);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
@@ -73,7 +77,9 @@ classdef IncrementDecrementPupil < handle
             % Place various inputs and options into object properties
             obj.CombiLEDObj = CombiLEDObj;
             obj.pupilVidStartDelaySec = p.Results.pupilVidStartDelaySec;
-            obj.preTrialJitterRangeSecs = p.Results.preTrialJitterRangeSecs;
+            obj.pupilVidStopDelaySec = p.Results.pupilVidStopDelaySec;          
+            obj.preTrialJitterRangeSecs = p.Results.preTrialJitterRangeSecs;           
+            obj.prePulseRecordingDurSecs = p.Results.prePulseRecordingDurSecs;
             obj.pulseDurSecs = p.Results.pulseDurSecs;
             obj.postPulseRecordingDurSecs = p.Results.postPulseRecordingDurSecs;
             obj.stimContrast = p.Results.stimContrast;
@@ -81,12 +87,15 @@ classdef IncrementDecrementPupil < handle
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.simulateRecording = p.Results.simulateRecording;
             obj.verbose = p.Results.verbose;
+            obj.modDirection = modResult.meta.whichDirection;
 
             % Configure the combiLED
             if ~obj.simulateStimuli
                 obj.CombiLEDObj.setSettings(modResult);
+                obj.CombiLEDObj.setUnimodal();
                 obj.CombiLEDObj.setWaveformIndex(2); % square-wave
                 obj.CombiLEDObj.setFrequency(1/(2*obj.pulseDurSecs));
+                obj.CombiLEDObj.setPhaseOffset(pi);
                 obj.CombiLEDObj.setAMFrequency(1/(2*obj.pulseDurSecs));
                 obj.CombiLEDObj.setAMIndex(2); % half-cosine windowing
                 obj.CombiLEDObj.setAMValues([obj.halfCosineRampDurSecs,0]); % half-cosine on; second value unused
@@ -108,13 +117,15 @@ classdef IncrementDecrementPupil < handle
                 mkdir(obj.dataOutDir)
             end
 
-            % Create a file prefix for the raw data from the stimulus
-            % properties
-            filePrefix = sprintf('trial_%02d_',obj.trialIdx);
+            % The pupil recording object supports adding a file prefix to
+            % each trial. We won't use this here and just set it to empty.
+            filePrefix = '';
 
             % Calculate the length of pupil recording needed.
             pupilRecordingTime = ...
-                obj.pupilVidStartDelaySec + obj.pulseDurSecs + ...
+                obj.pupilVidStartDelaySec + ...
+                obj.prePulseRecordingDurSecs + ...
+                obj.pulseDurSecs + ...
                 obj.postPulseRecordingDurSecs;
 
             % Initialize the pupil recording object.

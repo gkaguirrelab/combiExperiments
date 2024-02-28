@@ -7,20 +7,20 @@ close all
 fitOneVoxel = false;
 
 % The smoothing kernel for the fMRI data in space
-smoothSD = 0;
+smoothSD = 0.25;
 
 % The polynomial degree used for high-pass filtering of the timeseries
-polyDeg = 1;
+polyDeg = 4;
 
 % Set the typicalGain, which is about 0.1 as we have converted the data to
 % proportion change
 typicalGain = 0.1;
 
 % Basic properties of the data
-dirNames = {'65da1a5ee843c3c62f739bdf','65da4a256da124f01b739bf1'};%,'65da51a06da124f01b739bf4'};
+dirNames = {'65da1a5ee843c3c62f739bdf','65da4a256da124f01b739bf1','65da51a06da124f01b739bf4'};
 subIDs = {'001','001','001'};
 sesIDs = {'20240222','20240213','20231114'};
-trVals = [2140,2140,2040];
+trVals = [2.140,2.140,2.040];
 nRuns = [5,2,5];
 nAcqs = sum(nRuns);
 
@@ -31,10 +31,11 @@ rawDataPath = fullfile(filesep,'Users','aguirre','Downloads');
 saveDir = rawDataPath;
 
 % Create the list of filenames and the vector of trs
-tr = 2140;
 dataFileNames = {};
+tr = [];
 for ii=1:length(dirNames)
     for jj = 1:nRuns(ii)
+        tr(end+1) = trVals(ii);
         nameStemFunc = ['sub-',subIDs{ii},'_ses-',sesIDs{ii},'_task-trigem_acq-me_run-'];
         dataFileNames{end+1} = fullfile(...
             dirNames{ii},...
@@ -55,14 +56,11 @@ if fitOneVoxel
     % A single voxel
     vxs = 4532740;
     averageVoxels = false;
-    for ii = 1:nAcqs
-        subData{ii} = data{ii}(4532740,:);
-    end
-    vxs = 1;
 else
     % Create a mask of brain voxels
-    brainThresh = 2000;
-    vxs = find(reshape(templateImage.vol, [prod(xyz), 1]) > brainThresh);
+    maskVolName = fullfile(rawDataPath,[subIDs{1} '_acrossSessionMask.mat']);
+    load(maskVolName,'maskVol');
+    vxs = find(reshape(maskVol, [numel(maskVol), 1]));
     averageVoxels = false;
 end
 
@@ -74,16 +72,17 @@ end
 modelOpts = {'stimLabels',stimLabels,'typicalGain',typicalGain,'paraSD',3,'polyDeg',polyDeg};
 
 % Define the modelClass
-modelClass = 'glm';
+modelClass = 'mtSinaiMultiTR';
 
 % Call the forwardModel
-results = forwardModel(subData,stimulus,tr,...
+results = forwardModel(data,stimulus,tr,...
     'stimTime',stimTime,...
     'vxs',vxs,...
     'averageVoxels',averageVoxels,...
     'verbose',true,...
     'modelClass',modelClass,...
-    'modelOpts',modelOpts);
+    'modelOpts',modelOpts,...
+    'verbose',true);
 
 % Show the results figures
 figFields = fieldnames(results.figures);
@@ -98,11 +97,11 @@ end
 if ~fitOneVoxel
 
     % Save the results
-    fileName = fullfile(saveDir,[subjectID '_trigemResults.mat']);
+    fileName = fullfile(saveDir,[subIDs{1} '_trigemResults.mat']);
     save(fileName,'results');
 
     % Save the template image
-    fileName = fullfile(saveDir,[subjectID '_epiTemplate.nii']);
+    fileName = fullfile(saveDir,[subIDs{1} '_epiTemplate.nii']);
     MRIwrite(templateImage, fileName);
 
     % Save a map of R2 values
@@ -110,7 +109,7 @@ if ~fitOneVoxel
     volVec = results.R2;
     volVec(isnan(volVec)) = 0;
     newImage.vol = reshape(volVec,xyz(1),xyz(2),xyz(3));
-    fileName = fullfile(saveDir,[subjectID '_trigem_R2.nii']);
+    fileName = fullfile(saveDir,[subIDs{1} '_trigem_R2.nii']);
     MRIwrite(newImage, fileName);
 
 end

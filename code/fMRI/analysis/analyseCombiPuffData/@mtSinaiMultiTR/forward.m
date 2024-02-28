@@ -26,8 +26,16 @@ stimAcqGroups = obj.stimAcqGroups;
 stimTime = obj.stimTime;
 nParams = obj.nParams;
 
+% Adjust the stimTime for the lag params
+idx = stimAcqGroups <=5;
+stimTime(idx) = stimTime(idx)+x(nParams-4);
+idx = stimAcqGroups == 6;
+stimTime(idx) = stimTime(idx)+x(nParams-3);
+idx = stimAcqGroups == 7;
+stimTime(idx) = stimTime(idx)+x(nParams-3);
+
 % Scale the stimulus matrix by the gain parameters
-neuralSignal = stimulus*x(1:nParams-3)';
+neuralSignal = stimulus*x(1:nParams-5)';
 
 % Create the HRF
 hrf = makeFlobsHRF(x(nParams-2:nParams), obj.flobsbasis);
