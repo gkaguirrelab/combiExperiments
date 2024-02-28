@@ -66,9 +66,9 @@ for vv = 1:length(videoNameStems)
     fprintf(str);
     
     % The file names
-    videoInFileName = fullfile(inputBaseDir,[videoNameStems{vv} '.mkv']);
+    videoInFileName = fullfile(inputBaseDir,[videoNameStems{vv} '.mov']);
     convertedVideoName = fullfile(outputBaseDir,[videoNameStems{vv} '_converted.mov']);
-    grayVideoName = fullfile(outputBaseDir,[videoNameStems{vv} '_gray.avi']);
+    grayVideoName = fullfile(inputBaseDir,[videoNameStems{vv} '.mov']);
     glintFileName = fullfile(outputBaseDir,[videoNameStems{vv} '_glint.mat']);
     perimeterFileName = fullfile(outputBaseDir,[videoNameStems{vv} '_perimeter.mat']);
     correctedPerimeterFileName = fullfile(outputBaseDir,[videoNameStems{vv} '_correctedPerimeter.mat']);
@@ -76,13 +76,10 @@ for vv = 1:length(videoNameStems)
     pupilFileName = fullfile(outputBaseDir,[videoNameStems{vv} '_pupil.mat']);
     fit3VideoName = fullfile(outputBaseDir,[videoNameStems{vv} '_stage3fit.avi']);
     fit6VideoName = fullfile(outputBaseDir,[videoNameStems{vv} '_stage6fit.avi']);
-     
-    % Convert
-    convertMelaVideos(videoInFileName, convertedVideoName) 
-    
+         
     % Deinterlace
-    deinterlaceVideo(convertedVideoName, grayVideoName, ...
-        universalKeyValues{:},sessionKeyValues{:});
+    % deinterlaceVideo(videoInFileName, grayVideoName, ...
+    %     universalKeyValues{:},sessionKeyValues{:});
     
     % Glint
     findGlint(grayVideoName, glintFileName, ...

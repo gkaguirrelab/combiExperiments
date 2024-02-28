@@ -4,8 +4,8 @@
 %
 % To define mask bounds, use:
 %{
-	glintFrameMask = defineCropMask('pupil_L+S_01.mov','startFrame',10)
-	pupilFrameMask = defineCropMask('pupil_L+S_01.mov','startFrame',10)
+	glintFrameMask = defineCropMask('trial_01.mov','startFrame',10)
+	pupilFrameMask = defineCropMask('trial_01.mov','startFrame',10)
 %}
 % For the glint, put a tight box around the glint. For the pupil, define a
 % mask area that safely contains the pupil at its most dilated.
@@ -14,8 +14,8 @@
 
 % Subject and session params.
 pathParams.Subject = 'test';
-pathParams.dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_data/combiLED/test/IncrementDecrementPupil/SminusMel/2024-02-20';
-pathParams.analysisDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_analysis/combiLED/test/IncrementDecrementPupil/SminusMel/2024-02-20';
+pathParams.dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_data/combiLED/HERO_gka1/IncrementPupil/SnoMel/2024-02-28';
+pathParams.analysisDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_analysis/combiLED/HERO_gka1/IncrementPupil/SnoMel/2024-02-28';
 
 
 %% Analysis Notes
@@ -26,14 +26,14 @@ videoNameStems = {};
 
 for ii = 1:20
 
-     videoNameStems{ii} = sprintf('trial_%02d_trial_%02d',ii,ii);
+     videoNameStems{ii} = sprintf('trial_%02d',ii);
     
 end
 
 % Mask bounds, pupil Frame mask defined in the loop as it is different for
 % different videos.
-glintFrameMask = [150   167   243   434];
-pupilFrameMask = [222   481   118   182];
+glintFrameMask = [364   410   222   716];
+pupilFrameMask = [160   710   192   394];
 
 % Pupil settings
 pupilCircleThreshSet = 0.004;
@@ -58,7 +58,7 @@ minRadiusProportion = 0.8;
 cutErrorThreshold = 5; % 0.25 old val
 
 %% Loop through video name stems get each video and its corresponding masks
-for ii = 4:20
+for ii = 5:20
     
     pupilCircleThresh = pupilCircleThreshSet;
     pupilRange = pupilRangeSets;
