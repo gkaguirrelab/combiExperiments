@@ -4,6 +4,8 @@ cal = loadCalByName('CombiLED_shortLLG_classicEyePiece_ND2x5');
 observerAgeInYears = 53;
 pupilDiameterMm = 3;
 photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
+
+% Mel directed
 modResultMel = designModulation('Mel',photoreceptors,cal,'searchBackground',true,'primariesToMaximize',[3,4],'primaryHeadRoom',0.05);
 plotModResult(modResultMel);
 
@@ -11,16 +13,34 @@ plotModResult(modResultMel);
 modResultS = designModulation('SnoMel',photoreceptors,cal,'searchBackground',true,'primariesToMaximize',[1,2],'contrastMatchConstraint',0,'primaryHeadRoom',0.05);
 plotModResult(modResultS);
 
+% A wide field L+M directed modulation that silences Mel
+modResultLM = designModulation('LplusMnoMel',photoreceptors,cal,'searchBackground',true,'primariesToMaximize',[1,2],'contrastMatchConstraint',0,'primaryHeadRoom',0.05);
+plotModResult(modResultLM);
+
+
 % Open a CombiLEDcontrol object
 combiObj = CombiLEDcontrol('verbose',false);
 
 % Update the gamma table
 combiObj.setGamma(cal.processedData.gammaTable);
 
+Speak('ready')
+
 % Create a psychObject for the melanopsin measurement for S directed and
 % collect some trials
 psychObj = IncrementPupil(combiObj,'HERO_gka1',modResultS);
 save(fullfile(psychObj.dataOutDir,'modResult.mat'),'modResultS');
+for ii = 1:15
+    pause
+    psychObj.collectTrial
+    save(fullfile(psychObj.dataOutDir,'psychObj.mat'),'psychObj');
+end
+delete(psychObj)
+
+% Create a psychObject for the melanopsin measurement for LM directed and
+% collect some trials
+psychObj = IncrementPupil(combiObj,'HERO_gka1',modResultLM);
+save(fullfile(psychObj.dataOutDir,'modResult.mat'),'modResultLM');
 for ii = 1:15
     pause
     psychObj.collectTrial

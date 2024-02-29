@@ -77,14 +77,14 @@ for vv = 1:length(videoNameStems)
     fit3VideoName = fullfile(outputBaseDir,[videoNameStems{vv} '_stage3fit.avi']);
     fit6VideoName = fullfile(outputBaseDir,[videoNameStems{vv} '_stage6fit.avi']);
          
-    % Deinterlace
-    % deinterlaceVideo(videoInFileName, grayVideoName, ...
-    %     universalKeyValues{:},sessionKeyValues{:});
-    
+    % % Deinterlace
+    % % deinterlaceVideo(videoInFileName, grayVideoName, ...
+    % %     universalKeyValues{:},sessionKeyValues{:});
+    % 
     % Glint
     findGlint(grayVideoName, glintFileName, ...
         universalKeyValues{:},sessionKeyValues{:});
-    
+
     % Perimeter
     findPupilPerimeter(grayVideoName, perimeterFileName, ...
         universalKeyValues{:},sessionKeyValues{:});
@@ -94,19 +94,20 @@ for vv = 1:length(videoNameStems)
         'perimeterFileName',perimeterFileName,...
         'glintFileName',glintFileName,...
         universalKeyValues{:},sessionKeyValues{:});
-     
+
+    %{
     % Control
     makeControlFile(controlFileName, perimeterFileName, glintFileName, ...
         universalKeyValues{:},sessionKeyValues{:});
-    
+
     % Correct
     applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, ...
         universalKeyValues{:},sessionKeyValues{:});
-    
+
     % Fit
     fitPupilPerimeter(correctedPerimeterFileName, pupilFileName, ...
         universalKeyValues{:},sessionKeyValues{:});
-    
+
     % 6th Stage Video
     makeFitVideo(grayVideoName, fit6VideoName, ...
         'perimeterFileName',correctedPerimeterFileName,...
@@ -114,7 +115,9 @@ for vv = 1:length(videoNameStems)
         'glintFileName',glintFileName,...
         'fitLabel', 'initial', ...
         universalKeyValues{:},sessionKeyValues{:});
+    %}
     
+
 end
 
 %% Restore the warning state

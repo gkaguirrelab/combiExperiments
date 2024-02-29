@@ -5,7 +5,7 @@
 % To define mask bounds, use:
 %{
 	glintFrameMask = defineCropMask('trial_01.mov','startFrame',10)
-	pupilFrameMask = defineCropMask('trial_01.mov','startFrame',10)
+	pupilFrameMask = defineCropMask('trial_03.mov','startFrame',10)
 %}
 % For the glint, put a tight box around the glint. For the pupil, define a
 % mask area that safely contains the pupil at its most dilated.
@@ -14,8 +14,8 @@
 
 % Subject and session params.
 pathParams.Subject = 'test';
-pathParams.dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_data/combiLED/HERO_gka1/IncrementPupil/SnoMel/2024-02-28';
-pathParams.analysisDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_analysis/combiLED/HERO_gka1/IncrementPupil/SnoMel/2024-02-28';
+pathParams.dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_data/combiLED/HERO_gka1/IncrementPupil/Mel/2024-02-29';
+pathParams.analysisDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_analysis/combiLED/HERO_gka1/IncrementPupil/Mel/2024-02-29';
 
 
 %% Analysis Notes
@@ -24,7 +24,7 @@ pathParams.analysisDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey A
 
 videoNameStems = {};
 
-for ii = 1:20
+for ii = 1:15
 
      videoNameStems{ii} = sprintf('trial_%02d',ii);
     
@@ -32,8 +32,8 @@ end
 
 % Mask bounds, pupil Frame mask defined in the loop as it is different for
 % different videos.
-glintFrameMask = [364   410   222   716];
-pupilFrameMask = [160   710   192   394];
+glintFrameMask = [195   318   399   778];
+pupilFrameMask = [167   743   256   396];
 
 % Pupil settings
 pupilCircleThreshSet = 0.004;
@@ -42,7 +42,7 @@ adaptivePupilRangeFlag = false;
 ellipseEccenLBUB = [0 1];
 ellipseAreaLB = 500;
 ellipseAreaUP = 25000;
-pupilGammaCorrection = 0.85;
+pupilGammaCorrection = 0.5;
 maskBox = [20 30];
 nOtsu = 3;
 
@@ -51,14 +51,14 @@ glintPatchRadius = 45;
 glintThreshold = 0.4;
 
 % Control stage values (after the 3th before the 6th stage)
-% Cut settings: 0 for buttom cut, pi/2 for right, pi for top, 3*pi/4 for
+% Cut settings: 0 for buttom cut, pi/2 for right, pi for top, 3*pi/2 for
 % left
-candidateThetas = pi;
-minRadiusProportion = 0.8;
-cutErrorThreshold = 5; % 0.25 old val
+candidateThetas = [pi,5*pi/4,3*pi/2];
+minRadiusProportion = 0.4;
+cutErrorThreshold = 2; % 0.25 old val
 
 %% Loop through video name stems get each video and its corresponding masks
-for ii = 1:15
+parfor ii = 1:15
     
     pupilCircleThresh = pupilCircleThreshSet;
     pupilRange = pupilRangeSets;

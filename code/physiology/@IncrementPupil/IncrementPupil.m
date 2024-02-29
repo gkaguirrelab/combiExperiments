@@ -61,10 +61,10 @@ classdef IncrementPupil < handle
             p.addParameter('pupilVidStopDelaySec',4.0,@isnumeric);
             p.addParameter('preTrialJitterRangeSecs',[0 1],@isnumeric);
             p.addParameter('prePulseRecordingDurSecs',2,@isnumeric);
-            p.addParameter('pulseDurSecs',6.0,@isnumeric);
-            p.addParameter('postPulseRecordingDurSecs',10,@isnumeric);
+            p.addParameter('pulseDurSecs',15.0,@isnumeric);
+            p.addParameter('postPulseRecordingDurSecs',15,@isnumeric);
             p.addParameter('stimContrast',1.0,@isnumeric);
-            p.addParameter('halfCosineRampDurSecs',0.5,@isnumeric);
+            p.addParameter('halfCosineRampDurSecs',2,@isnumeric);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('simulateRecording',false,@islogical);
             p.addParameter('dropBoxBaseDir',fullfile(getpref('combiLEDToolbox','dropboxBaseDir'),'MELA_data'),@ischar);
