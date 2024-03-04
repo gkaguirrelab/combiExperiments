@@ -1,9 +1,13 @@
-function [data,templateImage] = parseDataFiles(rawDataPath,dataFileNames,smoothSD)
+function [data,templateImage] = parseDataFiles(rawDataPath,dataFileNames,maskVolName,smoothSD)
 % Loads data files produced by fmriprep
 %
 
 % The window within which smoothing will be applied
 smoothSize = round((smoothSD*3)/2)*2+1;
+
+% Load the maskVol
+    load(maskVolName,'maskVol');
+    outsideMask = reshape(maskVol, [numel(maskVol), 1])==0;
 
 % Loop over datafiles and load them
 data = [];
@@ -24,11 +28,15 @@ for nn = 1:length(dataFileNames)
     end
     thisAcqData = thisAcqData.vol;
 
+
     % Smooth the data in space
     if smoothSD > 0
         for ii = 1:size(thisAcqData,4)
             vol = squeeze(thisAcqData(:,:,:,ii));
+            % Nan outside of the mask
+            vol(outsideMask)=nan;
             vol = smooth3(vol,'gaussian',smoothSize,smoothSD);
+            vol(outsideMask)=0;
             thisAcqData(:,:,:,ii) = vol;
         end
     end

@@ -58,7 +58,7 @@ minRadiusProportion = 0.4;
 cutErrorThreshold = 2; % 0.25 old val
 
 %% Loop through video name stems get each video and its corresponding masks
-parfor ii = 1:15
+for ii = 1:15
     
     pupilCircleThresh = pupilCircleThreshSet;
     pupilRange = pupilRangeSets;

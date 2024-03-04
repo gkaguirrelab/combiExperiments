@@ -80,7 +80,7 @@ for vv = 1:length(videoNameStems)
     % % Deinterlace
     % % deinterlaceVideo(videoInFileName, grayVideoName, ...
     % %     universalKeyValues{:},sessionKeyValues{:});
-    % 
+%{
     % Glint
     findGlint(grayVideoName, glintFileName, ...
         universalKeyValues{:},sessionKeyValues{:});
@@ -94,8 +94,8 @@ for vv = 1:length(videoNameStems)
         'perimeterFileName',perimeterFileName,...
         'glintFileName',glintFileName,...
         universalKeyValues{:},sessionKeyValues{:});
+    %}
 
-    %{
     % Control
     makeControlFile(controlFileName, perimeterFileName, glintFileName, ...
         universalKeyValues{:},sessionKeyValues{:});
@@ -115,8 +115,6 @@ for vv = 1:length(videoNameStems)
         'glintFileName',glintFileName,...
         'fitLabel', 'initial', ...
         universalKeyValues{:},sessionKeyValues{:});
-    %}
-    
 
 end
 

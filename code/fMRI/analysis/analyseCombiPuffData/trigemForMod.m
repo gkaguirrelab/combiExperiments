@@ -7,7 +7,7 @@ close all
 fitOneVoxel = false;
 
 % The smoothing kernel for the fMRI data in space
-smoothSD = 0.25;
+smoothSD = 0.5;
 
 % The polynomial degree used for high-pass filtering of the timeseries
 polyDeg = 4;
@@ -18,10 +18,14 @@ typicalGain = 0.1;
 
 % Basic properties of the data
 dirNames = {'65da1a5ee843c3c62f739bdf','65da4a256da124f01b739bf1','65da51a06da124f01b739bf4'};
+dirNames = {'65da51a06da124f01b739bf4'};
 subIDs = {'001','001','001'};
 sesIDs = {'20240222','20240213','20231114'};
+sesIDs = {'20231114'};
 trVals = [2.140,2.140,2.040];
+trVals = [2.040];
 nRuns = [5,2,5];
+nRuns = [5];
 nAcqs = sum(nRuns);
 
 % Define the top-level data directory
@@ -29,6 +33,9 @@ rawDataPath = fullfile(filesep,'Users','aguirre','Downloads');
 
 % Define a place to save the results
 saveDir = rawDataPath;
+
+% Define the location of the maskVol
+maskVolName = fullfile(rawDataPath,[subIDs{1} '_acrossSessionMask.mat']);
 
 % Create the list of filenames and the vector of trs
 dataFileNames = {};
@@ -45,7 +52,7 @@ for ii=1:length(dirNames)
 end
 
 % Load the data
-[data,templateImage] = parseDataFiles(rawDataPath,dataFileNames,smoothSD);
+[data,templateImage] = parseDataFiles(rawDataPath,dataFileNames,maskVolName,smoothSD);
 
 % Create the stimulus description
 [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs);

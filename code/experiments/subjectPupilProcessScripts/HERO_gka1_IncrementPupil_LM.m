@@ -14,8 +14,8 @@
 
 % Subject and session params.
 pathParams.Subject = 'test';
-pathParams.dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_data/combiLED/HERO_gka1/IncrementPupil/SnoMel/2024-02-29';
-pathParams.analysisDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_analysis/combiLED/HERO_gka1/IncrementPupil/SnoMel/2024-02-29';
+pathParams.dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_data/combiLED/HERO_gka1/IncrementPupil/LplusMnoMel/2024-02-29';
+pathParams.analysisDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/MELA_analysis/combiLED/HERO_gka1/IncrementPupil/LplusMnoMel/2024-02-29';
 
 
 %% Analysis Notes
@@ -32,8 +32,8 @@ end
 
 % Mask bounds, pupil Frame mask defined in the loop as it is different for
 % different videos.
-glintFrameMask = [387   441   205   743];
-pupilFrameMask = [274   775   174   363];
+glintFrameMask = [289   391   340   758];
+pupilFrameMaskSets = {[273   800   171   347],[179   747   237   398]};
 
 % Pupil settings
 pupilCircleThreshSet = 0.004;
@@ -69,6 +69,12 @@ for ii = 1:15
         estimatePipelineParamsGUI('','TOME')
     %}
     % And select one of the raw data .mov files.
+
+    if ii<9
+        pupilFrameMask = pupilFrameMaskSets{1};
+    else
+        pupilFrameMask = pupilFrameMaskSets{2};
+    end
 
     sessionKeyValues = {...
         'pupilGammaCorrection', pupilGammaCorrection, ...
