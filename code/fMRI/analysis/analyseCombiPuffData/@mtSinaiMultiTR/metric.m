@@ -1,4 +1,4 @@
-function [metric, signal, modelFit,avgDataTime] = metric(obj, signal, x)
+function [metric, signal, modelFit, avgDataTime] = metric(obj, signal, x)
 % Evaluates the match between a signal and a model fit
 %
 % Syntax:

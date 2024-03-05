@@ -36,8 +36,8 @@ lb(1:nParams-5) = -Inf;             % gain
 ub(1:nParams-5) = Inf;              % gain
 
 % Allow up to 10 seconds forwards or backtwards shift
-lb(nParams-4:nParams-3) = -10;
-ub(nParams-4:nParams-3) = 10;
+lb(nParams-4:nParams-3) = -1.3;
+ub(nParams-4:nParams-3) = 1.3;
 
 
 % The HRF shape parameters vary by model type

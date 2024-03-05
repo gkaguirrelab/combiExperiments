@@ -292,7 +292,7 @@ classdef mtSinaiMultiTR < handle
         fVal = objective(obj, signal, x)
         [fit, hrf] = forward(obj, x)
         x0 = update(obj,x,x0,floatSet,signal)
-        [metric, signal, modelFit] = metric(obj, signal, x)
+        [metric, signal, modelFit, avgDataTime] = metric(obj, signal, x)
         seeds = seeds(obj, data, vxs)
         results = results(obj, params, metric)
         results = plot(obj, data, results)
