@@ -15,7 +15,7 @@ calName = 'CombiLED_shortLLG_cassetteND1_longRandomA_classicEyePiece_ND0';
 observerID = GetWithDefault('Subject ID','xxxx');
 
 % The name of the directory in which to store the results files
-dropboxBaseDir = getpref('combiLEDExperiments','dropboxBaseDir');
+dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 sessionID = string(datetime('now','Format','yyyy-MM-dd'));
 
 % Create the directory in which to save the data
