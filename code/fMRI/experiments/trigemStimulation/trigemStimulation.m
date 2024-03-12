@@ -14,15 +14,25 @@ nTrials = 129;
 trialDurSecs = 4.5;
 totalAcqDurSecs = nTrials * trialDurSecs;
 experimentStartKey = {'t'};
+trDurSecs = 2.040;
 
 % Video recording properties
-pupilVidStartDelaySec = 5;
+pupilVidStartDelaySec = 20;
 pupilVidStopDelaySec = 4;
 
 % Calculate the length of pupil recording needed.
 pupilRecordingTime = ...
     pupilVidStartDelaySec + ...
     totalAcqDurSecs;
+
+% Report the expected real reps:
+fMRIDur = seconds(ceil(totalAcqDurSecs/trDurSecs)*trDurSecs);
+fMRIDur.Format = 'mm:ss';
+
+textString = ['Assuming a TR of %2.3f ms, the acqusition should have %d real reps, and a total duration of ' char(fMRIDur) ' (not including dummy scans)\n'];
+fprintf('\n************************************\n\n');
+fprintf(textString,trDurSecs,ceil(totalAcqDurSecs/trDurSecs))
+fprintf('\n************************************\n');
 
 % Get observer properties
 observerID = GetWithDefault('Subject ID','xxxx');
@@ -104,9 +114,10 @@ while notDone
     
     % Measure how long it took the video to start
     if ~simulatePupilVideo
-        vidDelaySecs = pupilObj.calcVidDelay(acqIdx);
+        [vidDelaySecs, recordStartTime] = pupilObj.calcVidDelay(acqIdx);
         results.vidDelaySecs = vidDelaySecs;
-        results.videoStartTime = videoStartTime + seconds(vidDelaySecs);
+        results.videoRecordCommandTime = videoStartTime;
+        results.videoRecordStartTime = recordStartTime;
     end
 
     % Add some acquisition-level information to the results
