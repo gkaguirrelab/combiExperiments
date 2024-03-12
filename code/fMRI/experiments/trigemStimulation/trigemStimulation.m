@@ -1,6 +1,6 @@
 
 % Housekeeping
-clear
+clear variables
 close all
 clc
 rng(cputime); % Get some random going in case we need it
@@ -68,9 +68,6 @@ fprintf(' (button presses and TRs will be ignored until then)  \n')
 input(': ','s');
 fprintf('******************************************************\n')
 
-% Create a keypress response window
-[currKeyPress,S] = createResponseWindow();
-
 % Keep collecting acquisitions until we are done
 notDone = true;
 acqIdx = 1;
@@ -83,10 +80,13 @@ while notDone
 
     % Start the pupil recording
     if ~simulatePupilVideo
-    videoStartTime = datetime();
-    pupilObj.trialIdx = acqIdx;
-    pupilObj.recordTrial;
+        videoStartTime = datetime();
+        pupilObj.trialIdx = acqIdx;
+        pupilObj.recordTrial;
     end
+
+    % Create a keypress response window
+    [currKeyPress,S] = createResponseWindow();
 
     % Wait for a "t" stimulus to start the acquisition
     fprintf('Waiting for a TR trigger...')
@@ -110,14 +110,17 @@ while notDone
 
     % Announce we are cleaning up
     fprintf('cleaning up...')
+    if ~simulateCombiAir
+        airObj.stopModulation;
+    end
     pause(pupilVidStopDelaySec)
-    
+
     % Measure how long it took the video to start
     if ~simulatePupilVideo
-        [vidDelaySecs, recordStartTime] = pupilObj.calcVidDelay(acqIdx);
-        results.vidDelaySecs = vidDelaySecs;
-        results.videoRecordCommandTime = videoStartTime;
-        results.videoRecordStartTime = recordStartTime;
+        % [vidDelaySecs, recordStartTime] = pupilObj.calcVidDelay(acqIdx);
+        % results.vidDelaySecs = vidDelaySecs;
+        % results.videoRecordCommandTime = videoStartTime;
+        % results.videoRecordStartTime = recordStartTime;
     end
 
     % Add some acquisition-level information to the results
@@ -140,12 +143,12 @@ while notDone
             fprintf('preparing\n')
             acqIdx = acqIdx+1;
     end
+
+    % Close the keypress window
+    close(S.fh);
+
 end
 
 % Clean up combiAir
 if ~simulateCombiAir; airObj.serialClose; end
-
-% Close the keypress window
-close(S.fh);
-
 
