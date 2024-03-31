@@ -1,13 +1,15 @@
-function [data,templateImage] = parseDataFiles(rawDataPath,dataFileNames,maskVolName,smoothSD)
+function [data,templateImage,W] = parseDataFiles(rawDataPath,dataFileNames,smoothSD,gmMaskFile,wmMaskFile)
 % Loads data files produced by fmriprep
 %
 
-% The window within which smoothing will be applied
-smoothSize = round((smoothSD*3)/2)*2+1;
+voxelMeanThresh = 1000;
 
 % Load the maskVol
-    load(maskVolName,'maskVol');
-    outsideMask = reshape(maskVol, [numel(maskVol), 1])==0;
+gmMask = MRIread(gmMaskFile);
+gmMask = gmMask.vol;
+wmMask = MRIread(wmMaskFile);
+wmMask = wmMask.vol;
+W = gmMask+wmMask;
 
 % Loop over datafiles and load them
 data = [];
@@ -28,33 +30,27 @@ for nn = 1:length(dataFileNames)
     end
     thisAcqData = thisAcqData.vol;
 
-
     % Smooth the data in space
     if smoothSD > 0
-        for ii = 1:size(thisAcqData,4)
+        parfor ii = 1:size(thisAcqData,4)
             vol = squeeze(thisAcqData(:,:,:,ii));
-            % Nan outside of the mask
-            vol(outsideMask)=nan;
-            vol = smooth3(vol,'gaussian',smoothSize,smoothSD);
-            vol(outsideMask)=0;
+            vol(W==0)=nan;
+            vol = smoothn(vol,W,smoothSD);
+            vol(W==0)= 0;
             thisAcqData(:,:,:,ii) = vol;
         end
     end
 
     % Convert to proportion change
     voxelMean = mean(thisAcqData,4);
+    voxelMean(voxelMean < voxelMeanThresh) = 0;
     thisAcqData = (thisAcqData - voxelMean)./voxelMean;
+    thisAcqData(isnan(thisAcqData)) = 0;
+    thisAcqData(isinf(thisAcqData)) = 0;
 
     % Convert from 3D to vector
     thisAcqData = single(thisAcqData);
     thisAcqData = reshape(thisAcqData, [size(thisAcqData,1)*size(thisAcqData,2)*size(thisAcqData,3), size(thisAcqData,4)]);
-    thisAcqData(isnan(thisAcqData)) = 0;
-    thisAcqData(isinf(thisAcqData)) = 0;
-
-    % Set the first two points to the mean as there is some clear effect of
-    % not yet reaching steady state magnetization
-    thisAcqData(:,1) = mean(thisAcqData(:,3:end),2);
-    thisAcqData(:,2) = mean(thisAcqData(:,3:end),2);
 
     % Store the acquisition data in a cell array
     data{nn} = thisAcqData;
