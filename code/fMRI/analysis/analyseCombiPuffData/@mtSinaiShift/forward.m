@@ -21,21 +21,16 @@ function [fit, hrf] = forward(obj, x)
 
 
 % Obj variables
+nParams = obj.nParams;
+nAcqs = obj.nAcqs;
+nStimTypes = obj.nStimTypes;
 stimulus = obj.stimulus;
 stimAcqGroups = obj.stimAcqGroups;
 stimTime = obj.stimTime;
-nParams = obj.nParams;
-
-% Adjust the stimTime for the lag params
-idx = stimAcqGroups <=5;
-stimTime(idx) = stimTime(idx)+x(nParams-4);
-idx = stimAcqGroups == 6;
-stimTime(idx) = stimTime(idx)+x(nParams-3);
-idx = stimAcqGroups == 7;
-stimTime(idx) = stimTime(idx)+x(nParams-3);
+dataAcqGroups = obj.dataAcqGroups;
 
 % Scale the stimulus matrix by the gain parameters
-neuralSignal = stimulus*x(1:nParams-5)';
+neuralSignal = stimulus*x(1:nStimTypes)';
 
 % Create the HRF
 hrf = makeFlobsHRF(x(nParams-2:nParams), obj.flobsbasis);
@@ -43,10 +38,15 @@ hrf = makeFlobsHRF(x(nParams-2:nParams), obj.flobsbasis);
 % Convolve the neuralSignal by the hrf, respecting acquisition boundaries
 fit = conv2run(neuralSignal,hrf,stimAcqGroups);
 
+% Shift each acquisition forward and back by the temporal shift params
+for ii=1:nAcqs
+    shiftVal = x(nStimTypes+ii);
+    fit(dataAcqGroups==ii) = fshift(fit(dataAcqGroups==ii),shiftVal);
+end
+
 % If the stimTime variable is not empty, resample the fit to match
 % the temporal support of the data.
 if ~isempty(stimTime)
-    dataAcqGroups = obj.dataAcqGroups;
     dataTime = obj.dataTime;
     fit = resamp2run(fit,stimAcqGroups,stimTime,dataAcqGroups,dataTime);
 end

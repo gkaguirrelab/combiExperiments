@@ -4,13 +4,13 @@ clear
 close all
 
 % Whole brain or one voxel?
-fitOneVoxel = false;
+fitOneVoxel = true;
 
 % The smoothing kernel for the fMRI data in space
-smoothSD = 0.5;
+smoothSD = 0.25;
 
 % The polynomial degree used for high-pass filtering of the timeseries
-polyDeg = 3;
+polyDeg = 4;
 
 % Set the typicalGain, which is about 0.1 as we have converted the data to
 % proportion change
@@ -26,8 +26,13 @@ nAcqs = sum(cellfun(@(x) length(x),runIdxSets));
 tr = 2.040;
 nTRs = 177;
 
-% This is the set of covariates returned by fmriprep that we will include
-covarSet = {'csf','csf_derivative1','white_matter','white_matter_derivative1'};
+% This is the set of "confound" covariates returned by fmriprep that we 
+% will use to generate nuisance covaraites
+covarSet = {'global_signal','csf','csf_derivative1','white_matter',...
+    'white_matter_derivative1','framewise_displacement','trans_x',...
+    'trans_x_derivative1','trans_y','trans_y_derivative1','trans_z',...
+    'trans_z_derivative1','rot_x','rot_x_derivative1','rot_y',...
+    'rot_y_derivative1','rot_z','rot_z_derivative1'};
 
 % Define the top-level data directory
 dataPath = fullfile(filesep,'Users','aguirre','Downloads');
@@ -72,7 +77,7 @@ if fitOneVoxel
     % A single voxel
     %    ijk = [16,69,45];
     %    vxs = sub2ind(size(maskVol),ijk(1),ijk(2),ijk(3));
-    vxs = 348441;
+    vxs = 978110;
     averageVoxels = false;
 else
     % Create a mask of brain voxels
@@ -91,7 +96,7 @@ modelOpts = {'stimLabels',stimLabels,'typicalGain',typicalGain,...
     'avgAcqIdx',repmat({1:nTRs},1,nAcqs) };
 
 % Define the modelClass
-modelClass = 'mtSinai';
+modelClass = 'mtSinaiShift';
 
 % Call the forwardModel
 results = forwardModel(data,stimulus,tr,...

@@ -26,47 +26,40 @@ function x0 = update(obj,x,x0,floatSet,signal)
 
 
 % Obj variables
+nParams = obj.nParams;
+nAcqs = obj.nAcqs;
+nStimTypes = obj.nStimTypes;
 stimulus = obj.stimulus;
-stimCols = size(stimulus,2);
 stimAcqGroups = obj.stimAcqGroups;
 stimTime = obj.stimTime;
-nParams = obj.nParams;
-
-% Sanity check that the non-floating elements of x0 are equal in size to
-% the number of stimulusCols
-if (nParams-length(floatSet)) ~= stimCols
-    error('forwardModel:update','Only the hrf parameters are allowed to float');
-end
+dataAcqGroups = obj.dataAcqGroups;
 
 % Create the HRF
-hrf = obj.flobsbasis*x(3:5)';
+hrf = obj.flobsbasis*x(end-2:end)';
 
 % Normalize the kernel to have unit area
 hrf = hrf/sum(abs(hrf));
 
 % Create a regression matrix for the HRF implied by the FLOBS params
-X = zeros(size(obj.dataTime,1),stimCols);
-
-% Adjust the stimTime for the lag params
-idx = stimAcqGroups <=5;
-stimTime(idx) = stimTime(idx)+x(1);
-idx = stimAcqGroups == 6;
-stimTime(idx) = stimTime(idx)+x(2);
-idx = stimAcqGroups == 7;
-stimTime(idx) = stimTime(idx)+x(2);
+X = zeros(size(obj.dataTime,1),nStimTypes);
 
 for ss = 1:size(stimulus,2)
     
     % Grab this stimulus row
     neuralSignal = stimulus(:,ss);
-
+    
     % Convolve the neuralSignal by the hrf, respecting acquisition boundaries
     fit = conv2run(neuralSignal,hrf,stimAcqGroups);
-    
+
+    % Shift each acquisition forward and back by the temporal shift params
+    for ii=1:nAcqs
+        shiftVal = x(ii);
+        fit(dataAcqGroups==ii) = fshift(fit(dataAcqGroups==ii),shiftVal);
+    end
+
     % If the stimTime variable is not empty, resample the fit to match
     % the temporal support of the data.
     if ~isempty(stimTime)
-        % Now resample
         dataAcqGroups = obj.dataAcqGroups;
         dataTime = obj.dataTime;
         fit = resamp2run(fit,stimAcqGroups,stimTime,dataAcqGroups,dataTime);

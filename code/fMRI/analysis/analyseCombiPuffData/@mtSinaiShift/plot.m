@@ -97,7 +97,7 @@ end
 if ~isempty(obj.avgAcqIdx)
     
     % Obtain the average signal and model fit
-    [metric, signal, modelFit, avgDataTime] = obj.metric(datats, results.params(vxs(vx),:));
+    [metric, signal, modelFit] = obj.metric(datats, results.params(vxs(vx),:));
     
     % Setup a figure
     fig2 = figure('visible','off');
@@ -107,9 +107,9 @@ if ~isempty(obj.avgAcqIdx)
     
     
     % Plot the time series
-    plot(avgDataTime,signal,'-','Color',[0.75 0.75 0.75],'LineWidth',2);
+    plot(flatDataTime(1:length(signal)),signal,'-','Color',[0.75 0.75 0.75],'LineWidth',2);
     hold on;
-    plot(avgDataTime,modelFit,'-r','LineWidth',1);
+    plot(flatDataTime(1:length(signal)),modelFit,'-r','LineWidth',1);
     xlabel('Time [seconds]');
     ylabel('BOLD signal');
     if results.meta.averageVoxels
@@ -131,7 +131,6 @@ if ~isempty(obj.avgAcqIdx)
     if results.meta.averageVoxels
         results.data.avgSignal = signal;
         results.data.avgModelFit = modelFit;
-        results.data.avgDataTime = avgDataTime;
     end
     
 

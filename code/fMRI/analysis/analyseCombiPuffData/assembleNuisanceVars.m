@@ -3,6 +3,8 @@ function nuissanceVars = assembleNuisanceVars(fwSessID,runIdxSet,tr,covarFileNam
 % Obtain the physio matrices for these runs
 %physioMatrix = returnPhysioMatrix(fwSessID,tr,runIdxSet);
 
+pcaThresh = 5;
+
 % Loop through the set of acquisitions
 for ii = 1: length(covarFileNames)
 
@@ -20,6 +22,11 @@ for ii = 1: length(covarFileNames)
 
     % Add in the physio components
 %    thisMat = [thisMat; physioMatrix{ii}];
+
+    % Perform a PCA decomposition of the nuisance components and just keep
+    % the components that explain 97.5% of the variance
+    [coeff,~,~,~,explained] = pca(thisMat);
+    thisMat=coeff(:,1:find(explained<pcaThresh,1)-1)';
 
     % Store this matrix
     nuissanceVars{ii} = thisMat;

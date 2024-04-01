@@ -1,4 +1,4 @@
-classdef mtSinaiMultiTR < handle
+classdef mtSinaiShift < handle
     
     properties (Constant)
         
@@ -33,9 +33,15 @@ classdef mtSinaiMultiTR < handle
     
     % Calling function can see, but not modify
     properties (SetAccess=private)
-        
+
+        % The number of elements of the stimulus matrix
+        nStimTypes
+
         % The number of parameters in the model
         nParams
+
+        % The number of separate acquisitions
+        nAcqs
         
         % Properties of the search stages.
         floatSet
@@ -72,6 +78,14 @@ classdef mtSinaiMultiTR < handle
         % are used to average together the timeseries data and model fit
         % across sets of acquisitions
         avgAcqIdx
+
+        % A cell array of matrices, with the number of cells equal to the
+        % numner of acquisitions. Each matrix is passed with the dimension
+        % n x t, where t is the number of trs in that acquisition, and n is
+        % the number of nuisance covariates that have been passed. The
+        % matrix is subsequently transposed for storage in the obj
+        % variable.
+        nuisanceVars
         
         % A vector of length totalST x 1 that has an index value to
         % indicate which acquisition (1, 2, 3 ...) a stimulus time
@@ -127,7 +141,7 @@ classdef mtSinaiMultiTR < handle
     methods
         
         % Constructor
-        function obj = mtSinaiMultiTR(data,stimulus,tr,varargin)
+        function obj = mtSinaiShift(data,stimulus,tr,varargin)
             
             % instantiate input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -135,7 +149,7 @@ classdef mtSinaiMultiTR < handle
             % Required
             p.addRequired('data',@iscell);
             p.addRequired('stimulus',@iscell);
-            p.addRequired('tr',@isnumeric);
+            p.addRequired('tr',@isscalar);
             
             p.addParameter('stimTime',{},@iscell);
             p.addParameter('stimLabels',{},@iscell);
@@ -143,6 +157,7 @@ classdef mtSinaiMultiTR < handle
             p.addParameter('confoundStimLabel','',@ischar);
             p.addParameter('avgAcqIdx',{},@iscell);  
             p.addParameter('polyDeg',[],@isnumeric);
+            p.addParameter('nuisanceVars',{},@iscell);  
             p.addParameter('typicalGain',1,@isscalar);
             p.addParameter('paraSD',15,@isscalar);
             p.addParameter('hrfType','flobs',@ischar);            
@@ -155,30 +170,31 @@ classdef mtSinaiMultiTR < handle
             % Concatenate and store in the object.
             for ii=1:length(data)
                 dataAcqGroups{ii} = ii*ones(size(data{ii},2),1);
-                dataTime{ii} = (0:tr(ii):tr(ii)*(size(data{ii},2)-1))';
+                dataTime{ii} = (0:tr:tr*(size(data{ii},2)-1))';
             end
             obj.dataAcqGroups = catcell(1,dataAcqGroups);
             obj.dataTime = catcell(1,dataTime);
             obj.dataDeltaT = tr;
-            clear data
+            obj.nAcqs = length(data);
             
             % Each row in the stimulus is a different stim type that will
             % be fit with its own gain parameter. Record how many there are
-            nStimTypes = size(stimulus{1},1);
+            obj.nStimTypes = size(stimulus{1},1);
             
             % The number of params is the number of stim types, plus three
-            % for the form of the HRF
-            obj.nParams = nStimTypes+5;
+            % for the form of the HRF plus a temporal shift for each
+            % acquisition
+            obj.nParams = obj.nStimTypes+obj.nAcqs+3;
             
             % Define the stimLabels
             if ~isempty(p.Results.stimLabels)
                 stimLabels = p.Results.stimLabels;
-                if length(stimLabels) ~= nStimTypes
+                if length(stimLabels) ~= obj.nStimTypes
                     error('forwardModelObj:badStimLabels','The stimLabels value must be a cell array equal to the number of stimulus types.');
                 end
             else
-                stimLabels = cell(1,nStimTypes);
-                for pp = 1:nStimTypes
+                stimLabels = cell(1,obj.nStimTypes);
+                for pp = 1:obj.nStimTypes
                     stimLabels{pp} = sprintf('beta%02d',pp);
                 end
             end
@@ -206,8 +222,8 @@ classdef mtSinaiMultiTR < handle
             % Define the fix and float param sets
             % In this model, only the HRF parameters float. The gain
             % parameters are derived by regression
-            obj.fixSet = {1:obj.nParams-5, 1:obj.nParams-5};
-            obj.floatSet = {obj.nParams-4:obj.nParams, obj.nParams-4:obj.nParams};
+            obj.fixSet = {1:obj.nParams-(3+obj.nAcqs), 1:obj.nParams-(3+obj.nAcqs)};
+            obj.floatSet = {obj.nParams-(2+obj.nAcqs):obj.nParams, obj.nParams-(2+obj.nAcqs):obj.nParams};
             
             % Create the stimAcqGroups variable. Concatenate the cells and
             % store in the object.
@@ -259,7 +275,29 @@ classdef mtSinaiMultiTR < handle
                 if length(obj.stimTime) ~= length(obj.stimAcqGroups)
                     error('forwardModelObj:timeMismatch','The stimTime vectors are not equal in length to the stimuli');
                 end
+            end            
+
+            % Sanity check the nuisanceVars. There should be as many cells
+            % as there are acquisitions, and the lengh of each matrix in
+            % each cell should be equal to the number of TRs in each
+            % acquisition
+            nuisanceVars = p.Results.nuisanceVars;
+            if ~isempty(nuisanceVars)
+                if length(data) ~= length(nuisanceVars)
+                    error('forwardModelObj:dataMismatch','The nuisanceVars cells are not equal in length to the data cells');
+                end
+                for ii = 1:length(nuisanceVars)
+                    if size(nuisanceVars{ii},2) ~= size(data{ii},2)
+                        error('forwardModelObj:dataMismatch',sprintf('nuisanceVar matrix #%d has a number of TRs that differs with the data matrix',ii));
+                    end
+                    % Transpose rows and columns in the nuisanceVars for
+                    % later construction of the projection matrix
+                    nuisanceVars{ii} = nuisanceVars{ii}';
+                end
+            else
+                nuisanceVars = repmat({[]},1,length(data));
             end
+            obj.nuisanceVars = nuisanceVars;
             
             % Done with these big variables
             clear data stimulus stimTime acqGroups
@@ -292,7 +330,7 @@ classdef mtSinaiMultiTR < handle
         fVal = objective(obj, signal, x)
         [fit, hrf] = forward(obj, x)
         x0 = update(obj,x,x0,floatSet,signal)
-        [metric, signal, modelFit, avgDataTime] = metric(obj, signal, x)
+        [metric, signal, modelFit] = metric(obj, signal, x)
         seeds = seeds(obj, data, vxs)
         results = results(obj, params, metric)
         results = plot(obj, data, results)

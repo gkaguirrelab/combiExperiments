@@ -26,19 +26,19 @@ function setbounds(obj)
 
 % Obj variables
 nParams = obj.nParams;
+nAcqs = obj.nAcqs;
+nStimTypes = obj.nStimTypes;
 
 % Define outputs
 lb = nan(1,nParams);
 ub = nan(1,nParams);
 
 % The gain parameters are unbounded
-lb(1:nParams-5) = -Inf;             % gain
-ub(1:nParams-5) = Inf;              % gain
+lb(1:nStimTypes) = -Inf;             % gain
+ub(1:nStimTypes) = Inf;              % gain
 
-% Allow up to 10 seconds forwards or backtwards shift
-lb(nParams-4:nParams-3) = -1.3;
-ub(nParams-4:nParams-3) = 1.3;
-
+lb(nStimTypes+1:nStimTypes+nAcqs) = -10;
+ub(nStimTypes+1:nStimTypes+nAcqs) = 10;
 
 % The HRF shape parameters vary by model type
 switch obj.hrfType
