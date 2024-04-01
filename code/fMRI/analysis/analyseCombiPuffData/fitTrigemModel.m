@@ -1,10 +1,15 @@
+function results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs)
 
-% Housekeeping
-clear
-close all
-
-% Whole brain or one voxel?
-fitOneVoxel = true;
+%{
+    fwSessID = '';
+    dirName = '65da51a06da124f01b739bf4';
+    subID = '001';
+    sesID = '20231114';
+    runIdxSet = [1 2 3 4 5];
+    tr = 2.040;
+    vxs = 978110;
+    results = fitTrigemModel(fwSessIDs,dirNames,subIDs,sesIDs,runIdxSet,tr,vxs);
+%}
 
 % The smoothing kernel for the fMRI data in space
 smoothSD = 0.25;
@@ -17,16 +22,9 @@ polyDeg = 4;
 typicalGain = 0.1;
 
 % Basic properties of the data
-fwSessIDs = {'6553f6199caa786dfb1b24b6'};
-dirNames = {'65da51a06da124f01b739bf4'};
-subIDs = {'001'};
-sesIDs = {'20231114'};
-runIdxSets = {[1 2 3 4 5]};
-nAcqs = sum(cellfun(@(x) length(x),runIdxSets));
-tr = 2.040;
-nTRs = 177;
+nAcqs = length(runIdxSet);
 
-% This is the set of "confound" covariates returned by fmriprep that we 
+% This is the set of "confound" covariates returned by fmriprep that we
 % will use to generate nuisance covaraites
 covarSet = {'global_signal','csf','csf_derivative1','white_matter',...
     'white_matter_derivative1','framewise_displacement','trans_x',...
@@ -38,49 +36,43 @@ covarSet = {'global_signal','csf','csf_derivative1','white_matter',...
 dataPath = fullfile(filesep,'Users','aguirre','Downloads');
 
 % Define a place to save the results
-saveDir = dataPath;
+saveDir = fullfile(dataPath,dirName);
 
 % Define the location of the maskVol
-gmMaskFile = fullfile(dataPath,[subIDs{1} '_space-T1_label-GM_2x2x2.nii.gz']);
-wmMaskFile = fullfile(dataPath,[subIDs{1} '_space-T1_label-WM_2x2x2.nii.gz']);
+gmMaskFile = fullfile(saveDir,[subID '_space-T1_label-GM_2x2x2.nii.gz']);
+wmMaskFile = fullfile(saveDir,[subID '_space-T1_label-WM_2x2x2.nii.gz']);
 
 % Create the list of filenames and the vector of trs
 dataFileNames = {}; covarFileNames = {};
-for ii=1:length(dirNames)
-    runIdxSet = runIdxSets{ii};
-    for jj = 1:length(runIdxSet)
-        nameStemFunc = ['sub-',subIDs{ii},'_ses-',sesIDs{ii},'_task-trigem_acq-me_run-'];
-        dataFileNames{end+1} = fullfile(...
-            dirNames{ii},...
-            ['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'tdna',...
-            sprintf('run-%d',runIdxSet(jj)),sprintf([nameStemFunc '%d_space-T1_desc-optcomDenoised_bold.nii.gz'],runIdxSet(jj)));
-        covarFileNames{end+1} = fullfile(...
-            dataPath,...
-            dirNames{ii},...
-            ['sub-',subIDs{ii}],['ses-',sesIDs{ii}],'func',...
-            sprintf([nameStemFunc '%d_desc-confounds_timeseries.tsv'],runIdxSet(jj)));
-    end
+for jj = 1:length(runIdxSet)
+    nameStemFunc = ['sub-',subID,'_ses-',sesID,'_task-trigem_acq-me_run-'];
+    dataFileNames{end+1} = fullfile(...
+        dirName,...
+        ['sub-',subID],['ses-',sesID],'tdna',...
+        sprintf('run-%d',runIdxSet(jj)),sprintf([nameStemFunc '%d_space-T1_desc-optcomDenoised_bold.nii.gz'],runIdxSet(jj)));
+    covarFileNames{end+1} = fullfile(...
+        dataPath,...
+        dirName,...
+        ['sub-',subID],['ses-',sesID],'func',...
+        sprintf([nameStemFunc '%d_desc-confounds_timeseries.tsv'],runIdxSet(jj)));
 end
 
 % Load the data
 [data,templateImage,maskVol] = parseDataFiles(dataPath,dataFileNames,smoothSD,gmMaskFile,wmMaskFile);
+nTRs = numel(data{1});
 
 % Create the stimulus description
-[stimulus,stimTime,stimLabels] = makeStimMatrixPilot(nAcqs);
+if tr == 2.040
+    [stimulus,stimTime,stimLabels] = makeStimMatrixPilot(nAcqs);
+else
+    [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs);
+end
 
 % Obtain the nuisanceVars
-nuisanceVars = assembleNuisanceVars(fwSessIDs{1},runIdxSets{1},tr,covarFileNames,covarSet);
+nuisanceVars = assembleNuisanceVars(fwSessID,runIdxSet,tr,covarFileNames,covarSet);
 
 % Pick the voxels to analyze
-xyz = templateImage.volsize;
-if fitOneVoxel
-    % A single voxel
-    %    ijk = [16,69,45];
-    %    vxs = sub2ind(size(maskVol),ijk(1),ijk(2),ijk(3));
-    vxs = 978110;
-    averageVoxels = false;
-else
-    % Create a mask of brain voxels
+if isempty(vxs)
     vxs = find(reshape(maskVol>0, [numel(maskVol), 1]));
     averageVoxels = false;
 end
@@ -96,7 +88,7 @@ modelOpts = {'stimLabels',stimLabels,'typicalGain',typicalGain,...
     'avgAcqIdx',repmat({1:nTRs},1,nAcqs) };
 
 % Define the modelClass
-modelClass = 'mtSinaiShift';
+modelClass = 'mtSinai';
 
 % Call the forwardModel
 results = forwardModel(data,stimulus,tr,...
@@ -121,20 +113,21 @@ end
 if ~fitOneVoxel
 
     % Save the results
-    fileName = fullfile(saveDir,[subIDs{1} '_trigemResults.mat']);
+    fileName = fullfile(saveDir,[subID '_trigemResults.mat']);
     save(fileName,'results');
 
     % Save the template image
-    fileName = fullfile(saveDir,[subIDs{1} '_epiTemplate.nii']);
+    fileName = fullfile(saveDir,[subID '_epiTemplate.nii']);
     MRIwrite(templateImage, fileName);
 
     % Save a map of R2 values
+    xyz = templateImage.volsize;
     newImage = templateImage;
     volVec = results.R2;
     volVec(isnan(volVec)) = 0;
     r2Map = reshape(volVec,xyz(1),xyz(2),xyz(3));
     newImage.vol = r2Map;
-    fileName = fullfile(saveDir,[subIDs{1} '_trigem_R2.nii']);
+    fileName = fullfile(saveDir,[subID '_trigem_R2.nii']);
     MRIwrite(newImage, fileName);
 
 end
@@ -147,7 +140,7 @@ end
 % seedIdx = [325117,120232];
 % roiLabels = {'rightS1Cortex','leftPontoMedullary'};
 % lowThresh = [0.404135,0.1855];
-% 
+%
 % for ss = 1:length(seedIdx)
 %     threshMap = r2Map;
 %     threshMap(threshMap<lowThresh(ss))=0;
@@ -159,7 +152,7 @@ end
 %     fileName = fullfile(saveDir,[subIDs{1} '_roi-' roiLabels{ss} '.nii']);
 %     MRIwrite(newImage, fileName);
 %     roiVxs = find(reshape(roi, [numel(roi), 1]));
-% 
+%
 %     roiResults{ss} = forwardModel(data,stimulus,tr,...
 %         'stimTime',stimTime,...
 %         'vxs',roiVxs,...
@@ -186,3 +179,5 @@ end
 %     xlabel('Stimulus Pressure [PSI]')
 %     ylabel('BOLD repsonse [%∆]')
 % end
+
+end

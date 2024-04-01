@@ -1,4 +1,4 @@
-function tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet)
+function tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,createMaskFlag)
 %
 %
 %
@@ -8,7 +8,8 @@ function tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet)
     subID = '001';
     sesID = '20240312';
     icaRejectSet = {[],[13,14],[16],[5,12,15],[7]};
-    tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet);
+    createMaskFlag = false;
+    tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,createMaskFlag);
 %}
 
 
@@ -66,6 +67,7 @@ for jj = 1:nRuns
     xfmName_T12Scanner = fullfile(repoFuncDir,sprintf([nameStemFunc,'%d_from-T1w_to-scanner_mode-image_xfm.txt'],runIdxVals(jj)));
 
     % Create a mask for tedana
+    if createMaskFlag
     sourceFile = fullfile(repoAnatDir,[nameStem,'_desc-brain_mask.nii.gz']);    
     refFile = fullfile(repoFmapDir,[nameStem,'_acq-meSe_fmapid-auto00000_desc-epi_fieldmap.nii.gz']);
     maskFile = [tempname,'.nii.gz'];
@@ -75,6 +77,7 @@ for jj = 1:nRuns
     [returncode, outputMessages] = system(command);
     command = [antsPath 'ImageMath'  ' 3 ' maskFile ' ReplaceVoxelValue ' maskFile ' 0.25 100 1 '];
     [returncode, outputMessages] = system(command);
+    end
 
     % Run the tedana analysis
     command = [tedanaPath ' -d'];
@@ -83,7 +86,9 @@ for jj = 1:nRuns
     end
     command = [command ' -e 11.00 24.07 37.14 50.21 63.28 --out-dir ' fullfile(repoTdnaDir,sprintf('run-%d',runIdxVals(jj))) ];
     command = [command ' --prefix ' sprintf([nameStemFunc,'%d'],runIdxVals(jj)) ];
-    command = [command ' --mask ' maskFile];
+    if createMaskFlag
+        command = [command ' --mask ' maskFile];
+    end
     [returncode, outputMessages] = system(command);
 
     % If we have been given a customized list of ICA components to reject,
@@ -139,12 +144,12 @@ warning(warnState);
 
 % Create mask files for GM and WM
 gmMaskFileIn = fullfile(repoAnatDir,[nameStem,'_label-GM_probseg.nii.gz']);
-gmMaskFileOut = fullfile(dataPath,[subID '_space-T1_label-GM_2x2x2.nii.gz']);
+gmMaskFileOut = fullfile(dataPath,dirName,[subID '_space-T1_label-GM_2x2x2.nii.gz']);
 command = [antsPath 'ResampleImage' ' 3 ' gmMaskFileIn ' ' gmMaskFileOut ' 2x2x2 0 0 7'];
 [returncode, outputMessages] = system(command);
 
 wmMaskFileIn = fullfile(repoAnatDir,[nameStem,'_label-WM_probseg.nii.gz']);
-wmMaskFileOut = fullfile(dataPath,[subID '_space-T1_label-WM_2x2x2.nii.gz']);
+wmMaskFileOut = fullfile(dataPath,dirName,[subID '_space-T1_label-WM_2x2x2.nii.gz']);
 command = [antsPath 'ResampleImage' ' 3 ' wmMaskFileIn ' ' wmMaskFileOut ' 2x2x2 0 0 7'];
 [returncode, outputMessages] = system(command);
 

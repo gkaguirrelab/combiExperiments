@@ -15,6 +15,8 @@ W = gmMask+wmMask;
 data = [];
 for nn = 1:length(dataFileNames)
 
+    fprintf(['preparing ' dataFileNames{nn} '...']);
+
     % Load the data
     fileName = fullfile(rawDataPath,dataFileNames{nn});
     fileName = escapeFileCharacters(fileName);
@@ -54,6 +56,8 @@ for nn = 1:length(dataFileNames)
 
     % Store the acquisition data in a cell array
     data{nn} = thisAcqData;
+
+    fprintf('\n');
 
 end
 
