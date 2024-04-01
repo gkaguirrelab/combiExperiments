@@ -59,13 +59,14 @@ end
 
 % Load the data
 [data,templateImage,maskVol] = parseDataFiles(dataPath,dataFileNames,smoothSD,gmMaskFile,wmMaskFile);
-nTRs = numel(data{1});
+nTRs = size(data{1},2);
 
 % Create the stimulus description
-if tr == 2.040
-    [stimulus,stimTime,stimLabels] = makeStimMatrixPilot(nAcqs);
-else
-    [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs);
+switch sesID
+    case '20231114'
+        [stimulus,stimTime,stimLabels] = makeStimMatrixPilot(nAcqs);
+    otherwise
+        [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs);
 end
 
 % Obtain the nuisanceVars
@@ -110,7 +111,7 @@ if ~isempty(figFields)
 end
 
 % Save some files if we processed the whole brain
-if ~fitOneVoxel
+if numel(vxs)>1
 
     % Save the results
     fileName = fullfile(saveDir,[subID '_trigemResults.mat']);

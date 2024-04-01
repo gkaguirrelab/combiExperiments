@@ -110,11 +110,12 @@
         "importance": "",
         "localHookTemplate": "",
         "name": "forwardModel",
-        "pathPlacement": "append",
+        "pathPlacement": "prepend",
         "subfolder": "",
         "toolboxRoot": "",
         "type": "include",
         "update": "",
         "url": ""
-    }
+    }    
+    
 ]

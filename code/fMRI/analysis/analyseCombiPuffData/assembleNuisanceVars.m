@@ -4,7 +4,7 @@ function nuissanceVars = assembleNuisanceVars(fwSessID,runIdxSet,tr,covarFileNam
 if ~isempty(fwSessID)
     physioMatrix = returnPhysioMatrix(fwSessID,tr,runIdxSet);
 else
-    physioMatrix = [];
+    physioMatrix = repmat({[]},length(covarFileNames),1);
 end
 
 pcaThresh = 5;
