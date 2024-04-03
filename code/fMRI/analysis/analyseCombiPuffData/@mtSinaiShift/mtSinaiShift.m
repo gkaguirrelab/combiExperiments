@@ -182,9 +182,9 @@ classdef mtSinaiShift < handle
             obj.nStimTypes = size(stimulus{1},1);
             
             % The number of params is the number of stim types, plus three
-            % for the form of the HRF plus a temporal shift for each
-            % acquisition
-            obj.nParams = obj.nStimTypes+obj.nAcqs+3;
+            % for the form of the HRF plus a temporal shift for the n
+            % acquisitions - 1.
+            obj.nParams = obj.nStimTypes+obj.nAcqs-1+3;
             
             % Define the stimLabels
             if ~isempty(p.Results.stimLabels)
@@ -222,8 +222,8 @@ classdef mtSinaiShift < handle
             % Define the fix and float param sets
             % In this model, only the HRF parameters float. The gain
             % parameters are derived by regression
-            obj.fixSet = {1:obj.nParams-(3+obj.nAcqs), 1:obj.nParams-(3+obj.nAcqs)};
-            obj.floatSet = {obj.nParams-(2+obj.nAcqs):obj.nParams, obj.nParams-(2+obj.nAcqs):obj.nParams};
+            obj.fixSet = {1:obj.nParams-(3+obj.nAcqs-1), 1:obj.nParams-(3+obj.nAcqs-1)};
+            obj.floatSet = {obj.nParams-(2+obj.nAcqs-1):obj.nParams, obj.nParams-(2+obj.nAcqs-1):obj.nParams};
             
             % Create the stimAcqGroups variable. Concatenate the cells and
             % store in the object.

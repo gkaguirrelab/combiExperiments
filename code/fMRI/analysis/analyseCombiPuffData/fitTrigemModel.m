@@ -1,4 +1,4 @@
-function results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs)
+function results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs,averageVoxels)
 
 %{
     fwSessID = '';
@@ -11,15 +11,19 @@ function results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs)
     results = fitTrigemModel(fwSessIDs,dirNames,subIDs,sesIDs,runIdxSet,tr,vxs);
 %}
 
+if nargin < 8
+    averageVoxels = false;
+end
+
 % The smoothing kernel for the fMRI data in space
-smoothSD = 0.25;
+smoothSD = 0;
 
 % The polynomial degree used for high-pass filtering of the timeseries
 polyDeg = 4;
 
 % Set the typicalGain, which is about 0.1 as we have converted the data to
 % proportion change
-typicalGain = 0.1;
+typicalGain = 0.25;
 
 % Basic properties of the data
 nAcqs = length(runIdxSet);
@@ -57,10 +61,6 @@ for jj = 1:length(runIdxSet)
         sprintf([nameStemFunc '%d_desc-confounds_timeseries.tsv'],runIdxSet(jj)));
 end
 
-% Load the data
-[data,templateImage,maskVol] = parseDataFiles(dataPath,dataFileNames,smoothSD,gmMaskFile,wmMaskFile);
-nTRs = size(data{1},2);
-
 % Create the stimulus description
 switch sesID
     case '20231114'
@@ -71,6 +71,10 @@ end
 
 % Obtain the nuisanceVars
 nuisanceVars = assembleNuisanceVars(fwSessID,runIdxSet,tr,covarFileNames,covarSet);
+
+% Load the data
+[data,templateImage,maskVol] = parseDataFiles(dataPath,dataFileNames,smoothSD,gmMaskFile,wmMaskFile);
+nTRs = size(data{1},2);
 
 % Pick the voxels to analyze
 if isempty(vxs)
@@ -89,7 +93,7 @@ modelOpts = {'stimLabels',stimLabels,'typicalGain',typicalGain,...
     'avgAcqIdx',repmat({1:nTRs},1,nAcqs) };
 
 % Define the modelClass
-modelClass = 'mtSinai';
+modelClass = 'mtSinaiShift';
 
 % Call the forwardModel
 results = forwardModel(data,stimulus,tr,...
