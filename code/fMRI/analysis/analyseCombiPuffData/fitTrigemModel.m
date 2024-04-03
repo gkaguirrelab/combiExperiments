@@ -16,14 +16,14 @@ if nargin < 8
 end
 
 % The smoothing kernel for the fMRI data in space
-smoothSD = 0;
+smoothSD = 0.25;
 
 % The polynomial degree used for high-pass filtering of the timeseries
 polyDeg = 4;
 
 % Set the typicalGain, which is about 0.1 as we have converted the data to
 % proportion change
-typicalGain = 0.25;
+typicalGain = 0.1;
 
 % Basic properties of the data
 nAcqs = length(runIdxSet);
@@ -88,7 +88,7 @@ end
 % shape. This is necessary for the current experiment as the stimulus
 % sequence does not uniquely constrain the temporal delay in the HRF.
 modelOpts = {'stimLabels',stimLabels,'typicalGain',typicalGain,...
-    'paraSD',3,'polyDeg',polyDeg,...
+    'paraSD',5,'polyDeg',polyDeg,...
     'nuisanceVars',nuisanceVars,...
     'avgAcqIdx',repmat({1:nTRs},1,nAcqs) };
 

@@ -33,7 +33,7 @@ x0 = zeros(1,nParams);
 
 % Assemble X0
 x0(1:nStimTypes) = typicalGain;             % gain
-x0(nStimTypes+1:nStimTypes+nAcqs-1) = 0;    % lag adjustment
+x0(nStimTypes+1:nStimTypes+nAcqs-1) = [0.9657    0.0037    0.6403    0.2782];    % lag adjustment
 
 % Flobs population mean amplitudes
 x0(nParams-2:nParams) = [0.86, 0.09, 0.01]; % FLOBS eigen1, 2, 3
