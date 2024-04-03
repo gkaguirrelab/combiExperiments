@@ -15,8 +15,12 @@ if nargin < 8
     averageVoxels = false;
 end
 
+% The thresholds to use for the resulting map
+r2Thresh = 0.075;
+clusterThresh = 20;
+
 % The smoothing kernel for the fMRI data in space
-smoothSD = 0.25;
+smoothSD = 0.5;
 
 % The polynomial degree used for high-pass filtering of the timeseries
 polyDeg = 4;
@@ -133,6 +137,18 @@ if numel(vxs)>1
     r2Map = reshape(volVec,xyz(1),xyz(2),xyz(3));
     newImage.vol = r2Map;
     fileName = fullfile(saveDir,[subID '_trigem_R2.nii']);
+    MRIwrite(newImage, fileName);
+
+    % Save a thresholded map
+    S=regionprops(r2Map>r2Thresh,'Area','PixelIdxList');
+    S=S([S.Area]>=clusterThresh); %edited
+    r2MapThresh=zeros(size(r2Map));
+    for i=1:numel(S)
+        idx=S(i).PixelIdxList;
+        r2MapThresh(idx)=myVol(idx); 
+    end
+    newImage.vol = r2Map;
+    fileName = fullfile(saveDir,[subID '_trigem_R2_Thresh.nii']);
     MRIwrite(newImage, fileName);
 
 end
