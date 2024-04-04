@@ -9,5 +9,6 @@ createMaskFlag = true;
 fwSessID = '';
 runIdxSet = [1 2 3 4 5];
 tr = 2.040;
+smoothSD = 0.1;
 vxs = [];
-results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs);
+results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs,smoothSD);

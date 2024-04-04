@@ -1,4 +1,4 @@
-function results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs,averageVoxels)
+function results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs,smoothSD,averageVoxels)
 
 %{
     fwSessID = '';
@@ -11,12 +11,9 @@ function results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs,
     results = fitTrigemModel(fwSessIDs,dirNames,subIDs,sesIDs,runIdxSet,tr,vxs);
 %}
 
-if nargin < 8
+if nargin < 9
     averageVoxels = false;
 end
-
-% The smoothing kernel for the fMRI data in space
-smoothSD = 0.25;
 
 % The polynomial degree used for high-pass filtering of the timeseries
 polyDeg = 4;
@@ -140,7 +137,7 @@ if numel(vxs)>1
 
     % Save thresholded maps
     r2Thresh = [0.075,0.25];
-    clusterThresh = [25,200];
+    clusterThresh = [20,200];
     for tt = 1:2
         S=regionprops3(r2Map>r2Thresh(tt),'Volume','VoxelIdxList','VoxelList');
         goodClusters=[S.Volume] > clusterThresh(tt);
@@ -157,15 +154,21 @@ if numel(vxs)>1
 
     % Find some regions and plot the response
     r2Thresh = [0.075,0.25,0.25];
-    clusterThresh = [25,200,200];
+    clusterThresh = [20,200,200];
+    idxWithin = {[534969,681401],988858,948669};
     plotColor = {'r','g','b'};
-    idxWithin = [534969,988858,948669];
     figure
-    for ii = 1:length(idxWithin)
+    voxIdx = [];
+    for ii = 1:length(r2Thresh)
+        thisIdxSet = idxWithin{ii};
         S = regionprops3(r2Map>r2Thresh(ii),'Volume','VoxelIdxList','VoxelList');
-        sIdx = find(cellfun(@(x) any(x==idxWithin(ii)),[S.VoxelIdxList]));
-        voxIdx = S.VoxelIdxList{sIdx};
-        betas = mean(results.params(voxIdx,1:35));
+        rawVoxIdx = [];
+        for bb = 1:length(thisIdxSet)
+            sIdx = find(cellfun(@(x) any(x==thisIdxSet(bb)),[S.VoxelIdxList]));
+            rawVoxIdx{bb} = S.VoxelIdxList{sIdx};
+        end
+        voxIdx{ii} = cell2mat(rawVoxIdx');
+        betas = mean(results.params(voxIdx{ii},1:35));
         betas = reshape(betas,7,5)';
         betas = betas(:,1:5);
         betas = betas - betas(:,1);
@@ -176,20 +179,42 @@ if numel(vxs)>1
         hold on
         plot(1:4,bm,['o-' plotColor{ii}]);
         hold on
+
         % Save a map of this region
         roiMap=zeros(size(r2Map));
-        roiMap(voxIdx)=1;
+        roiMap(voxIdx{ii})=1;
         newImage = templateImage;
         newImage.vol = roiMap;
         fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d_ROI_%d.nii'],r2Thresh(ii),clusterThresh(ii),ii));
         MRIwrite(newImage, fileName);
+
     end
     a=gca();
-    a.XTick = 1:5;
-    a.XTickLabel = {'0','3.2','7.5','15','30'};
+    a.XTick = 1:4;
+    a.XTickLabel = {'3.2','7.5','15','30'};
     xlim([0.25,5.25]);
     xlabel('Stimulus Pressure [PSI]')
     ylabel('BOLD repsonse [%∆]')
+    fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d_betaPlots.pdf'],r2Thresh(ii),clusterThresh(ii)));
+    saveas(a,fileName);
+
+    % Plot the time-series data and fit for a selected region
+    roiToPlot = 2;
+    resultsROI = forwardModel(data,stimulus,tr,...
+        'stimTime',stimTime,...
+        'vxs',voxIdx{roiToPlot},...
+        'averageVoxels',true,...
+        'verbose',false,...
+        'modelClass',modelClass,...
+        'modelOpts',modelOpts,...
+        'verbose',true);
+    figFields = fieldnames(resultsROI.figures);
+    for ii = 1:length(figFields)
+        figHandle = struct2handle(resultsROI.figures.(figFields{ii}).hgS_070000,0,'convert');
+        figHandle.Visible = 'on';
+        fileName = fullfile(saveDir,sprintf([subID '_ROI_%d_modelFitFig_%d.pdf'],roiToPlot,ii));
+        saveas(figHandle,fileName);        
+    end
 
 end
 
