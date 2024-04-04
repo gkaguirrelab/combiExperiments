@@ -79,12 +79,21 @@ for jj = 1:nRuns
     [returncode, outputMessages] = system(command);
     end
 
+    %% NOTE
+    % For some reason, the mask I am creating by the above process leads
+    % TEDANA to give bad results. The mask substituted below is generated
+    % by thresholding the fmap in MATLAB at a voxel value of 20. It is
+    % possible that this mask would work if I created it following the same
+    % algorithm but using ants. Not sure what makes this output behave so
+    % differently from the mask generated above. need to invvestigate
+    maskFile = fullfile(repoFmapDir,[nameStem,'_acq-meSe_fmapid-mask.nii.gz']);
+
     % Run the tedana analysis
     command = [tedanaPath ' -d'];
     for ee = 1:5
         command = [command ' ' fullfile(repoFuncDir,sprintf([nameStemFunc,'%d_echo-%d_desc-preproc_bold.nii.gz'],runIdxVals(jj),ee))];
     end
-    command = [command ' -e 11.00 24.07 37.14 50.21 63.28 --out-dir ' fullfile(repoTdnaDir,sprintf('run-%d',runIdxVals(jj))) ];
+    command = [command ' -e 11.00 24.07 37.14 50.21 63.28 --gscontrol mir --out-dir ' fullfile(repoTdnaDir,sprintf('run-%d',runIdxVals(jj))) ];
     command = [command ' --prefix ' sprintf([nameStemFunc,'%d'],runIdxVals(jj)) ];
     if createMaskFlag
         command = [command ' --mask ' maskFile];

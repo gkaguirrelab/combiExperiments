@@ -32,27 +32,45 @@ for nn = 1:length(dataFileNames)
     end
     thisAcqData = thisAcqData.vol;
 
-    % Smooth the data in space
+    % This is the simple Gaussian smoothing
+    %{
+    smoothSize = round((smoothSD*3)/2)*2+1;
     if smoothSD > 0
+        for ii = 1:size(thisAcqData,4)
+            vol = squeeze(thisAcqData(:,:,:,ii));
+            vol = smooth3(vol,'gaussian',smoothSize,smoothSD);
+            thisAcqData(:,:,:,ii) = vol;
+        end
+    end
+    %}
+
+    % Smooth the data in space. This is the fancy smoothing that does not
+    % blend in points that are not white or gray matter.
+    if smoothSD > 0
+        % Identify the voxels that at any point have an intensity value of
+        % zero, and remove them from the mask
+        noDataIdx = any(thisAcqData==0,4);
+        thisW = W;
+        thisW(noDataIdx) = 0;
         parfor ii = 1:size(thisAcqData,4)
             vol = squeeze(thisAcqData(:,:,:,ii));
-            vol(W==0)=nan;
-            vol = smoothn(vol,W,smoothSD);
-            vol(W==0)= 0;
+            vol(thisW==0) = nan;
+            vol = smoothn(vol,thisW,smoothSD);
+            vol(thisW==0) = 0;
             thisAcqData(:,:,:,ii) = vol;
         end
     end
 
-    % Convert to proportion change
-    voxelMean = mean(thisAcqData,4);
-    voxelMean(voxelMean < voxelMeanThresh) = 0;
-    thisAcqData = (thisAcqData - voxelMean)./voxelMean;
-    thisAcqData(isnan(thisAcqData)) = 0;
-    thisAcqData(isinf(thisAcqData)) = 0;
-
     % Convert from 3D to vector
     thisAcqData = single(thisAcqData);
     thisAcqData = reshape(thisAcqData, [size(thisAcqData,1)*size(thisAcqData,2)*size(thisAcqData,3), size(thisAcqData,4)]);
+    thisAcqData(isnan(thisAcqData)) = 0;
+
+    % Convert to proportion change
+    meanVec = mean(thisAcqData,2);
+    thisAcqData = 100.*((thisAcqData-meanVec)./meanVec);
+    thisAcqData(isnan(thisAcqData)) = 0;
+    thisAcqData(isinf(thisAcqData)) = 0;
 
     % Store the acquisition data in a cell array
     data{nn} = thisAcqData;
@@ -60,5 +78,6 @@ for nn = 1:length(dataFileNames)
     fprintf('\n');
 
 end
+
 
 end

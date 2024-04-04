@@ -15,27 +15,22 @@ if nargin < 8
     averageVoxels = false;
 end
 
-% The thresholds to use for the resulting map
-r2Thresh = 0.075;
-clusterThresh = 20;
-
 % The smoothing kernel for the fMRI data in space
-smoothSD = 0.5;
+smoothSD = 0.25;
 
 % The polynomial degree used for high-pass filtering of the timeseries
 polyDeg = 4;
 
-% Set the typicalGain, which is about 0.1 as we have converted the data to
-% proportion change
-typicalGain = 0.1;
+% Set the typicalGain, which is about 1 as we have converted the data to
+% percentage change
+typicalGain = 1;
 
 % Basic properties of the data
 nAcqs = length(runIdxSet);
 
 % This is the set of "confound" covariates returned by fmriprep that we
 % will use to generate nuisance covaraites
-covarSet = {'global_signal','csf','csf_derivative1','white_matter',...
-    'white_matter_derivative1','framewise_displacement','trans_x',...
+covarSet = {'csf','csf_derivative1','framewise_displacement','trans_x',...
     'trans_x_derivative1','trans_y','trans_y_derivative1','trans_z',...
     'trans_z_derivative1','rot_x','rot_x_derivative1','rot_y',...
     'rot_y_derivative1','rot_z','rot_z_derivative1'};
@@ -44,11 +39,12 @@ covarSet = {'global_signal','csf','csf_derivative1','white_matter',...
 dataPath = fullfile(filesep,'Users','aguirre','Downloads');
 
 % Define a place to save the results
-saveDir = fullfile(dataPath,dirName);
+saveDir = fullfile(dataPath,dirName,sprintf('forwardModel_smooth=%2.2f',smoothSD));
+mkdir(saveDir);
 
 % Define the location of the maskVol
-gmMaskFile = fullfile(saveDir,[subID '_space-T1_label-GM_2x2x2.nii.gz']);
-wmMaskFile = fullfile(saveDir,[subID '_space-T1_label-WM_2x2x2.nii.gz']);
+gmMaskFile = fullfile(dataPath,dirName,[subID '_space-T1_label-GM_2x2x2.nii.gz']);
+wmMaskFile = fullfile(dataPath,dirName,[subID '_space-T1_label-WM_2x2x2.nii.gz']);
 
 % Create the list of filenames and the vector of trs
 dataFileNames = {}; covarFileNames = {};
@@ -91,13 +87,16 @@ end
 % 3 is fairly conservative and will keep the HRFs close to a canonical
 % shape. This is necessary for the current experiment as the stimulus
 % sequence does not uniquely constrain the temporal delay in the HRF.
+for ii = 1:nAcqs
+    avgAcqIdx{ii} = (1:nTRs) + (ii-1)*nTRs;
+end
 modelOpts = {'stimLabels',stimLabels,'typicalGain',typicalGain,...
     'paraSD',5,'polyDeg',polyDeg,...
     'nuisanceVars',nuisanceVars,...
-    'avgAcqIdx',repmat({1:nTRs},1,nAcqs) };
+    'avgAcqIdx',avgAcqIdx};
 
 % Define the modelClass
-modelClass = 'mtSinaiShift';
+modelClass = 'mtSinai';
 
 % Call the forwardModel
 results = forwardModel(data,stimulus,tr,...
@@ -139,66 +138,59 @@ if numel(vxs)>1
     fileName = fullfile(saveDir,[subID '_trigem_R2.nii']);
     MRIwrite(newImage, fileName);
 
-    % Save a thresholded map
-    S=regionprops(r2Map>r2Thresh,'Area','PixelIdxList');
-    S=S([S.Area]>=clusterThresh); %edited
-    r2MapThresh=zeros(size(r2Map));
-    for i=1:numel(S)
-        idx=S(i).PixelIdxList;
-        r2MapThresh(idx)=myVol(idx); 
+    % Save thresholded maps
+    r2Thresh = [0.075,0.25];
+    clusterThresh = [25,200];
+    for tt = 1:2
+        S=regionprops3(r2Map>r2Thresh(tt),'Volume','VoxelIdxList','VoxelList');
+        goodClusters=[S.Volume] > clusterThresh(tt);
+        S = S(goodClusters,:);
+        r2MapThresh=zeros(size(r2Map));
+        for i=1:size(S,1)
+            idx=S.VoxelIdxList{i};
+            r2MapThresh(idx)=r2Map(idx);
+        end
+        newImage.vol = r2MapThresh;
+        fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d.nii'],r2Thresh(tt),clusterThresh(tt)));
+        MRIwrite(newImage, fileName);
     end
-    newImage.vol = r2Map;
-    fileName = fullfile(saveDir,[subID '_trigem_R2_Thresh.nii']);
-    MRIwrite(newImage, fileName);
+
+    % Find some regions and plot the response
+    r2Thresh = [0.075,0.25,0.25];
+    clusterThresh = [25,200,200];
+    plotColor = {'r','g','b'};
+    idxWithin = [534969,988858,948669];
+    figure
+    for ii = 1:length(idxWithin)
+        S = regionprops3(r2Map>r2Thresh(ii),'Volume','VoxelIdxList','VoxelList');
+        sIdx = find(cellfun(@(x) any(x==idxWithin(ii)),[S.VoxelIdxList]));
+        voxIdx = S.VoxelIdxList{sIdx};
+        betas = mean(results.params(voxIdx,1:35));
+        betas = reshape(betas,7,5)';
+        betas = betas(:,1:5);
+        betas = betas - betas(:,1);
+        betas = betas(:,2:5);
+        bm = mean(betas);
+        bs = std(betas)/sqrt(5);
+        patch([1:4,4:-1:1],[bm-bs, fliplr(bm+bs)],plotColor{ii},'FaceAlpha',0.2,'EdgeColor','none');
+        hold on
+        plot(1:4,bm,['o-' plotColor{ii}]);
+        hold on
+        % Save a map of this region
+        roiMap=zeros(size(r2Map));
+        roiMap(voxIdx)=1;
+        newImage = templateImage;
+        newImage.vol = roiMap;
+        fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d_ROI_%d.nii'],r2Thresh(ii),clusterThresh(ii),ii));
+        MRIwrite(newImage, fileName);
+    end
+    a=gca();
+    a.XTick = 1:5;
+    a.XTickLabel = {'0','3.2','7.5','15','30'};
+    xlim([0.25,5.25]);
+    xlabel('Stimulus Pressure [PSI]')
+    ylabel('BOLD repsonse [%∆]')
 
 end
-
-% Define ROIs based upon the R2 map and seed points. The first seed point
-% is in the right somatosensory cortex, and the second seed point is in the
-% left posterior brainstem at the ponto-medullary junction. For each ROI,
-% re-run the forward model using the ROI as the vxs, and save plots of the
-% resulting params
-% seedIdx = [325117,120232];
-% roiLabels = {'rightS1Cortex','leftPontoMedullary'};
-% lowThresh = [0.404135,0.1855];
-%
-% for ss = 1:length(seedIdx)
-%     threshMap = r2Map;
-%     threshMap(threshMap<lowThresh(ss))=0;
-%     threshMap(threshMap>=lowThresh(ss))=1;
-%     [i,j,k] = ind2sub(size(r2Map),seedIdx(ss));
-%     roi = RegGrow(threshMap,0.01,[i j k],'kernel',ones(3,3,3));
-%     newImage = templateImage;
-%     newImage.vol = roi;
-%     fileName = fullfile(saveDir,[subIDs{1} '_roi-' roiLabels{ss} '.nii']);
-%     MRIwrite(newImage, fileName);
-%     roiVxs = find(reshape(roi, [numel(roi), 1]));
-%
-%     roiResults{ss} = forwardModel(data,stimulus,tr,...
-%         'stimTime',stimTime,...
-%         'vxs',roiVxs,...
-%         'averageVoxels',true,...
-%         'verbose',true,...
-%         'modelClass',modelClass,...
-%         'modelOpts',modelOpts,...
-%         'verbose',true);
-%     figFields = fieldnames(roiResults{ss}.figures);
-%     figHandle = struct2handle(roiResults{ss}.figures.(figFields{2}).hgS_070000,0,'convert');
-%     figHandle.Visible = 'on';
-%     betas = roiResults{ss}.params(roiVxs(1),1:35);
-%     betas = reshape(betas,7,5);
-%     bm = mean(betas(1:5,:),2);
-%     bs = std(betas(1:5,:),[],2)/sqrt(5);
-%     figure
-%     patch([1:5,5:-1:1]',[bm-bs;flipud(bm+bs)],'r','FaceAlpha',0.2,'EdgeColor','none');
-%     hold on
-%     plot(1:5,bm,'o-k');
-%     a=gca();
-%     a.XTick = 1:5;
-%     a.XTickLabel = {'0','3.2','7.5','15','30'};
-%     xlim([0.25,5.25]);
-%     xlabel('Stimulus Pressure [PSI]')
-%     ylabel('BOLD repsonse [%∆]')
-% end
 
 end

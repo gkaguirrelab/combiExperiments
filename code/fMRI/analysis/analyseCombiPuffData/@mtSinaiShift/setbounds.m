@@ -37,8 +37,8 @@ ub = nan(1,nParams);
 lb(1:nStimTypes) = -Inf;             % gain
 ub(1:nStimTypes) = Inf;              % gain
 
-lb(nStimTypes+1:nStimTypes+nAcqs-1) = [0.9657    0.0037    0.6403    0.2782];
-ub(nStimTypes+1:nStimTypes+nAcqs-1) = [0.9657    0.0037    0.6403    0.2782];
+lb(nStimTypes+1:nStimTypes+nAcqs-1) = -3;
+ub(nStimTypes+1:nStimTypes+nAcqs-1) = 3;
 
 % The HRF shape parameters vary by model type
 switch obj.hrfType
