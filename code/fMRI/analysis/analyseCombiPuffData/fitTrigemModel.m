@@ -136,9 +136,9 @@ if numel(vxs)>1
     MRIwrite(newImage, fileName);
 
     % Save thresholded maps
-    r2Thresh = [0.075,0.25];
-    clusterThresh = [20,200];
-    for tt = 1:2
+    r2Thresh = [0.075,0.25,0.175];
+    clusterThresh = [20,200,100];
+    for tt = 1:length(r2Thresh)
         S=regionprops3(r2Map>r2Thresh(tt),'Volume','VoxelIdxList','VoxelList');
         goodClusters=[S.Volume] > clusterThresh(tt);
         S = S(goodClusters,:);
@@ -153,10 +153,10 @@ if numel(vxs)>1
     end
 
     % Find some regions and plot the response
-    r2Thresh = [0.075,0.25,0.25];
-    clusterThresh = [20,200,200];
-    idxWithin = {[534969,681401],988858,948669};
-    plotColor = {'r','g','b'};
+    r2Thresh = [0.075,0.25,0.25,0.175];
+    clusterThresh = [20,200,200,100];
+    idxWithin = {[534969,681401],988858,948669,944074};
+    plotColor = {'r','k','k','g'};
     figure
     voxIdx = [];
     for ii = 1:length(r2Thresh)
