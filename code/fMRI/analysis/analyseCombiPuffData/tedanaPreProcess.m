@@ -1,4 +1,4 @@
-function tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,createMaskFlag)
+function tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,maskFile)
 %
 %
 %
@@ -9,13 +9,13 @@ function tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,createMaskFl
     sesID = '20240312';
     icaRejectSet = {[],[13,14],[16],[5,12,15],[7]};
     createMaskFlag = false;
-    tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,createMaskFlag);
+    tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,[]);
 %}
 
 
 % Paths to the routines we will run. Need to make this a more formal
 % installation at some point
-antsPath = fullfile(dataPath,'ants-2.5.1-arm','bin',filesep);
+antsPath = fullfile(filesep,'Applications','ants-2.5.1-arm','bin',filesep);
 tedanaPath = fullfile(filesep,'Users','aguirre','.pyenv','shims','tedana');
 icaReclassifyPath = fullfile(filesep,'Users','aguirre','.pyenv','shims','ica_reclassify');
 
@@ -66,28 +66,6 @@ for jj = 1:nRuns
     xfmName_scanner2T1 = fullfile(repoFuncDir,sprintf([nameStemFunc,'%d_from-scanner_to-T1w_mode-image_xfm.txt'],runIdxVals(jj)));
     xfmName_T12Scanner = fullfile(repoFuncDir,sprintf([nameStemFunc,'%d_from-T1w_to-scanner_mode-image_xfm.txt'],runIdxVals(jj)));
 
-    % Create a mask for tedana
-    if createMaskFlag
-    sourceFile = fullfile(repoAnatDir,[nameStem,'_desc-brain_mask.nii.gz']);    
-    refFile = fullfile(repoFmapDir,[nameStem,'_acq-meSe_fmapid-auto00000_desc-epi_fieldmap.nii.gz']);
-    maskFile = [tempname,'.nii.gz'];
-    command = [antsPath 'antsApplyTransforms'  ' -e 3 -i ' sourceFile ' -r ' refFile ' -o ' maskFile ' - t ' xfmName_T12Scanner ];
-    [returncode, outputMessages] = system(command);
-    command = [antsPath 'ImageMath'  ' 3 ' maskFile ' ReplaceVoxelValue ' maskFile ' 0 0.25 0 '];
-    [returncode, outputMessages] = system(command);
-    command = [antsPath 'ImageMath'  ' 3 ' maskFile ' ReplaceVoxelValue ' maskFile ' 0.25 100 1 '];
-    [returncode, outputMessages] = system(command);
-    end
-
-    %% NOTE
-    % For some reason, the mask I am creating by the above process leads
-    % TEDANA to give bad results. The mask substituted below is generated
-    % by thresholding the fmap in MATLAB at a voxel value of 20. It is
-    % possible that this mask would work if I created it following the same
-    % algorithm but using ants. Not sure what makes this output behave so
-    % differently from the mask generated above. need to invvestigate
-    maskFile = fullfile(repoFmapDir,[nameStem,'_acq-meSe_fmapid-mask.nii.gz']);
-
     % Run the tedana analysis
     command = [tedanaPath ' -d'];
     for ee = 1:5
@@ -95,7 +73,7 @@ for jj = 1:nRuns
     end
     command = [command ' -e 11.00 24.07 37.14 50.21 63.28 --gscontrol mir --out-dir ' fullfile(repoTdnaDir,sprintf('run-%d',runIdxVals(jj))) ];
     command = [command ' --prefix ' sprintf([nameStemFunc,'%d'],runIdxVals(jj)) ];
-    if createMaskFlag
+    if ~isempty(maskFile)
         command = [command ' --mask ' maskFile];
     end
     [returncode, outputMessages] = system(command);

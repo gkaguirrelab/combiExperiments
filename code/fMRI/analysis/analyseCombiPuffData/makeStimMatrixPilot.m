@@ -1,8 +1,8 @@
 function [stimulus,stimTime,stimLabels] = makeStimMatrixPilot(nAcqs)
 
 
+% The stim sequence and labels
 stimLabelSet = {'0psi','3psi','7psi','15psi','30psi','co','ns'};
-
 stimulusCoarse = [...
     -1,-1,-1,-1,...
     1,4,4,3,1,1,3,4,3,1,...
@@ -15,6 +15,7 @@ stimulusCoarse = [...
     3,3,1,0,2,2,1,4,1,0,...
     -1,-1,-1];
 
+% Basic stimulus properties
 nStimTypes = length(unique(stimulusCoarse))-1;
 isi = 4.25;
 dT = 0.25;
@@ -39,18 +40,19 @@ for ii = 1:length(stimulusCoarse)
         end
     end
 end
+
 % Mean center the matrix
 stimIdx = stimulusCoarse ~= -1;
 for ii = 1:nStimTypes
     vec = singleStimMat(ii,stimIdx);
     singleStimMat(ii,stimIdx) = vec - mean(vec);
 end
+
+% Add the carry over and new stim vectors
 idx = carryOver ~= 0;
 carryOver(idx) = carryOver(idx) - mean(carryOver(idx));
-
 idx = newStim == 0;
 newStim(idx) = -mean(newStim);
-
 singleStimMat = [singleStimMat; carryOver; newStim];
 
 % Create a single stimTime

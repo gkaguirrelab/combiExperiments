@@ -4,10 +4,11 @@ dirName = '65f1d142f84641b1153a9010';
 subID = '001';
 sesID = '20240312';
 icaRejectSet = {[],[13,14],[16],[5,12,15,18],[7]};
-createMaskFlag = false;
-%tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,createMaskFlag);
+maskFile = '';
+tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,maskFile);
 
 runIdxSet = [2 3 4 5];
 tr = 2.040;
+smoothSD = 0.1;
 vxs = []; %978110;
-results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs);
+results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs,smoothSD);
