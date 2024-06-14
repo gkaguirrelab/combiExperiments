@@ -89,7 +89,7 @@ modContrastByDir = desiredContrastLevelsByDir./maxContrastByDir;
 % We need to adjust the contrast by frequency to account for a small amount
 % of roll-off. This has the effect of "boosting" the called-for contrast at
 % high levels
-modContrastByFreq = [1, 1./contrastAttentionByFreq(freqSetHz(2:end))];
+modContrastByFreq = [1, 1./contrastAttenuationByFreq(freqSetHz(2:end))];
 
 % Check if we are going to clip the contrast levels
 contrastCheck = modContrastByDir.*modContrastByFreq';
