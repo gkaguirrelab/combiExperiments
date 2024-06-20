@@ -111,16 +111,38 @@ void read_command() {
 }
 
 void AS_read() {
-  //
+  switch(serial_input[2]) {
+    // Read the Gain 
+    case 'G':
+        Serial.println("Read AS Gain");
+        Serial.println(as7341.getGain());
+        break;
+    
+    // Read the integration time information
+    case 'I':
+        Serial.println("Read Atime/Astep/Int_time");
+        Serial.println(atime);
+        Serial.println(astep); 
+        Serial.println(integration_time);
+        break;
+    
+    // Read the channels
+    case 'C':
+        Serial.println("Read AS Channels");
+        break;
+  }
 }
 
 void read() {
   switch(serial_input[1]) {
+    
+    // Read off of the AS chip 
     case 'A':
       Serial.println("AS Chip read");
       AS_read();
       break;
 
+    // Read off of the TS chip
     case 'T':
       Serial.println("TS Chip read");
       break;
@@ -129,57 +151,54 @@ void read() {
 
 
 
-// void write() {
-//   switch(serial_input[1]) {
-//     case: 'g':
-//       Serial.println("Write TS gain"); 
+void write() {
+   switch(serial_input[1]) {
+       // Read off of the AS chip 
+    case 'A':
+      Serial.println("AS Chip write");
+      //AS_read();
+      break;
 
-//     case 'G':
-//       Serial.println("Write AS gain"); 
+    // Read off of the TS chip
+    case 'T':
+      Serial.println("TS Chip write");
+      break;
+  }
+}
 
-      
-//       break;
-//     case 'a':
-//       Serial.println("write atime");
-//       break; 
-//     case 'A':
-//       Serial.println("write astep");
-//       break;
-    
-//   }
 
-// }
 
 void loop() {
 
   // Get the command from the controller
   read_command(); 
 
-  // If we received a valid command, execute it
+  // If we received a well formed command, execute it
   if(serial_input.length() > 2) {
     Serial.println(serial_input);
 
     switch(serial_input[0]) {
+
+      //Read mode
       case 'R':
-          Serial.println("Read mode");
+        Serial.println("Read mode");
           
-          read();
-          
-          break; 
+        read();
+        break; 
       
-      
+      // Write mode
       case 'W':
-          Serial.println("Write mode");
+        Serial.println("Write mode");
           
-          //write(); 
-          break;
+        write(); 
+        break;
     }
 
   }
 
 
 
-
+  // Reset command to empty after execution. 
   serial_input = "";
 
   delay(10000);
