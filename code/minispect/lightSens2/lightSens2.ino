@@ -133,6 +133,46 @@ void AS_read() {
   }
 }
 
+void TS_read() {
+  switch(serial_input[2]) {
+    // Read the Gain 
+    case 'G':
+        Serial.println("Read TS Gain");
+        //Serial.println(as7341.getGain());
+        Serial.println(tsl.getGain()); 
+        break;
+    
+    // Read the luminosity
+    case 'l':
+        Serial.println("Read the TS luminosity");
+        Serial.println(tsl.getFullLuminosity()); 
+        break;
+    
+    // Read the LUX 
+    case 'L':
+        Serial.println("Read the TS LUX");
+
+        uint32_t lum = tsl.getFullLuminosity();
+        uint16_t ir, full;
+        ir = lum >> 16;
+        full = lum & 0xFFFF;
+        TSL2591_full = full;
+        TSL2591_ir = ir;
+        TSL2591_lux = tsl.calculateLux(full, ir);
+
+        Serial.println(TSL2591_lux);
+
+
+        break;
+
+  }
+
+}
+
+int parse_number(char* string) {
+  return String(string).toInt();
+}
+
 void AS_write() {
   switch(serial_input[2]) {
     // Write the new gain
@@ -142,7 +182,7 @@ void AS_write() {
       // Make sure there is a number to write
       if(serial_input.length() > 3){
         // Convert the numeric substring of gain -> string -> int
-        int gain = String(&serial_input[3]).toInt();
+        int gain = parse_number(&serial_input[3]);
         Serial.println(gain);
         //as7341.setGain(as7341_gain_t(gain));
       }
@@ -151,10 +191,27 @@ void AS_write() {
 
     case 'a':
       Serial.println("Writing new a-time to AS");
+
+      // Make sure there is a number to write
+      if(serial_input.length() > 3){
+        // Convert the numeric substring of gain -> string -> int
+        int a_time = parse_number(&serial_input[3]);
+        Serial.println(a_time);
+        //as7341.setATIME(uint8_t atime_value)
+      }
       break;
     
     case 'A':
       Serial.println("Writing new a-step to AS");
+
+       // Make sure there is a number to write
+      if(serial_input.length() > 3){
+        // Convert the numeric substring of gain -> string -> int
+        int a_step = parse_number(&serial_input[3]);
+        Serial.println(a_step);
+        //as7341.setASTEP(uint16_t astep_value)
+      }
+
       break;
     
   }
@@ -176,8 +233,6 @@ void read() {
   }
 }
 
-
-
 void write() {
    switch(serial_input[1]) {
     // Write to the AS chip 
@@ -192,7 +247,6 @@ void write() {
       break;
   }
 }
-
 
 
 void loop() {
