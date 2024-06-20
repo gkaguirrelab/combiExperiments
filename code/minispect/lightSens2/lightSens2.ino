@@ -52,12 +52,15 @@ uint16_t VBat100x = 0;
 // bytes 34-35 ADC4/Clear
 // bytes 36-37 ADC5/NIR
 uint8_t dataBLE[40];
+String serial_input = "";
 
 char dtm[32];
 String commandfz = "";
 int astep = 259; //599 //399; //599;//999;
 int atime = 249;   // 24; //29;   //49;
 int gain = 5;     //4 //8;  //
+
+float integration_time = (as7341.getATIME() + 1) * (as7341.getASTEP() + 1) * 2.78;
 
 void setup() {
   Serial.begin(115200);
@@ -97,49 +100,119 @@ void setup() {
   delay(1000);
 }
 
-void loop() {
-  /*
-  if (millis() - lastRead >= INTERVAL) {
-    lastRead = millis();
-    digitalWrite(LED_GREEN, LOW);
-    //simpleRead();
-    advancedRead();
-    AS7341_read();
-    LIS2DUXS12_read();
-    BatteryRead();
-    digitalWrite(LED_GREEN, HIGH);
-    if (bleSerial) {
-      sendBLEData();
+void read_command() {
+  while(Serial.available() > 0) {
+    char incoming_char = Serial.read();
+    if(incoming_char == '\n') {
+      return ;
     }
-    Serial.println();
+    serial_input += incoming_char;
   }
-  */
-  // if there is input to read and that input was a read
-  if(Serial.available() > 0 && (char)Serial.read() == 'R') {
-    lastRead = millis();
-    digitalWrite(LED_GREEN, LOW);
-    //simpleRead();
-    advancedRead();
-    AS7341_read();
-    LIS2DUXS12_read();
-    BatteryRead();
-    digitalWrite(LED_GREEN, HIGH);
-    if (bleSerial) {
-      sendBLEData();
+}
+
+void AS_read() {
+  //
+}
+
+void read() {
+  switch(serial_input[1]) {
+    case 'A':
+      Serial.println("AS Chip read");
+      AS_read();
+      break;
+
+    case 'T':
+      Serial.println("TS Chip read");
+      break;
+  }
+}
+
+
+
+// void write() {
+//   switch(serial_input[1]) {
+//     case: 'g':
+//       Serial.println("Write TS gain"); 
+
+//     case 'G':
+//       Serial.println("Write AS gain"); 
+
+      
+//       break;
+//     case 'a':
+//       Serial.println("write atime");
+//       break; 
+//     case 'A':
+//       Serial.println("write astep");
+//       break;
+    
+//   }
+
+// }
+
+void loop() {
+
+  // Get the command from the controller
+  read_command(); 
+
+  // If we received a valid command, execute it
+  if(serial_input.length() > 2) {
+    Serial.println(serial_input);
+
+    switch(serial_input[0]) {
+      case 'R':
+          Serial.println("Read mode");
+          
+          read();
+          
+          break; 
+      
+      
+      case 'W':
+          Serial.println("Write mode");
+          
+          //write(); 
+          break;
     }
-    Serial.println();
+
   }
 
-  BLERead2();
-  //   delay(50);
-  //    if (command.indexOf("as73") >= 0){
-  //         Serial.println(command);
-  //         Serial.println(atime);
-  //         Serial.println(astep);
-  //         Serial.println(gain);
-  //         //AS7341_Reinit();
-  //         command = "";
-  //     }
+
+
+
+  serial_input = "";
+
+  delay(10000);
+
+  // if there is input to read and that input was a read
+  // if(Serial.available() > 0) {
+  //   char input = Serial.read()
+    
+  //   switch(input) {
+  //     case 'R':
+  //       lastRead = millis();
+  //       digitalWrite(LED_GREEN, LOW);
+  //       //simpleRead();
+  //       advancedRead();
+  //       AS7341_read();
+  //       LIS2DUXS12_read();
+  //       BatteryRead();
+  //       digitalWrite(LED_GREEN, HIGH);
+  //       if (bleSerial) {
+  //        sendBLEData();
+  //       }
+  //       Serial.println();
+
+  //     case ''
+       
+  // }
+
+  //    BLERead2();
+
+  //   }
+
+    
+    
 }
 
 
@@ -456,8 +529,6 @@ void AS7341_read() {
   Serial.println(readings[10]);
   Serial.print("ADC5/NIR      : ");
   Serial.println(readings[11]);
-
-  float integration_time = (as7341.getATIME() + 1) * (as7341.getASTEP() + 1) * 2.78;
 
   Serial.print("Integration Time (ms): ");
   Serial.println(integration_time);
