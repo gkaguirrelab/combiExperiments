@@ -133,6 +133,33 @@ void AS_read() {
   }
 }
 
+void AS_write() {
+  switch(serial_input[2]) {
+    // Write the new gain
+    case 'G':
+      Serial.println("Writing new gain to AS");
+
+      // Make sure there is a number to write
+      if(serial_input.length() > 3){
+        // Convert the numeric substring of gain -> string -> int
+        int gain = String(&serial_input[3]).toInt();
+        Serial.println(gain);
+        //as7341.setGain(as7341_gain_t(gain));
+      }
+      
+      break; 
+
+    case 'a':
+      Serial.println("Writing new a-time to AS");
+      break;
+    
+    case 'A':
+      Serial.println("Writing new a-step to AS");
+      break;
+    
+  }
+}
+
 void read() {
   switch(serial_input[1]) {
     
@@ -153,13 +180,13 @@ void read() {
 
 void write() {
    switch(serial_input[1]) {
-       // Read off of the AS chip 
+    // Write to the AS chip 
     case 'A':
       Serial.println("AS Chip write");
-      //AS_read();
+      AS_write();
       break;
 
-    // Read off of the TS chip
+    // Write to the TS chip
     case 'T':
       Serial.println("TS Chip write");
       break;
