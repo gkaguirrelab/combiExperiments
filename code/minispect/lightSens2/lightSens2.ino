@@ -100,13 +100,13 @@ void setup() {
   delay(1000);
 }
 
-void read_command() {
+void read_command(String* input) {
   while(Serial.available() > 0) {
     char incoming_char = Serial.read();
     if(incoming_char == '\n') {
       return ;
     }
-    serial_input += incoming_char;
+    *input += incoming_char;
   }
 }
 
@@ -169,10 +169,6 @@ void TS_read() {
 
 }
 
-int parse_number(char* string) {
-  return String(string).toInt();
-}
-
 void AS_write() {
   switch(serial_input[2]) {
     // Write the new gain
@@ -182,7 +178,7 @@ void AS_write() {
       // Make sure there is a number to write
       if(serial_input.length() > 3){
         // Convert the numeric substring of gain -> string -> int
-        int gain = parse_number(&serial_input[3]);
+        int gain = atoi(&serial_input[3]);
         Serial.println(gain);
         //as7341.setGain(as7341_gain_t(gain));
       }
@@ -195,7 +191,7 @@ void AS_write() {
       // Make sure there is a number to write
       if(serial_input.length() > 3){
         // Convert the numeric substring of gain -> string -> int
-        int a_time = parse_number(&serial_input[3]);
+        int a_time = atoi(&serial_input[3]);
         Serial.println(a_time);
         //as7341.setATIME(uint8_t atime_value)
       }
@@ -207,7 +203,7 @@ void AS_write() {
        // Make sure there is a number to write
       if(serial_input.length() > 3){
         // Convert the numeric substring of gain -> string -> int
-        int a_step = parse_number(&serial_input[3]);
+        int a_step = atoi(&serial_input[3]);
         Serial.println(a_step);
         //as7341.setASTEP(uint16_t astep_value)
       }
@@ -217,67 +213,39 @@ void AS_write() {
   }
 }
 
-void read() {
-  switch(serial_input[1]) {
-    
-    // Read off of the AS chip 
-    case 'A':
-      Serial.println("AS Chip read");
-      AS_read();
-      break;
+void TS_write(){
 
-    // Read off of the TS chip
-    case 'T':
-      Serial.println("TS Chip read");
-      break;
-  }
-}
-
-void write() {
-   switch(serial_input[1]) {
-    // Write to the AS chip 
-    case 'A':
-      Serial.println("AS Chip write");
-      AS_write();
-      break;
-
-    // Write to the TS chip
-    case 'T':
-      Serial.println("TS Chip write");
-      break;
-  }
 }
 
 
 void loop() {
 
   // Get the command from the controller
-  read_command(); 
+  read_command(&serial_input); 
 
+  Serial.println(serial_input);
   // If we received a well formed command, execute it
   if(serial_input.length() > 2) {
     Serial.println(serial_input);
 
-    switch(serial_input[0]) {
+    String mode = serial_input.substring(0,2); 
 
-      //Read mode
-      case 'R':
-        Serial.println("Read mode");
-          
-        read();
-        break; 
-      
-      // Write mode
-      case 'W':
-        Serial.println("Write mode");
-          
-        write(); 
-        break;
+    if(mode == "RA") {
+      Serial.println("Read AS mode");
     }
-
+    else if(mode == "RT") {
+      Serial.println("Read TS mode");
+    }
+    else if(mode == "WA") {
+      Serial.println("Read TS mode");
+    }
+    else if(mode == "WT") {
+      Serial.println("Write TS mode"); 
+    }
+    else {
+      Serial.println("-1");
+    }
   }
-
-
 
   // Reset command to empty after execution. 
   serial_input = "";
