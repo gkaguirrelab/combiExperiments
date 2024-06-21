@@ -1,27 +1,33 @@
 function result = read_minispect(obj, chip, mode)
-    % Initialize empty result
-    result = "";
+    % Initialize empty result for the lines read
+    result = {}; 
 
     % Send the message to read a specific piece of data 
     % from the minispect's specific chip 
     writeline(obj.serialObj,['R', chip, mode]);     
 
     % Read lines while we receive them 
+    i = 1 ;
     while true
-        if obj.NumBytesAvailable > 0    
-            line = readline(obj);
+        line = readline(obj.serialObj);
+        has_terminator = contains(line, obj.END_MARKER);
 
-            result = result + line + newline;
-        end
+        % Clean them up by removing white space and terminator, 
+        % and store them in result. 
+        result{i} = strrep(strtrim(line), obj.END_MARKER, '');
+        
+        i = i + 1;
         
         % Break if we hit the end of message terminator
-        if contains(line, obj.END_MARKER)
+        if has_terminator
             break; 
         end 
-    
     end 
 
-    disp(result)
+
+
+    disp(result);
+    
     
 
     
