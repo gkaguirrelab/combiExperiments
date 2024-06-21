@@ -44,7 +44,7 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         
 
         if (!as7341->readAllChannels(readings)) {
-          Serial.println("-1");
+          Serial.println("-1!");
           return;
         }
 
@@ -75,7 +75,7 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
 
     // Invalid command
     default:
-      Serial.println("-1");
+      Serial.println("-1!");
       
       break;
   }
@@ -122,7 +122,7 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
     // Invalid command
     default: 
-      Serial.println("-1");
+      Serial.println("-1!");
 
       break;
   }
@@ -165,7 +165,7 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
     
     // Invalid command
     default:
-      Serial.println("-1");
+      Serial.println("-1!");
 
       break;
     
@@ -193,7 +193,7 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
     
     // Invalid command
     default:
-      Serial.println("-1");
+      Serial.println("-1!");
 
       break;
 

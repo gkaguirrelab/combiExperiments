@@ -144,7 +144,7 @@ void loop() {
 
     // Invalid command
     else {
-      Serial.println("-1");
+      Serial.println("-1!");
     }
   }
 
