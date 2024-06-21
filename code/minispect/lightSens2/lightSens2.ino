@@ -12,6 +12,7 @@
 #include <Adafruit_AS7341_personal.h>
 #include <LIS2DUXS12Sensor.h>
 #include <Arduino.h>
+#include <minispect_io.h>
 
 
 HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
@@ -223,7 +224,7 @@ void loop() {
   // Get the command from the controller
   read_command(&serial_input); 
 
-  Serial.println(serial_input);
+
   // If we received a well formed command, execute it
   if(serial_input.length() > 2) {
     Serial.println(serial_input);
