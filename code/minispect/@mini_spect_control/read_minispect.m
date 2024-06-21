@@ -24,7 +24,10 @@ function result = read_minispect(obj, chip, mode)
         end 
     end 
 
-
+    % Throw an error if the minispect reported an error
+    if strcmp(result{1}, "-1")
+        error('minispect read failed.');
+    end 
 
     disp(result);
     
