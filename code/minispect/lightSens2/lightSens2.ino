@@ -107,7 +107,7 @@ void loop() {
   read_command(&serial_input); 
 
   // If we received a well formed command, execute it
-  if(serial_input.length() > 3) {
+  if(serial_input.length() > 2) {
     Serial.println(serial_input);
 
     // Get the mode to perform and the chip to do it on
