@@ -107,23 +107,42 @@ void loop() {
   read_command(&serial_input); 
 
   // If we received a well formed command, execute it
-  if(serial_input.length() > 2) {
+  if(serial_input.length() > 3) {
     Serial.println(serial_input);
 
-    String mode = serial_input.substring(0,2); 
+    // Get the mode to perform and the chip to do it on
+    String mode_and_chip = serial_input.substring(0,2); 
 
-    if(mode == "RA") {
-      Serial.println("Read AS mode");
+    // Read from the AS chip using given specific data to read
+    if(mode_and_chip == "RA") {
+      Serial.println("Read AS mode"); 
+
+      AS_read(serial_input[2], &as7341);
+    
     }
-    else if(mode == "RT") {
+    // Read from the TSL chip using specific data to read
+    else if(mode_and_chip == "RT") {
       Serial.println("Read TS mode");
+
+      TS_read(serial_input[2], &tsl);
     }
-    else if(mode == "WA") {
+
+    // Write to the AS chip using given data
+    else if(mode_and_chip == "WA") {
       Serial.println("Read TS mode");
+
+      AS_write(serial_input[2], &as7341, &serial_input[3]);
+
     }
-    else if(mode == "WT") {
+
+    // Write to the TSL chip using given data
+    else if(mode_and_chip == "WT") {
       Serial.println("Write TS mode"); 
-    }
+
+      TS_write(serial_input[2], &tsl, &serial_input[3]);
+    }   
+
+    // Invalid command
     else {
       Serial.println("-1");
     }
