@@ -13,7 +13,6 @@ classdef mini_spect_control < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
-        readings 
         serialObj
         deviceState
 
@@ -42,8 +41,9 @@ classdef mini_spect_control < handle
 
             % Open the serial port
             obj.serialOpen_minispect();
+            
 
-            obj.readings = obj.generate_reading_map();
+
 
 
         end
@@ -53,13 +53,11 @@ classdef mini_spect_control < handle
         % Connection related
         serialOpen_minispect(obj)
         serialClose_minispect(obj)
-
-        % Get a reading
-        reading = read_minispect(obj)
-           
-        % Generate a new map for readings
-        reading_map = generate_reading_map(obj)
         
+        % I/O related
+        result = read_minispect(obj, chip, mode)
+        result = write_minispect(obj, chip, mode, write_val)
+
 
     end
 end
