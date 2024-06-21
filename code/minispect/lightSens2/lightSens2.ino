@@ -115,7 +115,7 @@ void loop() {
 
     // Read from the AS chip using given specific data to read
     if(mode_and_chip == "RA") {
-      Serial.println("Read AS mode"); 
+      Serial.println("Read AS mode!"); 
 
       AS_read(serial_input[2], &as7341);
     

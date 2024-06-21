@@ -1,5 +1,7 @@
+% Initialize the minispect_controller
 MS = mini_spect_control(verbose=true);
-   
+
+% Attempt to get a reading from the minispect
 try
     reading = MS.read_minispect();
 

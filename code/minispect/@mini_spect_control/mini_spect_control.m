@@ -6,13 +6,9 @@ classdef mini_spect_control < handle
         baudrate = 115200;
     end
 
-    % Private properties
-    properties (GetAccess=private)
-
-    end
-
     % Calling function can see, but not modify
     properties (SetAccess=private)
+        END_MARKER = '!'
         serialObj
         deviceState
 
@@ -20,7 +16,7 @@ classdef mini_spect_control < handle
 
     % These may be modified after object creation
     properties (SetAccess=public)
-
+        
         % Verbosity
         verbose = false;
 
@@ -41,10 +37,6 @@ classdef mini_spect_control < handle
 
             % Open the serial port
             obj.serialOpen_minispect();
-            
-
-
-
 
         end
 
