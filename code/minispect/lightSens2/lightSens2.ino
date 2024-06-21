@@ -101,61 +101,10 @@ void setup() {
   delay(1000);
 }
 
-
-void AS_write() {
-  switch(serial_input[2]) {
-    // Write the new gain
-    case 'G':
-      Serial.println("Writing new gain to AS");
-
-      // Make sure there is a number to write
-      if(serial_input.length() > 3){
-        // Convert the numeric substring of gain -> string -> int
-        int gain = atoi(&serial_input[3]);
-        Serial.println(gain);
-        //as7341.setGain(as7341_gain_t(gain));
-      }
-      
-      break; 
-
-    case 'a':
-      Serial.println("Writing new a-time to AS");
-
-      // Make sure there is a number to write
-      if(serial_input.length() > 3){
-        // Convert the numeric substring of gain -> string -> int
-        int a_time = atoi(&serial_input[3]);
-        Serial.println(a_time);
-        //as7341.setATIME(uint8_t atime_value)
-      }
-      break;
-    
-    case 'A':
-      Serial.println("Writing new a-step to AS");
-
-       // Make sure there is a number to write
-      if(serial_input.length() > 3){
-        // Convert the numeric substring of gain -> string -> int
-        int a_step = atoi(&serial_input[3]);
-        Serial.println(a_step);
-        //as7341.setASTEP(uint16_t astep_value)
-      }
-
-      break;
-    
-  }
-}
-
-void TS_write(){
-
-}
-
-
 void loop() {
 
   // Get the command from the controller
   read_command(&serial_input); 
-
 
   // If we received a well formed command, execute it
   if(serial_input.length() > 2) {

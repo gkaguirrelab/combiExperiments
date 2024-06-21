@@ -9,11 +9,11 @@ void read_command(String* serial_input);
 void AS_read();
 
 // Read various information (as specified by input) from the TSL2591 chip
-//void TS_read(); 
+void TS_read(); 
 
 // Write various information (as specified by input) from the ASM7341 chip
-//void AS_write(); 
+void AS_write(); 
 
 // Write various information (as specified by input) from the TSL2591 chip
-//void TS_write(); 
+void TS_write(); 
 
