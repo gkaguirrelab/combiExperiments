@@ -58,6 +58,9 @@ classdef mini_spect_control < handle
         result = read_minispect(obj, chip, mode)
         result = write_minispect(obj, chip, mode, write_val)
 
+        % Result parsing related 
+        channel_values = parse_channel_reading(obj, reading)
+
 
     end
 end

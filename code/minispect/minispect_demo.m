@@ -15,18 +15,12 @@ try
    % mode = chip_functions('Integration');
     %reading = MS.read_minispect(chip,mode);
     
-    startTime = datetime('now');
     % Read the channels
     mode = chip_functions('Channels');
-    for i = 1:5
-        reading = MS.read_minispect(chip,mode);
-    end
-    endTime = datetime('now');
-
-    elapsedTime = endTime - startTime;
-
-     % Display the elapsed time
-    disp(['Elapsed time: ', char(elapsedTime)]);            
+    reading = MS.read_minispect(chip,mode);
+    values = MS.parse_channel_reading(reading);
+    
+    disp(values)
 
     % Write a new gain value 
     %mode = chip_functions('Gain');
