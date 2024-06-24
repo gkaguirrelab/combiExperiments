@@ -1,3 +1,5 @@
+addpath('/Users/zacharykelly/Documents/MATLAB/toolboxes/combiLEDToolbox/code');
+
 % Parameters
 nPrimarySteps = 10; 
 nSamplesPerStep = 10;
