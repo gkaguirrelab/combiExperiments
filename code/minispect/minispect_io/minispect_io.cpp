@@ -28,6 +28,9 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
     case 'G':
         Serial.println("Read AS Gain");
         Serial.println(as7341->getGain());
+
+        // Append End of Message terminator
+        Serial.print("!");
         break;
     
     // Read the integration time information
@@ -36,19 +39,23 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.println(as7341->getATIME());
         Serial.println(as7341->getASTEP()); 
         Serial.println(calculate_integration_time(as7341->getATIME(), as7341->getASTEP()));
+
+        // Append End of Message terminator
+        Serial.print("!");
+
         break;
     
     // Read the channels
     case 'C':
         Serial.println("Read AS Channels");
         
-
+        // If unable to read channels, report error
         if (!as7341->readAllChannels(readings)) {
           Serial.println("-1!");
           return;
         }
 
-
+        // Print out the channel readings
         Serial.print("ADC0/F1 415nm : ");
         Serial.println(readings[0]);
         Serial.print("ADC1/F2 445nm : ");
@@ -70,6 +77,8 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.print("ADC5/NIR      : ");
         Serial.println(readings[11]);
         
+        // Append End of Message terminator
+        Serial.print("!");
         
         break;
 
@@ -93,14 +102,18 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
         Serial.println("Read TS Gain");
         //Serial.println(as7341.getGain());
         Serial.println(tsl2591->getGain()); 
+
+        // Append End of Message terminator
+        Serial.print("!");
         break;
     
     // Read the luminosity
     case 'l':
         Serial.println("Read the TS luminosity");
-        
         Serial.println(tsl2591->getFullLuminosity()); 
-        
+
+        // Append End of Message terminator
+        Serial.print("!");
         break;
     
     // Read the LUX 
@@ -117,6 +130,9 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
         Serial.println(TSL2591_lux);
 
+
+        // Append End of Message terminator
+        Serial.print("!");
 
         break;
 
@@ -139,11 +155,13 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
       // Convert the numeric substring of gain -> int
       Serial.println(atoi(write_val));
       as7341->setGain(as7341_gain_t(atoi(write_val)));
-  
+
+      // Append End of Message terminator
+      Serial.print("!");
       
       break; 
 
-    // Write a new a-time vcalue to AS chip 
+    // Write a new a-time value to AS chip 
     case 'a':
       Serial.println("Writing new a-time to AS");
 
@@ -151,9 +169,11 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
       Serial.println(atoi(write_val));
       as7341->setATIME((uint8_t)  atoi(write_val)); 
 
+      // Append End of Message terminator
+      Serial.print("!");
       break;
     
-    // Write a new a-step vcalue to AS chip 
+    // Write a new a-step value to AS chip 
     case 'A':
       Serial.println("Writing new a-step to AS");
 
@@ -161,6 +181,8 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
       Serial.println(atoi(write_val));
       as7341->setASTEP((uint16_t) atoi(write_val));
 
+      // Append End of Message terminator
+      Serial.print("!");
       break;
     
     // Invalid command
@@ -181,6 +203,9 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
       // Convert the numeric substring of gain -> int 
       Serial.println(atoi(write_val));
       tsl2591->setGain(tsl2591Gain_t(atoi(write_val)));
+
+      // Append End of Message terminator
+      Serial.print("!");
       break;
 
     // Write new integration time
@@ -190,6 +215,9 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
       // Convert the numeric substring of discrete integration time -> int
       Serial.println(atoi(write_val));
       tsl2591->setTiming(tsl2591IntegrationTime_t(atoi(write_val)));
+
+      // Append End of Message terminator
+      Serial.print("!");
     
     // Invalid command
     default:

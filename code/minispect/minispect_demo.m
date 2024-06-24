@@ -5,6 +5,9 @@ MS = mini_spect_control(verbose=true);
 try
     reading = MS.read_minispect('A','G');
 
+
+
+
 catch e
     disp("ERROR OCCURED");
     disp(e.identifier);
