@@ -21,7 +21,7 @@ try
 
     % Write a new gain value 
     mode = chip_functions('Gain');
-    write_val = '5';
+    write_val = 5;
     reading = MS.write_minispect(chip,mode,write_val); 
 
     % See if it updated 

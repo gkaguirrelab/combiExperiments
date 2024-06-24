@@ -4,7 +4,7 @@ function result = write_minispect(obj, chip, mode, write_val)
 
     % Send the message to write a specific piece of data 
     % to the minispect's specific chip 
-    writeline(obj.serialObj,['W', chip, mode, write_val]);     
+    writeline(obj.serialObj,['W', chip, mode, char(write_val)]);     
 
      % Read lines while we receive them 
      i = 1 ;
