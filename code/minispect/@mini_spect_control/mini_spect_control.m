@@ -8,7 +8,15 @@ classdef mini_spect_control < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
+        % Map the name of chips to their underlying representations
+        chip_name_map = containers.Map({'ASM7341','TSL2591'}, {'A','T'})
+
+        % Map the underlying representations of chips, to name of fields, to the fields' underlying representations
+        chip_functions_map = containers.Map({'A', 'T'}, {  containers.Map({'Gain','Integration'}, {'G', 'I'}),  containers.Map({'Gain','Lux'}, {'G', 'L'}) })
+        
+        % End of Message marker to mark end of Serial responses
         END_MARKER = '!'
+        
         serialObj
         deviceState
 

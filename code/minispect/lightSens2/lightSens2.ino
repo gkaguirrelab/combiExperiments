@@ -61,8 +61,6 @@ int astep = 259; //599 //399; //599;//999;
 int atime = 249;   // 24; //29;   //49;
 int gain = 5;     //4 //8;  //
 
-float integration_time = (as7341.getATIME() + 1) * (as7341.getASTEP() + 1) * 2.78;
-
 void setup() {
   Serial.begin(115200);
   //while (!Serial);
@@ -500,7 +498,7 @@ void AS7341_read() {
   Serial.println(readings[11]);
 
   Serial.print("Integration Time (ms): ");
-  Serial.println(integration_time);
+  //Serial.println(integration_time);
 
   Serial.print("GAIN: ");
   Serial.println(as7341.getGain());
