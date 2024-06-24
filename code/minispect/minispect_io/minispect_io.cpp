@@ -30,7 +30,7 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.println(as7341->getGain());
 
         // Append End of Message terminator
-        Serial.print("!");
+        Serial.println("!");
         break;
     
     // Read the integration time information
@@ -41,7 +41,7 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.println(calculate_integration_time(as7341->getATIME(), as7341->getASTEP()));
 
         // Append End of Message terminator
-        Serial.print("!");
+        Serial.println("!");
 
         break;
     
@@ -51,7 +51,8 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         
         // If unable to read channels, report error
         if (!as7341->readAllChannels(readings)) {
-          Serial.println("-1!");
+          Serial.println("-1");
+          Serial.println("!");
           return;
         }
 
@@ -78,13 +79,14 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.println(readings[11]);
         
         // Append End of Message terminator
-        Serial.print("!");
+        Serial.println("!");
         
         break;
 
     // Invalid command
     default:
-      Serial.println("-1!");
+      Serial.println("-1");
+      Serial.println("!");
       
       break;
   }
@@ -104,7 +106,7 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
         Serial.println(tsl2591->getGain()); 
 
         // Append End of Message terminator
-        Serial.print("!");
+        Serial.println("!");
         break;
     
     // Read the luminosity
@@ -113,7 +115,7 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
         Serial.println(tsl2591->getFullLuminosity()); 
 
         // Append End of Message terminator
-        Serial.print("!");
+        Serial.println("!");
         break;
     
     // Read the LUX 
@@ -132,13 +134,14 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
 
         // Append End of Message terminator
-        Serial.print("!");
+        Serial.println("!");
 
         break;
 
     // Invalid command
     default: 
-      Serial.println("-1!");
+      Serial.println("-1");
+      Serial.println("!");
 
       break;
   }
@@ -157,7 +160,7 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
       as7341->setGain(as7341_gain_t(atoi(write_val)));
 
       // Append End of Message terminator
-      Serial.print("!");
+      Serial.println("!");
       
       break; 
 
@@ -170,7 +173,7 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
       as7341->setATIME((uint8_t)  atoi(write_val)); 
 
       // Append End of Message terminator
-      Serial.print("!");
+      Serial.println("!");
       break;
     
     // Write a new a-step value to AS chip 
@@ -182,12 +185,13 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
       as7341->setASTEP((uint16_t) atoi(write_val));
 
       // Append End of Message terminator
-      Serial.print("!");
+      Serial.println("!");
       break;
     
     // Invalid command
     default:
-      Serial.println("-1!");
+      Serial.println("-1");
+      Serial.println("!");
 
       break;
     
@@ -205,7 +209,7 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
       tsl2591->setGain(tsl2591Gain_t(atoi(write_val)));
 
       // Append End of Message terminator
-      Serial.print("!");
+      Serial.println("!");
       break;
 
     // Write new integration time
@@ -217,12 +221,12 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
       tsl2591->setTiming(tsl2591IntegrationTime_t(atoi(write_val)));
 
       // Append End of Message terminator
-      Serial.print("!");
+      Serial.println("!");
     
     // Invalid command
     default:
-      Serial.println("-1!");
-
+      Serial.println("-1");
+      Serial.println("!");
       break;
 
   }

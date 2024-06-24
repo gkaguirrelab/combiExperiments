@@ -4,30 +4,31 @@ function result = write_minispect(obj, chip, mode, write_val)
 
     % Send the message to write a specific piece of data 
     % to the minispect's specific chip 
-    writeline(obj.serialObj,['R', chip, mode, write_val]);     
+    writeline(obj.serialObj,['W', chip, mode, write_val]);     
 
      % Read lines while we receive them 
      i = 1 ;
      while true
         line = readline(obj.serialObj);
         has_terminator = contains(line, obj.END_MARKER);
- 
-        % Clean them up by removing white space and terminator, 
-        % and store them in result. 
-        result{i} = strrep(strtrim(line), obj.END_MARKER, '');
-         
-        i = i + 1;
-         
+
         % Break if we hit the end of message terminator
         if has_terminator
             break; 
         end 
+ 
+        % Clean them up by removing white space and terminator, 
+        % and store them in result. 
+        result{i} = strtrim(line)
+         
+        i = i + 1;
+         
      end 
 
     
     % Throw an error if the minispect reported an error
     if strcmp(result{1}, "-1")
-        error('minispect read failed.');
+        error('minispect write failed.');
     end 
 
     disp(result);

@@ -113,7 +113,7 @@ void loop() {
 
     // Read from the AS chip using given specific data to read
     if(mode_and_chip == "RA") {
-      Serial.println("Read AS mode!"); 
+      Serial.println("Read AS mode"); 
 
       AS_read(serial_input[2], &as7341);
     
@@ -127,7 +127,7 @@ void loop() {
 
     // Write to the AS chip using given data
     else if(mode_and_chip == "WA") {
-      Serial.println("Read TS mode");
+      Serial.println("Write AS mode");
 
       AS_write(serial_input[2], &as7341, &serial_input[3]);
 
@@ -142,7 +142,8 @@ void loop() {
 
     // Invalid command
     else {
-      Serial.println("-1!");
+      Serial.println("-1");
+      Serial.println("!");
     }
   }
 
