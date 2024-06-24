@@ -31,8 +31,7 @@ function result = write_minispect(obj, chip, mode, write_val)
         error('minispect write failed.');
     end 
 
-    disp(result);
-    
+    disp(results)
     
 
     

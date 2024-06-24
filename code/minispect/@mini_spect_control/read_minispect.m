@@ -29,8 +29,14 @@ function result = read_minispect(obj, chip, mode)
     if strcmp(result{1}, "-1")
         error('minispect read failed.');
     end 
+    
+    s = size(result,2);
+    disp(s)
+    for i = 1:s
+        disp(result{i})
+    end
 
-    disp(result);
+    fprintf("\n");
     
     
 

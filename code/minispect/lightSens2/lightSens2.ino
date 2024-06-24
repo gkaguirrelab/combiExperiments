@@ -150,7 +150,7 @@ void loop() {
   // Reset command to empty after execution. 
   serial_input = "";
 
-  delay(10000);
+  //delay(10000);
 
   // if there is input to read and that input was a read
   // if(Serial.available() > 0) {
