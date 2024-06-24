@@ -13,6 +13,16 @@ float calculate_integration_time(uint8_t atime, uint8_t astep) {
 void read_command(String* input) {
   while(Serial.available() > 0) {
     char incoming_char = Serial.read();
+    
+    // If there is an attempt to overload the buffer, throw 
+    // an error
+    if(input->length() > 10) {
+      Serial.println("-1");
+      Serial.println("!");
+      return ;
+    }
+
+    // If we receive carriage return (End of Input)
     if(incoming_char == '\n') {
       return ;
     }
