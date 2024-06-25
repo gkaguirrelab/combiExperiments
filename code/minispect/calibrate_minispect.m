@@ -1,6 +1,7 @@
 % Parameters
 nPrimarySteps = 10; 
 nSamplesPerStep = 10;
+NDF = "0x2";
 
 calFileName = 'CombiLED_shortLLG_testSphere_ND0x2.mat';
 calDir = '/Users/zacharykelly/Documents/MATLAB/projects/combiExperiments/cal';
@@ -89,6 +90,8 @@ ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 
 hold off;
 
+% Save the figure
+saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means_by_intensity' + NDF + '.jpg')
 
 % Create the line graph of STD by intensity for every channel
 figure; 
@@ -120,6 +123,9 @@ ax = gca;
 ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 
 hold off;
+
+% Save the figure
+saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std_by_intensity' + NDF + '.jpg')
 
 
 % Close the serial ports with the devices
