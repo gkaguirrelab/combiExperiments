@@ -1,5 +1,5 @@
 function channel_values = parse_channel_reading(obj, reading)
-    channel_values = zeros(1,8);
+    channel_values = zeros(1,13);
 
     for i = 1:size(reading,2)
         text_val_separators = strfind(reading{1,i}, ':');

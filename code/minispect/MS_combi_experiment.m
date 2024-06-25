@@ -29,7 +29,7 @@ for i = 1:nPrimarySteps
     CL.setPrimaries(Cl_settings);
     
     % Initialize matrix where Row_i = sample_i, col_i = channel_i 
-    channel_readings_matrix = zeros(nSamplesPerStep,8);
+    channel_readings_matrix = zeros(nSamplesPerStep,13);
     
     % Record N samples from the minispect
     for j = 1:nSamplesPerStep
