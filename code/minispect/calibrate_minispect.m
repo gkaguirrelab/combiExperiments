@@ -58,11 +58,12 @@ for i = 1:nPrimarySteps
 
 end
 
-try
+
 % Create the line graph of mean by intensity for every channel
 figure; 
 
 plot(combi_intensities(1,:), means(:,1), '--r') % Plot Channel 1
+
 hold on;
 plot(combi_intensities(1,:), means(:,2), '--b') % Plot Channel 2
 plot(combi_intensities(1,:), means(:,3), '--g') % Plot Channel 3
@@ -74,9 +75,43 @@ plot(combi_intensities(1,:), means(:,8), '-g')  % Plot Channel 8
 plot(combi_intensities(1,:), means(:,9), '-m')  % Plot Channel 9
 plot(combi_intensities(1,:), means(:,10), '-y')  % Plot Channel 10
 
+% Add the axis labels legend to the plot
+legend('Channel1', 'Channel2', 'Channel3', 'Channel4', 'Channel5',...
+      'Channel6','Channel7','Channel8', 'Clear', 'NIR');
+
 xlabel('CombiLED Intensity');
 ylabel('Mean Channel Value');
 title('Mean Channel Value by Intensity');
+
+% Change background color so channel lines are more visible
+ax = gca;
+ax.Color = [0.9, 0.9, 0.9];  % Light blue background
+
+hold off;
+
+
+% Create the line graph of STD by intensity for every channel
+figure; 
+
+plot(combi_intensities(1,:), standard_deviations(:,1), '--r') % Plot Channel 1
+
+hold on;
+plot(combi_intensities(1,:), standard_deviations(:,2), '--b') % Plot Channel 2
+plot(combi_intensities(1,:), standard_deviations(:,3), '--g') % Plot Channel 3
+plot(combi_intensities(1,:), standard_deviations(:,4), '--m') % Plot Channel 4
+plot(combi_intensities(1,:), standard_deviations(:,5), '--y') % Plot Channel 5
+plot(combi_intensities(1,:), standard_deviations(:,6), '--k') % Plot Channel 6
+plot(combi_intensities(1,:), standard_deviations(:,7), '-r')  % Plot Channel 7
+plot(combi_intensities(1,:), standard_deviations(:,8), '-g')  % Plot Channel 8
+plot(combi_intensities(1,:), standard_deviations(:,9), '-m')  % Plot Channel 9
+plot(combi_intensities(1,:), standard_deviations(:,10), '-y')  % Plot Channel 10
+
+legend('Channel1', 'Channel2', 'Channel3', 'Channel4', 'Channel5',...
+      'Channel6','Channel7','Channel8', 'Clear', 'NIR');
+
+xlabel('CombiLED Intensity');
+ylabel('STD of Channel Value');
+title('STD of Channel Value by Intensity');
 
 % Get current axes handle
 ax = gca;
@@ -84,26 +119,7 @@ ax = gca;
 % Change the background color of the axes
 ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 
-%disp(combi_intensities)
-%disp(cell2mat(combi_intensities{1,:}))
-%plot(cell2mat(combi_intensities{1,:}),cell2mat(means{:,1})) % Channel 1
-
-%title('Channel Means by Intensity');
-%xlabel('CombiLED Intensity');
-%ylabel('Channel Value');
-
-
-catch e
-    disp("ERROR OCCURED");
-    disp(e.identifier);
-    disp(e.message);
-    disp(e.cause);
-    CL.serialClose();
-    MS.serialClose_minispect()
-
-    clear CL; 
-    clear MS; 
-end 
+hold off;
 
 
 % Close the serial ports with the devices
