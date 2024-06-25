@@ -1,6 +1,6 @@
 % Parameters
-nPrimarySteps = 3; 
-nSamplesPerStep = 3;
+nPrimarySteps = 10; 
+nSamplesPerStep = 10;
 
 calFileName = 'CombiLED_shortLLG_testSphere_ND0x2.mat';
 calDir = '/Users/zacharykelly/Documents/MATLAB/projects/combiExperiments/cal';
