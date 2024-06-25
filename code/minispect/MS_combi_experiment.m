@@ -38,5 +38,7 @@ for i = 1:nPrimarySteps
         channel_readings_matrix(j) = channel_values; 
     end
 
+    disp(channel_readings_matrix)
+
 
 end
