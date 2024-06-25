@@ -1,10 +1,6 @@
 function channel_values = parse_channel_reading(obj, reading)
 
-    disp(reading);
-
     channel_values = zeros(1,10);
-
-    disp(size(reading,2))
 
     debugging_output_offset = 0; 
     for i = 1:size(reading,2)
@@ -17,8 +13,6 @@ function channel_values = parse_channel_reading(obj, reading)
         text_val_seperator_indx = text_val_separators(1);
 
         reading_as_charvec = char(reading{i});
-        
-        disp(reading_as_charvec)
 
         channel_val = str2num( strtrim( reading_as_charvec(text_val_seperator_indx+1:end) ) );
 

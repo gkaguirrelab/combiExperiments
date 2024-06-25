@@ -1,6 +1,6 @@
 % Parameters
-nPrimarySteps = 10; 
-nSamplesPerStep = 10;
+nPrimarySteps = 3; 
+nSamplesPerStep = 3;
 
 calFileName = 'CombiLED_shortLLG_testSphere_ND0x2.mat';
 calDir = '/Users/zacharykelly/Documents/MATLAB/projects/combiExperiments/cal';
@@ -22,15 +22,15 @@ chip_functions = MS.chip_functions_map(chip);
 mode = chip_functions('Channels');
 
 % Arrays to hold outputs over time series
-combi_intensities = {};
-means = {};
-standard_deviations = {};
+combi_intensities = zeros(1,nPrimarySteps);
+means = zeros(nPrimarySteps,10);
+standard_deviations = zeros(nPrimarySteps,10);
 
 
 for i = 1:nPrimarySteps
     % The intensity of every channel of the CL at this timestep
     channel_intensity = 0.05+((i-1)/(nPrimarySteps-1))*0.9;
-    combi_intensities{i} = channel_intensity;
+    combi_intensities(1,i) = channel_intensity;
 
     % Set the CombiLED settings
     CL_settings = channel_intensity * ones(1,8);
@@ -51,8 +51,60 @@ for i = 1:nPrimarySteps
 
     disp(channel_readings_matrix)
 
+    % Calculate and save the means/STD of each channel
+    means(i,:) = mean(channel_readings_matrix);
+    standard_deviations(i,:) = std(channel_readings_matrix);
+
 
 end
+
+try
+% Create the line graph of mean by intensity for every channel
+figure; 
+
+plot(combi_intensities(1,:), means(:,1), '--r') % Plot Channel 1
+hold on;
+plot(combi_intensities(1,:), means(:,2), '--b') % Plot Channel 2
+plot(combi_intensities(1,:), means(:,3), '--g') % Plot Channel 3
+plot(combi_intensities(1,:), means(:,4), '--m') % Plot Channel 4
+plot(combi_intensities(1,:), means(:,5), '--y') % Plot Channel 5
+plot(combi_intensities(1,:), means(:,6), '--k') % Plot Channel 6
+plot(combi_intensities(1,:), means(:,7), '-r')  % Plot Channel 7
+plot(combi_intensities(1,:), means(:,8), '-g')  % Plot Channel 8
+plot(combi_intensities(1,:), means(:,9), '-m')  % Plot Channel 9
+plot(combi_intensities(1,:), means(:,10), '-y')  % Plot Channel 10
+
+xlabel('CombiLED Intensity');
+ylabel('Mean Channel Value');
+title('Mean Channel Value by Intensity');
+
+% Get current axes handle
+ax = gca;
+
+% Change the background color of the axes
+ax.Color = [0.9, 0.9, 0.9];  % Light blue background
+
+%disp(combi_intensities)
+%disp(cell2mat(combi_intensities{1,:}))
+%plot(cell2mat(combi_intensities{1,:}),cell2mat(means{:,1})) % Channel 1
+
+%title('Channel Means by Intensity');
+%xlabel('CombiLED Intensity');
+%ylabel('Channel Value');
+
+
+catch e
+    disp("ERROR OCCURED");
+    disp(e.identifier);
+    disp(e.message);
+    disp(e.cause);
+    CL.serialClose();
+    MS.serialClose_minispect()
+
+    clear CL; 
+    clear MS; 
+end 
+
 
 % Close the serial ports with the devices
 CL.serialClose();
