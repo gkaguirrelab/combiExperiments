@@ -39,6 +39,7 @@ void read_command(String* input) {
 
 void AS_read(char mode, Adafruit_AS7341* as7341) {
   uint16_t readings[12];
+  uint16_t flicker_freq; 
 
   switch(mode) {
     // Read the Gain 
@@ -99,6 +100,17 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.println("!");
         
         break;
+
+      // Read from the Flicker channel
+    case 'F':
+      flicker_freq = as7341->detectFlickerHz();
+
+      Serial.println(flicker_freq);
+
+      // Append End of Message terminator
+      Serial.println("!");
+
+      break; 
 
     // Invalid command
     default:
@@ -198,6 +210,7 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
 
       // Convert the numeric substring of gain -> int
       write_val_converted = atoi(write_val);
+
       Serial.println(write_val_converted);
 
       // Keep input within categorical selection bounds
