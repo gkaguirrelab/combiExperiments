@@ -128,6 +128,13 @@ void loop() {
       TS_read(serial_input[2], &tsl);
     }
 
+    // Read from the SEEED chip using specific data to read
+    else if(mode_and_chip == "RS") {
+      Serial.println("Read SE mode");
+
+      SE_read(serial_input[2], NRF_FICR);
+    }
+
     // Write to the AS chip using given data
     else if(mode_and_chip == "WA") {
       Serial.println("Write AS mode");
@@ -142,13 +149,6 @@ void loop() {
 
       TS_write(serial_input[2], &tsl, &serial_input[3]);
     }   
-
-    else if(mode_and_chip == "RS") {
-      Serial.println("Read SE mode");
-
-      //SE_read(serial_input[2], NRF_FICR);
-      SE_read(serial_input[2], NRF_FICR);
-    }
 
     // Invalid command
     else {

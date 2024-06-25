@@ -203,6 +203,8 @@ void SE_read(char mode, NRF_FICR_Type* board_info_reg) {
   uint32_t device_id[2];
 
   switch(mode) {
+
+    // Read the serial number of the SEEED chip
     case 'S':
       Serial.println("Read Serial Number");
 
@@ -211,9 +213,11 @@ void SE_read(char mode, NRF_FICR_Type* board_info_reg) {
 
       Serial.print(device_id[0], HEX);Serial.println(device_id[1], HEX);
       
+      // Append End of Message Terminator
       Serial.println("!");
       break;
     
+    // Invalid Command
     default:
       sig_error();
       break;
