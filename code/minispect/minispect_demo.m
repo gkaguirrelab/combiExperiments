@@ -3,9 +3,13 @@ MS = mini_spect_control(verbose=true);
 
 % Attempt to get a reading from the minispect
 try
-    chip = MS.chip_name_map("ASM7341");
+    chip = MS.chip_name_map("SEEED");
 
     chip_functions = MS.chip_functions_map(chip);
+    mode = chip_functions('SerialNumber');
+    reading = MS.read_minispect(chip,mode);
+
+    disp(reading)
 
     % Read the gain
     %mode = chip_functions('Gain');
@@ -16,10 +20,10 @@ try
     %reading = MS.read_minispect(chip,mode);
     
     % Read the channels
-    mode = chip_functions('Channels');
-    values = MS.read_minispect(chip,mode);
+    %mode = chip_functions('Channels');
+    %values = MS.read_minispect(chip,mode);
     
-    disp(values)
+    %disp(values)
 
     % Write a new gain value 
     %mode = chip_functions('Gain');

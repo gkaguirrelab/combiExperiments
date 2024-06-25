@@ -13,6 +13,7 @@
 #include <LIS2DUXS12Sensor.h>
 #include <Arduino.h>
 #include <minispect_io.h>
+#include <nrf.h>
 
 
 HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
@@ -63,6 +64,8 @@ int gain = 5;     //4 //8;  //
 
 void setup() {
   Serial.begin(115200);
+
+
   //while (!Serial);
   pinMode(LED_GREEN, OUTPUT);
   digitalWrite(LED_GREEN, HIGH);
@@ -139,6 +142,13 @@ void loop() {
 
       TS_write(serial_input[2], &tsl, &serial_input[3]);
     }   
+
+    else if(mode_and_chip == "RS") {
+      Serial.println("Read SE mode");
+
+      //SE_read(serial_input[2], NRF_FICR);
+      SE_read(serial_input[2], NRF_FICR);
+    }
 
     // Invalid command
     else {

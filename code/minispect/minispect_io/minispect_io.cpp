@@ -199,6 +199,27 @@ void LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
   }
 }
 
+void SE_read(char mode, NRF_FICR_Type* board_info_reg) {
+  uint32_t device_id[2];
+
+  switch(mode) {
+    case 'S':
+      Serial.println("Read Serial Number");
+
+      device_id[0] = board_info_reg->DEVICEID[0];
+      device_id[1] = board_info_reg->DEVICEID[1];
+
+      Serial.print(device_id[0], HEX);Serial.println(device_id[1], HEX);
+      
+      Serial.println("!");
+      break;
+    
+    default:
+      sig_error();
+      break;
+  }
+}
+
 
 void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
   uint16_t write_val_converted; 
