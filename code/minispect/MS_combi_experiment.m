@@ -33,9 +33,7 @@ for i = 1:nPrimarySteps
     
     % Record N samples from the minispect
     for j = 1:nSamplesPerStep
-        reading = MS.read_minispect(chip,mode); 
-
-        channel_values = MS.parse_channel_reading(reading);
+        channel_values = MS.read_minispect(chip,mode); 
 
         channel_readings_matrix(j) = channel_values; 
     end

@@ -17,8 +17,7 @@ try
     
     % Read the channels
     mode = chip_functions('Channels');
-    reading = MS.read_minispect(chip,mode);
-    values = MS.parse_channel_reading(reading);
+    values = MS.read_minispect(chip,mode);
     
     disp(values)
 
