@@ -94,7 +94,7 @@ for ii = 1:nPrimarySteps
     % Initialize matrix where Row_i = sample_i, col_i = channel_i
     channel_readings_matrix = nan(nSamplesPerStep,nChannels);
 
-
+    % Set primaries if we are not simulating
     if ~simulateSource
         CL.setPrimaries(CL_settings);
     end
@@ -102,10 +102,10 @@ for ii = 1:nPrimarySteps
     % Record N samples from the minispect and get the mean and std of 
     % each col (channel) over this matrix at this Primary step. 
     if ~simulateDetector
-        for j = 1:nSamplesPerStep
+        for jj = 1:nSamplesPerStep
             channel_values = MS.read_minispect(chip,mode);
 
-            channel_readings_matrix(j,:) = channel_values;
+            channel_readings_matrix(jj,:) = channel_values;
         end
 
         disp(channel_readings_matrix)
@@ -186,9 +186,9 @@ saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_
 
 
 % Save the values themselves
-save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means' + NDF + '.mat',means);
-save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std' + NDF + '.mat',means);
-save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/predictions' + NDF + '.mat',means);
+save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means' + NDF + '.mat','means');
+save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std' + NDF + '.mat','standard_deviations');
+save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/relative_counts_predictions' + NDF + '.mat','predictedCounts');
 
 % Close the serial ports with the devices if we did not simulate them
 if ~simulateSource
