@@ -48,7 +48,7 @@ classdef mini_spect_control < handle
             % Open the serial port
             obj.serialOpen_minispect();
 
-            obj.serial_number = read_minispect('S','S');
+            obj.serial_number = obj.read_minispect('S','S');
 
         end
 

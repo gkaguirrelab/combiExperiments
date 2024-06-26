@@ -1,6 +1,6 @@
 % Set simulation mode
-simulateSource = true;
-simulateDetector = true;
+simulateSource = false;
+simulateDetector = false;
 
 
 % If we are not simulating, initialize the detector
