@@ -148,7 +148,7 @@ ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 hold off;
 
 % Save the figure
-saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means_by_intensity' + NDF + '.jpg')
+saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means_by_intensity' + NDF + '.jpg');
 
 % Create the line graph of STD by intensity for every channel
 figure;
@@ -182,8 +182,13 @@ ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 hold off;
 
 % Save the figure
-saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std_by_intensity' + NDF + '.jpg')
+saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std_by_intensity' + NDF + '.jpg');
 
+
+% Save the values themselves
+save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means' + NDF + '.mat',means);
+save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std' + NDF + '.mat',means);
+save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/predictions' + NDF + '.mat',means);
 
 % Close the serial ports with the devices if we did not simulate them
 if ~simulateSource
