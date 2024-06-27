@@ -32,8 +32,8 @@ else
     nChannels = 10;
 end 
 
-nPrimarySteps = 10;
-nSamplesPerStep = 10;
+nPrimarySteps = 100;
+nSamplesPerStep = 1;
 NDF = "0x2";
 
 % Which Cal file to use (currently hard-coded)
@@ -55,7 +55,7 @@ miniSpectSPDPath = fullfile(tbLocateProjectSilent('combiExperiments'),'data','AM
 load(miniSpectSPDPath,'T');
 minispectS = WlsToS(T.wl);
 minispectP_rel = T{:,2:end};
-minispectP_rel = minispectP_rel ./ max(minispectP_rel);
+%minispectP_rel = minispectP_rel ./ max(minispectP_rel);
 
 % Reformat that minispect SPDs to be in the space of the sourceSPDs
 for ii = 1:size(minispectP_rel,2)
@@ -70,9 +70,21 @@ standard_deviations = nan(nPrimarySteps,nChannels);
 sphereSPDs = nan(nPrimarySteps,sourceS(3));
 predictedCounts = nan(nPrimarySteps,nChannels);
 
+
+% Make this random by doing 
+% myRandom = [2,3,4,5,7,8,0]
+% for ii = myRandom
+% random range 0.05 0.95
+%setting_values = nan(nPrimarySteps,1);
 for ii = 1:nPrimarySteps
     % The intensity of every channel of the CL at this timestep
-    primary_setting = 0.05+((ii-1)/(nPrimarySteps-1))*0.9;
+    %primary_setting = 0.05+((ii-1)/(nPrimarySteps-1))*0.9;
+
+    fprintf("Primary Step: %d / %d\n", ii, nPrimarySteps);
+
+    primary_setting = 0.95;
+
+    %setting_values(ii,1) = primary_setting;
 
     % Set the CombiLED settings
     CL_settings = primary_setting * ones(1,8);
@@ -89,7 +101,7 @@ for ii = 1:nPrimarySteps
     % and the minispectP_rel.
     predictedCounts(ii,:) = sphereSPDs(ii,:)*detectorP_rel;
 
-    disp(predictedCounts)
+    %disp(predictedCounts)
 
     % Initialize matrix where Row_i = sample_i, col_i = channel_i
     channel_readings_matrix = nan(nSamplesPerStep,nChannels);
@@ -108,7 +120,7 @@ for ii = 1:nPrimarySteps
             channel_readings_matrix(jj,:) = channel_values;
         end
 
-        disp(channel_readings_matrix)
+        %disp(channel_readings_matrix)
 
         % Calculate and save the means/STD of each channel
         means(ii,:) = mean(channel_readings_matrix);
@@ -116,6 +128,26 @@ for ii = 1:nPrimarySteps
     end
 
 end
+
+% Create a histogram of the counts of thre first channel
+figure 
+
+plot(means)
+
+hold on ;
+
+xlabel('Time');
+ylabel('Count Value');
+title('Count Values Over Time for Channel 1');
+
+% Change background color so channel lines are more visible
+ax = gca;
+ax.Color = [0.9, 0.9, 0.9];  % Light blue background
+
+hold off;
+
+% Save the figure
+saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_1_100measures' + NDF + '.jpg');
 
 % Create the line graph of mean by intensity for every channel
 figure;
@@ -137,18 +169,20 @@ plot(combi_settings(:,1), means(:,10), '-y')  % Plot Channel 10
 legend('Channel1', 'Channel2', 'Channel3', 'Channel4', 'Channel5',...
     'Channel6','Channel7','Channel8', 'Clear', 'NIR');
 
-xlabel('CombiLED Intensity');
-ylabel('Mean Channel Value');
-title('Mean Channel Value by Intensity');
+xlabel('CombiLED Setting');
+ylabel('Channel Value');
+title('Channel Value by Setting');
 
 % Change background color so channel lines are more visible
 ax = gca;
 ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 
+
 hold off;
 
 % Save the figure
-saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means_by_intensity' + NDF + '.jpg');
+saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means_by_setting' + NDF + '.jpg');
+
 
 % Create the line graph of STD by intensity for every channel
 figure;
@@ -169,9 +203,9 @@ plot(combi_settings(:,1), standard_deviations(:,10), '-y')  % Plot Channel 10
 legend('Channel1', 'Channel2', 'Channel3', 'Channel4', 'Channel5',...
     'Channel6','Channel7','Channel8', 'Clear', 'NIR');
 
-xlabel('CombiLED Intensity');
+xlabel('CombiLED Setting');
 ylabel('STD of Channel Value');
-title('STD of Channel Value by Intensity');
+title('STD of Channel Value by Setting');
 
 % Get current axes handle
 ax = gca;
@@ -179,11 +213,10 @@ ax = gca;
 % Change the background color of the axes
 ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 
-hold off;
-
 % Save the figure
-saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std_by_intensity' + NDF + '.jpg');
+saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std_by_setting' + NDF + '.jpg');
 
+hold off;
 
 % Save the values themselves
 save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means' + NDF + '.mat','means');

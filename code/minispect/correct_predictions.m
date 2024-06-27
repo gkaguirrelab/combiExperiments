@@ -1,36 +1,32 @@
 function corrected = correct_predictions(predictions,measurements)
-    corrected = nan(size(predictions));
-
     % Get the ratio matrix between predictions and measurements
-    K = predictions ./ measurements;
+    ratio_matrix = predictions ./ measurements;
 
-    % For each channel, perform correction by dividing 
-    % the predictions by the mean scalar of that channel (since
-    % there is slight variation and they are all close)
-    for ii = 1:size(predictions,2)
-        corrected(:,ii) = predictions(:,ii)/mean(K(:,ii));
-    end
+    K = mean(ratio_matrix(:)); 
 
     figure 
 
-    plot(predictions(:,1),'--r') % Plot predictions of channel 1
-
-    hold on;
-    
-    plot(measurements(:,1), '--b') % Plot measurements of channel 1
-    plot(corrected(:,1), '--g') % Plot the correct predictions of channel 1
-    
-    
-    plot(predictions(:,2), '--y') % Plot predictions of channel 2
-    plot(measurements(:,2), '--m') % Plot measurements of channel 2
-    plot(corrected(:,2), '--k') % Plot the correct predictions of channel 2
+    for ii = 1:8
+        plot(predictions(:,ii)/K,measurements(:,ii),'.-') % Plot predictions of channel 1
+        hold on
+    end 
 
 
-    legend('P1', 'M1', 'C1', 'P2', 'M2','C2');
+
+    %plot(measurements(:,1), '--b') % Plot measurements of channel 1
+    %plot(corrected(:,1), '--g') % Plot the correct predictions of channel 1
+    
+    
+    %plot(predictions(:,2), '--y') % Plot predictions of channel 2
+    %plot(measurements(:,2), '--m') % Plot measurements of channel 2
+    %plot(corrected(:,2), '--k') % Plot the correct predictions of channel 2
+
+
+    legend('P1');
 
     xlabel('Primary Step');
     ylabel('Value');
-    title('Corrected Predictions Compared to Measurements');
+    title('Ratio of Channel 1 Measurements by Predictions');
 
     % Get current axes handle
     ax = gca;
