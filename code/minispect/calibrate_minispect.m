@@ -4,6 +4,14 @@ simulateDetector = false;
 
 try
 
+% Which Cal file to use (currently hard-coded)
+calDir = fullfile(tbLocateProjectSilent('combiExperiments'),'cal');
+calFileName = 'CombiLED_shortLLG_testSphere_ND0x2.mat';
+
+% Load the cal file
+load(fullfile(calDir,calFileName),'cals');
+cal = cals{end};
+
 
 % If we are not simulating, initialize the detector
 if ~simulateDetector
@@ -34,17 +42,9 @@ else
     nChannels = 10;
 end 
 
-nPrimarySteps = 100;
+nPrimarySteps = 10;
 nSamplesPerStep = 1;
 NDF = "0x2";
-
-% Which Cal file to use (currently hard-coded)
-calDir = fullfile(tbLocateProjectSilent('combiExperiments'),'cal');
-calFileName = 'CombiLED_shortLLG_testSphere_ND0x2.mat';
-
-% Load the cal file
-load(fullfile(calDir,calFileName),'cals');
-cal = cals{end};
 
 % Extract some information regarding the light source that is being used to
 % calibrate the minispect
@@ -119,10 +119,15 @@ for ii = 1:nPrimarySteps
         for jj = 1:nSamplesPerStep
             channel_values = MS.read_minispect(chip,mode);
 
+
             channel_readings_matrix(jj,:) = channel_values;
+
         end
 
         %disp(channel_readings_matrix)
+        if(any(isnan(channel_readings_matrix)))
+            error('NaNs present in channel readings');
+        end 
 
         % Calculate and save the means/STD of each channel
         means(ii,:) = mean(channel_readings_matrix);
@@ -130,6 +135,10 @@ for ii = 1:nPrimarySteps
     end
 
 end
+
+if(any(isnan(means)))
+    error('NaNs present in mean readings');
+end 
 
 % Create a histogram of the counts of thre first channel
 figure 
