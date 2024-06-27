@@ -12,7 +12,7 @@ classdef mini_spect_control < handle
         chip_name_map = containers.Map({'AMS7341','TSL2591','LIS2DUXS12','SEEED'}, {'A','T','L','S'})
 
         % Map the underlying representations of chips, to name of fields, to the fields' underlying representations
-        chip_functions_map = containers.Map({'A', 'T', 'L','S'}, {  containers.Map({'Gain','Integration','Channels', 'Flicker'}, {'G', 'I','C','F'}), containers.Map({'Gain','Lux'}, {'G', 'L'}), containers.Map({'Accel'}, {'A'}), containers.Map({'SerialNumber'}, {'S'}) })
+        chip_functions_map = containers.Map({'A', 'T', 'L','S'}, {  containers.Map({'Gain','Integration','Channels','Flicker','Power'}, {'G', 'I','C','F','P'}), containers.Map({'Gain','Lux','Power'}, {'G', 'L','P'}), containers.Map({'Accel','Power'}, {'A','P'}), containers.Map({'SerialNumber'}, {'S'}) })
         
         % End of Message marker to mark end of Serial responses
         END_MARKER = '!'
