@@ -2,6 +2,8 @@
 simulateSource = false;
 simulateDetector = false;
 
+try
+
 
 % If we are not simulating, initialize the detector
 if ~simulateDetector
@@ -230,6 +232,17 @@ if ~simulateSource
 end
 
 if ~simulateDetector
+    MS.serialClose_minispect();
+    clear MS;
+end
+
+catch e
+    disp('Catching Error and closing ports')
+    
+    disp(e)
+    
+    CL.serialClose();
+    clear CL;
     MS.serialClose_minispect();
     clear MS;
 end
