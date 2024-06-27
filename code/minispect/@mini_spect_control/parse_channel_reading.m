@@ -1,5 +1,4 @@
 function channel_values = parse_channel_reading(obj, reading)
-
     channel_values = zeros(1,10);
 
     debugging_output_offset = 0; 

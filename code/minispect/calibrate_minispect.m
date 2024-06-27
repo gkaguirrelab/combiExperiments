@@ -42,7 +42,7 @@ else
     nChannels = 10;
 end 
 
-nPrimarySteps = 10;
+nPrimarySteps = 100;
 nSamplesPerStep = 1;
 NDF = "0x2";
 
@@ -119,7 +119,6 @@ for ii = 1:nPrimarySteps
         for jj = 1:nSamplesPerStep
             channel_values = MS.read_minispect(chip,mode);
 
-
             channel_readings_matrix(jj,:) = channel_values;
 
         end
@@ -130,7 +129,8 @@ for ii = 1:nPrimarySteps
         end 
 
         % Calculate and save the means/STD of each channel
-        means(ii,:) = mean(channel_readings_matrix);
+        %means(ii,:) = mean(channel_readings_matrix);
+        means(ii,:) = channel_readings_matrix(1,:);
         standard_deviations(ii,:) = std(channel_readings_matrix);
     end
 
@@ -147,9 +147,9 @@ plot(means)
 
 hold on ;
 
-xlabel('Time');
+xlabel('Measurement');
 ylabel('Count Value');
-title('Count Values Over Time for Channel 1');
+title('Count Values Over Time for All Channels');
 
 % Change background color so channel lines are more visible
 ax = gca;

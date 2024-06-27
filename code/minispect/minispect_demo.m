@@ -6,10 +6,10 @@ try
     chip = MS.chip_name_map("SEEED");
 
     chip_functions = MS.chip_functions_map(chip);
-    mode = chip_functions('SerialNumber');
-    reading = MS.read_minispect(chip,mode);
+    %mode = chip_functions('SerialNumber');
+    %reading = MS.read_minispect(chip,mode);
 
-    disp(reading)
+    %disp(reading)
 
     % Read the gain
     %mode = chip_functions('Gain');
@@ -20,8 +20,8 @@ try
     %reading = MS.read_minispect(chip,mode);
     
     % Read the channels
-    %mode = chip_functions('Channels');
-    %values = MS.read_minispect(chip,mode);
+    mode = chip_functions('Channels');
+    values = MS.read_minispect(chip,mode);
     
     %disp(values)
 
