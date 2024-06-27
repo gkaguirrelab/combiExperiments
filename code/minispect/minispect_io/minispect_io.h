@@ -30,4 +30,7 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val);
 // Write various information (as specified by input) from the TSL2591 chip
 void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val);
 
+// Write various information (as specified by input) from the LIS2DUXS12 chip
+void LI_write(char mode, LIS2DUXS12Sensor* lis2duxs12, char* write_val)
+
 

@@ -60,7 +60,6 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
 
         // Append End of Message terminator
         Serial.println("!");
-
         break;
     
     // Read the channels
@@ -97,8 +96,7 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.println(readings[11]);
         
         // Append End of Message terminator
-        Serial.println("!");
-        
+        Serial.println("!"); 
         break;
 
       // Read from the Flicker channel
@@ -109,7 +107,6 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
 
       // Append End of Message terminator
       Serial.println("!");
-
       break; 
 
     // Invalid command
@@ -163,7 +160,6 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
         // Append End of Message terminator
         Serial.println("!");
-
         break;
 
     // Invalid command
@@ -195,6 +191,7 @@ void LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
     // Invalid command
     default:
       sig_error();
+      
       break;
   }
 }
@@ -247,8 +244,7 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
       as7341->setGain(as7341_gain_t(write_val_converted));
 
       // Append End of Message terminator
-      Serial.println("!");
-      
+      Serial.println("!");     
       break; 
 
     // Write a new a-time value to AS chip 
@@ -289,6 +285,27 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
       as7341->setASTEP(write_val_converted);
 
       // Append End of Message terminator
+      Serial.println("!");
+      break;
+
+    // Write a power setting to the AS chip
+    case 'P':
+      Serial.println("Writing power value to AS"); 
+
+      // Convert the numeric substring of astep -> int
+      write_val_converted = atoi(write_val);
+      Serial.println(write_val_converted);
+
+      // If the write val was not a boolean 
+      if(write_val_converted < 0 || write_val_converted > 1) {
+        sig_error();
+        return;
+      }
+
+      // Toggle the AS7341 power
+      as7341->powerEnable(write_val_converted);
+
+      // Append End of Message Terminator
       Serial.println("!");
       break;
     
@@ -332,7 +349,8 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
       write_val_converted = atoi(write_val);
 
       if(write_val_converted < 0 || write_val_converted > 6) {
-
+        sig_error();
+        return;
       }
 
       Serial.println(write_val_converted);
@@ -340,6 +358,34 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
 
       // Append End of Message terminator
       Serial.println("!");
+
+      break;
+
+    // Write a power setting to the TS chip
+    case 'P':
+      Serial.println('Writing power value to TS');
+
+      // Convert the numeric substring of discrete integration time -> int
+      write_val_converted = atoi(write_val);
+
+      // If the power setting was not a boolean
+      if(write_val_converted < 0 || write_val_converted > 1) {
+        sig_error();
+        return ;
+      }
+
+      // Toggle the power 
+      if(write_val_converted == 1) {
+        tsl2591->enable();
+      }
+      else {
+        tsl2591->disable();
+      }
+
+      // Append End of Message Terminator
+      Serial.println("!");  
+      break;
+
     
     // Invalid command
     default:
@@ -350,4 +396,31 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
   }
 }
 
+void LI_write(char mode, LIS2DUXS12Sensor* lis2duxs12, char* write_val) {
+  uint16_t write_val_converted; 
+  switch(mode) {
+    case 'P':
+      Serial.println("Writing power value to LI chip");
+
+      // Convert the numeric substring to numeric value
+      write_val_converted = atoi(write_val);
+
+      if(write_val_converted < 0 || write_val_converted > 1) {
+        sig_error();
+        return ;
+      }
+
+      if(write_val_converted == 1) {
+        lis2duxs12->begin();
+      }
+      else {
+        lis2duxs12->end();
+      }
+
+      // Append End of Message terminator
+      Serial.println("!");
+      break;
+  }
+
+}
 
