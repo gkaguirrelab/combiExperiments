@@ -48,4 +48,4 @@ function corrected = correct_predictions(predictions,measurements)
     hold off;
 
     % Save the figure
-    saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channels_fitted_by_predictions.jpg');
+    saveas(gcf,'~/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channels_fitted_by_predictions.jpg');
