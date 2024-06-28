@@ -43,7 +43,7 @@ else
 end 
 
 nPrimarySteps = 100;
-nSamplesPerStep = 1;
+nSamplesPerStep = 10;
 NDF = "0x2";
 
 % Extract some information regarding the light source that is being used to
@@ -84,7 +84,7 @@ for ii = 1:nPrimarySteps
 
     fprintf("Primary Step: %d / %d\n", ii, nPrimarySteps);
 
-    primary_setting = 0.95;
+    primary_setting = 0.05+((ii-1)/(nPrimarySteps-1))*0.9;
 
     %setting_values(ii,1) = primary_setting;
 
@@ -124,21 +124,45 @@ for ii = 1:nPrimarySteps
         end
 
         %disp(channel_readings_matrix)
+
+        % There should be no NaN's if we read everything properly
         if(any(isnan(channel_readings_matrix)))
             error('NaNs present in channel readings');
         end 
 
-        % Calculate and save the means/STD of each channel
-        %means(ii,:) = mean(channel_readings_matrix);
-        means(ii,:) = channel_readings_matrix(1,:);
+        value_map = containers.Map({true,false},{channel_readings_matrix(1,:), mean(channel_readings_matrix)});
+
+                                    % If the nrows (nSamples) == 1, matlab will treat it as a vector
+                                    % and mean will not return what we want, that is, a row vector of means 
+                                    % of every column, so map to correct interpretation
+        means(ii,:) = value_map(size(channel_readings_matrix,1) == 1);
         standard_deviations(ii,:) = std(channel_readings_matrix);
     end
 
 end
 
+% There should be no NaN's if we read everything properly
 if(any(isnan(means)))
     error('NaNs present in mean readings');
 end 
+
+% Create a histogram of the counts of thre first channel
+figure 
+
+histogram(means(:,1))
+
+hold on ;
+
+xlabel('Count Value');
+ylabel('Frequency');
+title('Histogram of Channel 1 Counts (n=100 Measurements)');
+
+% Change background color so channel lines are more visible
+ax = gca;
+ax.Color = [0.9, 0.9, 0.9];  % Light blue background
+
+hold off;
+
 
 % Create a histogram of the counts of thre first channel
 figure 
@@ -158,7 +182,7 @@ ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 hold off;
 
 % Save the figure
-saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_1_100measures' + NDF + '.jpg');
+saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channels_100measures' + NDF + '.jpg');
 
 % Create the line graph of mean by intensity for every channel
 figure;
