@@ -182,7 +182,7 @@ ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 hold off;
 
 % Save the figure
-saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channels_100measures' + NDF + '.jpg');
+saveas(gcf,'~/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channels_100measures' + NDF + '.jpg');
 
 % Create the line graph of mean by intensity for every channel
 figure;
@@ -216,7 +216,7 @@ ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 hold off;
 
 % Save the figure
-saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means_by_setting' + NDF + '.jpg');
+saveas(gcf,'~/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means_by_setting' + NDF + '.jpg');
 
 
 % Create the line graph of STD by intensity for every channel
@@ -249,14 +249,14 @@ ax = gca;
 ax.Color = [0.9, 0.9, 0.9];  % Light blue background
 
 % Save the figure
-saveas(gcf,'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std_by_setting' + NDF + '.jpg');
+saveas(gcf,'~/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std_by_setting' + NDF + '.jpg');
 
 hold off;
 
 % Save the values themselves
-save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means' + NDF + '.mat','means');
-save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std' + NDF + '.mat','standard_deviations');
-save('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/relative_counts_predictions' + NDF + '.mat','predictedCounts');
+save('~/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_means' + NDF + '.mat','means');
+save('~/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/channel_std' + NDF + '.mat','standard_deviations');
+save('~/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/relative_counts_predictions' + NDF + '.mat','predictedCounts');
 
 % Close the serial ports with the devices if we did not simulate them
 if ~simulateSource
