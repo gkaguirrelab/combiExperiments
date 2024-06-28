@@ -44,7 +44,7 @@ end
 
 nPrimarySteps = 100;
 nSamplesPerStep = 10;
-NDF = "0x2";
+NDF = "4";
 
 % Extract some information regarding the light source that is being used to
 % calibrate the minispect

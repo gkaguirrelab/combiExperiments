@@ -1,17 +1,31 @@
 function corrected = correct_predictions(predictions,measurements)
     % Get the ratio matrix between predictions and measurements
     ratio_matrix = predictions ./ measurements;
-
-    K = mean(ratio_matrix(:)); 
-
+    
     figure 
 
-    for ii = 1:8
+    for ii = 1:9
+        K = mean(ratio_matrix(:,ii));
+        disp(predictions(:,ii)/K)
         plot(predictions(:,ii)/K,measurements(:,ii),'.-')
         hold on
     end 
 
+    % THIS WAS THE PROBLEM
+    %xlim([0, 2^16]);
 
+    axis equal; 
+    refline(1,0);
+
+    % Set the x-axis to logarithmic scale
+    set(gca, 'XScale', 'log');
+
+    % Set the y-axis to logarithmic scale
+    set(gca, 'YScale', 'log');
+
+    legend('Channel1','Channel2','Channel3',...
+           'Channel4', 'Channel5', 'Channel6', 'Channel7',...
+           'Channel8', 'CLEAR', 'Location','southeast');
 
     %plot(measurements(:,1), '--b') % Plot measurements of channel 1
     %plot(corrected(:,1), '--g') % Plot the correct predictions of channel 1
