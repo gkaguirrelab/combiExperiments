@@ -1,4 +1,8 @@
-function calibrate_minispect(NDF,cal_path,nPrimarySteps,nSamplesPerStep,reps,randomizeOrder,simulateSource,simulateDector,save_path)
+function calibrate_minispect(NDF,cal_path,nPrimarySteps,nSamplesPerStep,reps,randomizeOrder,simulateSource,simulateDetector,save_path)
+
+if(~islogical(randomizeOrder) || ~islogical(simulateSource) || ~islogical(simulateDetector))
+    error("Ensure flag arguments are of boolean/logical type");
+end 
 
 % Hard Coded Parameters for now
 simulateSource = false;
@@ -118,7 +122,7 @@ parameters.nPrimarySteps = nPrimarySteps;
 parameters.nSamplesPerStep = nSamplesPerStep; 
 parameters.reps = reps; 
 parameters.simulateSource = simulateSource;
-parameters.simulateDector = simulateDector; 
+parameters.simulateDector = simulateDetector; 
 parameters.randomizeOrder = randomizeOrder; 
 
 meta_data = struct; 
