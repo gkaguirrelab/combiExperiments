@@ -67,11 +67,11 @@ counts = nan(reps,nPrimarySteps,nChannels,nSamplesPerStep);
 % Define combiLED settings and their order
 order_map = containers.Map({true,false},{randperm(nPrimarySteps),1:nPrimarySteps});
 setting_formula = @(ii) 0.05+((ii-1)/(nPrimarySteps-1))*0.9;
-combi_settings = arrayfun(setting_formula, 1:nPrimarySteps);
+combi_settings_sorted = arrayfun(setting_formula, 1:nPrimarySteps);
 settings_order = order_map(randomizeOrder);
 
 % Finalized settings
-combi_settings = combi_settings(settings_order);
+combi_settings = combi_settings_sorted(settings_order);
 
 % Run through every combiLED setting
 for ii = 1:length(combi_settings)
@@ -115,7 +115,7 @@ MSCalData = struct;
 raw_data = struct; 
 raw_data.counts = counts; 
 raw_data.meta.settings = combi_settings; 
-raw_data.meta.settings_order = sort(combi_settings);
+raw_data.meta.settings_order = combi_settings_sorted;
 
 parameters = struct; 
 parameters.NDF = NDF;
