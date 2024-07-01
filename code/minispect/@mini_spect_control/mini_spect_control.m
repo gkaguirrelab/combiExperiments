@@ -48,7 +48,9 @@ classdef mini_spect_control < handle
             % Open the serial port
             obj.serialOpen_minispect();
 
-            obj.serial_number = obj.read_minispect('S','S');
+            serial_number_output = obj.read_minispect('S','S');
+            
+            obj.serial_number = serial_number_output(end);
 
         end
 
@@ -64,6 +66,9 @@ classdef mini_spect_control < handle
 
         % Result parsing related 
         channel_values = parse_channel_reading(obj, reading)
+
+        % Calibration related 
+        calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,reps,randomizeOrder,save_path)
 
 
     end

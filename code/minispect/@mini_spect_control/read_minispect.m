@@ -1,6 +1,6 @@
 function result = read_minispect(obj, chip, mode)
     % Initialize empty result for the lines read
-    result = {}; 
+    result = []; 
 
     % Send the message to read a specific piece of data 
     % from the minispect's specific chip 
@@ -19,15 +19,14 @@ function result = read_minispect(obj, chip, mode)
 
         % Clean them up by removing white space and terminator, 
         % and store them in result. 
-        result{i} = strtrim(line);
+        result = [result, strtrim(line)];
         
         i = i + 1;  
         
     end 
-
     
     % Throw an error if the minispect reported an error
-    if strcmp(result{1}, "-1")
+    if strcmp(result(1), "-1")
         error('minispect read failed.');
     end 
     

@@ -1,4 +1,14 @@
-function corrected = correct_predictions(predictions,measurements)
+function corrected = fit_mscal(measurement_path)
+    MSCalData = load(measurement_path);
+
+    predictions = null; 
+    measurements = MSCalData.raw.counts;
+
+
+    % UP TO HERE IN REFACTOR
+    return 
+    
+    
     % Get the ratio matrix between predictions and measurements
     ratio_matrix = predictions ./ measurements;
     
