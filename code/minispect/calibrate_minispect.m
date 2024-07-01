@@ -131,7 +131,7 @@ MSCalData.raw = raw_data;
 MSCalData.meta = meta_data; 
 
 % Save the calibration results
-save('./test.mat','MSCalData');
+save(save_path,'MSCalData');
 
 % Close the serial ports with the devices if we did not simulate them
 if ~simulateSource
