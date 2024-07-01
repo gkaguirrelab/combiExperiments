@@ -114,7 +114,8 @@ MSCalData = struct;
 
 raw_data = struct; 
 raw_data.counts = counts; 
-raw_data.meta = combi_settings; 
+raw_data.meta.settings = combi_settings; 
+raw_data.meta.settings_order = sort(combi_settings);
 
 parameters = struct; 
 parameters.NDF = NDF;
