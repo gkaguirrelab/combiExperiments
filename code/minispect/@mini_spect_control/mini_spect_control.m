@@ -69,6 +69,7 @@ classdef mini_spect_control < handle
 
         % Calibration related 
         calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,reps,randomizeOrder,save_path)
+        fit_calibration(obj,MSCalDataFiles)
 
 
     end
