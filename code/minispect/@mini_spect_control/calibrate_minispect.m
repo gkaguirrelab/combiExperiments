@@ -1,5 +1,6 @@
 function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,reps,randomizeOrder,save_path)
-% Type-check parameters
+
+    % Type-check parameters
 if(~islogical(randomizeOrder))
     error("Ensure randomize order flag argument is of boolean/logical type");
 end
@@ -31,8 +32,6 @@ nChannels = obj.nChannels;
 % Get the device's serial number
 deviceSerialNumber = obj.serial_number;
 
-disp(deviceSerialNumber);
-
 % Initialize combiLED light source object
 CL = CombiLEDcontrol();
 
@@ -63,9 +62,10 @@ MSCalData.meta.cal = cal_path;
 MSCalData.meta.params = parameters;
 MSCalData.meta.date = datetime('now');
 
-MSCalData.raw.counts = nan(reps,nPrimarySteps,nChannels,nSamplesPerStep);
+MSCalData.raw.counts = nan(reps,nSamplesPerStep,nPrimarySteps,nChannels);
 MSCalData.raw.meta.settings = nan(reps,nPrimarySteps);
 MSCalData.raw.settings_sorted = nan(reps,nPrimarySteps);
+MSCalData.raw.secsPerMeasure = nan(reps,nPrimarySteps);
 
 
 % Perform desired repetitions of each setting
@@ -73,7 +73,7 @@ for jj = 1:reps
     fprintf("Repetition: %d / %d\n", jj, reps);
 
     % Initialize holder for measurements
-    counts = nan(nPrimarySteps,nChannels,nSamplesPerStep);
+    counts = nan(nSamplesPerStep,nPrimarySteps,nChannels);
 
     % Define combiLED settings and their order
     order_map = containers.Map({true,false},{randperm(nPrimarySteps),1:nPrimarySteps});
@@ -97,13 +97,23 @@ for jj = 1:reps
         % Set primaries with combiLED settings
         CL.setPrimaries(CL_settings);
 
+
+        tic; 
+
         % Record N samples from the minispect
         for kk = 1:nSamplesPerStep
             fprintf("Sample: %d / %d\n", kk, nSamplesPerStep);
             channel_values = obj.read_minispect(chip,mode);
 
-            counts(ii,:,kk) = channel_values;
+            counts(kk,ii,:) = channel_values;
         end
+
+        elapsed_time = toc; 
+
+        time_per_measure = elapsed_time / nSamplesPerStep; 
+
+        MSCalData.raw.secsPerMeasure(jj,ii) = time_per_measure;
+
     end
 
     % Make sure all data was read properly
@@ -113,8 +123,7 @@ for jj = 1:reps
 
     % Save raw counts and settings
     MSCalData.raw.counts(jj,:,:,:) = counts;
-    MSCalData.raw.meta.settings(jj,:) = combi_settings;
-    MSCalData.raw.settings_sorted(jj,:) = combi_settings_sorted;
+    MSCalData.raw.settings(jj,:) = combi_settings;
 
 end % reps
 
