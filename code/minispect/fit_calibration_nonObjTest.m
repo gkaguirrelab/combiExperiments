@@ -94,8 +94,6 @@ for ii = 1:numel(MSCalDataFiles)
 
         % Get the sorted setting values for this rep
         %% NEED TO MAKE THAT A CELL EXTRACTION ONCE THE CAL FILES ARE UPDATED
-
-        %% Also, we should save the sorted settings
         settings_sorted = sort(MSCalData.raw.settings(jj,:));
 
         % Get the background (right now we assume unity vector)
