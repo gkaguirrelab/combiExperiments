@@ -55,6 +55,7 @@ parameters.reps = reps;
 parameters.randomizeOrder = randomizeOrder;
 
 MSCalData.meta.serialNumber = deviceSerialNumber;
+MSCalData.meta.nChannels = nChannels;
 MSCalData.meta.source_calpath = cal_path;
 MSCalData.meta.source_cal = cal; 
 MSCalData.meta.params = parameters;
@@ -63,7 +64,6 @@ MSCalData.meta.date = datetime('now');
 MSCalData.raw.counts = nan(reps,nSamplesPerStep,nPrimarySteps,nChannels);
 MSCalData.raw.settings = nan(reps,nPrimarySteps);
 MSCalData.raw.secsPerMeasure = nan(reps,nPrimarySteps);
-
 
 % Perform desired repetitions of each setting
 for jj = 1:reps
@@ -85,6 +85,10 @@ for jj = 1:reps
     for ii = 1:length(combi_settings)
         fprintf("Primary Step: %d / %d\n", ii, nPrimarySteps);
 
+        % Where the values from this timestep should be 
+        % inserted into the count matrix
+        sorted_index = settings_order(ii);
+
         % Get the current combiLED setting
         primary_setting = combi_settings(ii);
 
@@ -94,7 +98,6 @@ for jj = 1:reps
         % Set primaries with combiLED settings
         CL.setPrimaries(CL_settings);
 
-
         tic; 
 
         % Record N samples from the minispect
@@ -102,14 +105,14 @@ for jj = 1:reps
             fprintf("Sample: %d / %d\n", kk, nSamplesPerStep);
             channel_values = obj.read_minispect(chip,mode);
 
-            counts(kk,ii,:) = channel_values;
+            counts(kk,sorted_index,:) = channel_values;
         end
 
         elapsed_time = toc; 
 
         time_per_measure = elapsed_time / nSamplesPerStep; 
 
-        MSCalData.raw.secsPerMeasure(jj,ii) = time_per_measure;
+        MSCalData.raw.secsPerMeasure(jj,sorted_index) = time_per_measure;
 
     end
 
@@ -125,7 +128,6 @@ for jj = 1:reps
 end % reps
 
 % Save the calibration results
-
 MS_cal_dir = fullfile(save_path,deviceSerialNumber);
 
 if(~isfolder(MS_cal_dir))

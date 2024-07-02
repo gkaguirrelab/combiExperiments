@@ -1,5 +1,5 @@
 function fit_calibration(obj,MSCalDataFiles)
-    
+    figure; 
     % For each NDF calibration 
     for ii = 1:numel(MSCalDataFiles)
         % Load each NDF's MSCalFile
@@ -29,11 +29,11 @@ function fit_calibration(obj,MSCalDataFiles)
         end
 
         sphereSPDs = nan(MSCalData.meta.params.nPrimarySteps,sourceS(3));
-        predictedCounts = nan(MSCalData.meta.params.nPrimarySteps,10); % this should be nChannels
-        measurements = MSCalData.raw.counts;
+        predictedCounts = nan(MSCalData.meta.params.nPrimarySteps,MSCalData.meta.nChannels); % this should be nChannels
+        measuredCounts = MSCalData.raw.counts;
 
         % Iterate over the settings 
-        for jj = 1:size(MSCalData.raw.settings)
+        for jj = 1:size(MSCalData.raw.settings,2)
             CL_settings = ones(1,8) * MSCalData.raw.settings(jj);
 
             % Derive the sphereSPD for this step in units of W/m2/sr/nm. We divide
@@ -42,34 +42,53 @@ function fit_calibration(obj,MSCalDataFiles)
 
             %disp(size((sourceP_abs*CL_settings')/sourceS(2)));
                 
-            sphereSPDs(ii,:) = (sourceP_abs*CL_settings')/sourceS(2);
+            sphereSPDs(jj,:) = (sourceP_abs*CL_settings')/sourceS(2);
 
             % Derive the prediction of the relative counts based upon the sphereSPD
             % and the minispectP_rel.
-            predictedCounts(ii,:) = sphereSPDs(ii,:)*detectorP_rel*(1/10^(NDF-0.2));
-        
+            predictedCounts(jj,:) = sphereSPDs(jj,:)*detectorP_rel*(1/10^(NDF-0.2));
         end
+        
+                                        % just use avg of all samples per channels for 1st rep for now 
+        values = squeeze(mean(measuredCounts,2));
+        values = squeeze(mean(values,1));
+        
 
-            % THESE SHAPES ARE NOT GOING TO BE EQUAL 
-        
-        disp(size(measurements(1,:,:,:)));
-        disp(size(mean(measurements(1,:,:,:))));
-        
+
         return 
-        ratio_matrix = predictedCounts ./ sphereSPDs; 
-        
-        % Go over all of the individual channels
-        for jj = 1:size(measurements,4)
+        ratio_matrix = predictedCounts ./ values; 
 
+        % Go over all of the individual channels    % change to nChannels here
+        for jj = 1:MSCalData.meta.nChannels
             % Find the mean ratio between the predicted counts and the measurements 
             % (as there is slight variation in the numbers)
             K = mean(ratio_matrix(:,ii));
-            
+
             % Fit the measured values to the predicted values
-            fitted = measurements(:,ii)*K; 
+            fitted = values(:,ii)*K; 
+
+            % Plot the fitted against the measured
+            loglog(fitted,values(:,ii))
+            hold on; 
+        
         end
     end
+    axis equal; 
+        
+    legend();
+    xlabel('Fitted');
+    ylabel('Measured');
+    title('Ratio of Channel Measurements by Predictions');
+    
+    xlim([0, 2^16]);
 
+    % Get current axes handle
+    ax = gca;
+
+    % Change the background color of the axes
+    ax.Color = [0.9, 0.9, 0.9];  % Light blue background
+
+    hold off; 
    
 
 
