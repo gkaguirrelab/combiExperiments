@@ -45,12 +45,9 @@ sourceS = cal.rawData.S;
 sourceP_abs = cal.processedData.P_device;
 nSourcePrimaries = cal.describe.displayPrimariesNum;
 
-
-
 % Set up data struct
 MSCalData = struct;
 
-parameters = struct;
 parameters.NDF = NDF;
 parameters.nPrimarySteps = nPrimarySteps;
 parameters.nSamplesPerStep = nSamplesPerStep;
@@ -58,13 +55,13 @@ parameters.reps = reps;
 parameters.randomizeOrder = randomizeOrder;
 
 MSCalData.meta.serialNumber = deviceSerialNumber;
-MSCalData.meta.cal = cal_path;
+MSCalData.meta.source_calpath = cal_path;
+MSCalData.meta.source_cal = cal; 
 MSCalData.meta.params = parameters;
 MSCalData.meta.date = datetime('now');
 
 MSCalData.raw.counts = nan(reps,nSamplesPerStep,nPrimarySteps,nChannels);
-MSCalData.raw.meta.settings = nan(reps,nPrimarySteps);
-MSCalData.raw.settings_sorted = nan(reps,nPrimarySteps);
+MSCalData.raw.settings = nan(reps,nPrimarySteps);
 MSCalData.raw.secsPerMeasure = nan(reps,nPrimarySteps);
 
 
