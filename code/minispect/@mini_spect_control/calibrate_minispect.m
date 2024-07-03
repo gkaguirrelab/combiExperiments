@@ -67,8 +67,8 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,nRep
     MSCalData.meta.date = datetime('now');
 
     MSCalData.raw.counts = {};
-    MSCalData.raw.background_scalars = nan(nReps,nPrimarySteps);
-    MSCalData.raw.secsPerMeasure = nan(nReps,nPrimarySteps);
+    MSCalData.raw.background_scalars = {};
+    MSCalData.raw.secsPerMeasure = {};
     MSCalData.raw.background = background;
 
     % Perform desired repetitions of each setting
@@ -77,6 +77,7 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,nRep
 
         % Initialize holder for measurements
         counts = nan(nSamplesPerStep,nPrimarySteps,nDetectorChannels);
+        secsPerMeasure = nan(nPrimarySteps);
 
         % Define combiLED setting scalars and their order
         order_map = containers.Map({true,false},{randperm(nPrimarySteps),1:nPrimarySteps});
@@ -120,7 +121,7 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,nRep
 
             time_per_measure = elapsed_time / nSamplesPerStep; 
 
-            MSCalData.raw.secsPerMeasure(jj,sorted_index) = time_per_measure;
+            secsPerMeasure(sorted_index) = time_per_measure;
 
         end
 
@@ -129,9 +130,11 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,nRep
             error('NaNs present in counts');
         end
 
-        % Save raw counts and settings
+        % Save per rep data 
         MSCalData.raw.counts{jj} = counts;
-        MSCalData.raw.background_scalars(jj,:) = background_scalars;
+        MSCalData.raw.secsPerMeasure{jj} = secsPerMeasure;
+
+        MSCalData.raw.background_scalars{jj} = background_scalars;
 
     end % reps
 

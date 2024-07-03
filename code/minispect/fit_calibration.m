@@ -87,7 +87,7 @@ for ii = 1:numel(MSCalDataFiles)
 
         % Get the sorted setting values for this rep
         %% NEED TO MAKE THAT A CELL EXTRACTION ONCE THE CAL FILES ARE UPDATED
-        settings_sorted = sort(MSCalData.raw.background_scalars(jj,:));
+        settings_sorted = sort(MSCalData.raw.background_scalars{jj});
 
         % Get the background
         background = MSCalData.raw.background;
