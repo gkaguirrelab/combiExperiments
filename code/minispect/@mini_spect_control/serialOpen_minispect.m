@@ -1,4 +1,23 @@
 function serialOpen_minispect(obj) 
+% Opens the serial port connection with the minispect.  
+%
+% Syntax:
+%   MS.serialOpen_minispect();
+%
+% Description:
+%   Opens the serial port connection with the minispect.  
+%
+% Inputs:
+%   NONE                
+%              
+% Outputs:
+%   NONE       
+%
+% Examples:
+%{
+    MS = mini_spect_control();
+    MS.serialOpen_minispect(); 
+%}
 
     % Get the list of available serial connections
     portList = serialportlist("available");

@@ -78,7 +78,7 @@ classdef mini_spect_control < handle
         channel_values = parse_channel_reading(obj, reading)
 
         % Calibration related 
-        calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,reps,randomizeOrder,save_path)
+        calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,nSamplesPerStep,reps,randomizeOrder,save_path)
 
 
     end

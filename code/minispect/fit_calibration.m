@@ -1,4 +1,26 @@
 function fit_calibration(MSCalDataFiles)
+% Fits measured counts from the minispect to predicted counts
+%
+% Syntax:
+%   fit_calibration(MSCalDataFiles)
+%
+% Description:
+%   Given a cell array of paths to MSCalData files 
+%   over different NDF levels, load them in 
+%   and fit the measured counts to predicted 
+%   counts in those conditions. Graphs the results. 
+%
+% Inputs:
+%   MSCalDataFiles        - Cell Array. Array of paths to MSCalData files
+%
+% Outputs:
+%   NONE                  
+%
+% Examples:
+%{
+    MSCalDataFiles = {'./calibration1.mat','./calibration2.mat'};
+    fit_calibration(MSCalDataFiles);
+%}
 
 % Example call
 %{
@@ -14,15 +36,6 @@ fit_calibration(MSCalDataFiles)
 
 
 referenceNDF = 0.2;
-% We need to add to the calibration code the ability to specify a
-% "background" for the source device. Currently, our code implicitly
-% assumes a column background of [1;1;1;1;1;1;1;1]. We might use other
-% backgrounds in the future (e.g., to simulate the SPD of daylight). We
-% The particular source device settings that we use are obtained by
-% multiplying the setting value [0.05 --> 0.95] by the background.
-% The background will be the same across reps, so it can be stored as a
-% vector in:
-% MSCalData.raw.background
 
 % Load the first MSCalDataFile, get the S, as we need this to resample the
 % detector spectral sensitivity functions
@@ -49,8 +62,6 @@ for ii = 1:numel(MSCalDataFiles)
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
 
     % Extract NDF and the source calibration struct
-    %% This is a kludge to be replace by creating a different
-    %% source cal for each NDF filter level.
     NDF = MSCalData.meta.params.NDF;
     source_cal = MSCalData.meta.source_cal;
 
@@ -65,16 +76,11 @@ for ii = 1:numel(MSCalDataFiles)
     % Extract some params from the MSCalData.meta.params
     nPrimarySteps = MSCalData.meta.params.nPrimarySteps;
     nSamplesPerStep = MSCalData.meta.params.nSamplesPerStep;
-    %% RENAME THE FIELD to nREPS V 
     nReps = MSCalData.meta.params.nReps;
     randomizeOrder = MSCalData.meta.params.randomizeOrder;
-
-    %% MIGHT WANT TO CHANGE THE MS SPECT CALIBRATION CODE TO NAME THIS
-    %% FIELD nDetectorChannels V
     nDetectorChannels = MSCalData.meta.nDetectorChannels;
 
     % Iterate over repetitions
-    %% CHANGE THE MSCALDATA FILE TO SAVE REPS AS ELEMENTS IN A CELL ARRAY V
     for jj = 1:nReps
 
         % Grab the minispect counts from this rep
@@ -86,8 +92,7 @@ for ii = 1:numel(MSCalDataFiles)
         detectorCounts = squeeze(mean(detectorCounts,1));
 
         % Get the sorted setting values for this rep
-        %% NEED TO MAKE THAT A CELL EXTRACTION ONCE THE CAL FILES ARE UPDATED
-        settings_sorted = sort(MSCalData.raw.background_scalars{jj});
+        settings_sorted = sort(MSCalData.raw.settings_scalars{jj});
 
         % Get the background
         background = MSCalData.raw.background;
@@ -98,7 +103,9 @@ for ii = 1:numel(MSCalDataFiles)
 
         % Iterate over the source primary setting values
         for kk = 1:nPrimarySteps
-
+            
+            % Get the source settings by multiplying background 
+            % by the scalar value at primaryStep kk
             source_settings = background * settings_sorted(kk);
 
             % Derive the sphereSPD for this step in units of W/m2/sr/nm. We divide

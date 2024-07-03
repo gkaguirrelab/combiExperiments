@@ -1,5 +1,26 @@
 function channel_values = parse_channel_reading(obj, reading)
-    channel_values = zeros(1,10);
+% Parses the lines read from the minispect in the channels mode to return only numeric values 
+%
+% Syntax:
+%   channel_values = MS.parse_channel_reading(reading)
+%
+% Description:
+%   Parses the lines read from the minispect in the channels mode to return only numeric values 
+%
+% Inputs:
+%   reading                - Array. Represents the lines read from the minispect
+%                           to parse.               
+% Outputs:
+%   channel_values         - Array. Represents the numeric channel values in order
+%
+% Examples:
+%{
+    MS = mini_spect_control();
+    reading = ['Channel1 : 54','Channel2 : 26'];
+    channel_values = MS.parse_channel_reading(reading);
+%}
+    
+    channel_values = nan(1,10);
 
     debugging_output_offset = 0; 
     for i = 1:size(reading,2)
