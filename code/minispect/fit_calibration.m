@@ -48,13 +48,6 @@ for ii = 1:numel(MSCalDataFiles)
     % Load this MSCalFile
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
 
-    %% KLUDGE TO CONVERT THE PILOT MSCALDATAFILES into cell arrays
-    %% DELETE ME AS SOON AS YOU CAN     V
-    c1 = squeeze(MSCalData.raw.counts(1,:,:,:));
-    c2 = squeeze(MSCalData.raw.counts(2,:,:,:));
-    c3 = squeeze(MSCalData.raw.counts(3,:,:,:));
-    MSCalData.raw.counts = {c1,c2,c3};
-
     % Extract NDF and the source calibration struct
     %% This is a kludge to be replace by creating a different
     %% source cal for each NDF filter level.

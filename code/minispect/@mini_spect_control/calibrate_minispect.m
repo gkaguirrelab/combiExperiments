@@ -25,7 +25,7 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,nRep
     cal = cals{end};
 
     % Retrieve background light setting 
-    background = calcSettingsForD65(calc);
+    background = calcSettingsForD65(cal);
 
     % Initialize the chip we want and the mode for it to be in
     chip = obj.chip_name_map("AMS7341");
@@ -67,8 +67,8 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,nRep
     MSCalData.meta.date = datetime('now');
 
     MSCalData.raw.counts = {};
-    MSCalData.raw.background_scalars = nan(reps,nPrimarySteps);
-    MSCalData.raw.secsPerMeasure = nan(reps,nPrimarySteps);
+    MSCalData.raw.background_scalars = nan(nReps,nPrimarySteps);
+    MSCalData.raw.secsPerMeasure = nan(nReps,nPrimarySteps);
     MSCalData.raw.background = background;
 
     % Perform desired repetitions of each setting
@@ -88,7 +88,7 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,nRep
         background_scalars = setting_scalars_sorted(settings_order);
 
         % Run through every combiLED setting
-        for ii = 1:length(combi_settings)
+        for ii = 1:length(background_scalars)
             fprintf("Primary Step: %d / %d\n", ii, nPrimarySteps);
 
             % Where the values from this timestep should be 
