@@ -14,7 +14,7 @@ function backgroundSettings = calcSettingsForD65(cal,plotResultsFlag)
 %                           array is passed, then the last element of the
 %                           array will be used.
 %   plotResultsFlag       - Logical. If set to true, a plot of the best fit
-%                           spd will be shown.
+%                           spd will be shown. Set to false if not defined.
 %
 % Outputs:
 %   backgroundSettings    - 1xn float vector. The settings values [0-1] for
@@ -51,7 +51,7 @@ D65S = WlsToS(D65_SPD_T.wls);
 D65P = D65_SPD_T.spd;
 D65P = D65P/max(D65P);
 
-% Reformat that light source SPDs to be in the space of the D65 SPD
+% Reformat the light source SPDs to be in the space of the D65 SPD
 sourceP_resamp = [];
 for ii = 1:nPrimaries
     sourceP_resamp(:,ii) = interp1(SToWls(sourceS),sourceP(:,ii),SToWls(D65S));
@@ -60,7 +60,7 @@ end
 % Find those indices for which the sourceP is defined
 goodIdx = ~isnan(sourceP_resamp(:,1));
 
-% Project the D65P vector on to the source primaries
+% Project the D65 spd vector on to the source primaries
 b = sourceP_resamp(goodIdx,:)\D65P(goodIdx);
 
 % Scale the resulting beta values to be in the unit range
