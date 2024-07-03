@@ -1,4 +1,9 @@
 function result = read_minispect(obj, chip, mode)
+    % Ensure we have a real device connected
+    if(obj.simulate)
+        error('Cannot read. Device in simulation mode.');
+    end
+
     % Initialize empty result for the lines read
     result = []; 
 

@@ -20,7 +20,6 @@ classdef mini_spect_control < handle
         serial_number 
         nChannels = 10
         serialObj
-        deviceState
 
     end
 
@@ -29,6 +28,9 @@ classdef mini_spect_control < handle
         
         % Verbosity
         verbose = false;
+
+        % Simulate or open actual device 
+        simulate = false; 
 
     end
 
@@ -40,10 +42,18 @@ classdef mini_spect_control < handle
             % input parser
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('verbose',false,@islogical);
+            p.addParameter('simulate',false,@islogical);
             p.parse(varargin{:})
 
             % Store the verbosity
             obj.verbose = p.Results.verbose;
+
+            % Store operation mode 
+            obj.simulate = p.Results.simulate; 
+
+            if obj.simulate
+                return 
+            end
 
             % Open the serial port
             obj.serialOpen_minispect();
@@ -69,7 +79,6 @@ classdef mini_spect_control < handle
 
         % Calibration related 
         calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,reps,randomizeOrder,save_path)
-        fit_calibration(obj,MSCalDataFiles)
 
 
     end

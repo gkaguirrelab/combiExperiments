@@ -1,4 +1,4 @@
-function fit_calibration_nonObjTest(MSCalDataFiles)
+function fit_calibration(MSCalDataFiles)
 
 % Example call
 %{
@@ -22,7 +22,7 @@ referenceNDF = 0.2;
 % multiplying the setting value [0.05 --> 0.95] by the background.
 % The background will be the same across reps, so it can be stored as a
 % vector in:
-% MSCalData.raw.background
+% MSCalData.raw.background V 
 
 % Load the first MSCalDataFile, get the S, as we need this to resample the
 % detector spectral sensitivity functions
@@ -49,7 +49,7 @@ for ii = 1:numel(MSCalDataFiles)
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
 
     %% KLUDGE TO CONVERT THE PILOT MSCALDATAFILES into cell arrays
-    %% DELETE ME AS SOON AS YOU CAN
+    %% DELETE ME AS SOON AS YOU CAN     V
     c1 = squeeze(MSCalData.raw.counts(1,:,:,:));
     c2 = squeeze(MSCalData.raw.counts(2,:,:,:));
     c3 = squeeze(MSCalData.raw.counts(3,:,:,:));
@@ -72,16 +72,16 @@ for ii = 1:numel(MSCalDataFiles)
     % Extract some params from the MSCalData.meta.params
     nPrimarySteps = MSCalData.meta.params.nPrimarySteps;
     nSamplesPerStep = MSCalData.meta.params.nSamplesPerStep;
-    %% RENAME THE FIELD to nREPS
-    nReps = MSCalData.meta.params.reps;
+    %% RENAME THE FIELD to nREPS V 
+    nReps = MSCalData.meta.params.nReps;
     randomizeOrder = MSCalData.meta.params.randomizeOrder;
 
     %% MIGHT WANT TO CHANGE THE MS SPECT CALIBRATION CODE TO NAME THIS
-    %% FIELD nDetectorChannels
-    nDetectorChannels = MSCalData.meta.nChannels;
+    %% FIELD nDetectorChannels V
+    nDetectorChannels = MSCalData.meta.nDetectorChannels;
 
     % Iterate over repetitions
-    %% CHANGE THE MSCALDATA FILE TO SAVE REPS AS ELEMENTS IN A CELL ARRAY
+    %% CHANGE THE MSCALDATA FILE TO SAVE REPS AS ELEMENTS IN A CELL ARRAY V
     for jj = 1:nReps
 
         % Grab the minispect counts from this rep
@@ -94,10 +94,10 @@ for ii = 1:numel(MSCalDataFiles)
 
         % Get the sorted setting values for this rep
         %% NEED TO MAKE THAT A CELL EXTRACTION ONCE THE CAL FILES ARE UPDATED
-        settings_sorted = sort(MSCalData.raw.settings(jj,:));
+        settings_sorted = sort(MSCalData.raw.background_scalars(jj,:));
 
-        % Get the background (right now we assume unity vector)
-        background = ones(1,8);
+        % Get the background
+        background = MSCalData.raw.background;
 
         % Initialize some variables to hold loop results
         sphereSPDs = nan(nPrimarySteps,sourceS(3));

@@ -23,14 +23,12 @@ function serialOpen_minispect(obj)
     % Use CR and LF as a terminator
     configureTerminator(obj.serialObj,"CR/LF");
 
-    % Set the initial device state
-    obj.deviceState = 'RUN';
-
-    % Need to read and thus clear the first line of command output
-    %readline(obj.serialObj);
-
     % Announce it
     if obj.verbose
         fprintf('Serial port open\n');
     end
+
+    % End simulation mode since we connected to a real device
+    obj.simulate = false; 
+
 end 

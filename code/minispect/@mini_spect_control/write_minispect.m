@@ -1,6 +1,11 @@
 function result = write_minispect(obj, chip, mode, write_val)
+    % Ensure we have a real device connected
+    if(obj.simulate) 
+        error('Cannot write. Device in simulation mode.');
+    end
+    
     % Initialize empty result for the lines read
-    result = {}
+    result = {};
 
     % Send the message to write a specific piece of data 
     % to the minispect's specific chip 
@@ -19,7 +24,7 @@ function result = write_minispect(obj, chip, mode, write_val)
  
         % Clean them up by removing white space and terminator, 
         % and store them in result. 
-        result{i} = strtrim(line)
+        result{i} = strtrim(line);
          
         i = i + 1;
          
