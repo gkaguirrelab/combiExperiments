@@ -9,7 +9,7 @@ MSCalDataFiles = {...
 'calibration1.mat',...
 'calibration0x2.mat'};
 
-fit_calibration_nonObjTest(MSCalDataFiles)
+fit_calibration(MSCalDataFiles)
 %}
 
 
@@ -22,7 +22,7 @@ referenceNDF = 0.2;
 % multiplying the setting value [0.05 --> 0.95] by the background.
 % The background will be the same across reps, so it can be stored as a
 % vector in:
-% MSCalData.raw.background V 
+% MSCalData.raw.background
 
 % Load the first MSCalDataFile, get the S, as we need this to resample the
 % detector spectral sensitivity functions
