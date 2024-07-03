@@ -13,6 +13,10 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,nSamplesPerStep,nRep
     nPrimarySteps = 10;
     nSamplesPerStep = 10;
     nReps = 3;
+    settingScalarRange = [0.15,0.95];
+
+    % Define the settings_scalars vector
+    settings_scalars = linspace(settingScalarRange(1),settingScalarRange(2),nPrimarySteps);
 
     % Which Cal file to use (currently hard-coded)
     calDir = fullfile(tbLocateProjectSilent('combiExperiments'),'cal');
