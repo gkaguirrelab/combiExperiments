@@ -136,7 +136,7 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
     
     // Read all channels
     case 'C':
-        Serial.println("Read the TS luminosity");
+        Serial.println("Read TS channels");
         
         ir = lum >> 16;
         full = lum & 0xFFFF;
@@ -144,7 +144,7 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
         TSL2591_ir = ir;
 
         Serial.print("Channel 0 : "); Serial.println(full);
-        Serial.println("Channel 1 : "); Serial.println(ir);
+        Serial.print("Channel 1 : "); Serial.println(ir);
 
         // Append End of Message terminator
         Serial.println("!");

@@ -54,10 +54,10 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,n
     nPrimarySteps = 10;
     nSamplesPerStep = 10;
     nReps = 3;
-    settingScalarRange = [0.15,0.95];
+    settingScalarRange = [0.05,0.95];
 
     % Define the settings_scalars vector
-    settings_scalars_sorted = linspace(settingScalarRange(1),settingScalarRange(2),nPrimarySteps);
+    background_scalars_sorted = linspace(settingScalarRange(1),settingScalarRange(2),nPrimarySteps);
 
     % Which Cal file to use (currently hard-coded)
     calDir = fullfile(tbLocateProjectSilent('combiExperiments'),'cal');
@@ -72,15 +72,10 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,n
     % Retrieve background light setting 
     background = calcSettingsForD65(cal);
 
-    % Initialize the chip we want and the mode for it to be in
-    chip = obj.chip_name_map("AMS7341");
-    chip_functions = obj.chip_functions_map(chip);
-    mode = chip_functions('Channels');
+    % Select the chips we are going to calibrate
+    chips = ["AMS7341","TSL2591"];
 
-    % Get the number of channels it can observe
-    nDetectorChannels = obj.nChannels;
-
-    % Get the device's serial number
+    % Get the MiniSpect device's serial number
     deviceSerialNumber = obj.serial_number;
 
     % Initialize combiLED light source object
@@ -105,81 +100,112 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,n
     parameters.randomizeOrder = randomizeOrder;
 
     MSCalData.meta.serialNumber = deviceSerialNumber;
-    MSCalData.meta.nDetectorChannels = nDetectorChannels;
     MSCalData.meta.source_calpath = cal_path;
     MSCalData.meta.source_cal = cal; 
     MSCalData.meta.params = parameters;
     MSCalData.meta.date = datetime('now');
 
-    MSCalData.raw.counts = {};
-    MSCalData.raw.background_scalars = {};
-    MSCalData.raw.secsPerMeasure = {};
+    ASChip.meta.nDetectorChannels = obj.chip_nChannels_map('A');
+    ASChip.raw.counts = {};
+    ASChip.raw.secsPerMeasure = {};
+    
+    TSChip.meta.nDetectorChannels = obj.chip_nChannels_map('T');
+    TSChip.raw.counts = {};
+    TSChip.raw.secsPerMeasure = {};
+    
     MSCalData.raw.background = background;
+    MSCalData.raw.background_scalars = {};
+
+    % Construct a shorthand map to both chip's struct by their CPP level name
+    chip_struct_map = containers.Map({'A','T'},{ASChip,TSChip});
 
     % Perform desired repetitions of each setting
-    for jj = 1:nReps
-        fprintf("Repetition: %d / %d\n", jj, nReps);
-
-        % Initialize holder for measurements
-        counts = nan(nSamplesPerStep,nPrimarySteps,nDetectorChannels);
-        secsPerMeasure = nan(nPrimarySteps);
-
-        % Define combiLED setting scalars and their order
+    for ii = 1:nReps
+        % Define combiLED setting scalars and their order for this repetition
         order_map = containers.Map({true,false},{randperm(nPrimarySteps),1:nPrimarySteps});
-        settings_order = order_map(randomizeOrder);
+        background_scalars_order = order_map(randomizeOrder);
 
         % Finalized settings
-        settings_scalars = settings_scalars_sorted(settings_order);
+        background_scalars = background_scalars_sorted(background_scalars_order);
 
-        % Run through every combiLED setting
-        for ii = 1:length(nPrimarySteps)
-            fprintf("Primary Step: %d / %d\n", ii, nPrimarySteps);
+        % Save the settings for this repetition
+        MSCalData.raw.background_scalars{ii} = background_scalars;
+        
+        % For every chip we want to calibrate
+        for cc = 1:size(chips,2)
+            fprintf("Chip: %s | Repetition: %d / %d\n", chips(cc), ii, nReps);
+            
+            % Get the chip, its available functions, and the 
+            % channel-reading function specifically
+            chip = obj.chip_name_map(chips(cc));
+            chip_functions = obj.chip_functions_map(chip);
+            mode = chip_functions('Channels');
+            
+            % Retrieve the number of channels the chip can measure
+            nDetectorChannels = obj.chip_nChannels_map(chip);
+            
+            % Initialize holder for measurements
+            counts = nan(nSamplesPerStep,nPrimarySteps,nDetectorChannels);
+            secsPerMeasure = nan(1,nPrimarySteps);
 
-            % Where the values from this timestep should be 
-            % inserted into the count matrix
-            sorted_index = settings_order(ii);
+            % Run through every combiLED setting
+            for jj = 1:nPrimarySteps
+                fprintf("Primary Step: %d / %d\n", jj, nPrimarySteps);
 
-            % Get the current combiLED setting
-            primary_setting = settings_scalars(ii);
+                % Where the values from this timestep should be 
+                % inserted into the count matrix
+                sorted_index = background_scalars_order(jj);
 
-            % Set the combiLED settings
-            CL_settings = primary_setting * background;
+                % Get the current combiLED setting
+                primary_setting = background_scalars(jj);
 
-            % Set primaries with combiLED settings
-            CL.setPrimaries(CL_settings);
+                % Set the combiLED settings
+                CL_settings = primary_setting * background;
 
-            tic; 
+                % Set primaries with combiLED settings
+                CL.setPrimaries(CL_settings);
 
-            % Record N samples from the minispect
-            for kk = 1:nSamplesPerStep
-                fprintf("Sample: %d / %d\n", kk, nSamplesPerStep);
-                channel_values = obj.read_minispect(chip,mode);
+                tic; 
 
-                counts(kk,sorted_index,:) = channel_values;
+                % Record N samples from the minispect
+                for kk = 1:nSamplesPerStep
+                    fprintf("Sample: %d / %d | Chip: %s \n", kk, nSamplesPerStep,chips(cc));
+                    channel_values = obj.read_minispect(chip,mode);
+        
+                    counts(kk,sorted_index,:) = channel_values;
+                end
+
+                % Find total elapsed time and calculate 
+                % time per measurement
+                elapsed_time = toc; 
+
+                time_per_measure = elapsed_time / nSamplesPerStep; 
+
+                secsPerMeasure(1,sorted_index) = time_per_measure;
+
             end
 
-            % Find total elapsed time and calculate 
-            % time per measurement
-            elapsed_time = toc; 
+            % Make sure all data was read properly
+            if(any(isnan(counts)))
+                error('NaNs present in counts');
+            end
 
-            time_per_measure = elapsed_time / nSamplesPerStep; 
+            % Retrieve the struct for a given chip
+            chip_struct = chip_struct_map(chip);
 
-            secsPerMeasure(sorted_index) = time_per_measure;
+            % Save per rep data for a given chip
+            chip_struct.raw.counts{ii} = counts;
+            chip_struct.raw.secsPerMeasure{ii} = secsPerMeasure;
+            
+            % Need to reassign because we are returned a copy, not a reference to the original struct
+            chip_struct_map(chip) = chip_struct;
 
         end
-
-        % Make sure all data was read properly
-        if(any(isnan(counts)))
-            error('NaNs present in counts');
-        end
-
-        % Save per rep data 
-        MSCalData.raw.counts{jj} = counts;
-        MSCalData.raw.secsPerMeasure{jj} = secsPerMeasure;
-
-        MSCalData.raw.settings_scalars{jj} = settings_scalars;
 
     end % reps
+
+    MSCalData.ASChip = chip_struct_map('A');
+    MSCalData.TSChip = chip_struct_map('T');
 
     % Save the calibration results
     MS_cal_dir = fullfile(save_path,deviceSerialNumber);

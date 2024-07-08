@@ -57,14 +57,14 @@ function result = read_minispect(obj, chip, mode)
         i = i + 1;  
         
     end 
-    
+
     % Throw an error if the minispect reported an error
-    if strcmp(result(1), "-1")
+    if isempty(result)
         error('minispect read failed.');
     end 
     
     if strcmp(mode,'C')
-        result = obj.parse_channel_reading(result);
+        result = obj.parse_channel_reading(result,chip);
     end 
     
     
