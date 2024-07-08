@@ -137,6 +137,7 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
     // Read all channels
     case 'C':
         Serial.println("Read TS channels");
+        lum = tsl2591->getFullLuminosity();
         
         ir = lum >> 16;
         full = lum & 0xFFFF;
