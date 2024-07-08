@@ -1,7 +1,7 @@
 #include "minispect_io.h"
 #include "Arduino.h"
 #include "Arduino_BuiltIn.h"
-#include <Adafruit_AS7341_personal.h>
+#include <Adafruit_AS7341.h>
 #include <Adafruit_TSL2591.h>
 #include <LIS2DUXS12Sensor.h>
 #include <cstdint>
@@ -134,10 +134,17 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
         Serial.println("!");
         break;
     
-    // Read the luminosity
-    case 'l':
+    // Read all channels
+    case 'C':
         Serial.println("Read the TS luminosity");
-        Serial.println(tsl2591->getFullLuminosity()); 
+        
+        ir = lum >> 16;
+        full = lum & 0xFFFF;
+        TSL2591_full = full;
+        TSL2591_ir = ir;
+
+        Serial.print("Channel 0 : "); Serial.println(full);
+        Serial.println("Channel 1 : "); Serial.println(ir);
 
         // Append End of Message terminator
         Serial.println("!");
@@ -148,7 +155,6 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
         Serial.println("Read the TS LUX");
 
         lum = tsl2591->getFullLuminosity();
-        ir, full;
         ir = lum >> 16;
         full = lum & 0xFFFF;
         TSL2591_full = full;
@@ -179,9 +185,9 @@ void LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
   switch(mode) {
     // Read the acceleration information
     case 'A':
-      Serial.print("X: ");Serial.println(accel[0]);
-      Serial.print("Y: ");Serial.println(accel[1]);
-      Serial.print("Z: ");Serial.println(accel[2]);
+      Serial.print("X : ");Serial.println(accel[0]);
+      Serial.print("Y : ");Serial.println(accel[1]);
+      Serial.print("Z : ");Serial.println(accel[2]);
 
       // Append End of Message terminator
       Serial.println("!");

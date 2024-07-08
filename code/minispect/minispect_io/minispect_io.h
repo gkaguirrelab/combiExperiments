@@ -1,6 +1,6 @@
 #include "Arduino.h"
 #include "Arduino_BuiltIn.h"
-#include <Adafruit_AS7341_personal.h>
+#include <Adafruit_AS7341.h>
 #include <Adafruit_TSL2591.h>
 #include <LIS2DUXS12Sensor.h>
 #include <nrf.h>

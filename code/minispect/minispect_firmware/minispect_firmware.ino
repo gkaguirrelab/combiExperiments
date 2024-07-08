@@ -9,7 +9,7 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_TSL2591.h>
-#include <Adafruit_AS7341_personal.h>
+#include <Adafruit_AS7341.h>
 #include <LIS2DUXS12Sensor.h>
 #include <Arduino.h>
 #include <minispect_io.h>
@@ -455,14 +455,6 @@ void AS7341_Reinit() {
   as7341.setATIME(uint8_t(atime));
   as7341.setASTEP(uint16_t(astep));
   as7341.setGain(as7341_gain_t(gain));  //AS7341_GAIN_256X
-
-  if (!as7341.setAGC(3, 3, 2)) {
-    Serial.println("Could not set AGC thresholds");
-  }
-
-  //if (!as7341.enable_AGC(2, 0, 1)) {
-   // Serial.println("Could not enable AGC");
-  //}
 }
 
 void AS7341_read() {
