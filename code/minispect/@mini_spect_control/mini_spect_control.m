@@ -27,6 +27,11 @@ classdef mini_spect_control < handle
 
     % These may be modified after object creation
     properties (SetAccess=public)
+        % Allow user to access names of all chips on device 
+        all_chip_names = obj.chip_name_map.keys();
+
+        % Allow users to access names of light-sensing chips only
+        light_sensing_chips = ['AMS7341','TSL2591'];
         
         % Verbosity
         verbose = false;

@@ -73,7 +73,7 @@ function calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,n
     background = calcSettingsForD65(cal);
 
     % Select the chips we are going to calibrate
-    chips = ["AMS7341","TSL2591"];
+    chips = obj.light_sensing_chips;
 
     % Get the MiniSpect device's serial number
     deviceSerialNumber = obj.serial_number;
