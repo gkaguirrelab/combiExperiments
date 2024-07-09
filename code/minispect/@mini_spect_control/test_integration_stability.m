@@ -10,14 +10,14 @@ function test_integration_stability(obj,NDF,cal_path,chip_fullname)
     background_scalars = linspace(0.05,0.95,size(background,2));
 
     % Parameters to vary over 
-    integration_parameters = [[249,259];[24,599]];
+    integration_parameters = [[1,0];[2,0]];
     settings_formula = @(ii) background * background_scalars(ii);
     combiLEDSettings = arrayfun(settings_formula, 1:numel(background_scalars), 'UniformOutput', false);
 
     % Ensure values do not cause overflow
     max_value_map = containers.Map({'AMS7341','TSL2591'},...
                                     {containers.Map({'astep', 'atime'},{2^16-1,2^8-1}),...
-                                    containers.Map({'atime'},{5})}); 
+                                    containers.Map({'atime','astep'},{5,0})}); 
 
     chip_maxes = max_value_map(chip_fullname);
     max_values = [chip_maxes('atime'), chip_maxes('astep')];
@@ -77,7 +77,7 @@ function test_integration_stability(obj,NDF,cal_path,chip_fullname)
         for jj = 1:size(integration_parameters,1)
             fprintf("Integration Parameters: %d / %d\n",jj,size(integration_parameters,1));
 
-            fprintf("%s | %s\n", variables_to_modify{1},variables_to_modify{2});
+            disp(variables_to_modify);
             disp(integration_parameters(jj,:));
       
             for aa = 1:numel(variables_to_modify)
@@ -137,6 +137,6 @@ function test_integration_stability(obj,NDF,cal_path,chip_fullname)
     MSStabilityData.absolute_ranges = absolute_ranges;
     MSStabilityData.linearity = linearity;
 
-    save('MSStabilityData.mat','MSStabilityData');
+    save('MSStabilityDataTS.mat','MSStabilityData');
 
 end
