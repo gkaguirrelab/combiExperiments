@@ -12,7 +12,7 @@ classdef mini_spect_control < handle
         chip_name_map = containers.Map({'AMS7341','TSL2591','LIS2DUXS12','SEEED'}, {'A','T','L','S'})
 
         % Map the underlying representations of chips, to name of fields, to the fields' underlying representations
-        chip_functions_map = containers.Map({'A', 'T', 'L','S'}, {  containers.Map({'Gain','Integration','Channels','Flicker','Power'}, {'G', 'I','C','F','P'}), containers.Map({'Gain','Channels','Lux','Power'}, {'G', 'C','L','P'}), containers.Map({'Accel','Power'}, {'A','P'}), containers.Map({'SerialNumber'}, {'S'}) })
+        chip_functions_map = containers.Map({'A', 'T', 'L','S'}, {  containers.Map({'Gain','Integration','Channels','Flicker','Power','ATIME','ASTEP'}, {'G', 'I','C','F','P','a','A'}), containers.Map({'Gain','Channels','Lux','Power','ATIME'}, {'G', 'C','L','P','A'}), containers.Map({'Accel','Power'}, {'A','P'}), containers.Map({'SerialNumber'}, {'S'}) })
         
         % Map the different chips to their different amount of available channels
         chip_nChannels_map = containers.Map({'A','T'},{10,2});
@@ -28,7 +28,7 @@ classdef mini_spect_control < handle
     % These may be modified after object creation
     properties (SetAccess=public)
         % Allow user to access names of all chips on device 
-        all_chip_names = obj.chip_name_map.keys();
+        all_chip_names = ['AMS7341','TSL2591','LIS2DUXS12','SEEED'];
 
         % Allow users to access names of light-sensing chips only
         light_sensing_chips = ['AMS7341','TSL2591'];
@@ -86,7 +86,7 @@ classdef mini_spect_control < handle
 
         % Calibration related 
         calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,nSamplesPerStep,reps,randomizeOrder,save_path)
-
+        test_integration_stability(obj,NDF,cal_path,chip);
 
     end
 end

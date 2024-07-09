@@ -5,6 +5,8 @@
 #include <Adafruit_TSL2591.h>
 #include <LIS2DUXS12Sensor.h>
 #include <cstdint>
+#include <set>
+#include <vector>
 
 float calculate_integration_time(uint8_t atime, uint8_t astep) {
     return (atime + 1) * (astep + 1) * 2.78;
@@ -327,6 +329,10 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
 
 void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
   uint16_t write_val_converted; 
+
+  std::vector<int> valid_gain_valvec = {0,16,32,48};
+  std::set<int> valid_gain_settings(valid_gain_valvec.begin(),valid_gain_valvec.end());
+
   switch(mode) {
     // Write new gain value 
     case 'G':
@@ -336,7 +342,9 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
       write_val_converted = atoi(write_val);
 
       // Keep the write_val within range of categorical gain choices
-      if(write_val_converted < 0 || write_val_converted > 3) {
+      if(write_val_converted < 0 || 
+        valid_gain_settings.find(write_val_converted) == valid_gain_settings.end() ) 
+      {
         sig_error();
         return ; 
       }
@@ -348,14 +356,16 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
       Serial.println("!");
       break;
 
-    // Write new integration time
-    case 'I':
+    // Write new integration time (A is for ATIME, to try and make
+    // this somewhat equivalent in design to AS_write which has 
+    // more ATIME and ASTEP write to construct integration time)
+    case 'A':
       Serial.println("Setting TS integration time");
       
       // Convert the numeric substring of discrete integration time -> int
       write_val_converted = atoi(write_val);
 
-      if(write_val_converted < 0 || write_val_converted > 6) {
+      if(write_val_converted < 0 || write_val_converted > 5) {
         sig_error();
         return;
       }
