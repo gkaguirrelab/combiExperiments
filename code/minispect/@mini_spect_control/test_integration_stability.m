@@ -10,7 +10,7 @@ function test_integration_stability(obj,NDF,cal_path,chip_fullname)
     background_scalars = linspace(0.05,0.95,size(background,2));
 
     % Parameters to vary over 
-    integration_parameters = [[249,249]];
+    integration_parameters = [[249,259];[24,599]];
     settings_formula = @(ii) background * background_scalars(ii);
     combiLEDSettings = arrayfun(settings_formula, 1:numel(background_scalars), 'UniformOutput', false);
 
@@ -75,9 +75,8 @@ function test_integration_stability(obj,NDF,cal_path,chip_fullname)
 
         % Vary the integration time at a given setting
         for jj = 1:size(integration_parameters,1)
-            fprintf("Integration Parameters: %d / %d",jj,size(integration_parameters,1));
+            fprintf("Integration Parameters: %d / %d\n",jj,size(integration_parameters,1));
 
-            disp("Setting integration parameters");
             fprintf("%s | %s\n", variables_to_modify{1},variables_to_modify{2});
             disp(integration_parameters(jj,:));
       
@@ -130,5 +129,14 @@ function test_integration_stability(obj,NDF,cal_path,chip_fullname)
         linear_model = fitlm(1:numel(combiLEDSettings), y);
         linearity(cc) = linear_model.Rsquared.Ordinary;
     end
+
+    MSStabilityData.measured_counts = measured_counts;
+    MSStabilityData.secsPerMeasure = secsPerMeasure;
+    MSStabilityData.means = means;
+    MSStabilityData.stds = stds;
+    MSStabilityData.absolute_ranges = absolute_ranges;
+    MSStabilityData.linearity = linearity;
+
+    save('MSStabilityData.mat','MSStabilityData');
 
 end
