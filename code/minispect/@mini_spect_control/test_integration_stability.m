@@ -129,14 +129,24 @@ function test_integration_stability(obj,NDF,cal_path,chip_fullname)
         linear_model = fitlm(1:numel(combiLEDSettings), y);
         linearity(cc) = linear_model.Rsquared.Ordinary;
     end
+    
+    % Store Meta Data Information 
+    MSStabilityData.meta.chip = chip_fullname; 
+    MSStabilityData.meta.NDF = NDF;
+    MSStabilityData.meta.cal_path = cal_path; 
+    MSStabilityData.meta.cal = cal; 
+    MSStabilityData.meta.nDetectorChannels = nDetectorChannels;
+    MSStabilityData.meta.background = background; 
+    MSStabilityData.meta.background_scalars = background_scalars;
+    
+    % Store Raw Measurement information
+    MSStabilityData.raw.measured_counts = measured_counts;
+    MSStabilityData.raw.secsPerMeasure = secsPerMeasure;
+    MSStabilityData.raw.means = means;
+    MSStabilityData.raw.stds = stds;
+    MSStabilityData.raw.absolute_ranges = absolute_ranges;
+    MSStabilityData.raw.linearity = linearity;
 
-    MSStabilityData.measured_counts = measured_counts;
-    MSStabilityData.secsPerMeasure = secsPerMeasure;
-    MSStabilityData.means = means;
-    MSStabilityData.stds = stds;
-    MSStabilityData.absolute_ranges = absolute_ranges;
-    MSStabilityData.linearity = linearity;
-
-    save('MSStabilityDataTS.mat','MSStabilityData');
+    save('MSStabilityData.mat','MSStabilityData');
 
 end
