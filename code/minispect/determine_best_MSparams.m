@@ -135,7 +135,6 @@ function determine_bestMSparams(cal_path)
             nexttile;
 
             x = background_scalars;
-
             for kk = 1:nDetectorChannels
                 y = mean_counts(:,pp,kk);
 
@@ -146,7 +145,7 @@ function determine_bestMSparams(cal_path)
 
             xlabel('Primary Setting');
             ylabel('Mean Count');
-            title(sprintf('Mean Count by Primary Setting | Param: %d', pp))
+            title(sprintf('Mean/Set %d', pp))
             hold off; 
 
         end
@@ -166,7 +165,7 @@ function determine_bestMSparams(cal_path)
 
             xlabel('Primary Setting');
             ylabel('Standard Deviation of Counts');
-            title(sprintf('STD of Counts by Primary Setting | Param: %d', pp))
+            title(sprintf('STD/Set %d', pp))
             hold off; 
 
         end
@@ -175,7 +174,7 @@ function determine_bestMSparams(cal_path)
             nexttile;
 
             x = background_scalars;
-
+            ylim([0,0.75]);
             for kk = 1:nDetectorChannels
                 y = bound_timings(:,pp);
 
@@ -186,17 +185,52 @@ function determine_bestMSparams(cal_path)
 
             xlabel('Primary Setting');
             ylabel('Seconds Per Measure');
-            title(sprintf('Seconds Per Measure by Primary Setting | Param: %d', pp))
+            title(sprintf('Time/Set %d', pp))
             hold off; 
 
         end
-        
+
+        ymax = 0;
+        for ii = 1:size(integration_parameters,1) % Set graphs on row 1 to have same range/start at 0 
+            h = nexttile(ii);
+            ymax = max([ymax, max(ylim(h))]); 
+        end
+
+        for ii = 1:size(integration_parameters,1) %Set graphs on row 1 to have same range/start at 0 
+            h = nexttile(ii);
+            ylim(h,[0,ymax])
+        end
+
+        ymax = 0;
+        for ii = 1*size(integration_parameters,1)+1:2*size(integration_parameters,1) % Set graphs on row 1 to have same range/start at 0 
+            h = nexttile(ii);
+            ymax = max([ymax, max(ylim(h))]); 
+        end
+
+        for ii = 1*size(integration_parameters,1)+1:2*size(integration_parameters,1)% Set graphs on row 3 to have same range/start at 0 
+            h = nexttile(ii);
+            ylim(h,[0,ymax])
+        end
+
+        ymax = 0;
+        for ii = 2*size(integration_parameters,1)+1:3*size(integration_parameters,1) % Set graphs on row 1 to have same range/start at 0 
+            h = nexttile(ii);
+            ymax = max([ymax, max(ylim(h))]); 
+        end
+
+        for ii = 2*size(integration_parameters,1)+1:3*size(integration_parameters,1)% Set graphs on row 3 to have same range/start at 0 
+            h = nexttile(ii);
+            ylim(h,[0,ymax])
+        end
+
+
         % Step 12: Save graphs, if desired
         low_high_name_map = containers.Map({1,2},{'low','high'});
         save_or_not = input('Save figure? (y/n)', 's');
         if(save_or_not(1) == 'y')
             saveas(gcf, sprintf('%s_boundParamComparison.png',low_high_name_map(bb)));
         end 
+
 
 
     end
