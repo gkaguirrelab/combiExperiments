@@ -194,9 +194,7 @@ function determine_bestMSparams(cal_path)
         % Step 12: Save graphs, if desired
         low_high_name_map = containers.Map({1,2},{'low','high'});
         save_or_not = input('Save figure? (y/n)', 's');
-        disp(save_or_not);
         if(save_or_not(1) == 'y')
-            disp('HERE!')
             saveas(gcf, sprintf('%s_boundParamComparison.png',low_high_name_map(bb)));
         end 
 
