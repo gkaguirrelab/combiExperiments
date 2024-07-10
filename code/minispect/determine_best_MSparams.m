@@ -201,4 +201,8 @@ function determine_bestMSparams(cal_path)
 
     end
 
+    % These graphs should illustrate that the params we chose for ATIME, ASTEP, and Gain 
+    % allow the chips to have the best dynamic range in their respective bounds as opposed 
+    % to other settings.
+
 end
