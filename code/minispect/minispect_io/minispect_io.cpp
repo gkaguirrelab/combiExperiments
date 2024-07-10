@@ -53,17 +53,24 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.println("!");
         break;
     
-    // Read the integration time information
-    case 'I':
-        Serial.println("Read Atime/Astep/Int_time");
+    // Read the ATIME
+    case 'a':
+        Serial.println("Read Atime");
         Serial.println(as7341->getATIME());
-        Serial.println(as7341->getASTEP()); 
-        Serial.println(calculate_integration_time(as7341->getATIME(), as7341->getASTEP()));
+  
 
         // Append End of Message terminator
         Serial.println("!");
         break;
-    
+
+    // Read the ASTEP
+    case 'A':
+      Serial.println("Read Astep");
+      Serial.println(as7341->getASTEP()); 
+
+      // Append End of Message terminator
+      Serial.println("!");
+      break;
     // Read the channels
     case 'C':
         Serial.println("Read AS Channels");

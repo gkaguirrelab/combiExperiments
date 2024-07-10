@@ -53,21 +53,31 @@ function determine_bestMSparams(cal_path)
         assert(all(integration_parameters(:,3) >= 0 ) && all(integration_parameters(:,3) < 49) && all(mod(integration_parameters(:,3),16))); % assert GAIN in range  for chip
     end
 
-    for bb = 1:size(bounds,2) % Test lower bound and upper bound
-        %  Step 5: Place the low bound NDF filter onto the light source, and begin testing
-        fprintf('Place %f filter onto light source. Press any key when ready\n', bounds(bb));
+    % Step 5: Determine number of measurements 
+    % to take at each integration setting
+    nMeasurements = 10;
+
+    results = {};
+    for bb = 1:size(ndf_range,2) % Test lower bound and upper bound
+        NDF = ndf_range(bb);
+
+        %  Step 6: Place the low bound NDF filter onto the light source, and begin testing
+        fprintf('Place %f filter onto light source. Press any key when ready\n', NDF);
         pause()
 
-        for cc = 1:size(combiLEDSettings,1) % Test all of the CombiLED settings
-            % Step 6: Set current CombiLED setting
-            CL_settings = combiLEDSettings{ii};
-            CL.setPrimaries(CL_settings);
+        bound_results = {};
 
+        for cc = 1:size(combiLEDSettings,1) % Test all of the CombiLED settings
+            fprintf("CombiLED Setting %d / %d\n", cc, size(combiLEDSettings,1));
+            % Step 7: Set current CombiLED setting
+            CL_settings = combiLEDSettings{cc};
+            CL.setPrimaries(CL_settings);
 
             measured_counts = nan(size(integration_parameters,1),nMeasurements,nDetectorChannels); % setup output data
             secsPerMeasure = nan(size(integration_parameters,1));
 
             for pp = 1:size(integration_parameters,1) % Test all of the different integration params
+                fprintf("Integration Params %d / %d\n", pp, size(integration_parameters,1));
                 % Step 8: Set the current integration parameters 
                 atime = integration_parameters(pp,1);
                 astep = integration_parameters(pp,2);
@@ -75,15 +85,24 @@ function determine_bestMSparams(cal_path)
 
                 mode = chip_functions('ATIME');
                 MS.write_minispect(chip,mode,num2str(atime));
+                ret = MS.read_minispect(chip,mode);
+
+                assert(str2num(ret) == atime); % Ensure value was set properly
 
                 mode = chip_functions('ASTEP');
                 MS.write_minispect(chip,mode,num2str(astep));
+                ret = MS.read_minispect(chip,mode);
+
+                assert(str2num(ret) == astep);
 
                 mode = chip_functions('Gain');
                 MS.write_minispect(chip,mode,num2str(gain));
 
-                % Step 9: Take nMeasurements and begin timing 
-                nMeasurements = 10;
+                ret = MS.read_minispect(chip,mode);
+
+                assert(str2num(ret) == gain);
+
+                % Step 9: Take nMeasurements and time them
                 mode = chip_functions('Channels');
                 tic ; 
                 for ii = 1:nMeasurements
@@ -94,104 +113,15 @@ function determine_bestMSparams(cal_path)
                 elapsed_seconds = toc ; 
 
                 secsPerMeasure(pp) = elapsed_seconds/nMeasurements;
-
-
-            end
-        end
-    end
-
-    return 
-
-    % Set up arrays to store statistics
-    means = nan(size(combiLEDSettings,1), nDetectorChannels); 
-    stds = nan(size(combiLEDSettings,1), nDetectorChannels); 
-    absolute_ranges = nan(nDetectorChannels,2);
-    linearity = nan(nDetectorChannels);
-
-    % Iterate over the different combiLED settings
-    for ii = 1:numel(combiLEDSettings)
-        fprintf("CombiLED Setting %d / %d", ii, numel(combiLEDSettings))
-        % Retrieve the current combiLED settings
-        CL_settings = combiLEDSettings{ii};
-
-        disp(CL_settings);
-        % Set primaries with combiLED settings
-        CL.setPrimaries(CL_settings);
-
-        % Vary the integration time at a given setting
-        for jj = 1:size(integration_parameters,1)
-            fprintf("Integration Parameters: %d / %d\n",jj,size(integration_parameters,1));
-
-            disp(variables_to_modify);
-            disp(integration_parameters(jj,:));
-      
-            for aa = 1:numel(variables_to_modify)
-                mode = chip_functions(variables_to_modify{aa});
-
-                % Ensure parameter is in the appropriate range
-                % for the field
-                assert(integration_parameters(jj,aa) <= max_values(1,aa))
-
-                write_val = num2str(integration_parameters(jj,aa));
-                obj.write_minispect(chip,mode,write_val);
             end
 
-            % Start timer
-            tic; 
+            % Step 10: Save results for this Combi Setting + set of integration params
+            combi_setting_results.measured_counts = measured_counts;
+            combi_setting_results.secsPerMeasure = secsPerMeasure;
             
-            % Read the channels from the chip on the minispect
-            mode = chip_functions('Channels');
-            channel_values = obj.read_minispect(chip,mode);
-
-            % Calculate the real elapsed time for a measurement
-            elapsed_time = toc; 
-            
-            % Save the information for this combination of combiLEDSettings
-            % and integration parameters
-            measured_counts(ii,jj,:) = channel_values; 
-            secsPerMeasure(ii,jj) = elapsed_time;
-        end 
-
-        % Calculate settings level statistics 
-        for cc = 1:nDetectorChannels
-            % Find the standard deviation and mean of a channel 
-            stds(ii,cc) = std(measured_counts(ii,:,cc)); 
-            means(ii,cc) = mean(measured_counts(ii,:,cc)); 
+            bound_results{cc} = combi_setting_results;
         end
+
+        results{bb} = bound_results;
     end
-
-    % Calculate global statistics about the experiment
-    % for each channel
-    for cc = 1:nDetectorChannels
-        all_channel_readings = measured_counts(:,:,cc);
-        absolute_ranges(cc,1) = min(all_channel_readings(:));
-        absolute_ranges(cc,2) = max(all_channel_readings(:));
- 
-        % Find the linearity of a channel across 
-        % combiLED settings, just using the first 
-        % integration parameter for now
-        y = squeeze(measured_counts(:, 1, cc));
-        linear_model = fitlm(1:numel(combiLEDSettings), y);
-        linearity(cc) = linear_model.Rsquared.Ordinary;
-    end
-    
-    % Store Meta Data Information 
-    MSStabilityData.meta.chip = chip; 
-    MSStabilityData.meta.NDF = NDF;
-    MSStabilityData.meta.cal_path = cal_path; 
-    MSStabilityData.meta.cal = cal; 
-    MSStabilityData.meta.nDetectorChannels = nDetectorChannels;
-    MSStabilityData.meta.background = background; 
-    MSStabilityData.meta.background_scalars = background_scalars;
-    
-    % Store Raw Measurement information
-    MSStabilityData.raw.measured_counts = measured_counts;
-    MSStabilityData.raw.secsPerMeasure = secsPerMeasure;
-    MSStabilityData.raw.means = means;
-    MSStabilityData.raw.stds = stds;
-    MSStabilityData.raw.absolute_ranges = absolute_ranges;
-    MSStabilityData.raw.linearity = linearity;
-
-    save('MSStabilityData.mat','MSStabilityData');
-
 end
