@@ -40,8 +40,13 @@ function determine_bestMSparams(cal_path)
     combiLEDSettings = arrayfun(settings_formula, 1:numel(background_scalars), 'UniformOutput', false); % all settings
 
     % Step 4: Prepare the chip parameters to vary over
-    integration_parameters = [[249,259,0];    % format: ATIME,ASTEP,GAIN
-                              [24,599,0]];
+    integration_parameters = [[249,259,5];  % format: ATIME,ASTEP,GAIN
+                              [249,259,3];   % PARAM 1: Our chosen parameters PARAM 4: Factory recommended parameters
+                              [249,259,8]          
+                              [24,599,4];   
+                              [24,599,2];
+                              [24,599,8]];                
+
 
     if(chip_name== 'AMS7341')   % error check the chip parameters
         assert(all(integration_parameters(:,1) > 0 ) && all(integration_parameters(:,1) < 2^8)); % assert ATIME in range for chip
@@ -186,6 +191,7 @@ function determine_bestMSparams(cal_path)
 
         end
         
+        % Step 12: Save graphs, if desired
         low_high_name_map = containers.Map({1,2},{'low','high'});
         save_or_not = input('Save figure? (y/n)', 's');
         disp(save_or_not);
