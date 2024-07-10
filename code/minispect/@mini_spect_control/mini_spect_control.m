@@ -86,7 +86,6 @@ classdef mini_spect_control < handle
 
         % Calibration related 
         calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,nSamplesPerStep,reps,randomizeOrder,save_path)
-        test_integration_stability(obj,NDF,cal_path,chip);
 
     end
 end
