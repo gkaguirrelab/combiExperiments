@@ -56,8 +56,6 @@ function determine_bestMSparams(cal_path)
     % Step 5: Determine number of measurements 
     % to take at each integration setting
     nMeasurements = 10;
-
-    results = {};
     for bb = 1:size(ndf_range,2) % Test lower bound and upper bound
         NDF = ndf_range(bb);
 
@@ -126,7 +124,7 @@ function determine_bestMSparams(cal_path)
         std_counts = squeeze(std(bound_counts,0,3));
 
         figure; 
-        tiledlayout(2,size(integration_parameters,1)); % Layout is number of things we want to plot, by the integration parameters
+        tiledlayout(3,size(integration_parameters,1)); % Layout is number of things we want to plot, by the integration parameters
     
         for pp = 1:size(integration_parameters,1)  % First, plot means
             nexttile;
@@ -168,6 +166,33 @@ function determine_bestMSparams(cal_path)
 
         end
 
+        for pp = 1:size(integration_parameters,1) % Then, plot the time to measure
+            nexttile;
+
+            x = background_scalars;
+
+            for kk = 1:nDetectorChannels
+                y = bound_timings(:,pp);
+
+                plot(x,y);
+                hold on; 
+
+            end
+
+            xlabel('Primary Setting');
+            ylabel('Seconds Per Measure');
+            title(sprintf('Seconds Per Measure by Primary Setting | Param: %d', pp))
+            hold off; 
+
+        end
+        
+        low_high_name_map = containers.Map({1,2},{'low','high'});
+        save_or_not = input('Save figure? (y/n)', 's');
+        disp(save_or_not);
+        if(save_or_not(1) == 'y')
+            disp('HERE!')
+            saveas(gcf, sprintf('%s_boundParamComparison.png',low_high_name_map(bb)));
+        end 
 
 
     end
