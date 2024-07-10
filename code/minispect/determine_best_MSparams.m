@@ -65,16 +65,17 @@ function determine_bestMSparams(cal_path)
         fprintf('Place %f filter onto light source. Press any key when ready\n', NDF);
         pause()
 
-        bound_results = {};
+        bound_counts = nan(numel(combiLEDSettings),size(integration_parameters,1),nMeasurements,nDetectorChannels);
+        bound_timings = nan(numel(combiLEDSettings),size(integration_parameters,1));
 
-        for cc = 1:size(combiLEDSettings,1) % Test all of the CombiLED settings
-            fprintf("CombiLED Setting %d / %d\n", cc, size(combiLEDSettings,1));
+        for cc = 1:numel(combiLEDSettings) % Test all of the CombiLED settings
+            fprintf("CombiLED Setting %d / %d\n", cc, numel(combiLEDSettings));
             % Step 7: Set current CombiLED setting
             CL_settings = combiLEDSettings{cc};
             CL.setPrimaries(CL_settings);
 
             measured_counts = nan(size(integration_parameters,1),nMeasurements,nDetectorChannels); % setup output data
-            secsPerMeasure = nan(size(integration_parameters,1));
+            secsPerMeasure = nan(size(integration_parameters,1),1);
 
             for pp = 1:size(integration_parameters,1) % Test all of the different integration params
                 fprintf("Integration Params %d / %d\n", pp, size(integration_parameters,1));
@@ -116,12 +117,59 @@ function determine_bestMSparams(cal_path)
             end
 
             % Step 10: Save results for this Combi Setting + set of integration params
-            combi_setting_results.measured_counts = measured_counts;
-            combi_setting_results.secsPerMeasure = secsPerMeasure;
-            
-            bound_results{cc} = combi_setting_results;
+            bound_counts(cc,:,:,:) = measured_counts;
+            bound_timings(cc,:) = secsPerMeasure;
+        end
+        
+        % Step 11: Plot Findings
+        mean_counts = squeeze(mean(bound_counts,3));
+        std_counts = squeeze(std(bound_counts,0,3));
+
+        figure; 
+        tiledlayout(2,size(integration_parameters,1)); % Layout is number of things we want to plot, by the integration parameters
+    
+        for pp = 1:size(integration_parameters,1)  % First, plot means
+            nexttile;
+
+            x = background_scalars;
+
+            for kk = 1:nDetectorChannels
+                y = mean_counts(:,pp,kk);
+
+                plot(x,y);
+                hold on; 
+
+            end
+
+            xlabel('Primary Setting');
+            ylabel('Mean Count');
+            title(sprintf('Mean Count by Primary Setting | Param: %d', pp))
+            hold off; 
+
         end
 
-        results{bb} = bound_results;
+        for pp = 1:size(integration_parameters,1) % Then, plot the STDs
+            nexttile;
+
+            x = background_scalars;
+
+            for kk = 1:nDetectorChannels
+                y = std_counts(:,pp,kk);
+
+                plot(x,y);
+                hold on; 
+
+            end
+
+            xlabel('Primary Setting');
+            ylabel('Standard Deviation of Counts');
+            title(sprintf('STD of Counts by Primary Setting | Param: %d', pp))
+            hold off; 
+
+        end
+
+
+
     end
+
 end
