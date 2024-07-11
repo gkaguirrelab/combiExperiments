@@ -42,7 +42,7 @@ function determine_bestMSparams(cal_path)
     % Step 4: Prepare the chip parameters to vary over
     integration_parameters = [[249,259,5];  % format: ATIME,ASTEP,GAIN
                               [249,259,3];   % PARAM 1: Our chosen parameters PARAM 4: Factory recommended parameters
-                              [249,259,8]          
+                              [249,259,8];          
                               [24,599,4];   
                               [24,599,2];
                               [24,599,8]];                
@@ -65,7 +65,7 @@ function determine_bestMSparams(cal_path)
         NDF = ndf_range(bb);
 
         %  Step 6: Place the low bound NDF filter onto the light source, and begin testing
-        fprintf('Place %f filter onto light source. Press any key when ready\n', NDF);
+        fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
 
         bound_counts = nan(numel(combiLEDSettings),size(integration_parameters,1),nMeasurements,nDetectorChannels);
@@ -129,10 +129,13 @@ function determine_bestMSparams(cal_path)
         std_counts = squeeze(std(bound_counts,0,3));
 
         figure; 
-        tiledlayout(3,size(integration_parameters,1)); % Layout is number of things we want to plot, by the integration parameters
-    
+        t = tiledlayout(3,size(integration_parameters,1)); % Layout is number of things we want to plot, by the integration parameters
+        
+        param_set_annotation = "";    
         for pp = 1:size(integration_parameters,1)  % First, plot means
             nexttile;
+
+            param_set_annotation = param_set_annotation + sprintf('Col: %d: ATIME: %d ASTEP: %d GAIN: %d| ', pp,integration_parameters(pp,1),integration_parameters(pp,2),integration_parameters(pp,3));
 
             x = background_scalars;
             for kk = 1:nDetectorChannels
@@ -150,6 +153,7 @@ function determine_bestMSparams(cal_path)
 
         end
 
+        sgtitle(param_set_annotation); % Add param set explaination 
         for pp = 1:size(integration_parameters,1) % Then, plot the STDs
             nexttile;
 
@@ -178,7 +182,7 @@ function determine_bestMSparams(cal_path)
             for kk = 1:nDetectorChannels
                 y = bound_timings(:,pp);
 
-                plot(x,y);
+                plot(x,y,'LineWidth',3);
                 hold on; 
 
             end
@@ -194,6 +198,7 @@ function determine_bestMSparams(cal_path)
         for ii = 1:size(integration_parameters,1) % Set graphs on row 1 to have same range/start at 0 
             h = nexttile(ii);
             ymax = max([ymax, max(ylim(h))]); 
+
         end
 
         for ii = 1:size(integration_parameters,1) %Set graphs on row 1 to have same range/start at 0 
@@ -202,21 +207,21 @@ function determine_bestMSparams(cal_path)
         end
 
         ymax = 0;
-        for ii = 1*size(integration_parameters,1)+1:2*size(integration_parameters,1) % Set graphs on row 1 to have same range/start at 0 
+        for ii = 1*size(integration_parameters,1)+1:2*size(integration_parameters,1) % Set graphs on row 2 to have same range/start at 0 
             h = nexttile(ii);
             ymax = max([ymax, max(ylim(h))]); 
         end
 
-        for ii = 1*size(integration_parameters,1)+1:2*size(integration_parameters,1)% Set graphs on row 3 to have same range/start at 0 
+        for ii = 1*size(integration_parameters,1)+1:2*size(integration_parameters,1)% Set graphs on row 2 to have same range/start at 0 
             h = nexttile(ii);
             ylim(h,[0,ymax])
         end
 
-        ymax = 0;
-        for ii = 2*size(integration_parameters,1)+1:3*size(integration_parameters,1) % Set graphs on row 1 to have same range/start at 0 
-            h = nexttile(ii);
-            ymax = max([ymax, max(ylim(h))]); 
-        end
+        ymax = 0.5;
+        %for ii = 2*size(integration_parameters,1)+1:3*size(integration_parameters,1) % Set graphs on row 1 to have same range/start at 0 
+        %    h = nexttile(ii);
+        %    ymax = max([ymax, max(ylim(h))]); 
+        %end
 
         for ii = 2*size(integration_parameters,1)+1:3*size(integration_parameters,1)% Set graphs on row 3 to have same range/start at 0 
             h = nexttile(ii);
