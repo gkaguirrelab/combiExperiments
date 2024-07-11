@@ -20,7 +20,7 @@ function determine_bestMSparams(cal_path)
     
     % Step 2: Enter chip to test and get lower and upper bounds
     light_sensing_chips = ['AMS7341','TSL2591'];
-    chip_name = 'TSL2591';
+    chip_name = 'AMS7341';
     chip = MS.chip_name_map(chip_name);
     chip_functions = MS.chip_functions_map(chip); % Retrieve the available functions of the given chip
     nDetectorChannels = MS.chip_nChannels_map(chip);  % Retrieve the channels the given chip can read
@@ -42,12 +42,12 @@ function determine_bestMSparams(cal_path)
     combiLEDSettings = arrayfun(settings_formula, 1:numel(background_scalars), 'UniformOutput', false); % all settings
 
     % Step 4: Prepare the chip parameters to vary over
-    integration_parameters = [[0,0,0];  % format: ATIME,ASTEP,GAIN
-                              [1,0,16];   % PARAM 1: Our chosen parameters PARAM 4: Factory recommended parameters
-                              [2,0,32];          
-                              [3,0,48];   
-                              [4,0,32];
-                              [5,0,16]];                
+    integration_parameters = [[249,259,5];  % format: ATIME,ASTEP,GAIN
+                              [249,259,3];   % PARAM 1: Our chosen parameters PARAM 4: Factory recommended parameters
+                              [249,259,8];          
+                              [24,599,4];   
+                              [24,599,2];
+                              [24,599,8]];                            
 
 
     if(chip_name== 'AMS7341')   % error check the chip parameters
@@ -87,7 +87,6 @@ function determine_bestMSparams(cal_path)
                 % Step 8: Set the current integration parameters 
 
                 for mm = 1:size(usable_modes)
-                    disp(usable_modes{mm})
                     mode = chip_functions(usable_modes{mm});
                     MS.write_minispect(chip,mode,num2str( integration_parameters(pp,mm)  ));
                     ret = MS.read_minispect(chip,mode);
