@@ -158,8 +158,18 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
         // Append End of Message terminator
         Serial.println("!");
-        break;
+        break;  
     
+    // Read the integration time
+    case 'A':
+      Serial.println("Read TS Integration Time");
+      
+      Serial.println(tsl2591->getTiming());
+
+      // Append End of Message terminator
+      Serial.println("!");
+      break;   
+
     // Read the LUX 
     case 'L':
         Serial.println("Read the TS LUX");
