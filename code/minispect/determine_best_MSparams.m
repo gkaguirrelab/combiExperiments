@@ -205,7 +205,7 @@ function determine_bestMSparams(cal_path)
             ylim(h,[0,ymax])
         end
 
-        ymax = 0.5;
+        ymax = 1;
         %for ii = 2*size(integration_parameters,1)+1:3*size(integration_parameters,1) % Set graphs on row 1 to have same range/start at 0 
         %    h = nexttile(ii);
         %    ymax = max([ymax, max(ylim(h))]); 

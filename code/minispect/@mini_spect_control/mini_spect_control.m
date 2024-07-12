@@ -87,5 +87,8 @@ classdef mini_spect_control < handle
         % Calibration related 
         calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,nSamplesPerStep,reps,randomizeOrder,save_path)
 
+        % Home MS back to desired settings
+        reset_settings(obj);
+
     end
 end
