@@ -1,6 +1,46 @@
 function analyze_temporal_sensitivty(cal_path)
+% Analyzes the temporal sensitivity of a given light-sensing chip in the minispect
+%
+% Syntax:
+%   analyze_temporal_sensitivty(cal_path)
+%
+% Description:
+%   Calibrates the minispect against the CombiLED with a given NDF filter nReps times, 
+%   with nPrimarySteps between settingScalarRange, taking nSamplesPerStep samples per 
+%   measure. The steps are presented either sequentially or randomly, defined by 
+%   randomizeOrder. The results are saved to a subfolder labeled 
+%   with the device ID of the minispect in a file named calibration[NDF]. Uses the 
+%   cal file of the light source as a reference. 
+%
+% Inputs:
+%   NDF                   - Int/Float. Represents the NDF filter level
+%                           on the light source. 
+%   cal_path              - String. Represents the path to the light source
+%                           calibration file.
+%   nPrimarySteps         - Int. Represents the number of different setting values
+%                           to present on the CombiLED.
+%   settingScalarRange    - Tuple. Represents the percentage [low,high] bounds of the light 
+%                           levels.
+%   nSamplesPerStep       - Int. Represents the number of measures to take at a given 
+%                           primary step. 
+%   nReps                 - Int. Represents the number of repetitions to conduct the entire
+%                           experiment over. 
+%   randomizeOrder        - Logical. Represents whether or not to randomize the order
+%                           in which primary settings are presented to the minispect
+%   save_path             - String. Represents the path to the folder in which 
+%                           calibrations of minispects are saved.                      
+%
+% Outputs:
+%   MSCalData             - Struct. Contains all of the meta data (params, timings, date, etc)
+%                           as well as the raw data (counts, settings) used for calibration
+%
+% Examples:
+%{
+   MS = mini_spect_control();
+   MS.calibrate_minispect(2,'./calfile',10,[0.05,0.95],10,3,1,'./calibration') 
+%}
 
-    % Utility
+    % Utility Functions
     function filterProfile = idealDiscreteSampleFilter(sourceFreqsHz,dTsignal)
         nCycles = 100;
         dTsource = 0.01; % seconds
@@ -28,9 +68,6 @@ function analyze_temporal_sensitivty(cal_path)
     % Step 1: Connect MiniSpect and CombiLED
     MS = mini_spect_control(); % Initialize MiniSpect Object
 
-    % Step 2: Ensure MS is at our desired settings
-    MS.reset_settings();
-
     calDir = fullfile(tbLocateProjectSilent('combiExperiments'),'cal'); % Which Cal file to use (currently hard-coded)
     calFileName = 'CombiLED_shortLLG_testSphere_ND0x2.mat';
 
@@ -42,10 +79,15 @@ function analyze_temporal_sensitivty(cal_path)
     CL = CombiLEDcontrol(); % Initialize CombiLED Object
     CL.setGamma(cal.processedData.gammaTable);  % Update the combiLED's gamma table
 
-    % Step 2: Select chip of MS to analyze
-    light_sensing_chips = ['AMS7341','TSL2591'];
-    chip_name = 'AMS7341';
-    chip = MS.chip_name_map(chip_name);
+    % Step 2: Ensure MS is at our desired settings
+    MS.reset_settings();
+
+    % Step 3: Select chip of MS to analyze
+    light_sensing_chips = ['AMS7341','TSL2591']; % The chips on the MS that can detect light 
+    chip_name = 'AMS7341';  % the full name of the chip to analyze
+    chip = MS.chip_name_map(chip_name); % the underlying representation of the chip 
+    
+    % Step 4: Retrieve information about the experiment/chip
     chip_functions = MS.chip_functions_map(chip); % Retrieve the available functions of the given chip
     upper_bound_ndf_map = containers.Map({'AMS7341','TSL2591'},{0.2,2}); % associate our desired upper bounds
     lower_bound_ndf_map = containers.Map({'AMS7341','TSL2591'},{4,6});   % associate our desired lower bounds
@@ -60,27 +102,27 @@ function analyze_temporal_sensitivty(cal_path)
     ndf_range = [lower_bound_ndf,upper_bound_ndf]; % build the range of the chip
     channel_to_plot = channel_to_plot_map(chip_name); % channel to use for our plotting
 
-    % Step 3: Setup information for setting CombiLED 
+    % Step 5: Setup information for setting CombiLED and the experiment 
     observerAgeInYears = str2double(GetWithDefault('Age in years','30'));
     pupilDiameterMm = str2double(GetWithDefault('Pupil diameter in mm','3'));
 
     photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
 
     low_bound_freq = 0.1;
-    high_bound_freq = 8;
+    high_bound_freq = 8; 
     num_points = 20;
+    nMeasures = 100; 
 
-    frequencies = logspace(log10(low_bound_freq), log10(high_bound_freq), num_points);
-    %frequencies = [1,2];
+    frequencies = logspace(log10(low_bound_freq), log10(high_bound_freq), num_points); % create num_points equally log spaced
+                                                                                       % points between the low and high bounds
 
-    % Step : Set up containers to hold results over the experiment
+    % Step 6: Set up containers to hold results over the experiment
     experiment_results = nan(size(ndf_range,2),size(frequencies,2),nDetectorChannels);
 
-    % Plot Temporal Sensitivity for a sample channel
+    % Step 7: Begin experiment, go over the low and high NDF ranges
     for bb = 1:size(ndf_range,2)
         NDF = ndf_range(bb);
 
-        %  Step : Place the current bound NDF filter onto the light source, and begin testing
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
         fprintf('You now have 30 seconds to leave the room if desired.');
@@ -88,27 +130,26 @@ function analyze_temporal_sensitivty(cal_path)
 
         secsPerMeasure = 0; 
         
-        % Step  : Iterate over frequencies 
+        % Step 8: Iterate over frequencies 
         for ff = 1:size(frequencies,2)
             fprintf('Frequency: %d / %d\n', ff, size(frequencies,2));
             f0 = frequencies(1,ff); % Get the current frequency
             
-            % Step  : Prepare CombiLED for flicker
+            % Step 9: Prepare CombiLED for flicker
             modResult = designModulation('LightFlux',photoreceptors,cal);
             CL.setSettings(modResult);
             CL.setWaveformIndex(1);
             CL.setFrequency(f0);
             CL.setContrast(1);
             
-            % Step 5: Prepare minispect for reading, 
+            % Step 10: Prepare minispect for reading, 
             %         Define nMeasures and setup 
             %         storage for readings
             mode = chip_functions('Channels');
-            nMeasures = 100; 
             counts = nan(nMeasures,nDetectorChannels);
             measurement_times = nan(nMeasures,1);
             
-            % Step 5: Begin flicker and
+            % Step 11: Begin flicker and
             %         take nMeasures from 
             %         the minispect chip 
             CL.startModulation();
@@ -123,29 +164,34 @@ function analyze_temporal_sensitivty(cal_path)
             end
             elapsed_seconds = toc; 
 
-            % Step 7: Derive amplitude of counts at the fundamental
+            % Step 12: Derive amplitude of counts at the fundamental
             %         frequency of CombiLED's flicker
             secsPerMeasure = elapsed_seconds/nMeasures;
             
             channel_amplitudes = nan(1,nDetectorChannels);
             for cc = 1:nDetectorChannels
                 signal = counts(:,cc);
+                signalT = 0:secsPerMeasure:elapsed_seconds-secsPerMeasure; 
+
 
                 sig_mean = mean(signal);
                 signal = signal - mean(signal);  % freq is the source flicker freq in Hz. Signal is the vector of measures for a channel
-                % sampling frequency of signal
+                % sampling frequency of signal  % refactor this to look
+                % like the function at the time, but keep the signal =
+                % signal-mean(signal)
                 fs = 1./secsPerMeasure;
+                modeldT = 0.01; 
+                modelT = 0:modeldT:elapsed_seconds - modeldT; 
                 % Set up the regression matrix
-                t = 1:length(signal);
                 X = [];
-                X(:,1) = sin(  t./(fs/f0).*2*pi );
-                X(:,2) = cos(  t./(fs/f0).*2*pi );
-                % Perform the fit 
-                y = signal;
+                X(:,1) = sin(  modelT./(1/f0).*2*pi );
+                X(:,2) = cos(  modelT./(1/f0).*2*pi );
+                % Perform the fit
+                y = interp1(signal_t,signal,modelT,'nearest','extrap')';
                 b = X\y;
-                fit = X * b; 
+
+                fit = X * b;  % high temporal resolution fit,
                 
-                % Step  : Get the amplitude + phase
                 amplitude  = norm(b);
                 phase = -atan(b(2)/b(1));
                 
@@ -153,28 +199,23 @@ function analyze_temporal_sensitivty(cal_path)
                 channel_amplitudes(1,cc) = amplitude;
                 fprintf('Channel %d | Amplitude %f | Phase %f\n', cc, amplitude, phase)
 
-                % Step  Plot the source modulation, the detected, and the fit
-                % counts to see how well they match 
+                % Step 13: Plot the source modulation, the detected, and the fit
+                % counts to see how well they match for channel 1
+                
                 if(cc > 1)
                     continue
                 end
-                
-                figure ; 
-                t_measures = measurement_times;
-                
-                f_sinusoid = f0;
-                t_sin = linspace(phase, t_measures(end), nMeasures*50);
-                sinusoid = sin(2 * pi * f_sinusoid * t_sin)*amplitude + sig_mean;
-            
-                plot(t_sin,sinusoid);
+
+                figure ;
+  
+                plot(signalT,signal+sig_mean);
                 hold on; 
-                plot(t_measures,signal+sig_mean);
-                plot(t_measures,fit+sig_mean);
+                plot(modelT,fit+sig_mean);
 
                 title(sprintf('Signal and Fit: Channel %d Freq: %f', cc, f0));
                 xlabel('Time (seconds)');
                 ylabel('Counts');
-                legend('Source Modulation','Signal','Fit');
+                legend('Signal','Fit');
                 hold off; 
                  
             end
@@ -184,29 +225,28 @@ function analyze_temporal_sensitivty(cal_path)
         end
     end
 
-    % Step: Plot Temporal Sensitivity for a sample channel
+    % Step 14: Plot Temporal Sensitivity for a sample channel
     figure ; 
     hold on;
 
-    % First, plot the low bound results' amplitude (normalized)
-    x = frequencies; 
+    x = frequencies; % First, plot the low bound results' amplitude (normalized)
     y = experiment_results(1,:,channel_to_plot) / max(experiment_results(1,:,channel_to_plot)); 
-    semilogx(x,y,'*-');
+    plot(log10(x),y,'*-');
 
-    
-    % Then, plot the high bound results' amplitude (normalized)
-    x = frequencies; 
+    x = frequencies; % Then, plot the high bound results' amplitude (normalized)
     y = experiment_results(2,:,channel_to_plot) / max(experiment_results(2,:,channel_to_plot)); 
-    semilogx(x,y,'*-');
+    plot(log10(x),y,'*-');
 
-    % Then, plot the "ideal device"
-    sourceFreqsHz = frequencies;
+    sourceFreqsHz = frequencies; % Then, plot the "ideal device"
     dTsignal = secsPerMeasure; 
     
     x = frequencies;
     y = idealDiscreteSampleFilter(sourceFreqsHz,dTsignal);
-    semilogx(x,y,'-')
+    plot(log10(x),y,'-');
 
+
+    % Take sampling frequency * 2 -> 1 / that and then plot this onto plot 
+    % this is the nyquist. 
 
     xlabel('Source Frequency [log]');   
     ylabel('Relative amplitude of response');
@@ -214,12 +254,11 @@ function analyze_temporal_sensitivty(cal_path)
     legend('Low bound','High Bound','Ideal Device');
     hold off; 
 
-    % Step 12: Save graphs, if desired
+    % Step 15: Save graphs, if desired
     low_high_name_map = containers.Map({1,2},{'low','high'});
     save_or_not = input('Save figure? (y/n)', 's');
     if(save_or_not(1) == 'y')
         saveas(gcf, sprintf('%s_%s_boundTemporalSensitivity.png',chip_name, low_high_name_map(bb)));
     end 
-
 
 end
