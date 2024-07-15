@@ -66,7 +66,7 @@ function determine_bestMSparams(cal_path)
     for bb = 1:size(ndf_range,2) % Test lower bound and upper bound
         NDF = ndf_range(bb);
 
-        %  Step 6: Place the low bound NDF filter onto the light source, and begin testing
+        %  Step 6: Place the current bound NDF filter onto the light source, and begin testing
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
 
