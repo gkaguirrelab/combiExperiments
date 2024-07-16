@@ -5,20 +5,22 @@ function fit_calibration(MSCalDataFiles)
 %   fit_calibration(MSCalDataFiles)
 %
 % Description:
-%   Given a cell array of paths to MSCalData files 
-%   over different NDF levels, load them in 
-%   and fit the measured counts to predicted 
-%   counts in those conditions. Graphs the results. 
+%   Given a cell array of paths to MSCalData files over different NDF
+%   levels, load them in and fit the measured counts to predicted counts in
+%   those conditions. Graphs the results.
 %
 % Inputs:
 %   MSCalDataFiles        - Cell Array. Array of paths to MSCalData files
 %
 % Outputs:
-%   NONE                  
+%   NONE
 %
 % Examples:
 %{
-    MSCalDataFiles = {'./calibration1.mat','./calibration2.mat'};
+    dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+    calDir = fullfile(dropboxBaseDir,'FLIC_admin','Equipment','MiniSpect','calibration','FBF0EF4C301382EA');
+    d = dir(fullfile(calDir,'*mat'));
+    MSCalDataFiles = cellfun(@(x) fullfile(calDir, x), {d.name}, 'UniformOutput', false);
     fit_calibration(MSCalDataFiles);
 %}
 
@@ -34,7 +36,8 @@ MSCalDataFiles = {...
 fit_calibration(MSCalDataFiles)
 %}
 
-
+% This is a kludge. Eventually we will pass in a set of cal files
+% corresponding to the CombiLEDSphere calibrations at each NDF level.
 referenceNDF = 0.2;
 
 % Load the first MSCalDataFile, get the S, as we need this to resample the
@@ -45,12 +48,12 @@ clear MSCalData
 
 % Load the minispect SPDs
 spectral_sensitivity_map = containers.Map({'AMS7341'},...%"TSL2591"},...
-                                          {fullfile(tbLocateProjectSilent('combiExperiments'),'data','ASM7341_spectralSensitivity.mat')});
-                                            %fullfile(tbLocateProjectSilent('combiExperiments'),'data','TSL2591_spectralSensitivity.mat')});
+    {fullfile(tbLocateProjectSilent('combiExperiments'),'data','ASM7341_spectralSensitivity.mat')});
+%fullfile(tbLocateProjectSilent('combiExperiments'),'data','TSL2591_spectralSensitivity.mat')});
 
-                                            
-% For each chip, reformat the minispect SPDs to be in the space of thre sourceSPDs
-chips = ["AMS7341"];%"TSL2591"];                                         
+% For each chip, reformat the minispect SPDs to be in the space of the
+% sourceSPDs
+chips = ["AMS7341"];%"TSL2591"];
 minipspectP_rels_map = containers.Map();
 
 for ii = 1:size(chips,2)
@@ -66,7 +69,7 @@ for ii = 1:size(chips,2)
 
     minipspectP_rels_map(chips(ii)) = detectorP_rel;
 
-end 
+end
 
 % For each MSCalDataFile calibration
 for ii = 1:numel(MSCalDataFiles)
@@ -74,12 +77,12 @@ for ii = 1:numel(MSCalDataFiles)
     % Load this MSCalFile
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
     chip_struct_map = containers.Map({'AMS7341','TSL2591'},...
-                                     {MSCalData.ASChip,MSCalData.TSChip});
+        {MSCalData.ASChip,MSCalData.TSChip});
 
     measured_map = containers.Map({'AMS7341','TSL2591'},...
-                                  {   {}    ,   {}    });
+        {   {}    ,   {}    });
     predicted_map = containers.Map({'AMS7341','TSL2591'},...
-                                   {   {}    ,   {}    });
+        {   {}    ,   {}    });
 
     % Extract NDF and the source calibration struct
     NDF = MSCalData.meta.params.NDF;
@@ -106,10 +109,10 @@ for ii = 1:numel(MSCalDataFiles)
         for cc = 1:size(chips,2)
 
             % Find the corresponding MSCalData info
-            % and detectorP_rel for this chip 
+            % and detectorP_rel for this chip
             chip_struct = chip_struct_map(chips(cc));
             detectorP_rel = minipspectP_rels_map(chips(cc));
-            
+
             % Grab the channels of the chip we are fitting
             nDetectorChannels = chip_struct.meta.nDetectorChannels;
 
@@ -133,8 +136,8 @@ for ii = 1:numel(MSCalDataFiles)
 
             % Iterate over the source primary setting values
             for kk = 1:nPrimarySteps
-                
-                % Get the source settings by multiplying background 
+
+                % Get the source settings by multiplying background
                 % by the scalar value at primaryStep kk
                 source_settings = background * background_scalars_sorted(kk);
 
@@ -161,7 +164,7 @@ for ii = 1:numel(MSCalDataFiles)
                 measured{ii} = detectorCounts;
                 predicted{ii} = predictedCounts;
 
-                measured_map(chips(cc)) = measured; 
+                measured_map(chips(cc)) = measured;
                 predicted_map(chips(cc)) = predicted;
             end
         end
@@ -171,7 +174,7 @@ for ii = 1:numel(MSCalDataFiles)
 end % nCalibrations
 
 % Plot each chip's measured vs predicted counts
-for kk = 1:size(chips,2)    
+for kk = 1:size(chips,2)
 
     % Retrieve the measured/predicted counts for this chip
     measured = measured_map(chips(kk));
@@ -182,7 +185,7 @@ for kk = 1:size(chips,2)
     measured=cat(1,measured{:});
     predicted=cat(1,predicted{:});
 
-    % Loop across the channels and show the predicted vs. 
+    % Loop across the channels and show the predicted vs.
     figure
     tiledlayout(2,5);
     for cc = 1:nDetectorChannels
@@ -203,6 +206,6 @@ for kk = 1:size(chips,2)
         ylabel(sprintf('%s measured counts [log]', chips(kk)));
         title(sprintf('channel %d, [slope intercept] = %2.2f, %2.2f',cc,p));
     end
-end 
+end
 
 end % function
