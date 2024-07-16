@@ -135,6 +135,11 @@ void loop() {
       SE_read(serial_input[2], NRF_FICR);
     }
 
+    // Read from the LI chip using specific data to read
+    else if(mode_and_chip == "RL") {
+      LI_read(serial_input[2],&LIS2DUXS12);
+    }
+
     // Write to the AS chip using given data
     else if(mode_and_chip == "WA") {
       Serial.println("Write AS mode");

@@ -63,9 +63,10 @@ function result = read_minispect(obj, chip, mode)
         error('minispect read failed.');
     end 
 
-    if strcmp(mode,'C')
+    % Parse output that has multiple lines
+    if (strcmp(mode,'C') || (chip == 'L' && strcmp(mode,'A')))
         result = obj.parse_channel_reading(result,chip);
-    else 
+    else  % Otherwise, simply return what was read 
         result = result(end);
     end
     

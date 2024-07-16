@@ -15,7 +15,7 @@ classdef mini_spect_control < handle
         chip_functions_map = containers.Map({'A', 'T', 'L','S'}, {  containers.Map({'Gain','Integration','Channels','Flicker','Power','ATIME','ASTEP'}, {'G', 'I','C','F','P','a','A'}), containers.Map({'Gain','Channels','Lux','Power','ATIME'}, {'G', 'C','L','P','A'}), containers.Map({'Accel','Power'}, {'A','P'}), containers.Map({'SerialNumber'}, {'S'}) })
         
         % Map the different chips to their different amount of available channels
-        chip_nChannels_map = containers.Map({'A','T'},{10,2});
+        chip_nChannels_map = containers.Map({'A','T','L'},{10,2,3});
 
         % End of Message marker to mark end of Serial responses
         END_MARKER = '!'

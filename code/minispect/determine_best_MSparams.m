@@ -1,5 +1,32 @@
-function determine_bestMSparams(cal_path)
+function determine_bestMSparams(cal_path,chip_name)
 % Serves as both a guide and documentation for finding best params for MS chips
+%
+% Syntax:
+%   determine_bestMSparams(cal_path,chip_name)
+%
+% Description:
+%  Tests sets of parameters for a given light-sensing chip in the MiniSpect
+%  at the low and high light levels. Therein, tests different percentages 
+%  of the light level. Plots 2 graphs displaying the counts at the different 
+%  percentages of each light level, as well as the STD of the counts, and the 
+%  average time to make an individual measurement a
+%
+% Inputs:
+%   cal_path              - String. Represents the path to the light source
+%                           calibration file.      
+%
+%   chip_name             - String. Represents the full name of the light-sensing
+%                           chip to use for the experiment          
+%
+% Outputs:
+%   NONE
+%
+% Examples:
+%{
+   chip_name = 'AMS7341';
+   cal_path = './cal';
+   determine_bestMSparams(cal_path,chip_name);
+%}
     
     % Step 1: Connect MiniSpect and CombiLED
     MS = mini_spect_control(); % Initialize MiniSpect Object
@@ -20,7 +47,6 @@ function determine_bestMSparams(cal_path)
     
     % Step 2: Enter chip to test and get lower and upper bounds
     light_sensing_chips = ['AMS7341','TSL2591'];
-    chip_name = 'AMS7341';
     chip = MS.chip_name_map(chip_name);
     chip_functions = MS.chip_functions_map(chip); % Retrieve the available functions of the given chip
     nDetectorChannels = MS.chip_nChannels_map(chip);  % Retrieve the channels the given chip can read
@@ -220,8 +246,9 @@ function determine_bestMSparams(cal_path)
         % Step 12: Save graphs, if desired
         low_high_name_map = containers.Map({1,2},{'low','high'});
         save_or_not = input('Save figure? (y/n)', 's');
+        drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/MiniSpect/calibration/graphs/'];
         if(save_or_not(1) == 'y')
-            saveas(gcf, sprintf('%s_boundParamComparison.png',low_high_name_map(bb)));
+            saveas(gcf, sprintf('%s%s_boundParamComparison.png',drop_box_dir,low_high_name_map(bb)));
         end 
 
 

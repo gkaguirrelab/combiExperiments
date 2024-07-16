@@ -1,43 +1,31 @@
-function analyze_temporal_sensitivty(cal_path)
+function analyze_temporal_sensitivty(cal_path,chip_name)
 % Analyzes the temporal sensitivity of a given light-sensing chip in the minispect
 %
 % Syntax:
-%   analyze_temporal_sensitivty(cal_path)
+%   analyze_temporal_sensitivty(cal_path,chip_name)
 %
 % Description:
-%   Calibrates the minispect against the CombiLED with a given NDF filter nReps times, 
-%   with nPrimarySteps between settingScalarRange, taking nSamplesPerStep samples per 
-%   measure. The steps are presented either sequentially or randomly, defined by 
-%   randomizeOrder. The results are saved to a subfolder labeled 
-%   with the device ID of the minispect in a file named calibration[NDF]. Uses the 
-%   cal file of the light source as a reference. 
+%  Generates temporal sensitivity plots for both high and low light levels
+%  of a given light-sensing chip in the MiniSpect. Also displays source modulation, 
+%  observed, with observed counts and fitted counts layered ontop during runtime. Does 
+%  not save these.  
 %
 % Inputs:
-%   NDF                   - Int/Float. Represents the NDF filter level
-%                           on the light source. 
 %   cal_path              - String. Represents the path to the light source
-%                           calibration file.
-%   nPrimarySteps         - Int. Represents the number of different setting values
-%                           to present on the CombiLED.
-%   settingScalarRange    - Tuple. Represents the percentage [low,high] bounds of the light 
-%                           levels.
-%   nSamplesPerStep       - Int. Represents the number of measures to take at a given 
-%                           primary step. 
-%   nReps                 - Int. Represents the number of repetitions to conduct the entire
-%                           experiment over. 
-%   randomizeOrder        - Logical. Represents whether or not to randomize the order
-%                           in which primary settings are presented to the minispect
-%   save_path             - String. Represents the path to the folder in which 
-%                           calibrations of minispects are saved.                      
+%                           calibration file.      
+%
+%   chip_name             - String. Represents the full name of the light-sensing
+%                           chip to use for the experiment          
 %
 % Outputs:
-%   MSCalData             - Struct. Contains all of the meta data (params, timings, date, etc)
-%                           as well as the raw data (counts, settings) used for calibration
+%   experiment_results    - Array. Contains the amplitudes per channel 
+%                           per frequency, for the low and high light levels
 %
 % Examples:
 %{
-   MS = mini_spect_control();
-   MS.calibrate_minispect(2,'./calfile',10,[0.05,0.95],10,3,1,'./calibration') 
+   chip_name = 'TSL2591';
+   cal_path = './cal';
+   analyze_temporal_sensitivty(cal_path,chip_name);
 %}
 
     % Utility Functions
@@ -84,7 +72,6 @@ function analyze_temporal_sensitivty(cal_path)
 
     % Step 3: Select chip of MS to analyze
     light_sensing_chips = ['AMS7341','TSL2591']; % The chips on the MS that can detect light 
-    chip_name = 'AMS7341';  % the full name of the chip to analyze
     chip = MS.chip_name_map(chip_name); % the underlying representation of the chip 
     
     % Step 4: Retrieve information about the experiment/chip
@@ -108,10 +95,10 @@ function analyze_temporal_sensitivty(cal_path)
 
     photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
 
-    low_bound_freq = 0.1;
-    high_bound_freq = 8; 
-    num_points = 20;
-    nMeasures = 100; 
+    low_bound_freq = 0.1;  % The lowest frequency with which the CombiLED will flicker    
+    high_bound_freq = 8;   % The highest frequency with which the CombiLED will flicker
+    num_points = 2;       % The number of points between the low and high frequency to measure
+    nMeasures = 5;       % The number of measurements at a given frequency
 
     frequencies = logspace(log10(low_bound_freq), log10(high_bound_freq), num_points); % create num_points equally log spaced
                                                                                        % points between the low and high bounds
@@ -125,7 +112,7 @@ function analyze_temporal_sensitivty(cal_path)
 
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
-        fprintf('You now have 30 seconds to leave the room if desired.');
+        fprintf('You now have 30 seconds to leave the room if desired.\n');
         pause(30)
 
         secsPerMeasure = 0; 
@@ -187,7 +174,7 @@ function analyze_temporal_sensitivty(cal_path)
                 X(:,1) = sin(  modelT./(1/f0).*2*pi );
                 X(:,2) = cos(  modelT./(1/f0).*2*pi );
                 % Perform the fit
-                y = interp1(signal_t,signal,modelT,'nearest','extrap')';
+                y = interp1(signalT,signal,modelT,'nearest','extrap')';
                 b = X\y;
 
                 fit = X * b;  % high temporal resolution fit,
@@ -225,7 +212,11 @@ function analyze_temporal_sensitivty(cal_path)
         end
     end
 
-    % Step 14: Plot Temporal Sensitivity for a sample channel
+    % Step 14: Save the results of the experiment, so we don't need to 
+    % rerun it if there are plotting issues
+    save(sprintf('%s_results.mat',chip_name),'experiment_results');
+
+    % Step 15: Plot Temporal Sensitivity for a sample channel
     figure ; 
     hold on;
 
@@ -254,11 +245,11 @@ function analyze_temporal_sensitivty(cal_path)
     legend('Low bound','High Bound','Ideal Device');
     hold off; 
 
-    % Step 15: Save graphs, if desired
-    low_high_name_map = containers.Map({1,2},{'low','high'});
+    % Step 16: Save graphs, if desired
     save_or_not = input('Save figure? (y/n)', 's');
+    drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/MiniSpect/calibration/graphs/'];
     if(save_or_not(1) == 'y')
-        saveas(gcf, sprintf('%s_%s_boundTemporalSensitivity.png',chip_name, low_high_name_map(bb)));
+        saveas(gcf, sprintf('%s%s_TemporalSensitivity.png',drop_box_dir,chip_name));
     end 
 
 end
