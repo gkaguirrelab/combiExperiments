@@ -460,6 +460,7 @@ void AS7341_Reinit() {
   as7341.setATIME(uint8_t(atime));
   as7341.setASTEP(uint16_t(astep));
   as7341.setGain(as7341_gain_t(gain));  //AS7341_GAIN_256X
+
 }
 
 void AS7341_read() {

@@ -73,7 +73,6 @@ end
 
 % For each MSCalDataFile calibration
 for ii = 1:numel(MSCalDataFiles)
-
     % Load this MSCalFile
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
     chip_struct_map = containers.Map({'AMS7341','TSL2591'},...
@@ -160,9 +159,9 @@ for ii = 1:numel(MSCalDataFiles)
             if jj == 1
                 measured = measured_map(chips(cc));
                 predicted = predicted_map(chips(cc));
-
-                measured{ii} = detectorCounts;
-                predicted{ii} = predictedCounts;
+            
+                measured{jj} = detectorCounts;
+                predicted{jj} = predictedCounts;
 
                 measured_map(chips(cc)) = measured;
                 predicted_map(chips(cc)) = predicted;
