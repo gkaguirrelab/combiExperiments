@@ -47,13 +47,13 @@ sourceS = MSCalData.meta.source_cal.rawData.S;
 clear MSCalData
 
 % Load the minispect SPDs
-spectral_sensitivity_map = containers.Map({'AMS7341'},...%"TSL2591"},...
+spectral_sensitivity_map = containers.Map({'AMS7341'},...%'TSL2591'},...%"TSL2591"},...
     {fullfile(tbLocateProjectSilent('combiExperiments'),'data','ASM7341_spectralSensitivity.mat')});
-%fullfile(tbLocateProjectSilent('combiExperiments'),'data','TSL2591_spectralSensitivity.mat')});
+    %fullfile(tbLocateProjectSilent('combiExperiments'),'data','TSL2591_spectralSensitivity.mat')});
 
 % For each chip, reformat the minispect SPDs to be in the space of the
 % sourceSPDs
-chips = ["AMS7341"];%"TSL2591"];
+chips = ["AMS7341"];%"TSL2591"];%"TSL2591"];
 minipspectP_rels_map = containers.Map();
 
 for ii = 1:size(chips,2)
