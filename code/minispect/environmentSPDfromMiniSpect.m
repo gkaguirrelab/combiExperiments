@@ -1,8 +1,8 @@
-function [estimatedSPD,sourceWeights,fVal] = environmentSPDfromMiniSpect( detectorWeights )
+function [sourceSPD,detectorSPD,modelS,sourceWeights,fVal] = environmentSPDfromMiniSpect( detectorWeights, options )
 % SPD from natural and artificial light sources to fit minispect weights
 %
 % Syntax:
-%   [estimatedSPD,sourceWeights,fVal] = environmentSPDfromMiniSpect( detectorWeights )
+%   [estimatedSPD,enviroS,sourceWeights,fVal] = environmentSPDfromMiniSpect( detectorWeights )
 %
 % Description:
 %   We wish to reconstruct the environmental spectral power distribution
@@ -34,35 +34,59 @@ function [estimatedSPD,sourceWeights,fVal] = environmentSPDfromMiniSpect( detect
 %
 % Examples:
 %{
+    calPath = fullfile(tbLocateProjectSilent('combiExperiments'),'cal','CombiLED_shortLLG_testSphere_ND0x2.mat');
+    load(calPath,'cals');
+    cal = cals{end};
 	detectorWeights = [307, 466, 1024, 1401, 1464, 1259, 1570, 444, 3740, 228];
-    [estimatedSPD,sourceWeights,fVal] = environmentSPDfromMiniSpect(detectorWeights);
+    [sourceSPD,detectorSPD,modelS,sourceWeights,fVal] = environmentSPDfromMiniSpect(detectorWeights,'modelSet','CombiLED','cal',cal);  
 %}
+
+arguments
+    detectorWeights (1,10) {isvector}
+    options.modelSet (1,:) char {mustBeMember(options.modelSet,{'CombiLED','environment'})} = 'CombiLED'
+    options.cal (1,:) struct = [];
+end
 
 % Load the detector SPDs
 miniSpectSPDPath = fullfile(tbLocateProjectSilent('combiExperiments'),'data','ASM7341_spectralSensitivity.mat');
 load(miniSpectSPDPath,'T');
 detectorS = WlsToS(T.wl);
 detectorP = T{:,2:end};
-nChannels = size(detectorP,2);
+nDetectorChannels = size(detectorP,2);
 
 % Check that the length of the detectorWeights vec matches nChannels
-assert(nChannels == length(detectorWeights));
+assert(nDetectorChannels == length(detectorWeights));
 
 % Load the set of light sources
-enviroSPDPath = fullfile(tbLocateProjectSilent('combiExperiments'),'data','CIEDaylightComponents.mat');
-load(enviroSPDPath,'CIEDaylightComponents_T');
-enviroS = WlsToS(CIEDaylightComponents_T.wls);
-enviroP = CIEDaylightComponents_T{:,2:end};
+switch options.modelSet
+    case 'environment'
+        enviroSPDPath = fullfile(tbLocateProjectSilent('combiExperiments'),'data','CIEDaylightComponents.mat');
+        load(enviroSPDPath,'CIEDaylightComponents_T');
+        modelS = WlsToS(CIEDaylightComponents_T.wls);
+        modelP = CIEDaylightComponents_T{:,2:end};
+        % Set the bounds. For the daylight components, it is possible to have
+        % negative loadings on the 2nd and 3rd component. Otherwise, all components
+        % are bound by zero.
+        lb = [0 -Inf -Inf];
+        ub = [Inf Inf Inf];
+        x0 = [1 1 1];
+    case 'CombiLED'
+        modelS = options.cal.rawData.S;
+        modelP = options.cal.processedData.P_device;
+        lb = [0 0 0 0 0 0 0 0];
+        ub = [Inf Inf Inf Inf Inf Inf Inf Inf];
+        x0 = [1 1 1 1 1 1 1 1];
+end
 
 % Reformat the minispect SPDs to be in the space of the light sources
 detectorP_resamp = [];
-for ii = 1:nChannels
-    detectorP_resamp(:,ii) = interp1(SToWls(detectorS),detectorP(:,ii),SToWls(enviroS));
+for ii = 1:nDetectorChannels
+    detectorP_resamp(:,ii) = interp1(SToWls(detectorS),detectorP(:,ii),SToWls(modelS));
 end
 
 % Create a forward model of the minispect weights based upon a combination
 % of light sources
-mySPD = @(x) enviroP*x';
+mySPD = @(x) modelP*x';
 myDetectorWeights = @(x) mySPD(x)'*detectorP_resamp;
 myObj = @(x) norm(myDetectorWeights(x)-detectorWeights);
 
@@ -70,15 +94,10 @@ myObj = @(x) norm(myDetectorWeights(x)-detectorWeights);
 options = optimset('fmincon');
 options.Display = 'off';
 
-% Set the bounds. For the daylight components, it is possible to have
-% negative loadings on the 2nd and 3rd component. Otherwise, all components
-% are bound by zero.
-lb = [0 -Inf -Inf];
-ub = [Inf Inf Inf];
-
 % Find the light source parameters that best fit the observed detector
 % weights
-[sourceWeights,fVal] = fmincon(myObj,[1 1 1],[],[],[],[],lb,ub,[],options);
-estimatedSPD = mySPD(sourceWeights);
+[sourceWeights,fVal] = fmincon(myObj,x0,[],[],[],[],lb,ub,[],options);
+sourceSPD = mySPD(sourceWeights);
+detectorSPD = (myDetectorWeights(sourceWeights)*detectorP_resamp')';
 
 end
