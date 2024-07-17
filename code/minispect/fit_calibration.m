@@ -43,6 +43,7 @@ referenceNDF = 0.2;
 % Load the first MSCalDataFile, get the S, as we need this to resample the
 % detector spectral sensitivity functions
 MSCalData = load(MSCalDataFiles{1}).MSCalData;
+
 sourceS = MSCalData.meta.source_cal.rawData.S;
 clear MSCalData
 
@@ -56,7 +57,7 @@ spectral_sensitivity_map = containers.Map({'AMS7341'},...%'TSL2591'},...%"TSL259
 chips = ["AMS7341"];%"TSL2591"];%"TSL2591"];
 minipspectP_rels_map = containers.Map();
 
-for ii = 1:size(chips,2)
+for ii = 1:numel(chips)
     miniSpectSPDPath = spectral_sensitivity_map(chips(ii));
     load(miniSpectSPDPath,'T');
     minispectS = WlsToS(T.wl);
@@ -71,17 +72,22 @@ for ii = 1:size(chips,2)
 
 end
 
+% Establish containers to hold the measurements 
+% and predicted values for the chips across 
+% the different calibrations
+measured_map = containers.Map({'AMS7341','TSL2591'},...
+    {   {}    ,   {}    });
+predicted_map = containers.Map({'AMS7341','TSL2591'},...
+    {   {}    ,   {}    });
+
 % For each MSCalDataFile calibration
 for ii = 1:numel(MSCalDataFiles)
+    disp('CAL FILE')
+    disp(MSCalDataFiles{ii})
     % Load this MSCalFile
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
     chip_struct_map = containers.Map({'AMS7341','TSL2591'},...
         {MSCalData.ASChip,MSCalData.TSChip});
-
-    measured_map = containers.Map({'AMS7341','TSL2591'},...
-        {   {}    ,   {}    });
-    predicted_map = containers.Map({'AMS7341','TSL2591'},...
-        {   {}    ,   {}    });
 
     % Extract NDF and the source calibration struct
     NDF = MSCalData.meta.params.NDF;
@@ -103,9 +109,8 @@ for ii = 1:numel(MSCalDataFiles)
 
     % Iterate over repetitions
     for jj = 1:nReps
-
         % For each chip on this repetition
-        for cc = 1:size(chips,2)
+        for cc = 1:numel(chips)
 
             % Find the corresponding MSCalData info
             % and detectorP_rel for this chip
@@ -156,16 +161,24 @@ for ii = 1:numel(MSCalDataFiles)
             end % nPrimarySteps
 
             % For now, let's just save the data from the first rep
-            if jj == 1
-                measured = measured_map(chips(cc));
-                predicted = predicted_map(chips(cc));
-            
-                measured{jj} = detectorCounts;
-                predicted{jj} = predictedCounts;
-
-                measured_map(chips(cc)) = measured;
-                predicted_map(chips(cc)) = predicted;
+            if jj > 1
+                continue ; 
             end
+
+            measured = measured_map(chips(cc));
+            predicted = predicted_map(chips(cc));
+
+            measured{ii} = detectorCounts;
+
+            predicted{ii} = predictedCounts;
+
+            disp(measured{1})
+
+            measured_map(chips(cc)) = measured;
+            predicted_map(chips(cc)) = predicted;
+
+           
+            
         end
 
     end % nReps
@@ -173,7 +186,7 @@ for ii = 1:numel(MSCalDataFiles)
 end % nCalibrations
 
 % Plot each chip's measured vs predicted counts
-for kk = 1:size(chips,2)
+for kk = 1:numel(chips)
 
     % Retrieve the measured/predicted counts for this chip
     measured = measured_map(chips(kk));
@@ -183,6 +196,7 @@ for kk = 1:size(chips,2)
     % calibrations
     measured=cat(1,measured{:});
     predicted=cat(1,predicted{:});
+
 
     % Loop across the channels and show the predicted vs.
     figure
