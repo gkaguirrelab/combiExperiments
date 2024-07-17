@@ -14,7 +14,8 @@
 #include <Arduino.h>
 #include <minispect_io.h>
 #include <nrf.h>
-
+#include <vector>
+#include <bitset>
 
 HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
 Adafruit_TSL2591 tsl = Adafruit_TSL2591(2591);  // pass in a number for the sensor identifier (for your use later)
@@ -117,6 +118,17 @@ void loop() {
     // Read from the AS chip using given specific data to read
     if(mode_and_chip == "RA") {
       Serial.println("Read AS mode"); 
+
+      std::vector<Adafruit_BusIO_RegisterBits> flicker_info = as7341.setFDGain(5);
+
+      Serial.println("Gain,MSB,LSB");
+      for(int i=0; i < 3; i++) {
+        uint32_t info = flicker_info[i].read();
+
+        std::bitset<32> info_as_binary(info);
+        String info_as_string = String(info_as_binary.to_string().c_str());
+        Serial.println(info_as_string);
+      }
 
       AS_read(serial_input[2], &as7341);
     

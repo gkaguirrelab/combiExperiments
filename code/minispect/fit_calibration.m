@@ -176,9 +176,6 @@ for ii = 1:numel(MSCalDataFiles)
 
             measured_map(chips(cc)) = measured;
             predicted_map(chips(cc)) = predicted;
-
-           
-            
         end
 
     end % nReps
