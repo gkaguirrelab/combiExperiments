@@ -24,17 +24,6 @@ function fit_calibration(MSCalDataFiles)
     fit_calibration(MSCalDataFiles);
 %}
 
-% Example call
-%{
-MSCalDataFiles = {...
-'calibration4.mat',...
-'calibration3.mat',...
-'calibration2.mat',...
-'calibration1.mat',...
-'calibration0x2.mat'};
-
-fit_calibration(MSCalDataFiles)
-%}
 
 % This is a kludge. Eventually we will pass in a set of cal files
 % corresponding to the CombiLEDSphere calibrations at each NDF level.
@@ -43,7 +32,6 @@ referenceNDF = 0.2;
 % Load the first MSCalDataFile, get the S, as we need this to resample the
 % detector spectral sensitivity functions
 MSCalData = load(MSCalDataFiles{1}).MSCalData;
-
 sourceS = MSCalData.meta.source_cal.rawData.S;
 clear MSCalData
 
@@ -82,8 +70,6 @@ predicted_map = containers.Map({'AMS7341','TSL2591'},...
 
 % For each MSCalDataFile calibration
 for ii = 1:numel(MSCalDataFiles)
-    disp('CAL FILE')
-    disp(MSCalDataFiles{ii})
     % Load this MSCalFile
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
     chip_struct_map = containers.Map({'AMS7341','TSL2591'},...
@@ -165,14 +151,12 @@ for ii = 1:numel(MSCalDataFiles)
                 continue ; 
             end
 
+            % COMMENTS HERE?
             measured = measured_map(chips(cc));
             predicted = predicted_map(chips(cc));
 
             measured{ii} = detectorCounts;
-
             predicted{ii} = predictedCounts;
-
-            disp(measured{1})
 
             measured_map(chips(cc)) = measured;
             predicted_map(chips(cc)) = predicted;
@@ -193,7 +177,6 @@ for kk = 1:numel(chips)
     % calibrations
     measured=cat(1,measured{:});
     predicted=cat(1,predicted{:});
-
 
     % Loop across the channels and show the predicted vs.
     figure
