@@ -191,7 +191,6 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
     // Invalid command
     default: 
       sig_error();
-
       break;
   }
 
@@ -199,6 +198,7 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
 void LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
   int32_t accel[3];
+  float_t temperature; 
   
   lis2duxs12->Get_X_Axes(accel);
 
@@ -211,13 +211,26 @@ void LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
 
       // Append End of Message terminator
       Serial.println("!");
-
       break; 
     
+    // Read the temperature 
+    case 'T':
+      // If there was a problem with reading the temperature, throw an error 
+      if(lis2duxs12->Get_Temp(&temperature) != LIS2DUXS12_STATUS_OK) {
+        sig_error();
+        break; 
+      }
+
+      // Print out the temperature reading (C)
+      Serial.println(temperature);
+
+      // Append End of Message terminator
+      Serial.println("!");
+      break; 
+
     // Invalid command
     default:
       sig_error();
-      
       break;
   }
 }
