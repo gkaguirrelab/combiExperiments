@@ -104,7 +104,6 @@ void setup() {
 }
 
 void loop() {
-
   // Get the command from the controller
   read_command(&serial_input); 
 
@@ -119,16 +118,7 @@ void loop() {
     if(mode_and_chip == "RA") {
       Serial.println("Read AS mode"); 
 
-      std::vector<Adafruit_BusIO_RegisterBits> flicker_info = as7341.setFDGain(5);
-
-      Serial.println("Gain,MSB,LSB");
-      for(int i=0; i < 3; i++) {
-        uint32_t info = flicker_info[i].read();
-
-        std::bitset<32> info_as_binary(info);
-        String info_as_string = String(info_as_binary.to_string().c_str());
-        Serial.println(info_as_string);
-      }
+      //std::vector<Adafruit_BusIO_RegisterBits> flicker_info = as7341.setFDGain(5);
 
       AS_read(serial_input[2], &as7341);
     
