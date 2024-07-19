@@ -6,13 +6,15 @@ def main():
     current_time:datetime = datetime.now()
     
     # Standard Practice, upload at a given time each day
-    if(current_time == DAILY_UPLOAD_TIME and has_internet() is True):
+    if((current_time.hour, current_time.minute, current_time.second == DAILY_UPLOAD_TIME) \
+        and has_internet() is True):
+       
         upload_data()
         
         LAST_UPLOAD_DATE = current_time
     
     # If we missed an upload, upload as soon as the user as internet again
-    elif(current_time - LAST_UPLOAD_DATE > 24 and has_internet() is True): # greater than 24 hours ago, how to do 
+    elif((current_time - LAST_UPLOAD_DATE).days >= 1 and has_internet() is True):
         upload_data()      
 
         LAST_UPLOAD_DATE = current_time                                 
