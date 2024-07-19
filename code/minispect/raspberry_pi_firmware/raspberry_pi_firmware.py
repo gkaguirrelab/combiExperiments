@@ -6,8 +6,7 @@ def main():
     current_time:datetime = datetime.now()
     
     # Standard Practice, upload at a given time each day
-    if((current_time.hour, current_time.minute, current_time.second == DAILY_UPLOAD_TIME) \
-        and has_internet() is True):
+    if( current_time.time() == DAILY_UPLOAD_TIME and has_internet() is True):
        
         upload_data()
         

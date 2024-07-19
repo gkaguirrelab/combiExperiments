@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime,time
 
-DAILY_UPLOAD_TIME = None 
+DAILY_UPLOAD_TIME = time(0,0,0)
 LAST_UPLOAD_DATE = None
 
 # Upload the data from the raspberry 
