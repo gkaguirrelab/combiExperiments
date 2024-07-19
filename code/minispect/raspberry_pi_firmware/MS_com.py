@@ -1,7 +1,6 @@
 import os
 import numpy as np
-from utility.MS_util import read_MSBLE
-from utility.MS_util import parse_MSBLE
+from utility.MS_util import read_MSBLE, parse_MSBLE
 
 # Communicate with the MiniSpect
 def MS_com():
