@@ -1,18 +1,136 @@
 import numpy as np
+import asyncio
+import sys
+from itertools import count, takewhile
+from typing import Iterator
+from bleak import BleakClient, BleakScanner
+from bleak.backends.characteristic import BleakGATTCharacteristic
+from bleak.backends.device import BLEDevice
+from bleak.backends.scanner import AdvertisementData
+import os
 
-# Read bytes from the MiniSpect 
-# over bluetooth
-def read_MSBLE() -> list:
-    pass
+# Convert the numpy array of a chip's reading 
+# to a storable string
+def reading_to_string(reading: np.array) -> str:
+    
+    # Intersperse , between all channel values as str
+    # and add new line
+    return ",".join([str(x) for x in reading]) + '\n'
+
+
+async def write_data(write_queue: asyncio.Queue, reading_names: list[str], output_directory: str):
+    try:
+        while True:
+            readings = await write_queue.get()
+
+            print(f'Writing: {readings}')
+
+            # Create mapping between filenames and readings 
+            # from the Minispect
+            results_mapping: dict = {reading_name:reading for reading_name, 
+                            reading in zip(reading_names,readings)}
+        
+            # Iterate over the reading names/readings
+            for reading_name, reading in results_mapping.items():
+                
+                # Path for this reading's data file
+                save_path: str = os.path.join(output_directory, reading_name + '.txt')
+
+                # Open file, append new reading to the end
+                with open(save_path,'a') as f:
+                    f.write(reading_to_string(reading))
+        
+    except Exception as e:
+        print(e)
 
 # Parse the bytes read over bluetooth 
 # from the MiniSpect
-def parse_MSBLE(bluetooth_bytes:list) -> tuple:
-    AS_channels:np.array = np.array([bluetooth_bytes],dtype=np.uint16)
-    TS_channels:np.array = np.array([bluetooth_bytes],dtype=np.uint16)
-    LI_channels:np.array = np.array([bluetooth_bytes] + [0],dtype=np.float32)   # 0 is here for temp placeholder
-    
-    # temp will be condensed into a third LI channel
-    temp:float = None
+async def parse_MSBLE(read_queue: asyncio.Queue, write_queue: asyncio.Queue): 
+    try:
+        while True:
+            # Retrieve the latest bytes received 
+            bluetooth_bytes = await read_queue.get()
 
-    return AS_channels, TS_channels, LI_channels
+            print(f"Parsing: {bluetooth_bytes}")
+
+            # Splice and convert the channels to their respective types 
+            # Note: LI_channel 3 = temperature
+            AS_channels: np.array = np.frombuffer(bluetooth_bytes,dtype=np.uint16)
+            TS_channels: np.array = np.frombuffer(bluetooth_bytes,dtype=np.uint16)
+            LI_channels: np.array = np.frombuffer(bluetooth_bytes,dtype=np.float32)
+
+            # Add them in the queue of values to write
+            await write_queue.put([AS_channels,TS_channels,LI_channels])
+    
+    except Exception as e:
+        print(e)
+
+# Read bytes from the MiniSpect 
+# over bluetooth via the UART
+# example from the bleak librray
+async def read_MSBLE(queue: asyncio.Queue):
+
+    UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+    UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+    UART_TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+
+    def match_nus_uuid(device: BLEDevice, adv: AdvertisementData):
+        # This assumes that the device includes the UART service UUID in the
+        # advertising data. This test may need to be adjusted depending on the
+        # actual advertising data supplied by the device.
+        if UART_SERVICE_UUID.lower() in adv.service_uuids:
+            return True
+
+        return False
+
+    device = await BleakScanner.find_device_by_filter(match_nus_uuid)
+
+    if device is None:
+        print("no matching device found, you may need to edit match_nus_uuid().")
+        sys.exit(1)
+
+    def handle_disconnect(_: BleakClient):
+        print("Device was disconnected, goodbye.")
+        # cancelling all tasks effectively ends the program
+        for task in asyncio.all_tasks():
+            task.cancel()
+
+    async def handle_rx(_: BleakGATTCharacteristic, data: bytearray):
+        print("received:", data)
+        await queue.put(data)
+
+    async with BleakClient(device, disconnected_callback=handle_disconnect) as client:
+        # Start notifications for receiving data
+        await client.start_notify(UART_TX_CHAR_UUID, handle_rx)
+
+        print("Connected, now reading data...")
+
+        # Keep the program running to continue receiving data
+        try:
+            while True:
+                await asyncio.sleep(1)  # Sleep for a short period to keep the loop running
+        except asyncio.CancelledError:
+            pass
+    
+
+async def main():
+    output_directory: str = 'readings/MS'
+    reading_names: list = ['AS_channels','TS_channels',
+                         'LI_channels']
+    
+     # If the output directory does not exist,
+        # make it
+    if(not os.path.exists(output_directory)):
+        os.mkdir(output_directory)
+    
+    read_queue = asyncio.Queue()
+    write_queue = asyncio.Queue()
+
+    read_task = asyncio.create_task(read_MSBLE(read_queue))
+    parse_task = asyncio.create_task(parse_MSBLE(read_queue, write_queue))
+    write_task = asyncio.create_task(write_data(write_queue, reading_names, output_directory))
+
+    await asyncio.gather(read_task, parse_task, write_task, return_exceptions=True)
+
+if(__name__ == '__main__'):
+    asyncio.run(main())

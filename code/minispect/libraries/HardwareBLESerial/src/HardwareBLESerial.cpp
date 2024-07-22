@@ -11,6 +11,8 @@ bool HardwareBLESerial::beginAndSetupBLE(const char *name) {
   BLE.setLocalName(name);
   BLE.setDeviceName(name);
   this->begin();
+  BLE.setManufacturerData(mfgData, 8);
+
   BLE.advertise();
   return true;
 }
@@ -21,6 +23,7 @@ void HardwareBLESerial::begin() {
   uartService.addCharacteristic(transmitCharacteristic);
   receiveCharacteristic.setEventHandler(BLEWritten, HardwareBLESerial::onBLEWritten);
   BLE.addService(uartService);
+  address = BLE.address();
 }
 
 void HardwareBLESerial::poll() {

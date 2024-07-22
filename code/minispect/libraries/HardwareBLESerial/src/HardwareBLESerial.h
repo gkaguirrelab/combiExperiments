@@ -14,7 +14,7 @@ Tested using UART console feature in [Adafruit Bluefruit LE Connect](https://app
 #include <Arduino.h>
 #include <ArduinoBLE.h>
 
-#define BLE_ATTRIBUTE_MAX_VALUE_LENGTH 20
+#define BLE_ATTRIBUTE_MAX_VALUE_LENGTH 52 //20
 #define BLE_SERIAL_RECEIVE_BUFFER_SIZE 256
 
 template<size_t N> class ByteRingBuffer {
@@ -85,6 +85,8 @@ class HardwareBLESerial {
     size_t println(double value);
 
     operator bool();
+    String address;
+    uint8_t mfgData[8] = {0x25, 0x2A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
   private:
     HardwareBLESerial();
     HardwareBLESerial(HardwareBLESerial const &other) = delete;  // disable copy constructor

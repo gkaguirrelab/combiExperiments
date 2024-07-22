@@ -54,10 +54,11 @@ uint16_t VBat100x = 0;
 // bytes 32-33 ADC3/F8 680nm
 // bytes 34-35 ADC4/Clear
 // bytes 36-37 ADC5/NIR
-uint8_t dataBLE[40];
 String serial_input = "";
 
-char dtm[32];
+String ble_input = "";
+
+
 String commandfz = "";
 int astep = 259; //599 //399; //599;//999;
 int atime = 249;   // 24; //29;   //49;
@@ -85,11 +86,6 @@ void setup() {
     }
   }
 
-
-
-  dataBLE[0] = ':';
-  dataBLE[1] = 'D';
-  dataBLE[39] = '\n';
   Serial.println("HardwareBLESerial initialized!");
 
   // wait for a central device to connect
@@ -106,6 +102,7 @@ void setup() {
 void loop() {
   // Get the command from the controller
   read_command(&serial_input); 
+  read_BLE_command(&ble_input, &bleSerial);
 
   // If we received a well formed command, execute it
   if(serial_input.length() > 2) {
@@ -115,7 +112,7 @@ void loop() {
     String mode_and_chip = serial_input.substring(0,2); 
 
     // Read from the AS chip using given specific data to read
-    if(mode_and_chip == "RA") {
+   if(mode_and_chip == "RA") {
       Serial.println("Read AS mode"); 
 
       //std::vector<Adafruit_BusIO_RegisterBits> flicker_info = as7341.setFDGain(5);
@@ -164,77 +161,45 @@ void loop() {
     }
   }
 
+  // If we received a well formed command, execute it
+  if(ble_input.length() > 2) {
+    Serial.println(serial_input);
+
+    // Get the action to execute
+    String mode = serial_input.substring(0,2); 
+
+    // Science Science mode 
+    if(mode == "SS") {
+      // Retrieve all 11 AS channels (need to add flicker to this)
+      std::vector<uint16_t> AS_channels = AS_read('C',&as7341);
+
+      // Retrieve 2 TS channels 
+      std::vector<uint16_t> TS_channels = TS_read('C',&tsl);
+
+      // Retrieve 3 accelerometer channels
+      std::vector<int32_t> LI_channels = LI_read('A', &LIS2DUXS12); 
+
+      // Retrieve accelerometer temperature and convert back into float 
+      std::vector<int32_t> LI_temp_int = LI_read('T', &LIS2DUXS12); 
+      float LI_temp = (float) LI_temp_int[0];
+
+      // Send the data back to the ble caller
+      write_ble(&bleSerial, &AS_channels, &TS_channels, &LI_channels, LI_temp);  
+    }
+
+    // Invalid command
+    else {
+      Serial.println("-1");
+      Serial.println("!");
+    }
+  }
+
+
   // Reset command to empty after execution. 
   serial_input = "";
-
-  //delay(10000);
-
-  // if there is input to read and that input was a read
-  // if(Serial.available() > 0) {
-  //   char input = Serial.read()
-    
-  //   switch(input) {
-  //     case 'R':
-  //       lastRead = millis();
-  //       digitalWrite(LED_GREEN, LOW);
-  //       //simpleRead();
-  //       advancedRead();
-  //       AS7341_read();
-  //       LIS2DUXS12_read();
-  //       BatteryRead();
-  //       digitalWrite(LED_GREEN, HIGH);
-  //       if (bleSerial) {
-  //        sendBLEData();
-  //       }
-  //       Serial.println();
-
-  //     case ''
-       
-  // }
-
-  //    BLERead2();
-
-  //   }
-
-    
-    
+  ble_input = "";    
 }
 
-
-
-void BLERead2() {
-  bleSerial.poll();
-
-  while (bleSerial.availableLines() > 0) {
-    digitalWrite(LED_BLUE, LOW);
-    digitalWrite(LED_RED, LOW);
-    Serial.print("BLE Rec: ");
-    bleSerial.readLine(dtm, 32);
-    // String testT = "as7341,49,999,8\n";
-    // strcpy( dtm, testT.c_str());
-    Serial.println(dtm);
-    sscanf(dtm, "%s %d %d %d\n", &commandfz, &atime, &astep, &gain);
-    Serial.println(gain);
-    // if (commandfz.indexOf("as73") >= 0){
-    // Serial.println(command);
-    //Serial.println(atime);
-    // Serial.println(astep);
-    // Serial.println(gain);
-    AS7341_Reinit();
-    Serial.println("AS7341 updated");
-    //  }
-    delay(50);
-    digitalWrite(LED_BLUE, HIGH);
-    digitalWrite(LED_RED, HIGH);
-  }
-}
-
-
-
-void processCMD(String str) {
-  strcpy(dtm, str.c_str());
-  //   sscanf( dtm, "%s,%d,%d,%d", &command, &atime, &astep, &gain);
-}
 
 void BatteryRead() {
   int vbatt = analogRead(batSensPin);
@@ -533,22 +498,4 @@ void LIS2DUXS12_read() {
   Serial.print(accel[1]);
   Serial.print(",Accel-Z[mg]:");
   Serial.println(accel[2]);
-}
-
-// Code for sendout BLE Data
-void sendBLEData() {
-  memcpy(&dataBLE[2], &accel16[0], 6);
-  memcpy(&dataBLE[10], &TSL2591_full, 2);
-  memcpy(&dataBLE[12], &TSL2591_ir, 2);
-  memcpy(&dataBLE[14], &TSL2591_lux, 4);
-  memcpy(&dataBLE[18], &AS7341Data[0], 20);
-  for (int i = 0; i < 40; i++) {
-    bleSerial.write(dataBLE[i]);
-  }
-  memcpy(&dataBLE[38], &VBat100x, 2);
-  bleSerial.flush();
-  memset(dataBLE, '\0', 40);
-  dataBLE[0] = ':';
-  dataBLE[1] = 'D';
-  dataBLE[39] = '\n';
 }

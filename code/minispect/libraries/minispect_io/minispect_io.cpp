@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <set>
 #include <vector>
+#include <HardwareBLESerial.h>
 
 float calculate_integration_time(uint8_t atime, uint8_t astep) {
     return (atime + 1) * (astep + 1) * 2.78;
@@ -39,9 +40,77 @@ void read_command(String* input) {
   }
 }
 
-void AS_read(char mode, Adafruit_AS7341* as7341) {
+void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
+  char ble_read_buffer[19];
+  bleSerial->poll();
+
+  // If there is an attempt to overload the buffer, throw 
+  // an error. buffer size is defined as 3 + MAX_UNSIGNED_VAL_SIZE
+  // => 3 + 16
+  while (bleSerial->availableLines() > 0) {
+    bleSerial->readLine(ble_read_buffer, 19);
+  }
+
+  *input = String(ble_read_buffer);
+
+}
+
+void write_ble(HardwareBLESerial* bleSerial, 
+               std::vector<uint16_t>* AS_channels,
+               std::vector<uint16_t>* TS_channels,
+               std::vector<int32_t>* LI_channels,
+               float LI_temp) 
+{
+    //Can transfer 52 bytes total
+    uint8_t dataBLE[52];
+    int i = 2;  
+    
+    // 2 bytes at the start for beginning flag
+    dataBLE[0] = ':';
+    dataBLE[1] = 'D';
+
+    // Copy over AS_channel bytes
+    //11 * 2 bytes from AS channels -> 22 
+    for(i; i < AS_channels->size(); i+=2) {
+      std::memcpy(&dataBLE[i], &AS_channels->at(i), sizeof(uint16_t));
+    }
+
+    //Copy over the TS channel bytes
+    //2 x 2 bytes from TS channels -> 4
+    for(i; i < TS_channels->size(); i+=2) {
+      std::memcpy(&dataBLE[i], &TS_channels->at(i), sizeof(uint16_t));
+    }
+
+    //Copy over the LI channel bytes
+    //3 x 4 bytes from LI channels - > 12 
+    for(i; i < LI_channels->size(); i+=2) {
+      std::memcpy(&dataBLE[i], &LI_channels->at(i), sizeof(int32_t));
+    }
+
+    //Copy over the LI temperature
+    //1 x 4 bytes from LI_temp - > 4 
+    std::memcpy(&dataBLE[i], &LI_temp, sizeof(float));
+  
+    // Send data back to caller over BLE
+    for (int i = 0; i < 52; i++) {
+        bleSerial->write(dataBLE[i]);
+    }
+                                // + 1 byte at the end for end
+    // Total                    45 Bytes
+    
+    // Reset the buffer
+    bleSerial->flush();
+    memset(dataBLE, '\0', 40);
+    dataBLE[0] = ':';
+    dataBLE[1] = 'D';
+    dataBLE[51] = '\n';
+}
+
+
+std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341) {
   uint16_t readings[12];
   uint16_t flicker_freq; 
+  std::vector<uint16_t> result; 
 
   switch(mode) {
     // Read the Gain 
@@ -79,7 +148,7 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         if (!as7341->readAllChannels(readings)) {
           Serial.println("-1");
           Serial.println("!");
-          return;
+          break;
         }
 
         // Print out the channel readings
@@ -104,6 +173,11 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.print("ADC5/NIR      : ");
         Serial.println(readings[11]);
         
+        // Append readings to result vector
+        for(int i = 0; i < 12; i++) {
+          result.push_back(readings[i]);
+        }
+
         // Append End of Message terminator
         Serial.println("!"); 
         break;
@@ -124,13 +198,16 @@ void AS_read(char mode, Adafruit_AS7341* as7341) {
       
       break;
   }
+
+  return result;
 }
 
-void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
+std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591) {
   uint32_t lum;
   uint16_t ir, full;
   uint16_t TSL2591_full, TSL2591_ir; 
-  float TSL2591_lux; 
+  float TSL2591_lux;
+  std::vector<uint16_t> result;  
   
   switch(mode) {
     // Read the Gain 
@@ -155,6 +232,10 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
         Serial.print("Channel 0 : "); Serial.println(full);
         Serial.print("Channel 1 : "); Serial.println(ir);
+        
+        // Append channel readings to result
+        result.push_back(full);
+        result.push_back(ir);
 
         // Append End of Message terminator
         Serial.println("!");
@@ -194,11 +275,14 @@ void TS_read(char mode, Adafruit_TSL2591* tsl2591) {
       break;
   }
 
+  return result; 
+
 }
 
-void LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
+std::vector<int32_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
   int32_t accel[3];
   float_t temperature; 
+  std::vector<int32_t> result; 
   
   lis2duxs12->Get_X_Axes(accel);
 
@@ -208,6 +292,11 @@ void LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
       Serial.print("X : ");Serial.println(accel[0]);
       Serial.print("Y : ");Serial.println(accel[1]);
       Serial.print("Z : ");Serial.println(accel[2]);
+
+      // Append acceleration information to the result vector
+      for(int i = 0; i < 3; i++) {
+        result.push_back(accel[i]); 
+      }
 
       // Append End of Message terminator
       Serial.println("!");
@@ -224,6 +313,9 @@ void LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
       // Print out the temperature reading (C)
       Serial.println(temperature);
 
+      // Append temperature to the result vector 
+      result.push_back(temperature);
+
       // Append End of Message terminator
       Serial.println("!");
       break; 
@@ -233,6 +325,8 @@ void LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
       sig_error();
       break;
   }
+
+  return result; 
 }
 
 void SE_read(char mode, NRF_FICR_Type* board_info_reg) {

@@ -25,7 +25,6 @@ def has_internet():
         
         return False
 
-
 def main():
     pass 
 
