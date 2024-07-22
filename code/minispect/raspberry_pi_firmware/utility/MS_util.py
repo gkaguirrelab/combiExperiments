@@ -9,6 +9,7 @@ from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 import os
 
+
 # Convert the numpy array of a chip's reading 
 # to a storable string
 def reading_to_string(reading: np.array) -> str:
@@ -54,16 +55,24 @@ async def parse_MSBLE(read_queue: asyncio.Queue, write_queue: asyncio.Queue):
             print(f"Parsing: {bluetooth_bytes}")
 
             # Splice and convert the channels to their respective types 
-            # Note: LI_channel 3 = temperature
-            AS_channels: np.array = np.frombuffer(bluetooth_bytes,dtype=np.uint16)
-            TS_channels: np.array = np.frombuffer(bluetooth_bytes,dtype=np.uint16)
-            LI_channels: np.array = np.frombuffer(bluetooth_bytes,dtype=np.float32)
+            AS_channels: np.array = np.frombuffer(bluetooth_bytes[2:24],dtype=np.uint16)
+            TS_channels: np.array = np.frombuffer(bluetooth_bytes[24:28],dtype=np.uint16)
+            LI_channels: np.array = np.frombuffer(bluetooth_bytes[28:40],dtype=np.int32)
+            LI_temp = np.array = np.frombuffer(bluetooth_bytes[40:44],dtype=np.float32)
 
             # Add them in the queue of values to write
-            await write_queue.put([AS_channels,TS_channels,LI_channels])
+            await write_queue.put([AS_channels,TS_channels,LI_channels,LI_temp])
     
     except Exception as e:
         print(e)
+
+# TIP: you can get this function and more from the ``more-itertools`` package.
+def sliced(data: bytes, n: int) -> Iterator[bytes]:
+    """
+    Slices *data* into chunks of size *n*. The last slice may be smaller than
+    *n*.
+    """
+    return takewhile(len, (data[i : i + n] for i in count(0, n)))
 
 # Read bytes from the MiniSpect 
 # over bluetooth via the UART
@@ -96,7 +105,7 @@ async def read_MSBLE(queue: asyncio.Queue):
             task.cancel()
 
     async def handle_rx(_: BleakGATTCharacteristic, data: bytearray):
-        print("received:", data)
+        print(f"received [{len(data)}]:", data)
         await queue.put(data)
 
     async with BleakClient(device, disconnected_callback=handle_disconnect) as client:
@@ -104,19 +113,38 @@ async def read_MSBLE(queue: asyncio.Queue):
         await client.start_notify(UART_TX_CHAR_UUID, handle_rx)
 
         print("Connected, now reading data...")
+        loop = asyncio.get_running_loop()
+        nus = client.services.get_service(UART_SERVICE_UUID)
+        rx_char = nus.get_characteristic(UART_RX_CHAR_UUID)
 
-        # Keep the program running to continue receiving data
-        try:
-            while True:
-                await asyncio.sleep(1)  # Sleep for a short period to keep the loop running
-        except asyncio.CancelledError:
-            pass
+        while True:
+            # This waits until you type a line and press ENTER.
+            # A real terminal program might put stdin in raw mode so that things
+            # like CTRL+C get passed to the remote device.
+            data = await loop.run_in_executor(None, sys.stdin.buffer.readline)
+
+            # data will be empty on EOF (e.g. CTRL+D on *nix)
+            if not data:
+                break
+
+            # some devices, like devices running MicroPython, expect Windows
+            # line endings (uncomment line below if needed)
+            # data = data.replace(b"\n", b"\r\n")
+
+            # Writing without response requires that the data can fit in a
+            # single BLE packet. We can use the max_write_without_response_size
+            # property to split the data into chunks that will fit.
+
+            for s in sliced(data, rx_char.max_write_without_response_size):
+                await client.write_gatt_char(rx_char, s, response=False)
+
+            print("sent:", data)
     
 
 async def main():
     output_directory: str = 'readings/MS'
     reading_names: list = ['AS_channels','TS_channels',
-                         'LI_channels']
+                         'LI_channels','LI_temp']
     
      # If the output directory does not exist,
         # make it

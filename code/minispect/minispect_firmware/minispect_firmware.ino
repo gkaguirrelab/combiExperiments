@@ -56,7 +56,7 @@ uint16_t VBat100x = 0;
 // bytes 36-37 ADC5/NIR
 String serial_input = "";
 
-String ble_input = "";
+String ble_input = "SS";
 
 
 String commandfz = "";
@@ -102,7 +102,7 @@ void setup() {
 void loop() {
   // Get the command from the controller
   read_command(&serial_input); 
-  read_BLE_command(&ble_input, &bleSerial);
+  //read_BLE_command(&ble_input, &bleSerial);
 
   // If we received a well formed command, execute it
   if(serial_input.length() > 2) {
@@ -162,17 +162,20 @@ void loop() {
   }
 
   // If we received a well formed command, execute it
-  if(ble_input.length() > 2) {
-    Serial.println(serial_input);
+  if(ble_input.length() > 1) {
+    Serial.println(ble_input);
 
     // Get the action to execute
-    String mode = serial_input.substring(0,2); 
+    String mode = ble_input.substring(0,2); 
 
+    Serial.println(mode);
     // Science Science mode 
     if(mode == "SS") {
-      // Retrieve all 11 AS channels (need to add flicker to this)
-      std::vector<uint16_t> AS_channels = AS_read('C',&as7341);
+      Serial.println("Gathering data");
 
+      // Retrieve all 11 AS channels (need to add flicker to this, only 10 right now)
+      std::vector<uint16_t> AS_channels = AS_read('C',&as7341);
+  
       // Retrieve 2 TS channels 
       std::vector<uint16_t> TS_channels = TS_read('C',&tsl);
 
@@ -183,21 +186,17 @@ void loop() {
       std::vector<int32_t> LI_temp_int = LI_read('T', &LIS2DUXS12); 
       float LI_temp = (float) LI_temp_int[0];
 
-      // Send the data back to the ble caller
-      write_ble(&bleSerial, &AS_channels, &TS_channels, &LI_channels, LI_temp);  
-    }
+      Serial.println("Sending data");
 
-    // Invalid command
-    else {
-      Serial.println("-1");
-      Serial.println("!");
+      //Send the data back to the ble caller
+      write_ble(&bleSerial, &AS_channels, &TS_channels, &LI_channels, LI_temp);  
     }
   }
 
 
   // Reset command to empty after execution. 
   serial_input = "";
-  ble_input = "";    
+  //ble_input = "";    
 }
 
 
