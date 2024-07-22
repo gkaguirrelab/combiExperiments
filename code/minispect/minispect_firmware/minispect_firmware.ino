@@ -173,8 +173,10 @@ void loop() {
     if(mode == "SS") {
       Serial.println("Gathering data");
 
-      // Retrieve all 11 AS channels (need to add flicker to this, only 10 right now)
+      // Retrieve all 11 AS channels
       std::vector<uint16_t> AS_channels = AS_read('C',&as7341);
+      std::vector<uint16_t> AS_flicker = AS_read('F', &as7341); 
+      AS_channels.push_back(AS_flicker[0]);
   
       // Retrieve 2 TS channels 
       std::vector<uint16_t> TS_channels = TS_read('C',&tsl);

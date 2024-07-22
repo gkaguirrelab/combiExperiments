@@ -188,6 +188,9 @@ std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341) {
 
       Serial.println(flicker_freq);
 
+      // Append flicker to result vector
+      result.push_back(flicker_freq);
+
       // Append End of Message terminator
       Serial.println("!");
       break; 
