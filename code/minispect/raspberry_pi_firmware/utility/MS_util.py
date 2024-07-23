@@ -33,9 +33,11 @@ async def write_data(write_queue: asyncio.Queue, reading_names: list[str], outpu
         
             # Iterate over the reading names/readings
             for reading_name, reading in results_mapping.items():
-                
+                # Display how much information is in each reading
+                #print(f"Reading: {reading_name} | Shape: {reading.shape}")
+
                 # Path for this reading's data file
-                save_path: str = os.path.join(output_directory, reading_name + '.txt')
+                save_path: str = os.path.join(output_directory, reading_name + '.csv')
 
                 # Open file, append new reading to the end
                 with open(save_path,'a') as f:
@@ -56,6 +58,8 @@ async def parse_MSBLE(read_queue: asyncio.Queue, write_queue: asyncio.Queue):
 
             # Splice and convert the channels to their respective types 
             AS_channels: np.array = np.frombuffer(bluetooth_bytes[2:24],dtype=np.uint16)
+            
+            
             TS_channels: np.array = np.frombuffer(bluetooth_bytes[24:28],dtype=np.uint16)
             LI_channels: np.array = np.frombuffer(bluetooth_bytes[28:40],dtype=np.int32)
             LI_temp = np.array = np.frombuffer(bluetooth_bytes[40:44],dtype=np.float32)

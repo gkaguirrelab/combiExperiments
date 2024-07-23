@@ -184,9 +184,12 @@ void loop() {
       // Retrieve 3 accelerometer channels
       std::vector<int32_t> LI_channels = LI_read('A', &LIS2DUXS12); 
 
-      // Retrieve accelerometer temperature and convert back into float 
-      std::vector<int32_t> LI_temp_int = LI_read('T', &LIS2DUXS12); 
-      float LI_temp = (float) LI_temp_int[0];
+      float_t LI_temp; 
+      if(LIS2DUXS12.Get_Temp(&LI_temp) != LIS2DUXS12_STATUS_OK) {
+        LI_temp = -1; 
+      }
+
+      Serial.print("LI TEMP: "); Serial.println(LI_temp);
 
       Serial.println("Sending data");
 
