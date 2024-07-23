@@ -41,7 +41,7 @@ void read_command(String* input) {
 }
 
 void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
-  char ble_read_buffer[19];
+  char ble_read_buffer[19] = "\0"; 
   bleSerial->poll();
 
   // If there is an attempt to overload the buffer, throw 
@@ -51,7 +51,9 @@ void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
     bleSerial->readLine(ble_read_buffer, 19);
   }
 
-  *input = String(ble_read_buffer);
+  if(ble_read_buffer[0] != '\0') {
+    *input = String(ble_read_buffer);
+  }
 
 }
 
@@ -291,6 +293,7 @@ std::vector<int32_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
   int32_t accel[3];
   float_t temperature; 
   std::vector<int32_t> result; 
+  uint8_t idRET; 
   
   lis2duxs12->Get_X_Axes(accel);
 
@@ -300,6 +303,10 @@ std::vector<int32_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
       Serial.print("X : ");Serial.println(accel[0]);
       Serial.print("Y : ");Serial.println(accel[1]);
       Serial.print("Z : ");Serial.println(accel[2]);
+
+      //idRET = 0xFE;
+      //lis2duxs12->ReadID(&idRET);
+      //Serial.print("IDRet : 0x");Serial.println(idRET, HEX);
 
       // Append acceleration information to the result vector
       for(int i = 0; i < 3; i++) {

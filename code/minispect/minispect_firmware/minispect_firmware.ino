@@ -82,7 +82,9 @@ void setup() {
   // initialise ADC wireing_analog_nRF52.c:73
   analogReference(AR_INTERNAL2V4);  // default 0.6V*6=3.6V  wireing_analog_nRF52.c:73
   analogReadResolution(12);         // wireing_analog_nRF52.c:39
-  if (!bleSerial.beginAndSetupBLE("LightSense")) {
+
+
+  if (!bleSerial.beginAndSetupBLE("LightSense1")) {
     while (true) {
       Serial.println("failed to initialize HardwareBLESerial!");
       delay(1000);
@@ -114,7 +116,7 @@ void loop() {
 
   // Get the command from the controller
   read_command(&serial_input); 
-  //read_BLE_command(&ble_input, &bleSerial);
+  read_BLE_command(&ble_input, &bleSerial);
 
   // If we received a well formed command, execute it
   if(serial_input.length() > 2) {
@@ -175,10 +177,11 @@ void loop() {
 
   // If we received a well formed command, execute it
   if(ble_input.length() > 1) {
-    Serial.println(ble_input);
 
     // Get the action to execute
     String mode = ble_input.substring(0,2); 
+
+    Serial.print("BLE MODE: "); Serial.println(mode);
 
     // Science Science mode and accel buffer is full
     if(mode == "SS" && accel_buffer_pos == 57) {
@@ -209,7 +212,6 @@ void loop() {
 
   // Reset command to empty after execution. 
   serial_input = "";
-  //ble_input = "";    
 
   // Increment buffer position, reset if necessary
   accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
