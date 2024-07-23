@@ -61,8 +61,8 @@ async def parse_MSBLE(read_queue: asyncio.Queue, write_queue: asyncio.Queue):
             # Splice and convert the channels to their respective types 
             AS_channels: np.array = np.frombuffer(bluetooth_bytes[2:24],dtype=np.uint16)
             TS_channels: np.array = np.frombuffer(bluetooth_bytes[24:28],dtype=np.uint16)
-            LI_channels: np.array = np.frombuffer(bluetooth_bytes[28:40],dtype=np.int32)
-            LI_temp = np.array = np.frombuffer(bluetooth_bytes[40:44],dtype=np.float32)
+            LI_channels: np.array = np.frombuffer(bluetooth_bytes[28:148],dtype=np.int16)
+            LI_temp = np.array = np.frombuffer(bluetooth_bytes[148:152],dtype=np.float32)
 
             # Add them in the queue of values to write
             await write_queue.put([read_time,AS_channels,TS_channels,LI_channels,LI_temp])
@@ -163,6 +163,7 @@ async def main():
     parse_task = asyncio.create_task(parse_MSBLE(read_queue, write_queue))
     write_task = asyncio.create_task(write_data(write_queue, reading_names, output_directory))
 
+    #await asyncio.gather(read_task,return_exceptions=True)
     await asyncio.gather(read_task, parse_task, write_task, return_exceptions=True)
 
 if(__name__ == '__main__'):

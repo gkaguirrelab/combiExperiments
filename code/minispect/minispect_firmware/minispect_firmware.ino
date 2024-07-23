@@ -33,6 +33,9 @@ uint16_t AS7341Data[10];
 #define INTERVAL 2000  //ms
 unsigned long lastRead = 0;
 uint16_t VBat100x = 0;
+int16_t accel_buffer[3*20];
+int accel_buffer_pos = 0; 
+
 // data array to BLE
 // bytes 0-1 :D
 // bytes 2-3 accel_x
@@ -100,6 +103,15 @@ void setup() {
 }
 
 void loop() {
+  // Getting accelerometer data is highest priority, so
+  // first perform read 
+  std::vector<int32_t> LI_channels = LI_read('A', &LIS2DUXS12); 
+  
+  // Then save the readings to the buffer
+  for(int i = 0; i < LI_channels.size(); i++) {
+    accel_buffer[accel_buffer_pos+i] = (int16_t)LI_channels[i]; 
+  }
+
   // Get the command from the controller
   read_command(&serial_input); 
   //read_BLE_command(&ble_input, &bleSerial);
@@ -168,8 +180,7 @@ void loop() {
     // Get the action to execute
     String mode = ble_input.substring(0,2); 
 
-    Serial.println(mode);
-    // Science Science mode 
+    // Science Science mode and accel buffer is full
     if(mode == "SS") {
       Serial.println("Gathering data");
 
@@ -181,9 +192,6 @@ void loop() {
       // Retrieve 2 TS channels 
       std::vector<uint16_t> TS_channels = TS_read('C',&tsl);
 
-      // Retrieve 3 accelerometer channels
-      std::vector<int32_t> LI_channels = LI_read('A', &LIS2DUXS12); 
-
       float_t LI_temp; 
       if(LIS2DUXS12.Get_Temp(&LI_temp) != LIS2DUXS12_STATUS_OK) {
         LI_temp = -1; 
@@ -194,7 +202,7 @@ void loop() {
       Serial.println("Sending data");
 
       //Send the data back to the ble caller
-      write_ble(&bleSerial, &AS_channels, &TS_channels, &LI_channels, LI_temp);  
+      write_ble(&bleSerial, &AS_channels, &TS_channels, &accel_buffer[0], LI_temp);  
     }
   }
 
@@ -202,6 +210,9 @@ void loop() {
   // Reset command to empty after execution. 
   serial_input = "";
   //ble_input = "";    
+
+  // Increment buffer position, reset if necessary
+  accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
 }
 
 
@@ -489,17 +500,4 @@ void LIS2DUXS12_init() {
   Wire.begin();
   LIS2DUXS12.begin();
   LIS2DUXS12.Enable_X();
-}
-
-void LIS2DUXS12_read() {
-  LIS2DUXS12.Get_X_Axes(accel);
-  accel16[0] = (uint16_t)accel[0];
-  accel16[1] = (uint16_t)accel[1];
-  accel16[2] = (uint16_t)accel[2];
-  Serial.print("Accel-X[mg]:");
-  Serial.print(accel[0]);
-  Serial.print(",Accel-Y[mg]:");
-  Serial.print(accel[1]);
-  Serial.print(",Accel-Z[mg]:");
-  Serial.println(accel[2]);
 }

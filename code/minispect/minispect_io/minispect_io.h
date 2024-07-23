@@ -19,7 +19,7 @@ void read_BLE_command(String* ble_input, HardwareBLESerial* bleSerial);
 void write_ble(HardwareBLESerial* bleSerial,
                std::vector<uint16_t>* AS_channels,
                std::vector<uint16_t>* TS_channels,
-               std::vector<int32_t>* LI_channels,
+               int16_t* accel_buffer,
                float_t LI_temp);
 
 // Sends an error signal by writing -1 from the Serial port

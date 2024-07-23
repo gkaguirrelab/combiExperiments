@@ -58,18 +58,18 @@ void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
 void write_ble(HardwareBLESerial* bleSerial, 
                std::vector<uint16_t>* AS_channels,
                std::vector<uint16_t>* TS_channels,
-               std::vector<int32_t>* LI_channels,
+               int16_t* accel_buffer,
                float_t LI_temp) 
 {
     //Can transfer 52 bytes total
-    uint8_t dataBLE[52];
+    uint8_t dataBLE[175];
     int pos = 2;  
     
     // 2 bytes at the start for beginning flag
-    memset(dataBLE, '\0', 52);
+    memset(dataBLE, '\0', 175);
     dataBLE[0] = ':';
     dataBLE[1] = 'D';
-    dataBLE[51] = '\n';
+    dataBLE[174] = '\n';
 
     // Copy over AS_channel bytes
     //11 * 2 bytes from AS channels -> 22 
@@ -86,18 +86,19 @@ void write_ble(HardwareBLESerial* bleSerial,
     }
 
     //Copy over the LI channel bytes
-    //3 x 4 bytes from LI channels - > 12 
-    for(int i; i < LI_channels->size(); i++) {
-      std::memcpy(&dataBLE[pos], &LI_channels->at(i), sizeof(int32_t));
-      pos += 4; 
-    }
+    //20 x 3 * 2 bytes from LI channels - > 120 
+    int buffer_size = 60; //sizeof(accel_buffer) / sizeof(int16_t);
+    std::memcpy(&dataBLE[pos], accel_buffer, buffer_size * sizeof(int16_t));
+
+    Serial.print("ACCEL BUFFER SIZE: ");Serial.println(buffer_size);
+    pos += (buffer_size * 2); 
 
     //Copy over the LI temperature
     //1 x 4 bytes from LI_temp - > 4 OR 8, not sure of float_t 
     std::memcpy(&dataBLE[pos], &LI_temp, sizeof(float_t));
   
     // Send data back to caller over BLE
-    for (int i = 0; i < 52; i++) {
+    for (int i = 0; i < 175; i++) {
         bleSerial->write(dataBLE[i]);
     }
                                 // + 1 byte at the end for end
