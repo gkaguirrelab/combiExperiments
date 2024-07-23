@@ -8,15 +8,16 @@ from bleak.backends.characteristic import BleakGATTCharacteristic
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 import os
+from datetime import datetime
 
 
 # Convert the numpy array of a chip's reading 
 # to a storable string
-def reading_to_string(reading: np.array) -> str:
+def reading_to_string(read_time: datetime, reading: np.array) -> str:
     
     # Intersperse , between all channel values as str
     # and add new line
-    return ",".join([str(x) for x in reading]) + '\n'
+    return ",".join([str(read_time)] + [str(x) for x in reading]) + '\n'
 
 
 async def write_data(write_queue: asyncio.Queue, reading_names: list[str], output_directory: str):
@@ -26,11 +27,12 @@ async def write_data(write_queue: asyncio.Queue, reading_names: list[str], outpu
 
             print(f'Writing: {readings}')
 
+            read_time = readings[0]
             # Create mapping between filenames and readings 
             # from the Minispect
             results_mapping: dict = {reading_name:reading for reading_name, 
-                            reading in zip(reading_names,readings)}
-        
+                            reading in zip(reading_names,readings[1:])}
+
             # Iterate over the reading names/readings
             for reading_name, reading in results_mapping.items():
                 # Display how much information is in each reading
@@ -41,7 +43,7 @@ async def write_data(write_queue: asyncio.Queue, reading_names: list[str], outpu
 
                 # Open file, append new reading to the end
                 with open(save_path,'a') as f:
-                    f.write(reading_to_string(reading))
+                    f.write(reading_to_string(read_time,reading))
         
     except Exception as e:
         print(e)
@@ -52,20 +54,18 @@ async def parse_MSBLE(read_queue: asyncio.Queue, write_queue: asyncio.Queue):
     try:
         while True:
             # Retrieve the latest bytes received 
-            bluetooth_bytes = await read_queue.get()
+            read_time, bluetooth_bytes = await read_queue.get()
 
             print(f"Parsing: {bluetooth_bytes}")
 
             # Splice and convert the channels to their respective types 
             AS_channels: np.array = np.frombuffer(bluetooth_bytes[2:24],dtype=np.uint16)
-            
-            
             TS_channels: np.array = np.frombuffer(bluetooth_bytes[24:28],dtype=np.uint16)
             LI_channels: np.array = np.frombuffer(bluetooth_bytes[28:40],dtype=np.int32)
             LI_temp = np.array = np.frombuffer(bluetooth_bytes[40:44],dtype=np.float32)
 
             # Add them in the queue of values to write
-            await write_queue.put([AS_channels,TS_channels,LI_channels,LI_temp])
+            await write_queue.put([read_time,AS_channels,TS_channels,LI_channels,LI_temp])
     
     except Exception as e:
         print(e)
@@ -109,8 +109,9 @@ async def read_MSBLE(queue: asyncio.Queue):
             task.cancel()
 
     async def handle_rx(_: BleakGATTCharacteristic, data: bytearray):
+        current_time = datetime.now()
         print(f"received [{len(data)}]:", data)
-        await queue.put(data)
+        await queue.put([current_time, data])
 
     async with BleakClient(device, disconnected_callback=handle_disconnect) as client:
         # Start notifications for receiving data
