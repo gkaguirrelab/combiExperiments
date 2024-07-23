@@ -9,6 +9,20 @@ from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 import os
 from datetime import datetime
+import pandas as pd
+
+def reading_to_df_np(reading_path: str, channel_type : type):
+    df: pd.DataFrame = pd.read_csv(reading_path,sep=',')
+
+    accel_mapping = {i:let for i, let in zip([0,1,2],['X','Y','Z'])}
+    columns : list = ['Timestamp'] + [i if 'LI_channels' not in reading_path else f"{i/3}{accel_mapping[i%3]}" for i in range(df.shape[1])]
+    types :list = ['datetime64[ns]'] + [channel_type for i in range(df.shape[1])]
+    
+    df = df.astype({col:type_ for col, type_ in zip(columns, types)})
+
+    df_as_np : np.array = df.to_numpy() 
+
+    return df, df_as_np 
 
 
 # Convert the numpy array of a chip's reading 
