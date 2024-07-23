@@ -96,7 +96,7 @@ async def read_MSBLE(queue: asyncio.Queue):
 
         return False
 
-    device = await BleakScanner.find_device_by_filter(match_nus_uuid)
+    device = await BleakScanner.find_device_by_filter(match_nus_uuid,timeout=30)
 
     if device is None:
         print("no matching device found, you may need to edit match_nus_uuid().")

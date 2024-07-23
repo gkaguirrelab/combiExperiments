@@ -181,7 +181,7 @@ void loop() {
     String mode = ble_input.substring(0,2); 
 
     // Science Science mode and accel buffer is full
-    if(mode == "SS") {
+    if(mode == "SS" && accel_buffer_pos == 57) {
       Serial.println("Gathering data");
 
       // Retrieve all 11 AS channels
