@@ -11,19 +11,33 @@ import os
 from datetime import datetime
 import pandas as pd
 
-def reading_to_df_np(reading_path: str, channel_type : type):
+# Parse a reading csv and return the resulting dataframe 
+# with labeled cols
+def reading_to_df(reading_path: str, channel_type : type) -> pd.DataFrame:
+    # Read in the csv from the given path
     df: pd.DataFrame = pd.read_csv(reading_path,sep=',')
 
+    # Create an axis mapping for the indices of a given accelerometer
+    # reading
     accel_mapping = {i:let for i, let in zip([0,1,2],['X','Y','Z'])}
-    columns : list = ['Timestamp'] + [i if 'LI_channels' not in reading_path else f"{i/3}{accel_mapping[i%3]}" for i in range(df.shape[1])]
-    types :list = ['datetime64[ns]'] + [channel_type for i in range(df.shape[1])]
     
+    # Form column names and their associated types              # col_i if not LI_channels, otherwise use the mapping to parse            
+    columns : list = ['Timestamp'] + [str(i) if 'LI_channels' not in reading_path else f"{accel_mapping[i%3]}{int(i/3)}" for i in range(df.shape[1]-1)]
+    types :list = ['datetime64[ns]'] + [channel_type for i in range(df.shape[1]-1)]
+    
+    # Reformat the DataFrame with col names and types
+    df.columns = columns 
     df = df.astype({col:type_ for col, type_ in zip(columns, types)})
 
-    df_as_np : np.array = df.to_numpy() 
+    # Return the DataFrame
+    return df
 
-    return df, df_as_np 
-
+# Parse a reading csv and return the resulting dataframe 
+# as a np.array
+def reading_to_np(reading_path : str, channel_type: type) -> np.array:
+    
+    # Parse as DataFrame and convert to numpy array
+    return reading_to_df(reading_path, channel_type).to_numpy()
 
 # Convert the numpy array of a chip's reading 
 # to a storable string

@@ -1,17 +1,12 @@
 import os
 import numpy as np
-from utility.MS_util import read_MSBLE, parse_MSBLE
+from utility.MS_util import reading_to_df, reading_to_np
 
 # Communicate with the MiniSpect
 def MS_com():
-    # Path to output data to
-    # and names of data files
-    output_path:str = 'readings/MS'
-    reading_names:list = ['AS_channels','TS_channels',
-                         'LI_channels']
-    
+    AS_df = reading_to_df('./readings/MS/AS_channels.csv', np.float32)
 
-   
+    print(LI_df.head)
 
 def main():
     MS_com()
