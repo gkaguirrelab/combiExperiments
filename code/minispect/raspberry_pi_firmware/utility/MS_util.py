@@ -108,10 +108,6 @@ def unpack_accel_df(df) -> pd.DataFrame:
 
     return new_df
 
-
-
-
-
 # Plot a channel from a df with a given label
 def plot_channel(x: pd.Series, channel : pd.Series, label: str, ax: plt.Axes):
     ax.plot(x, channel, marker='o', markersize=2, label=label)
