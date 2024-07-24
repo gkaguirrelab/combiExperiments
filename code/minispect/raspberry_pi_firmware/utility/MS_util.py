@@ -12,15 +12,72 @@ from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 
+def unpack_accel_df(df) -> pd.DataFrame:
+    # Define the columns and their types for the new dataframe 
+    # with accel buffer unpacked
+    columns: list = ['Timestamp', 'X', 'Y', 'Z']
+    types: list = ['datetime64[ns]'] + [np.int32 for i in range(3)]
+    
+    # Create the new dataframe
+    new_df: pd.DataFrame = pd.DataFrame(columns=columns)
+    new_df = new_df.astype({col:type_ for col, type_ in zip(columns, types)})
+
+    # Extract the times we actually measured,
+    # and prepare new col for unpacked times 
+    measured_times = df['Timestamp'].tolist()
+    unpacked_times = []
+
+    # Retrieve all of the cols for a given axis
+    X_cols = [col for col in df.columns if 'X' in col]
+    Y_cols = [col for col in df.columns if 'Y' in col]
+    Z_cols = [col for col in df.columns if 'Z' in col]
+
+    # Concat all of the axes measurements' 
+    # over the buffers 
+    x = pd.concat([df.loc[i, X_cols] for i in range(df.shape[0])], ignore_index=True)
+    y = pd.concat([df.loc[i, Y_cols] for i in range(df.shape[0])], ignore_index=True)
+    z = pd.concat([df.loc[i, Z_cols] for i in range(df.shape[0])], ignore_index=True)
+
+    # Retrieve the buffer size, ie, how many of a given 
+    # axis do we have per a single reading
+    buffer_size = len(X_cols)
+    
+    # Unpack the first buffer, the one which we do not have a start_time for 
+    unpacked_times.extend(pd.date_range(end=measured_times[0], periods=buffer_size, inclusive='both'))
+
+    # Otherwise, fill the gaps in the time with linearly spaced values
+    for i in range(1,len(measured_times)):
+        start_time = measured_times[i-1]
+        end_time = measured_times[i]
+                                                            # there should be BUFFER_SIZE values between existing points
+        unpacked_times.extend(pd.date_range(start=start_time, end=end_time, periods=buffer_size+1,inclusive='right'))
+
+    # Package the reformatted measurements 
+    reformatted_measurements = [unpacked_times,x,y,z]
+
+    # Assert they are all of equal length (ie, did the unpacking go correctly)
+    assert all(len(reformatted_measurements[i]) == len(reformatted_measurements[i+1]) for i in range(len(reformatted_measurements)-1))
+
+    # Fill in the new dataframe with the concatenated values
+    for name, measurement in zip(columns, reformatted_measurements):
+        new_df[name] = measurement
+
+    
+    return new_df
+
+
+
+
+
 # Plot a channel from a df with a given label
 def plot_channel(x: pd.Series, channel : pd.Series, label: str, ax: plt.Axes):
-    ax.plot(x, channel, label=label)
+    ax.plot(x, channel, marker='o', markersize=2, label=label)
 
 # Parse a reading csv and return the resulting dataframe 
 # with labeled cols
 def reading_to_df(reading_path: str, channel_type : type) -> pd.DataFrame:
     # Read in the csv from the given path
-    df: pd.DataFrame = pd.read_csv(reading_path,sep=',')
+    df: pd.DataFrame = pd.read_csv(reading_path,sep=',',header=None)
 
     # Create an axis mapping for the indices of a given accelerometer
     # reading
@@ -39,7 +96,7 @@ def reading_to_df(reading_path: str, channel_type : type) -> pd.DataFrame:
 
 # Parse a reading csv and return the resulting dataframe 
 # as a np.array
-def reading_to_np(reading_path : str, channel_type: type) -> np.array:
+def reading_to_np(reading_path: str, channel_type: type) -> np.array:
     
     # Parse as DataFrame and convert to numpy array
     return reading_to_df(reading_path, channel_type).to_numpy()
