@@ -107,7 +107,7 @@ void setup() {
 void loop() {
   // Getting accelerometer data is highest priority, so
   // first perform read 
-  std::vector<int32_t> LI_channels = LI_read('A', &LIS2DUXS12); 
+  std::vector<float_t> LI_channels = LI_read('A', &LIS2DUXS12); 
   
   // Then save the readings to the buffer
   for(int i = 0; i < LI_channels.size(); i++) {
@@ -195,10 +195,7 @@ void loop() {
       // Retrieve 2 TS channels 
       std::vector<uint16_t> TS_channels = TS_read('C',&tsl);
 
-      float_t LI_temp; 
-      if(LIS2DUXS12.Get_Temp(&LI_temp) != LIS2DUXS12_STATUS_OK) {
-        LI_temp = -1; 
-      }
+      float_t LI_temp = LI_read('T', &LIS2DUXS12)[0];
 
       Serial.print("LI TEMP: "); Serial.println(LI_temp);
 

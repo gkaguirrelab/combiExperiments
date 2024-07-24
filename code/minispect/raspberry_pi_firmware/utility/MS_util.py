@@ -161,7 +161,7 @@ async def read_MSBLE(queue: asyncio.Queue):
     
 
 async def main():
-    output_directory: str = 'readings/MS'
+    output_directory: str = './readings/MS'
     reading_names: list = ['AS_channels','TS_channels',
                          'LI_channels','LI_temp']
     

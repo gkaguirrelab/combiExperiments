@@ -289,17 +289,17 @@ std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
 }
 
-std::vector<int32_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
+std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
   int32_t accel[3];
   float_t temperature; 
-  std::vector<int32_t> result; 
+  std::vector<float_t> result; 
   uint8_t idRET; 
-  
-  lis2duxs12->Get_X_Axes(accel);
 
   switch(mode) {
     // Read the acceleration information
     case 'A':
+      lis2duxs12->Get_X_Axes(accel);
+    
       Serial.print("X : ");Serial.println(accel[0]);
       Serial.print("Y : ");Serial.println(accel[1]);
       Serial.print("Z : ");Serial.println(accel[2]);
@@ -310,15 +310,14 @@ std::vector<int32_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
 
       // Append acceleration information to the result vector
       for(int i = 0; i < 3; i++) {
-        result.push_back(accel[i]); 
+        result.push_back((float_t)accel[i]); 
       }
 
       // Append End of Message terminator
       Serial.println("!");
       break; 
     
-    // Read the temperature (note, we cannot return the float here because)
-    // the conversion to int32_t and back to float will floor it
+    // Read the temperature from the accelerometer
     case 'T':
       // If there was a problem with reading the temperature, throw an error 
       if(lis2duxs12->Get_Temp(&temperature) != LIS2DUXS12_STATUS_OK) {
@@ -328,6 +327,9 @@ std::vector<int32_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
 
       // Print out the temperature reading (C)
       Serial.println(temperature);
+      
+      // Append the temperature to the result vector 
+      result.push_back(temperature);
 
       // Append End of Message terminator
       Serial.println("!");
