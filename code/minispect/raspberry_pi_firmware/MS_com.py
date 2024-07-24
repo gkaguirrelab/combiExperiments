@@ -3,6 +3,7 @@ import numpy as np
 from utility.MS_util import reading_to_df, reading_to_np, plot_channel, \
                             unpack_accel_df
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 # Communicate with the MiniSpect
 def MS_com():
@@ -27,6 +28,7 @@ def MS_com():
     
     # Label the Count Value plots
     for name, ax in zip(list(chip_df_map.keys())[:2], axes[:2]):
+        ax.set_xlim([df['Timestamp'].min(), df['Timestamp'].max()])
         ax.tick_params(axis='x', labelsize=6)
         ax.set_xlabel('Time')
         ax.set_ylabel('Count Value')
@@ -34,9 +36,10 @@ def MS_com():
         ax.legend(loc='best',fontsize='small')
 
     # Label the Acceleration and Temperature Plots
-    for title, ax in zip(['Acceleration by Time', 'Temperature by Time'], axes[2:]):
-        x_label, y_label = title.split(' ')[0:3:2]
+    for title, (name,df), ax in zip(['Acceleration by Time', 'Temperature by Time'], chip_df_map.items(), axes[2:]):
+        y_label, x_label = title.split(' ')[0:3:2]
         
+        ax.set_xlim([df['Timestamp'].min(), df['Timestamp'].max()])
         ax.tick_params(axis='x', labelsize=6)
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)

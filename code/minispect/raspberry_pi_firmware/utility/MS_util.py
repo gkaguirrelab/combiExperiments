@@ -63,6 +63,8 @@ def unpack_accel_df(df) -> pd.DataFrame:
         new_df[name] = measurement
 
     
+    print(new_df['Timestamp'])
+
     return new_df
 
 
