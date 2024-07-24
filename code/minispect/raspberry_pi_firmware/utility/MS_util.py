@@ -10,6 +10,10 @@ from bleak.backends.scanner import AdvertisementData
 import os
 from datetime import datetime
 import pandas as pd
+import matplotlib.pyplot as plt
+
+def plot_channel(channel : pd.Series, label: str):
+    plt.plot(channel, label=label)
 
 # Parse a reading csv and return the resulting dataframe 
 # with labeled cols
