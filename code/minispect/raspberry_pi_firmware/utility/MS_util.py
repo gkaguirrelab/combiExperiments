@@ -12,8 +12,9 @@ from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def plot_channel(channel : pd.Series, label: str):
-    plt.plot(channel, label=label)
+# Plot a channel from a df with a given label
+def plot_channel(x: pd.Series, channel : pd.Series, label: str, ax: plt.Axes):
+    ax.plot(x, channel, label=label)
 
 # Parse a reading csv and return the resulting dataframe 
 # with labeled cols
