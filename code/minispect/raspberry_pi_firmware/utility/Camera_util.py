@@ -1,11 +1,33 @@
-from picamera2 import Picamera2, Preview
+#from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
-CAM_FPS = 206.65
+CAM_FPS = 201
 
+def reconstruct_video(video_frames: np.array, output_path: str):
+    # Define the information about the video to use for writing
+    #fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # You can use other codecs like 'mp4v', 'MJPG', etc.
+    fps = CAM_FPS  # Frames per second of the camera to reconstruct
+    height, width = video_frames[0].shape[:2]
+
+    # Initialize VideoWriter object to write frames to
+    out = cv2.VideoWriter(output_path, 0, fps, (width, height), isColor=False)
+
+    for i in range(video_frames.shape[0]):
+        out.write(video_frames[i])  # Write the frame to the video
+
+    # Release the VideoWriter object
+    out.release()
+    cv2.destroyAllWindows()
+
+# Read in a video as a series of frames in np.array format
+def read_in_video(path_to_video: str) -> np.array:
+    return np.load(path_to_video)
+
+# Parse a video in H264 format to a series of frames 
+# in np.array format 
 def parse_video(path_to_video: str) -> np.array:
     fourcc = cv2.VideoWriter_fourcc(*'H264')
     video_capture = cv2.VideoCapture(path_to_video)
@@ -23,16 +45,17 @@ def parse_video(path_to_video: str) -> np.array:
 
     return np.array(frames, dtype=np.uint8)
 
+# Analyze the temporal sensitivity of the camera 
 def analyze_temporal_sensitivity(video_frames: np.array):
-    # Convert video sequence to grayscale
-    grayscale_video: np.array = np.array([cv2.cvtColor(video_frames[i], cv2.COLOR_BGR2GRAY) for i in range(video_frames.shape[0])], dtype=np.uint8)
+    # Convert video sequence to grayscale (if not already)
+    grayscale_video: np.array = video_frames if(len(video_frames.shape) == 3) else np.array([cv2.cvtColor(video_frames[i], cv2.COLOR_BGR2GRAY) for i in range(video_frames.shape[0])], dtype=np.uint8)
 
     # Find average intensity of every frame in the video
     average_frame_intensities: np.array = np.mean(grayscale_video, axis=(1,2))
 
     """Express both source and observed values as power spectrum"""
     frequency: int = 2  # frequency of the sinusoid in Hz
-    amplitude: int = 50   # amplitude of the sinusoid
+    amplitude: int = np.max(average_frame_intensities) - np.mean(average_frame_intensities)   # amplitude of the sinusoid
     phase: int = 0       # phase shift in radians
     sampling_rate:int = 1000  # samples per second
     duration: float = video_frames.shape[0] / CAM_FPS  # duration of the signal in seconds
@@ -50,14 +73,15 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     plt.plot(t_source, y_source, label='Source Modulation')
 
     # Plot the observed data 
-    plt.plot(t_measured, average_frame_intensities, label='Avg Intensity')
+    plt.plot(t_measured, average_frame_intensities-np.mean(average_frame_intensities), label='Avg Intensity')
 
-    plt.title('Camera Chip Temporal Sensitivity')
+    plt.title('Camera Temporal Sensitivity (2Hz)')
     plt.xlabel('Time (seconds)')
     plt.ylabel('Amplitude')
     plt.legend()
     plt.show()
 
+"""
 def record_video(cam: Picamera2, output_path: str):
     # Begin Recording
     cam.start("video")
@@ -95,7 +119,6 @@ def record_video(cam: Picamera2, output_path: str):
     
     np.save(output_path,np.array(frames, dtype=np.uint8))
     
-    
 def initialize_camera() -> Picamera2:
     # Initialize camera 
     cam: Picamera2 = Picamera2()
@@ -119,18 +142,21 @@ def initialize_camera() -> Picamera2:
     cam.set_controls({'AeEnable':True, 'AwbEnable':False}) # Note, AeEnable changes both AEC and AGC
     
     return cam
-
+"""
+    
 def main():
     # Initialize camera with our desired
     # settings
-    cam: Picamera2 = initialize_camera()
+    #cam: Picamera2 = initialize_camera()
     
     # Prepare encoder and output filename
-    output_file: str = './test.npy'
+    output_file: str = './test (1).npy'
     
-    record_video(cam, output_file)
+    #record_video(cam, output_file)
 
     #frames = parse_video(output_file)
+    frames = read_in_video(output_file)
+    reconstruct_video(frames, './my_video.avi')
     #analyze_temporal_sensitivity(frames)
 
 if(__name__ == '__main__'):
