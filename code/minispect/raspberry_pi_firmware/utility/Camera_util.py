@@ -1,5 +1,4 @@
-#from picamera2.encoders import H264Encoder
-#from picamera2 import Picamera2, Preview
+from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -59,64 +58,80 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     plt.legend()
     plt.show()
 
-"""
-def record_video(cam: Picamera2, encoder: H264Encoder, output_path: str):
-    # Begin Recording with a preview
-    cam.start_preview(Preview.QTGL)
-    cam.start_recording(encoder, output_path)
+def record_video(cam: Picamera2, output_path: str):
+    # Begin Recording
+    cam.start("video")
     
+    # Initialize array to hold video frames
+    frames = []
     
-    # Simulate capturing things
-    while(input("Enter: ") != 'n'):
-        continue
+    # Begin timing capture
+    start_capture_time = time.time()
     
-    # Stop recording
-    cam.stop_recording()
-    cam.stop_preview()
+    # Record frames and append them to frames array 
+    # until user presses control-C 
+    try:
+        while(True):
+            array = cam.capture_array("raw")
     
-    # Close the picam object 
+            frames.append(array)
+    except:
+        pass 
+    
+    # Record timing of end of capture 
+    end_capture_time = time.time()
+    
+    # Calculate the approximate FPS the frames were taken at 
+    # (approximate due to time taken for other computation)
+    observed_fps = len(frames)/(end_capture_time-start_capture_time)
+    print(f'I captured {len(frames)} at {observed_fps} fps')
+    
+    # Assert that we captured the frames at the target FPS,
+    # with margin of error
+    assert abs(CAM_FPS - observed_fps) < 10 
+    
+    # Stop recording and close the picam object 
     cam.close()    
     
-
-
-def initialize_camera() -> Picamera2:
-    # Set up camera, turn off automatic
-    # white balance, white point control,
-    # turn on exposure control and
-    # gain control
+    np.save(output_path,np.array(frames, dtype=np.uint8))
     
+    
+def initialize_camera() -> Picamera2:
     # Initialize camera 
     cam: Picamera2 = Picamera2()
     
     # Select the mode to put the sensor in
     # (ie, mode for high fps/low res, more pixel HDR etc)
-    sensor_mode: dict = cam.sensor_modes[4]					# Other params ignored, so force the mode by setting these
-    config = cam.create_video_configuration(sensor={'output_size': sensor_mode['size'], 'bit_depth': sensor_mode['bit_depth']})
+    sensor_mode: dict = cam.sensor_modes[4]		
     
-    # Set the mode 
-    cam.configure(cam.create_video_configuration())
+    # Set the mode
+    cam.configure(cam.create_video_configuration(sensor={'output_size':sensor_mode['size'], 'bit_depth':sensor_mode['bit_depth']}, raw=sensor_mode))
+    
+    # Ensure the frame rate; This is calculated by
+    # FPS = 1,000,000 / FrameDurationLimits 
+    # e.g. 206.65 = 1000000/FDL => FDL = 1000000/206.65
+    frame_duration_limit = int(np.ceil(1000000/sensor_mode['fps']))
+    
+    cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # *2 for lower,upper bound equal
     
     # Set runtime camera information, such as auto-gain
     # auto exposure, white point balance, etc
-    cam.set_controls({'AeEnable':True, 'AwbEnable':False}) # Note, AeEnable changes both AEC and AGC 
+    cam.set_controls({'AeEnable':True, 'AwbEnable':False}) # Note, AeEnable changes both AEC and AGC
     
     return cam
-
-"""
 
 def main():
     # Initialize camera with our desired
     # settings
-    #cam: Picamera2 = initialize_camera()
+    cam: Picamera2 = initialize_camera()
     
     # Prepare encoder and output filename
-    #encoder: H264Encoder = H264Encoder(bitrate=10000000)
-    output_file: str = './test.h264'
+    output_file: str = './test.npy'
     
-    #record_video(cam, encoder, output_file)
+    record_video(cam, output_file)
 
-    frames = parse_video(output_file)
-    analyze_temporal_sensitivity(frames)
+    #frames = parse_video(output_file)
+    #analyze_temporal_sensitivity(frames)
 
 if(__name__ == '__main__'):
     main()
