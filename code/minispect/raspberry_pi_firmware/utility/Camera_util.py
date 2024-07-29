@@ -1,9 +1,11 @@
-#from picamera2 import Picamera2, Preview
+from picamera2.encoders import H264Encoder
+from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
 from scipy.signal import correlate
 import numpy as np
+import inspect 
 from scipy.signal import hilbert
 
 CAM_FPS = 206.65
@@ -15,7 +17,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     height, width = video_frames[0].shape[:2]
 
     # Initialize VideoWriter object to write frames to
-    out = cv2.VideoWriter(output_path, 0, fps, (width, height), isColor=False)
+    out = cv2.VideoWriter(output_path, 0, fps, (width, height), isColor=True)
 
     for i in range(video_frames.shape[0]):
         out.write(video_frames[i])  # Write the frame to the video
@@ -95,9 +97,9 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     plt.legend()
     plt.show()
 
-"""
 def record_video(cam: Picamera2, output_path: str):
     # Begin Recording
+    print(f"Recording started")
     cam.start("video")
     
     # Initialize array to hold video frames
@@ -106,32 +108,71 @@ def record_video(cam: Picamera2, output_path: str):
     # Begin timing capture
     start_capture_time = time.time()
     
-    # Record frames and append them to frames array 
-    # until user presses control-C 
-    try:
-        while(True):
-            array = cam.capture_array("raw")
+    encoder = H264Encoder(bitrate=10000000, framerate=206.65)
+    print(f"Recording")
+    cam.start_recording(encoder, output_path)    
     
-            frames.append(array)
-    except:
-        pass 
+    
+    if(input("Press q to stop").lower() == 'q' ):
+    	cam.stop_recording()      
     
     # Record timing of end of capture 
     end_capture_time = time.time()
+    print(f"parsing")
+    frames = parse_video(output_path)    
     
     # Calculate the approximate FPS the frames were taken at 
     # (approximate due to time taken for other computation)
     observed_fps = len(frames)/(end_capture_time-start_capture_time)
-    print(f'I captured {len(frames)} at {observed_fps} fps')
+    print(f'I captured {len(frames)} at ~{observed_fps} fps')       
+        
+    # Convert frames to standardized np.array
+    frames_as_np = np.array(frames, dtype=np.uint8)
+    
+    print(f"The shape of frames is: {frames_as_np.shape}")   
     
     # Assert that we captured the frames at the target FPS,
     # with margin of error
     assert abs(CAM_FPS - observed_fps) < 10 
     
+    # Ensure we captured an RGB video 
+    assert len(frames_as_np.shape) == 4     
+    
     # Stop recording and close the picam object 
     cam.close()    
     
-    np.save(output_path,np.array(frames, dtype=np.uint8))
+    np.save(output_path, frames_as_np)
+    
+    
+    
+def recording_test():
+	cap = cv2.VideoCapture(0)
+ 	
+	assert cap.isOpened() == True
+ 	
+	cap.set(cv2.CAP_PROP_FRAME_WIDTH,640)
+	cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480) 	
+ 	
+	#cap.set(cv2.CAP_PROP_FPS, 206.65) 	
+	
+	start = time.time()
+	frames = []
+	
+	while(True):
+		ret, frame = cap.read()
+		
+		print(ret)		
+		
+		if(not ret):
+			break
+
+		
+	end = time.time()	
+	
+	print(f"I captured {len(frames)} at {len(frames)}/{end-start}fps")
+	print(np.array(frames).shape)
+ 		 		
+ 		
     
 def initialize_camera() -> Picamera2:
     # Initialize camera 
@@ -142,7 +183,7 @@ def initialize_camera() -> Picamera2:
     sensor_mode: dict = cam.sensor_modes[4]		
     
     # Set the mode
-    cam.configure(cam.create_video_configuration(sensor={'output_size':sensor_mode['size'], 'bit_depth':sensor_mode['bit_depth']}, raw=sensor_mode))
+    cam.configure(cam.create_video_configuration(sensor={'output_size':sensor_mode['size'], 'bit_depth':sensor_mode['bit_depth']}, main={'size':sensor_mode['size']}, raw=sensor_mode))
     
     # Ensure the frame rate; This is calculated by
     # FPS = 1,000,000 / FrameDurationLimits 
@@ -156,22 +197,21 @@ def initialize_camera() -> Picamera2:
     cam.set_controls({'AeEnable':True, 'AwbEnable':False}) # Note, AeEnable changes both AEC and AGC
     
     return cam
-"""
     
 def main():
     # Initialize camera with our desired
     # settings
-    #cam: Picamera2 = initialize_camera()
+    cam: Picamera2 = initialize_camera()
     
     # Prepare encoder and output filename
-    output_file: str = './2hz_2NDF.npy'
+    output_file: str = './2hz_2NDF.h264'    
     
-    #record_video(cam, output_file)
+    record_video(cam, output_file)
 
     #frames = parse_video(output_file)
-    frames = read_in_video(output_file)
+    #frames = read_in_video(output_file)
     #reconstruct_video(frames, './my_video.avi')
-    analyze_temporal_sensitivity(frames)
+    #analyze_temporal_sensitivity(frames)
 
 if(__name__ == '__main__'):
     main()
