@@ -2,9 +2,11 @@
 import time
 import cv2
 import matplotlib.pyplot as plt
+from scipy.signal import correlate
 import numpy as np
+from scipy.signal import hilbert
 
-CAM_FPS = 201
+CAM_FPS = 206.65
 
 def reconstruct_video(video_frames: np.array, output_path: str):
     # Define the information about the video to use for writing
@@ -57,15 +59,27 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     frequency: int = 2  # frequency of the sinusoid in Hz
     amplitude: int = np.max(average_frame_intensities) - np.mean(average_frame_intensities)   # amplitude of the sinusoid
     phase: int = 0       # phase shift in radians
-    sampling_rate:int = 1000  # samples per second
+    sampling_rate:int = 1  # samples per second
     duration: float = video_frames.shape[0] / CAM_FPS  # duration of the signal in seconds
 
     # Generate mock source time values and sinusoidal wave 
-    t_source: np.array = np.linspace(0, duration, int(sampling_rate*duration), endpoint=False)
-    y_source: np.array = amplitude * np.sin(2 * np.pi * frequency * t_source + phase)   
+    t_source: np.array = np.linspace(0, duration, video_frames.shape[0], endpoint=False)
+    y_source: np.array = amplitude * np.sin(2 * np.pi * frequency * t_source + phase)  + np.mean(average_frame_intensities)
 
     # Generate x values in time for the measured points    
-    t_measured: np.array = np.linspace(0,duration,video_frames.shape[0],endpoint=False)
+    t_measured: np.array = np.linspace(0,duration,video_frames.shape[0],endpoint=False)+0.1
+    y_measured = average_frame_intensities 
+
+    # Fit measured to source by finding the difference in phase shift 
+    # between the two waves
+    source_analytic_signal = hilbert(y_source)  # use hilbert transform since it works for imperfect sine waves
+    measured_analytic_signal = hilbert(y_measured)
+
+    instantaneous_phase1 = np.unwrap(np.angle(source_analytic_signal))
+    instantaneous_phase2 = np.unwrap(np.angle(measured_analytic_signal))
+    
+    phase_difference = instantaneous_phase2 - instantaneous_phase1
+    average_phase_difference = np.mean(phase_difference)
     
     """"""
 
@@ -73,7 +87,7 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     plt.plot(t_source, y_source, label='Source Modulation')
 
     # Plot the observed data 
-    plt.plot(t_measured, average_frame_intensities-np.mean(average_frame_intensities), label='Avg Intensity')
+    plt.plot(t_measured, y_measured-average_phase_difference, label='Avg Intensity')
 
     plt.title('Camera Temporal Sensitivity (2Hz)')
     plt.xlabel('Time (seconds)')
@@ -150,14 +164,14 @@ def main():
     #cam: Picamera2 = initialize_camera()
     
     # Prepare encoder and output filename
-    output_file: str = './test (1).npy'
+    output_file: str = './2hz_2NDF.npy'
     
     #record_video(cam, output_file)
 
     #frames = parse_video(output_file)
     frames = read_in_video(output_file)
-    reconstruct_video(frames, './my_video.avi')
-    #analyze_temporal_sensitivity(frames)
+    #reconstruct_video(frames, './my_video.avi')
+    analyze_temporal_sensitivity(frames)
 
 if(__name__ == '__main__'):
     main()

@@ -163,9 +163,7 @@ function analyze_temporal_sensitivty(cal_path,chip_name)
 
                 sig_mean = mean(signal);
                 signal = signal - mean(signal);  % freq is the source flicker freq in Hz. Signal is the vector of measures for a channel
-                % sampling frequency of signal  % refactor this to look
-                % like the function at the time, but keep the signal =
-                % signal-mean(signal)
+                % sampling frequency of signal 
                 fs = 1./secsPerMeasure;
                 modeldT = 0.01; 
                 modelT = 0:modeldT:elapsed_seconds - modeldT; 
