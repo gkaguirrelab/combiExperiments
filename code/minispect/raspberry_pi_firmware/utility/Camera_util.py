@@ -7,6 +7,7 @@ from scipy.signal import correlate
 import numpy as np
 import inspect 
 from scipy.signal import hilbert
+import os
 
 CAM_FPS = 206.65
 
@@ -50,13 +51,23 @@ def parse_video(path_to_video: str) -> np.array:
     return np.array(frames, dtype=np.uint8)
 
 # Analyze the temporal sensitivity of the camera 
-def analyze_temporal_sensitivity(video_frames: np.array):
-    # Convert video sequence to grayscale (if not already)  
+def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_levels: tuple) -> tuple:
+    # Create a mapping between the light levels and the videos taken at different frequencies at that light level
+    light_level_videos: dict = {light_level:  [parse_video(os.path.join(recordings_dir, experiment_filename)) for file in os.listdir(experiment_filename) 
+                                                                if experiment_filename in file and light_level in file] 
+                                for light_level in light_levels}
 
-    grayscale_video: np.array = video_frames if(len(video_frames.shape) == 3) else np.array([cv2.cvtColor(video_frames[i], cv2.COLOR_RGB2GRAY) for i in range(video_frames.shape[0])], dtype=np.uint8)
 
-    # Find average intensity of every frame in the video
-    average_frame_intensities: np.array = np.mean(grayscale_video, axis=(1,2))
+    for light_level, videos in light_level_videos.items():
+        grayscale_videos: np.array = np.array([ videos[i] if(len(videos[i].shape) == 3) else np.array(cv2.cvtColor(videos[i], cv2.COLOR_RGB2GRAY)) for i in range(len(videos)) ], dtype=np.uint8)
+    
+        # Find average intensity of every frame in every video, then concat
+        average_frame_intensities: np.array = np.mean(grayscale_videos, axis=(2,3))
+
+        # Reshape this from videos to one vector
+    
+
+    return 
 
     """Express both source and observed values as power spectrum"""
     frequency: int = 2  # frequency of the sinusoid in Hz
@@ -83,6 +94,8 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     
     phase_difference = instantaneous_phase2 - instantaneous_phase1
     average_phase_difference = np.mean(phase_difference)
+
+    return (t_source, y_source), (t_measured, y_measured)
     
     """"""
 
@@ -98,7 +111,7 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     plt.legend()
     plt.show()
 
-
+"""
 def record_video(output_path: str, duration: float):
     # Initialize a camera 
     cam: Picamera2 = initialize_camera()
@@ -167,7 +180,7 @@ def initialize_camera() -> Picamera2:
     cam.set_controls({'AeEnable':True, 'AwbEnable':False}) # Note, AeEnable changes both AEC and AGC
     
     return cam
-    
+"""
 
 def main():    
     # Prepare encoder and output filename
