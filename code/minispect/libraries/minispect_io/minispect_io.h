@@ -19,8 +19,8 @@ void read_BLE_command(String* ble_input, HardwareBLESerial* bleSerial);
 void write_ble(HardwareBLESerial* bleSerial,
                std::vector<uint16_t>* AS_channels,
                std::vector<uint16_t>* TS_channels,
-               std::vector<int32_t>* LI_channels,
-               float LI_temp);
+               int16_t* accel_buffer,
+               float_t LI_temp);
 
 // Sends an error signal by writing -1 from the Serial port
 void sig_error();
@@ -32,7 +32,7 @@ std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341);
 std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591);
 
 // Read various information (as specified by input) from the LIS2DUXS12 chip
-std::vector<int32_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12);
+std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12);
 
 // Read various information (as specified by input) from the SEEED XIAO BLE Sense 
 void SE_read(char mode, NRF_FICR_Type* board_info_reg);

@@ -98,28 +98,28 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     plt.legend()
     plt.show()
 
-"""
-def record_video(cam: Picamera2, output_path: str):
-    # Begin Recording
-    print(f"Recording started")
-    cam.start("video")
+
+def record_video(output_path: str, duration: float):
+    # Initialize a camera 
+    cam: Picamera2 = initialize_camera()
+    encoder = H264Encoder(bitrate=10000000, framerate=206.65)
     
     # Initialize array to hold video frames
     frames = []
     
-    # Begin timing capture
+    # Begin recording and begin timing
     start_capture_time = time.time()
+    cam.start_encoder(encoder, output_path)
+    cam.start('video')
     
-    encoder = H264Encoder(bitrate=10000000, framerate=206.65)
-    print(f"Recording")
-    cam.start_recording(encoder, output_path)    
+    # Record for the given duration
+    time.sleep(duration)
     
-    
-    if(input("Press q to stop").lower() == 'q' ):
-    	cam.stop_recording()      
-    
-    # Record timing of end of capture 
+    # Finish recording and record end time
+    cam.stop_recording()
     end_capture_time = time.time()
+    
+    # Read parse the video into frames 
     print(f"parsing")
     frames = parse_video(output_path)    
     
@@ -140,42 +140,10 @@ def record_video(cam: Picamera2, output_path: str):
     # Ensure we captured an RGB video 
     assert len(frames_as_np.shape) == 4     
     
-    # Stop recording and close the picam object 
+    # Close the camera object
     cam.close()    
     
-    np.save(output_path, frames_as_np)
-    
-    
-    
-def recording_test():
-	cap = cv2.VideoCapture(0)
- 	
-	assert cap.isOpened() == True
- 	
-	cap.set(cv2.CAP_PROP_FRAME_WIDTH,640)
-	cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480) 	
- 	
-	#cap.set(cv2.CAP_PROP_FPS, 206.65) 	
-	
-	start = time.time()
-	frames = []
-	
-	while(True):
-		ret, frame = cap.read()
-		
-		print(ret)		
-		
-		if(not ret):
-			break
 
-		
-	end = time.time()	
-	
-	print(f"I captured {len(frames)} at {len(frames)}/{end-start}fps")
-	print(np.array(frames).shape)
- 		 		
- 		
-    
 def initialize_camera() -> Picamera2:
     # Initialize camera 
     cam: Picamera2 = Picamera2()
@@ -200,12 +168,8 @@ def initialize_camera() -> Picamera2:
     
     return cam
     
-"""
-def main():
-    # Initialize camera with our desired
-    # settings
-    #cam: Picamera2 = initialize_camera()
-    
+
+def main():    
     # Prepare encoder and output filename
     output_file: str = './2hz_2NDF.h264'    
     

@@ -41,7 +41,7 @@ void read_command(String* input) {
 }
 
 void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
-  char ble_read_buffer[19];
+  char ble_read_buffer[19] = "\0"; 
   bleSerial->poll();
 
   // If there is an attempt to overload the buffer, throw 
@@ -51,48 +51,56 @@ void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
     bleSerial->readLine(ble_read_buffer, 19);
   }
 
-  *input = String(ble_read_buffer);
+  if(ble_read_buffer[0] != '\0') {
+    *input = String(ble_read_buffer);
+  }
 
 }
 
 void write_ble(HardwareBLESerial* bleSerial, 
                std::vector<uint16_t>* AS_channels,
                std::vector<uint16_t>* TS_channels,
-               std::vector<int32_t>* LI_channels,
-               float LI_temp) 
+               int16_t* accel_buffer,
+               float_t LI_temp) 
 {
     //Can transfer 52 bytes total
-    uint8_t dataBLE[52];
-    int i = 2;  
+    uint8_t dataBLE[175];
+    int pos = 2;  
     
     // 2 bytes at the start for beginning flag
+    memset(dataBLE, '\0', 175);
     dataBLE[0] = ':';
     dataBLE[1] = 'D';
+    dataBLE[174] = '\n';
 
     // Copy over AS_channel bytes
     //11 * 2 bytes from AS channels -> 22 
-    for(i; i < AS_channels->size(); i+=2) {
-      std::memcpy(&dataBLE[i], &AS_channels->at(i), sizeof(uint16_t));
+    for(int i = 0; i < AS_channels->size(); i++) {
+      std::memcpy(&dataBLE[pos], &AS_channels->at(i), sizeof(uint16_t));
+      pos += 2; 
     }
 
     //Copy over the TS channel bytes
     //2 x 2 bytes from TS channels -> 4
-    for(i; i < TS_channels->size(); i+=2) {
-      std::memcpy(&dataBLE[i], &TS_channels->at(i), sizeof(uint16_t));
+    for(int i = 0; i < TS_channels->size(); i++) {
+      std::memcpy(&dataBLE[pos], &TS_channels->at(i), sizeof(uint16_t));
+      pos += 2; 
     }
 
     //Copy over the LI channel bytes
-    //3 x 4 bytes from LI channels - > 12 
-    for(i; i < LI_channels->size(); i+=2) {
-      std::memcpy(&dataBLE[i], &LI_channels->at(i), sizeof(int32_t));
-    }
+    //20 x 3 * 2 bytes from LI channels - > 120 
+    int buffer_size = 60; //sizeof(accel_buffer) / sizeof(int16_t);
+    std::memcpy(&dataBLE[pos], accel_buffer, buffer_size * sizeof(int16_t));
+
+    Serial.print("ACCEL BUFFER SIZE: ");Serial.println(buffer_size);
+    pos += (buffer_size * 2); 
 
     //Copy over the LI temperature
-    //1 x 4 bytes from LI_temp - > 4 
-    std::memcpy(&dataBLE[i], &LI_temp, sizeof(float));
+    //1 x 4 bytes from LI_temp - > 4 OR 8, not sure of float_t 
+    std::memcpy(&dataBLE[pos], &LI_temp, sizeof(float_t));
   
     // Send data back to caller over BLE
-    for (int i = 0; i < 52; i++) {
+    for (int i = 0; i < 175; i++) {
         bleSerial->write(dataBLE[i]);
     }
                                 // + 1 byte at the end for end
@@ -100,10 +108,6 @@ void write_ble(HardwareBLESerial* bleSerial,
     
     // Reset the buffer
     bleSerial->flush();
-    memset(dataBLE, '\0', 40);
-    dataBLE[0] = ':';
-    dataBLE[1] = 'D';
-    dataBLE[51] = '\n';
 }
 
 
@@ -175,6 +179,9 @@ std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341) {
         
         // Append readings to result vector
         for(int i = 0; i < 12; i++) {
+          if(i == 4 || i == 5){
+            continue;
+          }
           result.push_back(readings[i]);
         }
 
@@ -282,30 +289,35 @@ std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
 }
 
-std::vector<int32_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
+std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
   int32_t accel[3];
   float_t temperature; 
-  std::vector<int32_t> result; 
-  
-  lis2duxs12->Get_X_Axes(accel);
+  std::vector<float_t> result; 
+  uint8_t idRET; 
 
   switch(mode) {
     // Read the acceleration information
     case 'A':
+      lis2duxs12->Get_X_Axes(accel);
+    
       Serial.print("X : ");Serial.println(accel[0]);
       Serial.print("Y : ");Serial.println(accel[1]);
       Serial.print("Z : ");Serial.println(accel[2]);
 
+      //idRET = 0xFE;
+      //lis2duxs12->ReadID(&idRET);
+      //Serial.print("IDRet : 0x");Serial.println(idRET, HEX);
+
       // Append acceleration information to the result vector
       for(int i = 0; i < 3; i++) {
-        result.push_back(accel[i]); 
+        result.push_back((float_t)accel[i]); 
       }
 
       // Append End of Message terminator
       Serial.println("!");
       break; 
     
-    // Read the temperature 
+    // Read the temperature from the accelerometer
     case 'T':
       // If there was a problem with reading the temperature, throw an error 
       if(lis2duxs12->Get_Temp(&temperature) != LIS2DUXS12_STATUS_OK) {
@@ -315,8 +327,8 @@ std::vector<int32_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
 
       // Print out the temperature reading (C)
       Serial.println(temperature);
-
-      // Append temperature to the result vector 
+      
+      // Append the temperature to the result vector 
       result.push_back(temperature);
 
       // Append End of Message terminator
