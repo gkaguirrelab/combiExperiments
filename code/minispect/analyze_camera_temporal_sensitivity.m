@@ -1,4 +1,16 @@
 function analyze_camera_temporal_sensitivty(frequency)
+    
+    % Step 1: Open a remote connection to the raspiberry pi 
+    %host = 'eds@10.103.10.181'; % 'eds@zk' might also need to try this if the previous does not work 
+    password = '1234';
+
+    ssh2_conn = ssh2_config('10.103.10.181', 'eds' ,password);
+    ssh2_conn = ssh2_command(ssh2_conn, 'ls');
+
+
+    return ;
+
+    
     % Step 1: Load in the calibration file for the CombiLED
     calDir = fullfile(tbLocateProjectSilent('combiExperiments'),'cal'); % Which Cal file to use (currently hard-coded)
     calFileName = 'CombiLED_shortLLG_testSphere_ND0x2.mat';

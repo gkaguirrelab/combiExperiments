@@ -1,5 +1,5 @@
-from picamera2.encoders import H264Encoder
-from picamera2 import Picamera2, Preview
+#from picamera2.encoders import H264Encoder
+#from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -51,8 +51,9 @@ def parse_video(path_to_video: str) -> np.array:
 
 # Analyze the temporal sensitivity of the camera 
 def analyze_temporal_sensitivity(video_frames: np.array):
-    # Convert video sequence to grayscale (if not already)
-    grayscale_video: np.array = video_frames if(len(video_frames.shape) == 3) else np.array([cv2.cvtColor(video_frames[i], cv2.COLOR_BGR2GRAY) for i in range(video_frames.shape[0])], dtype=np.uint8)
+    # Convert video sequence to grayscale (if not already)  
+
+    grayscale_video: np.array = video_frames if(len(video_frames.shape) == 3) else np.array([cv2.cvtColor(video_frames[i], cv2.COLOR_RGB2GRAY) for i in range(video_frames.shape[0])], dtype=np.uint8)
 
     # Find average intensity of every frame in the video
     average_frame_intensities: np.array = np.mean(grayscale_video, axis=(1,2))
@@ -89,7 +90,7 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     plt.plot(t_source, y_source, label='Source Modulation')
 
     # Plot the observed data 
-    plt.plot(t_measured, y_measured-average_phase_difference, label='Avg Intensity')
+    plt.plot(t_measured, y_measured, label='Avg Intensity')
 
     plt.title('Camera Temporal Sensitivity (2Hz)')
     plt.xlabel('Time (seconds)')
@@ -97,6 +98,7 @@ def analyze_temporal_sensitivity(video_frames: np.array):
     plt.legend()
     plt.show()
 
+"""
 def record_video(cam: Picamera2, output_path: str):
     # Begin Recording
     print(f"Recording started")
@@ -198,20 +200,21 @@ def initialize_camera() -> Picamera2:
     
     return cam
     
+"""
 def main():
     # Initialize camera with our desired
     # settings
-    cam: Picamera2 = initialize_camera()
+    #cam: Picamera2 = initialize_camera()
     
     # Prepare encoder and output filename
     output_file: str = './2hz_2NDF.h264'    
     
-    record_video(cam, output_file)
+    #record_video(cam, output_file)
 
-    #frames = parse_video(output_file)
+    frames = parse_video(output_file)
     #frames = read_in_video(output_file)
     #reconstruct_video(frames, './my_video.avi')
-    #analyze_temporal_sensitivity(frames)
+    analyze_temporal_sensitivity(frames)
 
 if(__name__ == '__main__'):
     main()
