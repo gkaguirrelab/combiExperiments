@@ -5,27 +5,34 @@ function analyze_camera_temporal_sensitivty(frequency)
     username = 'eds'; % Username to log into
     password = '1234'; % Password for this user
 
+    disp('Opening remote connection to RP...')
     ssh2_conn = ssh2_config('10.103.10.181','eds',password); % open the connection
     
     % Step 2: Navigate the PI to the directory where the recording is done 
-    recording_dir = './combiExperiments/code/minispect/raspberry_pi_firmware/';
+    recording_dir = '/home/eds/combiExperiments/code/minispect/raspberry_pi_firmware';
     ssh2_conn = ssh2_command(ssh2_conn, sprintf('cd %s', recording_dir)); % navigate to the dir with the recording script
     
     % Step 3: Define parameters for the recording 
-    output_path = './test.h264';
+    output_filename = 'test.h264';
     duration = 10; 
     
+    disp('Begin recording...')
     % Step  : Begin recording to the desired output path for the desired duration
-    ssh2_conn = ssh2_command(ssh2_conn, sprintf('python3 MS_com.py %s %d', output_path, duration));
+    ssh2_conn = ssh2_command(ssh2_conn, sprintf('python3 Camera_com.py %s %d', output_filename, duration));
 
     pause(2*duration) % Pause for duration plus a buffer to allow for recording, saving, error checking, etc
 
     % Step : Retrieve the file from the raspberry pi
-    ssh2_conn = scp_get(ssh2_conn, output_path, './', recording_dir); 
+    disp('Retrieving the file...')
+    ssh2_conn = scp_get(ssh2_conn, output_filename, './raspberry_pi_firmware/recordings/', recording_dir); 
 
-    return ;
-    
-    
+    % Step : Close the remote connection to the raspberry pi
+    disp('Closing connection to RP...')
+    ssh2_conn = ssh2_close(ssh2_conn);
+
+    return ; 
+
+
     
     ssh2_conn = ssh2_command(ssh2_conn, 'ls');
 
