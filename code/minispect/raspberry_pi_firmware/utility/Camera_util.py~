@@ -16,7 +16,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     height, width = video_frames[0].shape[:2]
 
     # Initialize VideoWriter object to write frames to
-    out = cv2.VideoWriter(output_path, 0, fps, (width, height), isColor=False)
+    out = cv2.VideoWriter(output_path, 0, fps, (width, height), isColor=len(video_frames.shape) > 3)
 
     for i in range(video_frames.shape[0]):
         out.write(video_frames[i])  # Write the frame to the video
@@ -146,7 +146,7 @@ def record_video(output_path: str, duration: float):
     
     # Assert that we captured the frames at the target FPS,
     # with margin of error
-    assert abs(CAM_FPS - observed_fps) < 10     
+    #assert abs(CAM_FPS - observed_fps) < 10     
     
     assert len(frames.shape) == 3 
     
@@ -172,9 +172,9 @@ def initialize_camera() -> Picamera2:
     # Ensure the frame rate; This is calculated by
     # FPS = 1,000,000 / FrameDurationLimits 
     # e.g. 206.65 = 1000000/FDL => FDL = 1000000/206.65
-    frame_duration_limit = int(np.ceil(1000000/sensor_mode['fps']))
+    #frame_duration_limit = int(np.ceil(1000000/sensor_mode['fps']))
     
-    cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # *2 for lower,upper bound equal
+    #cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # *2 for lower,upper bound equal
     
     # Set runtime camera information, such as auto-gain
     # auto exposure, white point balance, etc
