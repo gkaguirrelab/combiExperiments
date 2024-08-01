@@ -2,7 +2,7 @@ function analyze_ms_temporal_sensitivty(cal_path,chip_name)
 % Analyzes the temporal sensitivity of a given light-sensing chip in the minispect
 %
 % Syntax:
-%   analyze_temporal_sensitivty(cal_path,chip_name)
+%   analyze_ms_temporal_sensitivty(cal_path,chip_name)
 %
 % Description:
 %  Generates temporal sensitivity plots for both high and low light levels
@@ -20,6 +20,9 @@ function analyze_ms_temporal_sensitivty(cal_path,chip_name)
 % Outputs:
 %   experiment_results    - Array. Contains the amplitudes per channel 
 %                           per frequency, for the low and high light levels
+%
+%   modResult             - Struct. Contains the information used to compose
+%                           the flicker profile. 
 %
 % Examples:
 %{
@@ -209,11 +212,13 @@ function analyze_ms_temporal_sensitivty(cal_path,chip_name)
             experiment_results(bb,ff,:) = channel_amplitudes;
 
         end
-    end
+    end 
+
+    drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/MiniSpect/calibration/graphs/'];
 
     % Step 14: Save the results of the experiment, so we don't need to 
     % rerun it if there are plotting issues
-    save(sprintf('%s_results.mat',chip_name),'experiment_results');
+    save(sprintf('%s%s_results.mat', drop_box_dir, chip_name),'experiment_results');
 
     % Step 15: Plot Temporal Sensitivity for a sample channel
     figure ; 
@@ -246,7 +251,6 @@ function analyze_ms_temporal_sensitivty(cal_path,chip_name)
 
     % Step 16: Save graphs, if desired, and the modresults
     save_or_not = input('Save figure? (y/n)', 's');
-    drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/MiniSpect/calibration/graphs/'];
     if(save_or_not(1) == 'y')
         saveas(gcf, sprintf('%s%s_TemporalSensitivity.png',drop_box_dir,chip_name));
     end 
