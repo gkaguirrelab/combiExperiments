@@ -2,10 +2,9 @@ from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
-from scipy.signal import correlate
+from scipy.signal import correlate, hilbert
+from skimage.io import imsave
 import numpy as np
-import inspect 
-from scipy.signal import hilbert
 import os
 
 CAM_FPS = 206.65
@@ -17,7 +16,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     height, width = video_frames[0].shape[:2]
 
     # Initialize VideoWriter object to write frames to
-    out = cv2.VideoWriter(output_path, 0, fps, (width, height), isColor=True)
+    out = cv2.VideoWriter(output_path, 0, fps, (width, height), isColor=False)
 
     for i in range(video_frames.shape[0]):
         out.write(video_frames[i])  # Write the frame to the video
@@ -122,34 +121,40 @@ def record_video(output_path: str, duration: float):
     # Begin timing capture
     start_capture_time = time.time()
     
-    # Record frames and append them to frames array 
-    # until user presses control-C 
+    # Record frames and append them to frames array  
     while(True):
-    	array = cam.capture_array("raw")
-    	frames.append(array)
+    	frame = cam.capture_array("raw")
+    	frames.append(frame)
     	
     	current_time = time.time()
-    	
+    
     	if((current_time - start_capture_time) > duration):
     		break
     
     # Record timing of end of capture 
     end_capture_time = time.time()
     
-    imsave('./test_color.tiff', cv2.cvtColor(frames[0], cv2.COLOR_BAYER_RG2BGR))
-    imsave('./test.tiff', frames[0])
+    frames = np.array(frames, dtype=np.uint8)    
+    
+    #imsave('./test_color.tiff', cv2.cvtColor(frames[0], cv2.COLOR_BAYER_RG2BGR))
+    #imsave('./test.tiff', frames[0])
     
     # Calculate the approximate FPS the frames were taken at 
     # (approximate due to time taken for other computation)
-    observed_fps = len(frames)/(end_capture_time-start_capture_time)
+    observed_fps = frames.shape[0]/(end_capture_time-start_capture_time)
     print(f'I captured {len(frames)} at {observed_fps} fps')
     
     # Assert that we captured the frames at the target FPS,
     # with margin of error
     assert abs(CAM_FPS - observed_fps) < 10     
     
+    assert len(frames.shape) == 3 
+    
     # Stop recording and close the picam object 
     cam.close() 
+    
+    # Build the video from the frames and save it 
+    reconstruct_video(frames, output_path)
     
     
 
@@ -180,9 +185,9 @@ def initialize_camera() -> Picamera2:
 
 def main():    
     # Prepare encoder and output filename
-    output_file: str = './test.npy'    
+    output_file: str = './test.avi'    
     
-    record_video(cam, output_file)
+    record_video(output_file, 10)
 
     #frames = parse_video(output_file)
     #frames = read_in_video(output_file)
