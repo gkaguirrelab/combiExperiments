@@ -28,6 +28,11 @@ def run_ssh_command(hostname: str, port: int, username: str, password: str, comm
         # Execute the command
         stdin, stdout, stderr = ssh.exec_command(command)
 
+        # Read the output of the program, used to stall any 
+        # external programming calling this program to wait 
+        # for it to finish
+        stdout.read()
+
     except paramiko.SSHException as e:
         print(f"SSH connection failed: {e}")
 

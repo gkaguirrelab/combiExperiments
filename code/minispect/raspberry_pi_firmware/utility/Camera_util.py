@@ -52,19 +52,31 @@ def parse_video(path_to_video: str) -> np.array:
 
 # Analyze the temporal sensitivity of the camera 
 def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_levels: tuple) -> tuple:
-    # Create a mapping between the light levels and the videos taken at different frequencies at that light level
-    light_level_videos: dict = {light_level:  [ (parse_video(os.path.join(recordings_dir, file)), file) for file in os.listdir(recordings_dir) 
-                                                                if experiment_filename in file and light_level in file ] 
-                                for light_level in light_levels}
+    # Create matrix where each row i is the ith light level's videos of different freqeuncies                                                                 # Compare the text between _ and NDF in the string to the light level
+    light_levels_files = [ [ os.path.join(recordings_dir, file) for file in os.listdir(recordings_dir) 
+                            if experiment_filename in file and light_level == file.split('_')[-1][:-7] ] 
+                            for light_level in light_levels ] 
+    
+    # Create a mapping between the light levels and the videos taken at different frequencies at that light level  
+    light_level_videos: dict = {light_level : [ parse_video(file) for file in light_level_files ] 
+                                for light_level, light_level_files in zip(light_levels, light_levels_files)}
 
-    for light_level, videos in light_level_videos.items(): 
-        frequencies: list = [ float(re.search(r'\d+\.\d+hz', videos[i][1]).group()[:-2]) for i in range(len(videos)) ]
+    # Iterate over the light levels
+    for ind, (light_level, videos) in enumerate(light_level_videos.items()): 
+        # Parse the frequency of each video at this light level
+        frequencies: list = [ float(re.search(r'\d+[\.x]\d+hz', file).group()[:-2]) 
+                             for file in light_levels_files[ind]]
 
-        grayscale_videos: np.array = np.array([ videos[i][0] if(len(videos[i][0].shape) == 3) else np.array(cv2.cvtColor(videos[i][0], cv2.COLOR_BGR2GRAY)) for i in range(len(videos)) ], dtype=np.uint8)
+        # Convert the videos to grayscale if they are not already
+        grayscale_videos: np.array = np.array([ videos[i] if(len(videos[i].shape) == 3) 
+                                               else np.array(cv2.cvtColor(videos[i], cv2.COLOR_BGR2GRAY)) 
+                                               for i in range(len(videos)) ], dtype=np.uint8)
 
         # Find average intensity of every frame in every video, then concat
         average_frame_intensities: np.array = np.mean(grayscale_videos, axis=(2,3))
 
+        # For each frequency and associated video, plot the source modulation and 
+        # fit the observed values to the source modulation
         for frequency, avg_video in zip(frequencies, average_frame_intensities):
             duration: float = avg_video.shape[0] / CAM_FPS # duration of the signal in seconds 
             source_amplitude: float = np.max(avg_video) - np.mean(avg_video) 
@@ -72,7 +84,7 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
 
             # Generate mock source time values and sinusoidal wave 
             t_source: np.array = np.linspace(0, duration, avg_video.shape[0], endpoint=False)
-            y_source: np.array = source_amplitude * np.sin(2 * np.pi * frequency * t_source + 0)  + np.mean(avg_video)
+            y_source: np.array = source_amplitude * np.sin(2 * np.pi * frequency * t_source + source_phase)  + np.mean(avg_video)
 
             # Generate x values in time for the measured points   
             t_measured: np.array = np.linspace(0, duration, avg_video.shape[0], endpoint=False)
@@ -216,7 +228,7 @@ def main():
     #frames = parse_video(output_file)
     #frames = read_in_video(output_file)
     #reconstruct_video(frames, './my_video.avi')
-    analyze_temporal_sensitivity('../recordings/', 'test', ['3.0NDF'])
+    analyze_temporal_sensitivity('../recordings/', 'test', ['0x2'])
 
 if(__name__ == '__main__'):
     main()
