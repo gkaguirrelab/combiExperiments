@@ -26,11 +26,12 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
 %}
     
     % Step 1: Define remote connection to raspberry pi
+    addpath('~/Library/Application Support/MathWorks/MATLAB Add-Ons/Collections/SSH_SFTP_SCP For Matlab (v2)/ssh2_v2_m1_r7') % add path to ssh_command library
     host = '10.103.10.181'; % IP/Hostname
     username = 'eds'; % Username to log into
     password = '1234'; % Password for this user
     remote_executer_path = '~/Documents/MATLAB/projects/combiExperiments/code/minispect/raspberry_pi_firmware/utility/remote_execute.py';  % the script to execute remote commands
-    recordings_dir = '~/Documents/MATLAB/projects/combiExperiments/code/minispect/raspberry_pi_firmware/recordings/';
+    recordings_dir = './code/minispect/raspberry_pi_firmware/recordings/';
 
     disp('Trying remote connection to RP...')
     ssh2_conn = ssh2_config(host, username, password); % attempt to open a connection
@@ -68,8 +69,8 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
     
     % Step 8: Define the NDF range and frequencies
     % for which to conduct the experiment 
-    ndf_range = [5, 0.2];
-    frequencies = [0.5, 1];
+    ndf_range = [3];
+    frequencies = [1];
 
     
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
@@ -77,12 +78,13 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
 
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
-        fprintf('You now have 30 seconds to leave the room if desired.\n');
-        pause(30)
+        %fprintf('You now have 30 seconds to leave the room if desired.\n');
+        %pause(30)
         
        
         for ff = 1:numel(frequencies)  % At each NDF level, examine different frequencies
             frequency = frequencies(ff);
+            output_file = sprintf('%s_%.1fhz_%.1fNDF.avi', output_filename, frequency, NDF); 
 
             CL.setFrequency(frequency); % Set the CL flicker to current frequency
 
@@ -91,21 +93,18 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
             
             % Step 9 : Begin recording to the desired output path for the desired duration
             disp('Begin recording...')
-            
-            remote_command = sprintf('python3 %s %s %f', recorder_path, sprintf('%s_%.1f_%.1f.h264', output_filename, frequency, NDF), duration);
+            remote_command = sprintf('python3 %s %s %f', recorder_path, output_file, duration);
             ret = system(sprintf('python3 %s %s %d %s %s "%s"', remote_executer_path, host, 22, username, password, remote_command));  % Execute the remote command via the python script
 
             % Check if the Python subscript errored
             if(ret ~= 0)
                 error('Unable to remotely execute');
             end
-
-            pause(4*duration) % Pause for duration plus a buffer to allow for recording, saving, error checking, etc
             
             % Step 10 : Retrieve the file from the raspberry pi and save it in the recordings 
             % directory
             disp('Retrieving the file...')
-            ssh2_conn = scp_get(ssh2_conn, output_filename, recordings_dir, './'); 
+            ssh2_conn = scp_get(ssh2_conn, output_file, recordings_dir, '~/'); 
 
             % Step 11: Stop the flicker of this frequency
             CL.stopModulation(); 
@@ -121,6 +120,8 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
     % Step 13: Close the connection to the CombiLED
     CL.serialClose(); 
 
+
+    return ;
     % Step 14: Plot the temporal sensitivity with the help of
     % Python to parse the video, generate source/measured curves 
     % over the course of the frames
