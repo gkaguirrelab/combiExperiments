@@ -182,7 +182,7 @@ def main():
     # Prepare encoder and output filename
     output_file: str = './test.npy'    
     
-    record_video(output_file, 10)
+    record_video(cam, output_file)
 
     #frames = parse_video(output_file)
     #frames = read_in_video(output_file)
