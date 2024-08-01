@@ -1,4 +1,4 @@
-from picamera2 import Picamera2, Preview
+#from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -6,6 +6,7 @@ from scipy.signal import correlate, hilbert
 from skimage.io import imsave
 import numpy as np
 import os
+import re
 
 CAM_FPS = 206.65
 
@@ -29,12 +30,10 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 def read_in_video(path_to_video: str) -> np.array:
     return np.load(path_to_video)
 
-# Parse a video in H264 format to a series of frames 
+# Parse a video in .avi format to a series of frames 
 # in np.array format 
 def parse_video(path_to_video: str) -> np.array:
-    fourcc = cv2.VideoWriter_fourcc(*'H264')
     video_capture = cv2.VideoCapture(path_to_video)
-    video_capture.set(cv2.CAP_PROP_FOURCC, fourcc)
 
     frames = []
     while(True):
@@ -46,21 +45,46 @@ def parse_video(path_to_video: str) -> np.array:
 
     video_capture.release()
 
-    return np.array(frames, dtype=np.uint8)
+    frames = np.array(frames, dtype=np.uint8)
+
+    return frames[:,:,:,0] # Grayscale images are read in as color, all channels are equal, so just take the first channel
+
 
 # Analyze the temporal sensitivity of the camera 
 def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_levels: tuple) -> tuple:
     # Create a mapping between the light levels and the videos taken at different frequencies at that light level
-    light_level_videos: dict = {light_level:  [parse_video(os.path.join(recordings_dir, experiment_filename)) for file in os.listdir(experiment_filename) 
-                                                                if experiment_filename in file and light_level in file] 
+    light_level_videos: dict = {light_level:  [ (parse_video(os.path.join(recordings_dir, file)), file) for file in os.listdir(recordings_dir) 
+                                                                if experiment_filename in file and light_level in file ] 
                                 for light_level in light_levels}
 
+    for light_level, videos in light_level_videos.items(): 
+        frequencies: list = [ float(re.search(r'\d+\.\d+hz', videos[i][1]).group()[:-2]) for i in range(len(videos)) ]
 
-    for light_level, videos in light_level_videos.items():
-        grayscale_videos: np.array = np.array([ videos[i] if(len(videos[i].shape) == 3) else np.array(cv2.cvtColor(videos[i], cv2.COLOR_RGB2GRAY)) for i in range(len(videos)) ], dtype=np.uint8)
-    
+        grayscale_videos: np.array = np.array([ videos[i][0] if(len(videos[i][0].shape) == 3) else np.array(cv2.cvtColor(videos[i][0], cv2.COLOR_BGR2GRAY)) for i in range(len(videos)) ], dtype=np.uint8)
+
         # Find average intensity of every frame in every video, then concat
         average_frame_intensities: np.array = np.mean(grayscale_videos, axis=(2,3))
+
+        for frequency, avg_video in zip(frequencies, average_frame_intensities):
+            duration: float = avg_video.shape[0] / CAM_FPS # duration of the signal in seconds 
+            source_amplitude: float = np.max(avg_video) - np.mean(avg_video) 
+            source_phase: int = 0
+
+            # Generate mock source time values and sinusoidal wave 
+            t_source: np.array = np.linspace(0, duration, avg_video.shape[0], endpoint=False)
+            y_source: np.array = source_amplitude * np.sin(2 * np.pi * frequency * t_source + 0)  + np.mean(avg_video)
+
+            # Generate x values in time for the measured points   
+            t_measured: np.array = np.linspace(0, duration, avg_video.shape[0], endpoint=False)
+            y_measured: np.array = avg_video
+
+            plt.title(f"{light_level} {frequency}hz")
+            plt.xlabel('Time (seconds)')
+            plt.ylabel('Amplitude')
+            plt.plot(t_source, y_source, label='Source Modulation')
+            plt.plot(t_measured, y_measured, label='Measured')
+            plt.legend()
+            plt.show()
 
         # Reshape this from videos to one vector
     
@@ -109,7 +133,7 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     plt.legend()
     plt.show()
 
-
+"""
 def record_video(output_path: str, duration: float):
     # # Begin Recording 
     cam = initialize_camera()
@@ -123,13 +147,13 @@ def record_video(output_path: str, duration: float):
     
     # Record frames and append them to frames array  
     while(True):
-    	frame = cam.capture_array("raw")
-    	frames.append(frame)
-    	
-    	current_time = time.time()
-    
-    	if((current_time - start_capture_time) > duration):
-    		break
+        frame = cam.capture_array("raw")
+        frames.append(frame)
+        
+        current_time = time.time()
+        
+        if((current_time - start_capture_time) > duration):
+            break
     
     # Record timing of end of capture 
     end_capture_time = time.time()
@@ -181,18 +205,18 @@ def initialize_camera() -> Picamera2:
     cam.set_controls({'AeEnable':True, 'AwbEnable':False}) # Note, AeEnable changes both AEC and AGC
     
     return cam
-
+"""
 
 def main():    
     # Prepare encoder and output filename
-    output_file: str = './test.avi'    
+    #output_file: str = './test.avi'    
     
-    record_video(output_file, 10)
+    #record_video(output_file, 10)
 
     #frames = parse_video(output_file)
     #frames = read_in_video(output_file)
     #reconstruct_video(frames, './my_video.avi')
-    #analyze_temporal_sensitivity(frames)
+    analyze_temporal_sensitivity('../recordings/', 'test', ['3.0NDF'])
 
 if(__name__ == '__main__'):
     main()
