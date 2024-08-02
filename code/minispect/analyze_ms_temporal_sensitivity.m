@@ -201,7 +201,7 @@ function analyze_ms_temporal_sensitivty(cal_path,chip_name)
                 hold on; 
                 plot(modelT,fit+sig_mean);
 
-                title(sprintf('Signal and Fit: Channel %d Freq: %f', cc, f0));
+                title(sprintf('Signal and Fit: Channel %d  %.1f NDF %fhz', NDF, cc, f0));
                 xlabel('Time (seconds)');
                 ylabel('Counts');
                 legend('Signal','Fit');
@@ -239,14 +239,10 @@ function analyze_ms_temporal_sensitivty(cal_path,chip_name)
     y = idealDiscreteSampleFilter(sourceFreqsHz,dTsignal);
     plot(log10(x),y,'-');
 
-
-    % Take sampling frequency * 2 -> 1 / that and then plot this onto plot 
-    % this is the nyquist. 
-
     xlabel('Source Frequency [log]');   
     ylabel('Relative amplitude of response');
-    title(' Temporal Sensitivity for Clear/FS Channel');
-    legend('Low bound','High Bound','Ideal Device');
+    title('Temporal Sensitivity for Clear/FS Channel');
+    legend(sprintf('%.1f NDF', lower_bound_ndf), sprintf('%.1f NDF', upper_bound_ndf), 'Ideal Device');
     hold off; 
 
     % Step 16: Save graphs and the modresults

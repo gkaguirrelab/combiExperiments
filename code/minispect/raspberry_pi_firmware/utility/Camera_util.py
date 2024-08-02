@@ -5,8 +5,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import re
+from scipy.io import savemat
+import argparse 
 
 CAM_FPS = 206.65
+
+"""Parse command line arguments when script is called via command line"""
+def parse_args():
+    parser = argparse.ArgumentParser(description="Analyze Temporal Sensitivity of the camera")
+    
+    parser.add_argument('recordings_dir', type=str, help="Path to where the camera recordings are stored")
+    parser.add_argument('experiment_filename', type=str, help="Name of the experiment to analyze Temporal Sensitivity for")
+    parser.add_argument('low_bound_ndf', type=str, help="The lower bound of the light levels/NDF range")
+    parser.add_argument('high_bound_ndf', type=str, help="The high bound of the light levels/NDF range")
+    parser.add_argument('save_path', type=str, help="The path to where to output the graph and experiment results")
+
+    args = parser.parse_args()
+
+    return args.recordings_dir, args.experiment_filename, args.low_bound_ndf, args.high_bound_ndf, args.save_path
 
 """Reconstruct a video from a series of frames"""
 def reconstruct_video(video_frames: np.array, output_path: str):
@@ -60,7 +76,7 @@ def parse_video(path_to_video: str) -> np.array:
 
 """Analyze the temporal sensitivity of the camera, showing
    fit of source modulation to observed and TS plot across frequencies"""
-def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_path: str) -> dict:
+def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_dir: str) -> dict:
     # Create matrix where each row i is the ith light level's videos of different freqeuncies                                                                 # Compare the text between _ and NDF in the string to the light level
     light_levels_files = [ [ os.path.join(recordings_dir, file) for file in os.listdir(recordings_dir) 
                             if experiment_filename in file and light_level == file.split('_')[-1][:-7] ] # :-7 to just select the stuff between _ and NDF
@@ -116,10 +132,10 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
             fit_y_source = np.fft.ifft(corrected_fft).real
 
             # Store the frequency and amplitudes for this light_level + frequency
-            light_level_frequencies_amplitudes[light_level]["Frequency"] += []
-            light_level_frequencies_amplitudes[light_level]["Amplitude"] += []
-            light_level_frequencies_amplitudes["Ideal Device"]["Frequency"] += []
-            light_level_frequencies_amplitudes["Ideal Device"]["Amplitude"] += [] 
+            light_level_frequencies_amplitudes[light_level]["Frequencies"] += []
+            light_level_frequencies_amplitudes[light_level]["Amplitudes"] += []
+            light_level_frequencies_amplitudes["Ideal Device"]["Frequencies"] += []
+            light_level_frequencies_amplitudes["Ideal Device"]["Amplitudes"] += [] 
 
             # Plot how well measured fits to source over 
             # time
@@ -131,27 +147,41 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
             plt.legend()
             plt.show()
 
-
+    # Build an array container full of NaNs to hold the results 
+    experiment_results_as_mat = np.full((len(light_levels), \
+                                         len(light_level_frequencies_amplitudes["Ideal Device"]["Frequencies"]), \
+                                         len(light_level_frequencies_amplitudes["Ideal Device"]["Amplitudes"])), \
+                                         np.nan)  
+    
     # Plot the temporal sensitivity across frequencies
     plt.title(f"Camera Temporal Sensitivity")
     plt.xlabel('Frequency')
     plt.ylabel('Amplitude')
     
     # Iterate over the source observers (low, high, ideal)
-    for source, info in light_level_frequencies_amplitudes.items():
+    for i, (source, info) in enumerate(light_level_frequencies_amplitudes.items()):
         # Retrieve their frequencies and amplitude
-        frequency, amplitude = info["Frequency"], info["Amplitude"]
+        frequencies, amplitudes = np.array(info["Frequencies"]), np.array(info["Amplitudes"])
         
         # Plot this observer's curve
-        plt.plot(np.log10(frequency), amplitude, label=source)
+        label = source if source == "Ideal Device" else source +' NDF'
+        plt.plot(np.log10(frequencies), amplitudes, label=label)
+
+        # Don't save the ideal device information
+        if(label == "Ideal Device"): continue 
+        
+        # Insert this light level's frequencies and amplitudes into the .mat container 
+        for j in range(frequencies.shape[0]):
+            experiment_results_as_mat[i,j,:] = amplitudes
 
     plt.legend()
     plt.show()
     
-    # Save the temporal sensitivity plot
-    plt.savefig(save_path)
+    # Save the temporal sensitivity plot and the results as matlab file
+    plt.savefig(os.path.join(save_dir, "TemporalSensitivity.png"))
+    savemat(os.path.join(save_dir, "TemporalSensitivity.mat"), {"experiment_results" : experiment_results_as_mat})
 
-    return light_level_frequencies_amplitudes
+    
 
 """
 #Record a video from the raspberry pi camera
@@ -229,15 +259,9 @@ def initialize_camera() -> Picamera2:
 """
 
 def main():    
-    # Prepare encoder and output filename
-    #output_file: str = './test.avi'    
-    
-    #record_video(output_file, 10)
+    recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
 
-    #frames = parse_video(output_file)
-    #frames = read_in_video(output_file)
-    #reconstruct_video(frames, './my_video.avi')
-    analyze_temporal_sensitivity('../recordings/', 'test', ['2'])
+    analyze_temporal_sensitivity(recordings_dir, experiment_filename, [low_bound_ndf, high_bound_ndf], save_path)
 
 if(__name__ == '__main__'):
     main()

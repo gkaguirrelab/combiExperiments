@@ -75,7 +75,7 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
     
     % Step 8: Define the NDF range and frequencies
     % for which to conduct the experiment 
-    ndf_range = [2];
+    ndf_range = [2, 0.2];
     frequencies = [1];
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
@@ -132,19 +132,21 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
     % Step 15: Plot and the temporal sensitivity with the help of
     % Python to parse the video, generate source/measured curves 
     % over the course of the frames
-    util_module_path = '~/Documents/MATLAB/projects/combiExperiments/code/minispect/raspberry_pi_firmware/utility/Camera_util.py';
-
-    if count(py.sys.path, util_module_path) == 0     % Add the module path to sys.path if it's not already there
-        insert(py.sys.path, int32(0), util_module_path);
-    end
+    ndf2str_path = '~/Documents/MATLAB/projects/combiExperiments/code/minispect';
+    addpath(ndf2str_path)
+    drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
+    path_to_script = './code/minispect/raspberry_pi_firmware/utility/Camera_util.py';
     
-    Camera_util = py.importlib.import_module('Camera_util'); % import the Python camera_util library
+    ret = system(sprintf('python3 %s "%s" %s %s %s "%s"', path_to_script, recordings_dir, output_filename, ...
+                                                   ndf2str(ndf_range(1,1)), ndf2str(ndf_range(1,2)), ...
+                                                   drop_box_dir))
 
-    experiment_results = struct(Camera_util.analyze_temporal_sensitivty(recording_dir, output_filename, arrayfun(@ndf2str, arr, 'UniformOutput', false)));
+    if(ret ~= 0)   % Check if the Python subscript errored
+        error('Unable to execute local Python subscript');
+    end
 
     % Step 16: Save the results and flicker information
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
-    save(sprintf('%sCamera_TemporalSensitivity.mat', drop_box_dir), "drop_box_dir")
     save(sprintf('%s%s_TemporalSensitivityFlicker.mat', drop_box_dir, 'camera'), 'modResult');
 
     return ;
