@@ -118,7 +118,6 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
 
         end
     end
-    
 
     % Step 12: Close the remote connection to the raspberry pi
     disp('Closing connection to RP...')
@@ -127,19 +126,17 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
     % Step 13: Close the connection to the CombiLED
     CL.serialClose(); 
 
-    return; 
-
-    % Step 15: Plot and the temporal sensitivity with the help of
+    % Step 14: Plot and the temporal sensitivity with the help of
     % Python to parse the video, generate source/measured curves 
-    % over the course of the frames
+    % over the course of the frequencies
     ndf2str_path = '~/Documents/MATLAB/projects/combiExperiments/code/minispect';
-    addpath(ndf2str_path)
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
     path_to_script = './code/minispect/raspberry_pi_firmware/utility/Camera_util.py';
+    addpath(ndf2str_path); 
     
     ret = system(sprintf('python3 %s "%s" %s %s %s "%s"', path_to_script, recordings_dir, output_filename, ...
                                                    ndf2str(ndf_range(1,1)), ndf2str(ndf_range(1,2)), ...
-                                                   drop_box_dir))
+                                                   drop_box_dir)); % execute the Python subscript
 
     if(ret ~= 0)   % Check if the Python subscript errored
         error('Unable to execute local Python subscript');
