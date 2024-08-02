@@ -1,6 +1,7 @@
 import paramiko
 import argparse
 
+"""Parse args if run as main program"""
 def parseArgs():
     parser = argparse.ArgumentParser(description="Remotely execute commands on another devie over SSH")
     
@@ -14,6 +15,7 @@ def parseArgs():
 
     return args.host, args.port, args.username, args.password, args.command
 
+"""Execute a command over remote SSH to a desired connection"""
 def run_ssh_command(hostname: str, port: int, username: str, password: str, command: str):
     # Create an SSH client instance
     ssh = paramiko.SSHClient()

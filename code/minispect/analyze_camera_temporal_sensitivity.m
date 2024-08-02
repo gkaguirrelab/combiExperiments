@@ -5,9 +5,10 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
 %   analyze_camera_temporal_sensitivty(cal_path, output_filename)
 %
 % Description:
-%  Generates temporal sensitivity plots for both high and low light levels
-%  of the camera unit on the spectacles. Also displays the ideal device for 
-%  comparison. 
+%  Generates temporal sensitivity plot containg low/high light levels
+%  as well as ideal device.Also displays source modulation, observed, 
+%  with observed counts and fitted counts layered ontop during runtime. Does 
+%  not save these.  
 %
 % Inputs:
 %   cal_path              - String. Represents the path to the light source
@@ -17,12 +18,17 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
 %                           and graph files      
 %
 % Outputs:
+%    experiment_results    - Struct. Contains the amplitudes per frequency 
+%                           for all of the bounds
+%
 %    modResult             - Struct. Contains the information used to compose
 %                           the flicker profile. 
 %
 % Examples:
 %{
-  
+  cal_path = './CombiLED_shortLLG_testSphere_ND0x2.mat'; 
+  output_filename = 'myTest';
+  analyze_camera_temporal_sensitivity(cal_path, output_filename);
 %}
     
     % Step 1: Define remote connection to raspberry pi
@@ -69,10 +75,9 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
     
     % Step 8: Define the NDF range and frequencies
     % for which to conduct the experiment 
-    ndf_range = [3];
+    ndf_range = [2];
     frequencies = [1];
 
-    
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
         NDF = ndf_range(bb);
 
@@ -80,11 +85,10 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
         pause()
         %fprintf('You now have 30 seconds to leave the room if desired.\n');
         %pause(30)
-        
        
         for ff = 1:numel(frequencies)  % At each NDF level, examine different frequencies
             frequency = frequencies(ff);
-            output_file = sprintf('%s_%.1fhz_%.1fNDF.avi', output_filename, frequency, NDF); 
+            output_file = sprintf('%s_%.1fhz_%sNDF.avi', output_filename, frequency, ndf2str(NDF)); 
 
             CL.setFrequency(frequency); % Set the CL flicker to current frequency
 
@@ -96,18 +100,21 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
             remote_command = sprintf('python3 %s %s %f', recorder_path, output_file, duration);
             ret = system(sprintf('python3 %s %s %d %s %s "%s"', remote_executer_path, host, 22, username, password, remote_command));  % Execute the remote command via the python script
 
-            % Check if the Python subscript errored
-            if(ret ~= 0)
+            if(ret ~= 0)   % Check if the Python subscript errored
                 error('Unable to remotely execute');
             end
             
-            % Step 10 : Retrieve the file from the raspberry pi and save it in the recordings 
+            % Step 10: Stop the flicker of this frequency
+            CL.stopModulation(); 
+
+            % Step 11 : Retrieve the file from the raspberry pi and save it in the recordings 
             % directory
             disp('Retrieving the file...')
             ssh2_conn = scp_get(ssh2_conn, output_file, recordings_dir, '~/'); 
 
-            % Step 11: Stop the flicker of this frequency
-            CL.stopModulation(); 
+            % Step 12: Delete the file from the raspberry pi
+            disp('Deleting the file over of raspberry pi...')
+            ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', output_file));
 
         end
     end
@@ -120,9 +127,9 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
     % Step 13: Close the connection to the CombiLED
     CL.serialClose(); 
 
+    return; 
 
-    return ;
-    % Step 14: Plot the temporal sensitivity with the help of
+    % Step 15: Plot and the temporal sensitivity with the help of
     % Python to parse the video, generate source/measured curves 
     % over the course of the frames
     util_module_path = '~/Documents/MATLAB/projects/combiExperiments/code/minispect/raspberry_pi_firmware/utility/Camera_util.py';
@@ -131,22 +138,13 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
         insert(py.sys.path, int32(0), util_module_path);
     end
     
-    Camera_util = py.importlib.import_module('Camera_util');
+    Camera_util = py.importlib.import_module('Camera_util'); % import the Python camera_util library
 
-    intensity_xy_values = Camera_util.analyze_temporal_sensitivty(recording_dir, output_filename);
-    
-    source = intensity_xy_values{1}; % Extract the parsed source and measured intensity values across the video
-    measured = intensity_xy_values{2};
+    experiment_results = struct(Camera_util.analyze_temporal_sensitivty(recording_dir, output_filename, arrayfun(@ndf2str, arr, 'UniformOutput', false)));
 
-    % Step 15: Plot the source and measured values
-    figure ; 
-
-    plot(source)
-    hold on ; 
-    plot(measured)
-
-    % Step 16: Save the flicker information
+    % Step 16: Save the results and flicker information
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
+    save(sprintf('%sCamera_TemporalSensitivity.mat', drop_box_dir), "drop_box_dir")
     save(sprintf('%s%s_TemporalSensitivityFlicker.mat', drop_box_dir, 'camera'), 'modResult');
 
     return ;
@@ -154,7 +152,7 @@ end
 
 %{
 
-I had to use the following dicussion found in the MATLAB library discussion by Quan Chen
+I had to use the following dicussion found in the MATLAB SSH library discussion by Quan Chen
 to enable the ssh module to work. Note I also had to add the + in front of ssh-rsa to get it 
 to work AND have regular password-based SSH work. 
 

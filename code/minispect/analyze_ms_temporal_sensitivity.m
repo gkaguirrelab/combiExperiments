@@ -27,7 +27,7 @@ function analyze_ms_temporal_sensitivty(cal_path,chip_name)
 % Examples:
 %{
    chip_name = 'TSL2591';
-   cal_path = './cal';
+   cal_path = './CombiLED_shortLLG_testSphere_ND0x2.mat';
    analyze_ms_temporal_sensitivty(cal_path,chip_name);
 %}
 
@@ -218,7 +218,7 @@ function analyze_ms_temporal_sensitivty(cal_path,chip_name)
 
     % Step 14: Save the results of the experiment, so we don't need to 
     % rerun it if there are plotting issues
-    save(sprintf('%s%s_results.mat', drop_box_dir, chip_name),'experiment_results');
+    save(sprintf('%s%s_TemporalSensitivty.mat', drop_box_dir, chip_name),'experiment_results');
 
     % Step 15: Plot Temporal Sensitivity for a sample channel
     figure ; 
@@ -249,12 +249,8 @@ function analyze_ms_temporal_sensitivty(cal_path,chip_name)
     legend('Low bound','High Bound','Ideal Device');
     hold off; 
 
-    % Step 16: Save graphs, if desired, and the modresults
-    save_or_not = input('Save figure? (y/n)', 's');
-    if(save_or_not(1) == 'y')
-        saveas(gcf, sprintf('%s%s_TemporalSensitivity.png',drop_box_dir,chip_name));
-    end 
-
+    % Step 16: Save graphs and the modresults
+    saveas(gcf, sprintf('%s%s_TemporalSensitivity.png',drop_box_dir,chip_name));
     save(sprintf('%s%s_TemporalSensitivityFlicker.mat', drop_box_dir, chip_name), 'modResult');
 
 end
