@@ -1,4 +1,4 @@
-function analyze_camera_temporal_sensitivty(cal_path, output_filename)
+function analyze_camera_temporal_sensitivity(cal_path, output_filename)
 % Analyzes the temporal sensitivity of the spectacle camera
 %
 % Syntax:
@@ -26,9 +26,9 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
 %
 % Examples:
 %{
-  cal_path = './CombiLED_shortLLG_testSphere_ND0x2.mat'; 
-  output_filename = 'myTest';
-  analyze_camera_temporal_sensitivity(cal_path, output_filename);
+    [~, calFileName, calDir] = selectCal();
+    output_filename = 'myTest';
+    analyze_camera_temporal_sensitivity(fullfile(calDir,calFileName), output_filename);
 %}
     
     % Step 1: Define remote connection to raspberry pi
@@ -49,11 +49,6 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
     duration = 10; 
     
     % Step 4: Load in the calibration file for the CombiLED
-    calDir = fullfile(tbLocateProjectSilent('combiExperiments'),'cal'); % Which Cal file to use (currently hard-coded)
-    calFileName = 'CombiLED_shortLLG_testSphere_ND0x2.mat';
-
-    cal_path = fullfile(calDir,calFileName);
-
     load(cal_path,'cals'); % Load the cal file
     cal = cals{end};
     
@@ -71,12 +66,12 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
     modResult = designModulation('LightFlux',photoreceptors,cal);
     CL.setSettings(modResult);
     CL.setWaveformIndex(1);
-    CL.setContrast(0.8);
+    CL.setContrast(0.9);
     
     % Step 8: Define the NDF range and frequencies
     % for which to conduct the experiment 
-    ndf_range = [2, 0.2];
-    frequencies = [1];
+    ndf_range = [0.2];
+    frequencies = [0.5];
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
         NDF = ndf_range(bb);
@@ -88,6 +83,7 @@ function analyze_camera_temporal_sensitivty(cal_path, output_filename)
        
         for ff = 1:numel(frequencies)  % At each NDF level, examine different frequencies
             frequency = frequencies(ff);
+            fprintf('Recording %0.1f NDF %0.1f hz', NDF, frequency);
             output_file = sprintf('%s_%.1fhz_%sNDF.avi', output_filename, frequency, ndf2str(NDF)); 
 
             CL.setFrequency(frequency); % Set the CL flicker to current frequency

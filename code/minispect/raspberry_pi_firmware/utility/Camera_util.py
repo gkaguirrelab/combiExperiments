@@ -24,6 +24,11 @@ def parse_args():
 
     return args.recordings_dir, args.experiment_filename, args.low_bound_ndf, args.high_bound_ndf, args.save_path
 
+def plot_intensity_over_time(video: list):
+    frame_avgs = [np.mean(frame, axis=(0,1)) for frame in video]
+    plt.plot(range(0, len(frame_avgs), frame_avgs))
+    plt.show()
+
 """Reconstruct a video from a series of frames"""
 def reconstruct_video(video_frames: np.array, output_path: str):
     # Define the information about the video to use for writing
@@ -181,9 +186,6 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     plt.savefig(os.path.join(save_dir, "TemporalSensitivity.png"))
     savemat(os.path.join(save_dir, "TemporalSensitivity.mat"), {"experiment_results" : experiment_results_as_mat})
 
-    
-
-"""
 #Record a video from the raspberry pi camera
 def record_video(output_path: str, duration: float):
     # # Begin Recording 
@@ -207,6 +209,9 @@ def record_video(output_path: str, duration: float):
         if((current_time - start_capture_time) > duration):
             break
     
+    middle_pixel = np.array(frame[0].shape[0] // 2, frame[0].shape[1] // 2) 
+    plot_intensity_over_time([frame[middle_pixel] for frame in frames])
+
     # Record timing of end of capture 
     end_capture_time = time.time()
     
@@ -256,7 +261,7 @@ def initialize_camera() -> Picamera2:
     cam.set_controls({'AeEnable':True, 'AwbEnable':False}) # Note, AeEnable changes both AEC and AGC
     
     return cam
-"""
+
 
 def main():    
     recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
