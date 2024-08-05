@@ -40,6 +40,7 @@ function headset_calibration()
     randomizeOrder = 1; 
     save_path = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/MiniSpect/calibration/'];
     MS.calibrate_minispect(NDF, source_cal_path, nPrimarySteps, settingsScalarRange, nSamplesPerStep, nReps, randomizeOrder, save_path)
+    MS.serialClose_minispect();
 
     % Step 1.3 Fit the MS calibration 
     calDir = fullfile(save_path, device_serial_number);
