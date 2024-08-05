@@ -1,4 +1,4 @@
-#from picamera2 import Picamera2, Preview
+from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -24,10 +24,11 @@ def parse_args():
 
     return args.recordings_dir, args.experiment_filename, args.low_bound_ndf, args.high_bound_ndf, args.save_path
 
-def plot_intensity_over_time(video: list):
-    frame_avgs = [np.mean(frame, axis=(0,1)) for frame in video]
-    plt.plot(range(0, len(frame_avgs), frame_avgs))
-    plt.show()
+def plot_intensity_over_time(frames: list, save_path: str):
+	print(f"Frames: {len(frames)} | Frame shape:")
+	#frame_avgs = [np.mean(frame, axis=(0,1)) for frame in frames]
+	plt.plot(range(0, len(frames)), frames)
+	plt.savefig(save_path)
 
 """Reconstruct a video from a series of frames"""
 def reconstruct_video(video_frames: np.array, output_path: str):
@@ -209,8 +210,10 @@ def record_video(output_path: str, duration: float):
         if((current_time - start_capture_time) > duration):
             break
     
-    middle_pixel = np.array(frame[0].shape[0] // 2, frame[0].shape[1] // 2) 
-    plot_intensity_over_time([frame[middle_pixel] for frame in frames])
+    y, x = frames[0].shape[0] // 2, frames[0].shape[1] // 2 
+    plot_intensity_over_time([frame[y][x] for frame in frames], './middle_pixel_intensity.png')
+    #plot_intensity_over_time([frame for frame in frames], './frame_avg_intensity.png')
+    
 
     # Record timing of end of capture 
     end_capture_time = time.time()
