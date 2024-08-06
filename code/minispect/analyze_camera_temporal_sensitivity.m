@@ -66,12 +66,12 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     modResult = designModulation('LightFlux',photoreceptors,cal);
     CL.setSettings(modResult);
     CL.setWaveformIndex(1);
-    CL.setContrast(0.9);
+    CL.setContrast(0.5);
     
     % Step 8: Define the NDF range and frequencies
     % for which to conduct the experiment 
     ndf_range = [0.2];
-    frequencies = [0.5];
+    frequencies = [10];
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
         NDF = ndf_range(bb);
@@ -101,8 +101,9 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             end
             
             % Step 10: Stop the flicker of this frequency
+            CL.goDark();
             CL.stopModulation(); 
-
+            
             % Step 11 : Retrieve the file from the raspberry pi and save it in the recordings 
             % directory
             disp('Retrieving the file...')
@@ -130,6 +131,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     path_to_script = './code/minispect/raspberry_pi_firmware/utility/Camera_util.py';
     addpath(ndf2str_path); 
     
+    ndf_range = [2, 0.2];
     ret = system(sprintf('python3 %s "%s" %s %s %s "%s"', path_to_script, recordings_dir, output_filename, ...
                                                    ndf2str(ndf_range(1,1)), ndf2str(ndf_range(1,2)), ...
                                                    drop_box_dir)); % execute the Python subscript
