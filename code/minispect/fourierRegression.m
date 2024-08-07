@@ -40,18 +40,11 @@ function [r2,amplitude,phase,fit,modelT,signalT] = fourierRegression( signal, f0
 
 
 arguments
-    signal (1,:) {mustBeNumeric}
+    signal (1,:) {mustBeFloat}
     f0 (1,1) {mustBeNumeric}
     fps (1,1) {mustBeNumeric}
     fpsModel (1,1) {mustBeNumeric} = 10000;
 end
-
-% Cast the signal as a float
-signal = double(signal);
-
-% Mean center the signal
-sig_mean = mean(signal);
-signal = signal - mean(signal);
 
 % Define some aspects of temporal support
 deltaT = 1/fps;
@@ -71,7 +64,6 @@ b = X\y;
 
 % Derive some results
 fit = X * b;  % high temporal resolution fit,
-fit = fit + sig_mean;
 
 amplitude  = norm(b);
 phase = -atan(b(2)/b(1));

@@ -1,4 +1,4 @@
-function fps = findObservedFPS( signal, f0, fps0 )
+function fps = findObservedFPS( signal, f0, fpsRange )
 % Brief one line description of the function
 %
 % Syntax:
@@ -40,28 +40,15 @@ function fps = findObservedFPS( signal, f0, fps0 )
 
 
 arguments
-    signal (1,:) {mustBeNumeric}
+    signal (1,:) {mustBeFloat}
     f0 (1,1) {mustBeNumeric}
-    fps0 (1,1) {mustBeNumeric}
+    fpsRange (1,2) {mustBeNumeric} = [201,206.7];
 end
-
-% Cast the signal as a float
-signal = double(signal);
-
-% Mean center the signal
-sig_mean = mean(signal);
-signal = signal - mean(signal);
 
 % Define an objective
 myObj = @(x) -fourierRegression( signal, f0, x );
 
-% Set the bounds
-lb = 203;
-ub = 206.66;
-
 % Search
-options = optimoptions('fmincon');
-options.Display = 'off';
-fps = fmincon(myObj,fps0,[],[],[],[],lb,ub,[],options);
+fps = fminbnd(myObj,fpsRange(1),fpsRange(2));
 
 end
