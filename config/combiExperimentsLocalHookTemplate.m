@@ -43,5 +43,15 @@ setpref(projectName,'dropboxBaseDir',dropboxBaseDir); % main directory path
 calLocalData = fullfile(tbLocateProjectSilent(projectName),'cal');
 setpref('combiLEDToolbox','CalDataFolder',calLocalData);
 
+% Configure the python environment. Note that we need to have installed:
+% opencv-python, numpy, matplotlib, regex, scipy. To do so, in the console
+% we went to the location of the python executable and used pip install
+% commands such as: "./python pip3 install opencv-python"
+%
+% We also ran into an issue that numpy errored when we first attempted to
+% call our python module. The solution to this was to install the openblas
+% C libraries using "brew install openblas".
+%pyversion('/Library/Frameworks/Python.framework/Versions/3.10/bin/python3');
+pyenv(Version='/usr/local/bin/python3.10');
 
 end
