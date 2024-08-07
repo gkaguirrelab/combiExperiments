@@ -9,6 +9,7 @@ from scipy.io import loadmat, savemat
 import argparse 
 import pickle
 from scipy.interpolate import interp1d
+import matlab.engine
 
 CAM_FPS = 206.65
 
@@ -128,8 +129,6 @@ def parse_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
 
     return frames
     
-
-
 def str2ndf(ndf_string: str) -> float:
     return float(ndf_string.replace("x", "."))
 
@@ -176,27 +175,15 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float) 
     data = {'signal': signal, 'fps': CAM_FPS,
             'light_level': light_level, 'frequency': frequency,
             'elapsed_seconds': duration, 'secsPerMeasure': secsPerMeasure}
+
+    eng = matlab.engine.start_matlab()
     
-    # Save the dictionary to a temp file
-    with open('temp.pkl', 'wb') as file:
-        pickle.dump(data, file)
-
-    # Execute the MATLAB subscript as defined and wait for it 
-    # to finish executing
-    path_to_matlab = r'/Applications/MATLAB_R2024a.app/bin/matlab'
-    flags = '-r' #flags = '-nodisplay -nosplash -nodesktop -r'
-    subscript_name = 'fit_source_modulation'
-    os.system(f'{path_to_matlab} {flags} "{subscript_name};exit"')
-
-    # Load in the resulting calculations from MATLAB
-    fit_data = loadmat('temp.mat')['temp_data']
-
-    # Delete the now uncessary temp files 
-    os.remove('temp.pkl')
-    os.remove('temp.mat')
+    fit_data = eng.fit_source_modulation(data)
+    
+    eng.quit()
     
     # Return the amplitude of the fit (bunch of subscripts because stored as nested arrays)
-    return fit_data['amplitude'][0][0][0][0]    
+    return fit_data['amplitude']
    
 """Analyze the temporal sensitivity of a single light level, showing fit of 
    source modulation to observed and TS plot across different frequencies 
@@ -215,9 +202,6 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     for ind, (frequency, video) in enumerate(zip(frequencies, videos)):
         # Construct a video in which each frame is the scalar of avg intensity of that frame
         avg_video: np.array = np.mean(video, axis=(1,2))
-
-        if(frequency != 12):
-            continue
 
         # Fit the source modulation to the observed for this frequency, 
         # and find the amplitude

@@ -30,45 +30,55 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     output_filename = 'myTest';
     analyze_camera_temporal_sensitivity(fullfile(calDir,calFileName), output_filename);
 %}
-    
-    % Step 1: Define remote connection to raspberry pi
+    % Step 1: Add paths to and retrieve libraries
     addpath('~/Library/Application Support/MathWorks/MATLAB Add-Ons/Collections/SSH_SFTP_SCP For Matlab (v2)/ssh2_v2_m1_r7') % add path to ssh_command library
+
+    modules_path = './code/minispect/raspberry_pi_firmware/utility'; % Add path to Python helper functions
+    if count(py.sys.path, modules_path) == 0  
+        insert(py.sys.path, int32(0), modules_path);
+    end
+
+    remote_execute = py.importlib.import_module('remote_execute');
+    Camera_util = py.importlib.import_module('Camera_util');
+
+
+    % Step 2: Define remote connection to raspberry pi
+    
     host = '10.103.10.181'; % IP/Hostname
     username = 'eds'; % Username to log into
     password = '1234'; % Password for this user
-    remote_executer_path = '~/Documents/MATLAB/projects/combiExperiments/code/minispect/raspberry_pi_firmware/utility/remote_execute.py';  % the script to execute remote commands
     recordings_dir = './code/minispect/raspberry_pi_firmware/recordings/';
 
     disp('Trying remote connection to RP...')
     ssh2_conn = ssh2_config(host, username, password); % attempt to open a connection
 
-    % Step 2: Define recording script to use
+    % Step 3: Define recording script to use
     recorder_path = '~/combiExperiments/code/minispect/raspberry_pi_firmware/Camera_com.py';
 
-    % Step 3: Define parameters for the recording and command to execute 
+    % Step 4: Define parameters for the recording and command to execute 
     duration = 10; 
     
-    % Step 4: Load in the calibration file for the CombiLED
+    % Step 5: Load in the calibration file for the CombiLED
     load(cal_path,'cals'); % Load the cal file
     cal = cals{end};
     
-    % Step 5: Initialize the combiLED
+    % Step 6: Initialize the combiLED
     disp('Opening connection to CombiLED...')
     CL = CombiLEDcontrol(); % Initialize CombiLED Object
     CL.setGamma(cal.processedData.gammaTable);  % Update the combiLED's gamma table
 
-    % Step 6: Collect information to compose flicker profile
-    observerAgeInYears = str2double(GetWithDefault('Age in years','30'));
-    pupilDiameterMm = str2double(GetWithDefault('Pupil diameter in mm','3'));
+    % Step 7: Collect information to compose flicker profile
+    observerAgeInYears = 30;
+    pupilDiameterMm = 3;
     photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
 
-    % Step 7: Compose flicker profile
+    % Step 8: Compose flicker profile
     modResult = designModulation('LightFlux',photoreceptors,cal);
     CL.setSettings(modResult);
     CL.setWaveformIndex(1);
     CL.setContrast(0.5);
     
-    % Step 8: Define the NDF range and frequencies
+    % Step 9: Define the NDF range and frequencies
     % for which to conduct the experiment 
     ndf_range = [2];
     frequencies = [0.5];
@@ -94,11 +104,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             % Step 9 : Begin recording to the desired output path for the desired duration
             disp('Begin recording...')
             remote_command = sprintf('python3 %s %s %f', recorder_path, output_file, duration);
-            ret = system(sprintf('python3 %s %s %d %s %s "%s"', remote_executer_path, host, 22, username, password, remote_command));  % Execute the remote command via the python script
-
-            if(ret ~= 0)   % Check if the Python subscript errored
-                error('Unable to remotely execute');
-            end
+            remote_execute.run_ssh_comman(py.str(char(host)), 22, py.str(char(username)), py.str(char(password)), py.str(char(remote_command)))
             
             % Step 10: Stop the flicker of this frequency
             CL.goDark();
@@ -128,16 +134,9 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     % over the course of the frequencies
     ndf2str_path = '~/Documents/MATLAB/projects/combiExperiments/code/minispect';
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
-    path_to_script = './code/minispect/raspberry_pi_firmware/utility/Camera_util.py';
     addpath(ndf2str_path); 
     
-    ret = system(sprintf('python3 %s "%s" %s %s %s "%s"', path_to_script, recordings_dir, output_filename, ...
-                                                   ndf2str(ndf_range(1,1)), ndf2str(ndf_range(1,2)), ...
-                                                   drop_box_dir)); % execute the Python subscript
-
-    if(ret ~= 0)   % Check if the Python subscript errored
-        error('Unable to execute local Python subscript');
-    end
+    Camera_util.generate_TFF(py.str(char(recordings_dir)), py.str(char(output_filename)), py.list(arrayfun(@ndf2str, ndf_range)), py.str(char('test')));
 
     % Step 16: Save the results and flicker information
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
