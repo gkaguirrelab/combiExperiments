@@ -51,7 +51,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 
 """Parse a video in .avi format to a series of frames 
    in np.array format"""
-def parse_video(path_to_video: str) -> np.array:
+def parse_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
     # Initialize a video capture object
     video_capture = cv2.VideoCapture(path_to_video)
 
@@ -79,7 +79,20 @@ def parse_video(path_to_video: str) -> np.array:
     # Select only one channel as pixel intensity value, since 
     # the grayscale images are read in as RGB, all channels are equal, 
     # just choose the first one
-    return frames[:,:,:,0]
+    frames = frames[:,:,:,0]
+
+    # If we simply want the entire images, return them now 
+    if(pixel_indices is None): return frames
+    
+    # Otherwise, splice specific pixel indices
+    pixel_rows = pixel_indices // frames.shape[1]
+    pixel_cols = pixel_indices % frames.shape[1]
+
+    frames = frames[:, pixel_rows, pixel_cols]
+
+    return frames
+    
+
 
 def str2ndf(ndf_string: str) -> float:
     return float(ndf_string.replace("x", "."))
