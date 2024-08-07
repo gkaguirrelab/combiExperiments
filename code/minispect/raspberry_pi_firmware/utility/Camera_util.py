@@ -49,6 +49,42 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     out.release()
     cv2.destroyAllWindows()
 
+def parse_mean_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
+     # Initialize a video capture object
+    video_capture = cv2.VideoCapture(path_to_video)
+
+    # Create a container to store the frames as they are read in
+    frames = []
+
+    while(True):
+        # Attempt to read a frame from the video file
+        ret, frame = video_capture.read()
+
+        # If read in valid, we are 
+        # at the end of the video, break
+        if(not ret): break 
+
+        # Images read in as color by default => All channels 
+        # equal since images were captured raw, so 
+        # just take the first value to for every pixel
+        frame = frame[:,:,0]
+
+        # Find the mean of the given pixels per frame 
+        if(len(pixel_indices) == 0): pixel_indices = np.arange(0, frame.shape[0]*frame.shape[1])
+        mean_frame = np.mean(frame.flatten()[pixel_indices])
+
+        # Otherwise, append the frame 
+        # to the frames containers
+        frames.append(mean_frame)
+
+    # Close the video capture object 
+    video_capture.release()
+    
+    # Convert frames to standardized np.array
+    frames = np.array(frames, dtype=np.uint8)
+
+    return frames
+
 """Parse a video in .avi format to a series of frames 
    in np.array format"""
 def parse_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
