@@ -105,7 +105,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
         if(experiment_info["NDF"] != str2ndf(light_level)):
             continue 
         
-        frequencies_and_videos[experiment_info["frequency"]] = np.load(os.path.join(recordings_dir, file))
+        frequencies_and_videos[experiment_info["frequency"]] = parse_video(os.path.join(recordings_dir, file))
 
     sorted_by_frequencies: list = sorted(frequencies_and_videos.items())
 
@@ -167,6 +167,9 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
         # Construct a video in which each frame is the scalar of avg intensity of that frame
         avg_video: np.array = np.mean(video, axis=(1,2))
 
+        if(frequency != 12):
+            continue
+
         # Fit the source modulation to the observed for this frequency, 
         # and find the amplitude
         amplitude = fit_source_modulation(avg_video, light_level, frequency)
@@ -184,11 +187,11 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     plt.xlabel('Frequency [log]')
     plt.ylabel('Amplitude')
     plt.title(f'Amplitude by Frequency [log] {light_level}NDF')
-    plt.show()
+    plt.show(block=False)
 
     # Display the plot for 3 seconds
-    time.sleep(0.5)
-
+    plt.pause(3)
+    
     # Close the plot and clear the canvas
     plt.close()
     plt.clf()
@@ -214,7 +217,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
 
 
 
-
+"""
 #Record a video from the raspberry pi camera
 def record_video(output_path: str, duration: float):
     # # Begin Recording 
@@ -285,7 +288,7 @@ def initialize_camera() -> Picamera2:
     cam.set_controls({'AeEnable':True, 'AwbEnable':False}) # Note, AeEnable changes both AEC and AGC
     
     return cam
-
+"""
 
 def main():    
     recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()

@@ -1,6 +1,6 @@
 %{
 
-This is an extension for the funtion fit_source_modulation in Camera_util.py, 
+This is an extension for the function fit_source_modulation in Camera_util.py, 
 as the calulation + plotting must be done in MATLAB to achieve the correct results. 
 That function uses the commandline to run this script and resumes exiting after it 
 has finished. The two scripts communicate via objects given to each other. That function 
@@ -55,10 +55,10 @@ phase = -atan(b(2)/b(1));
 % Plot the signal versus fit values
 figure ;
 
-plot(signalT,signal+sig_mean);
+plot(signalT,signal+sig_mean, '-o');
 hold on; 
 title(sprintf("Source vs Fit %sNDF %0.1fhz", light_level, f0))
-plot(modelT,fit+sig_mean);
+plot(modelT,fit+sig_mean, '-o');
 xlabel('Time (seconds)');
 ylabel('Counts');
 legend('Signal','Fit');
@@ -74,6 +74,12 @@ temp_data.fit = fit;
 temp_data.amplitude = amplitude; 
 temp_data.phase = phase; 
 save('~/Documents/MATLAB/projects/combiExperiments/code/minispect/raspberry_pi_firmware/utility/temp.mat', 'temp_data');
+
+thing1 = signal + sig_mean; 
+save('geoff_signal.mat', "thing1");
+
+thing2 = fit+sig_mean; 
+save('geoff_fit.mat', 'thing2');
 
 % Pause for 10 seconds for time to observe
 pause(10); 
