@@ -17,14 +17,12 @@ else % Otherwise, convert MATLAB 1-indexing to Python 0-indexing
     pixel_array = pixel_array - 1; 
 end 
 
-% Add the module to the Python path if not there already
-module_path = './code/minispect/raspberry_pi_firmware/utility';
-if count(py.sys.path, module_path) == 0
-    insert(py.sys.path, int32(0), module_path);
-end
-
 % Import the module
+curr_dir = cd();
+module_dir = fileparts(mfilename('fullpath'));
+cd(module_dir);
 Camera_util = py.importlib.import_module('Camera_util');
+cd(curr_dir);
 
 % Convert the pixels MAT array to Python numpy array
 pixels_as_numpy = py.numpy.array(pixel_array, pyargs('dtype', 'int'));
