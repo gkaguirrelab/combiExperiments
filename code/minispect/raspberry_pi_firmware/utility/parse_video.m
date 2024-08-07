@@ -1,10 +1,10 @@
-function video_arr = parse_video(path_to_video)
+function video_arr = parse_video(path_to_video, pixel_array)
 
 %{
 This script is a MATLAB wrapper for the parse_video
 function in Camera_util.py that allows for reading the 
 returned value of an .AVI file parsed into an array 
-into MATLAB memory. 
+into MATLAB memory. Pixel array is 0 indexed
 %}
 
 % Ensure we are using a MATLAB compatible Python version
@@ -20,6 +20,6 @@ end
 % Import the module
 Camera_util = py.importlib.import_module('Camera_util');
 
-video_arr = Camera_util.parse_video(path_to_video); 
+video_arr = Camera_util.parse_video(path_to_video, pixel_array); 
 
 end
