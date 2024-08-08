@@ -94,7 +94,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         for ff = 1:numel(frequencies)  % At each NDF level, examine different frequencies
             frequency = frequencies(ff);
             fprintf('Recording %0.1f NDF %0.1f hz\n', NDF, frequency);
-            output_file = sprintf('%s_%.1fhz_%sNDF.npy', output_filename, frequency, ndf2str(NDF)); 
+            output_file = sprintf('%s_%.1fhz_%sNDF.avi', output_filename, frequency, ndf2str(NDF)); 
 
             CL.setFrequency(frequency); % Set the CL flicker to current frequency
 
@@ -128,6 +128,8 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
 
     % Step 13: Close the connection to the CombiLED
     CL.serialClose(); 
+
+    return ; 
 
     % Step 14: Plot and the temporal sensitivity with the help of
     % Python to parse the video, generate source/measured curves 

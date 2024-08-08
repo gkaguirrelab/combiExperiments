@@ -71,7 +71,7 @@ def parse_mean_video(path_to_video: str, pixel_indices: np.array=None) -> np.arr
         frame = frame[:,:,0]
 
         # Find the mean of the given pixels per frame 
-        if(len(pixel_indices) == 0): pixel_indices = np.arange(0, frame.shape[0]*frame.shape[1])
+        if(pixel_indices is None or len(pixel_indices) == 0): pixel_indices = np.arange(0, frame.shape[0]*frame.shape[1])
         mean_frame = np.mean(frame.flatten()[pixel_indices])
 
         # Otherwise, append the frame 
@@ -144,6 +144,8 @@ def parse_recording_filename(filename: str) -> dict:
 def read_light_level_videos(recordings_dir: str, experiment_filename: str, light_level: str) -> tuple:
     frequencies_and_videos: dict = {}
 
+    print(f"Reading in {experiment_filename} {light_level}NDF videos...")
+
     for file in os.listdir(recordings_dir):
         experiment_info: dict = parse_recording_filename(file)
 
@@ -153,7 +155,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
         if(experiment_info["NDF"] != str2ndf(light_level)):
             continue 
         
-        frequencies_and_videos[experiment_info["frequency"]] = parse_video(os.path.join(recordings_dir, file))
+        frequencies_and_videos[experiment_info["frequency"]] = parse_mean_video(os.path.join(recordings_dir, file))
 
     sorted_by_frequencies: list = sorted(frequencies_and_videos.items())
 
@@ -166,70 +168,82 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
     return frequencies, videos
 
 def fit_source_modulation(signal: np.array, light_level: str, frequency: float) -> float:     
-    # Define time-related information regarding the signal
-    duration: float = signal.shape[0] / CAM_FPS 
-    secsPerMeasure: float = duration / signal.shape[0]
-
-    # Set up a dictionary with relevant information about the 
-    # signal to outsource for MATLAB's fitting code
-    data = {'signal': signal, 'fps': CAM_FPS,
-            'light_level': light_level, 'frequency': frequency,
-            'elapsed_seconds': duration, 'secsPerMeasure': secsPerMeasure}
-
     eng = matlab.engine.start_matlab()
     
-    fit_data = eng.fit_source_modulation(data)
+    signal_mean = np.mean(signal)
+    signal = (signal - signal_mean) / signal_mean
+
+    signal_as_double: matlab.double = matlab.double(signal.astype(np.float64))
+    frequency_as_double: matlab.double = matlab.double(frequency)
+
+    observed_fps: matlab.double = eng.findObservedFPS(signal_as_double, frequency_as_double, nargout=1)
+    observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(signal_as_double, frequency_as_double, observed_fps, nargout=6)
     
     eng.quit()
     
-    # Return the amplitude of the fit (bunch of subscripts because stored as nested arrays)
-    return fit_data['amplitude']
+    observed_signal_T: np.array = np.array(observed_signal_T).flatten()
+    observed_model_T: np.array = np.array(observed_model_T).flatten()
+    observed_fit: np.array = np.array(observed_fit).flatten()
+    
+    
+    plt.plot(observed_signal_T, signal-np.mean(signal), linestyle='-', label="Measured")
+    plt.plot(observed_model_T, observed_fit, linestyle='-', label="Fit")
+    plt.legend()
+    plt.title(f"Measured vs Fit Modulation {light_level}NDF {frequency}hz")
+    plt.show(block=False)
+    #plt.pause(10)
+
+    plt.close()
+
+    return observed_amplitude, observed_phase, observed_fps
    
 """Analyze the temporal sensitivity of a single light level, showing fit of 
    source modulation to observed and TS plot across different frequencies 
    at a single light level"""
 def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_level: str) -> tuple:
+    print(f"Generating TTF : {light_level}NDF")
+
     # Read in the videos at different frequencies 
-    (frequencies, videos) = read_light_level_videos(recordings_dir, experiment_filename, light_level)
+    (frequencies, mean_videos) = read_light_level_videos(recordings_dir, experiment_filename, light_level)
 
     # Assert we read in some videos
-    assert len(videos) != 0 
+    assert len(mean_videos) != 0 
 
     # Assert all of the videos are grayscale 
-    assert all(len(vid.shape) == 3 for vid in videos)
+    assert all(len(vid.shape) < 3 for vid in mean_videos)
     
-    amplitudes = []
-    for ind, (frequency, video) in enumerate(zip(frequencies, videos)):
-        # Construct a video in which each frame is the scalar of avg intensity of that frame
-        avg_video: np.array = np.mean(video, axis=(1,2))
+    amplitudes, videos_fps = [], []
+    for ind, (frequency, mean_video) in enumerate(zip(frequencies, mean_videos)):
+        print(f"Fitting Source vs Observed Modulation: {light_level}NDF {frequency}hz")
 
         # Fit the source modulation to the observed for this frequency, 
         # and find the amplitude
-        amplitude = fit_source_modulation(avg_video, light_level, frequency)
+        observed_amplitude, observed_phase, observed_fps = fit_source_modulation(mean_video, light_level, frequency)
         
         # Append this amplitude to the running list
-        amplitudes.append(amplitude)
+        amplitudes.append(observed_amplitude)
+        videos_fps.append(observed_fps)
 
     # Convert amplitudes to standardized np.array
     amplitudes = np.array(amplitudes, dtype=np.float64)
+    videos_fps = np.array(videos_fps, dtype=np.float32)
 
     # Plot the TTF for one light level
-    plt.clf()
-    plt.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o')
+    plt.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label='Observed Device')
     plt.ylim(bottom=0)
     plt.xlabel('Frequency [log]')
     plt.ylabel('Amplitude')
     plt.title(f'Amplitude by Frequency [log] {light_level}NDF')
+    plt.legend()
     plt.show(block=False)
 
     # Display the plot for 3 seconds
-    plt.pause(3)
+    #plt.pause(10)
     
     # Close the plot and clear the canvas
     plt.close()
-    plt.clf()
 
-    return frequencies, amplitudes
+    return frequencies, amplitudes, videos_fps
 
 """Analyze the temporal sensitivity of the camera, showing
    fit of source modulation to observed and TS plot across 
@@ -238,14 +252,29 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     light_level_ts_map = {str2ndf(light_level): analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
                           for light_level in light_levels}
     
-    plt.clf()
-    for light_level, (frequencies, amplitudes) in light_level_ts_map.items():
-        plt.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
+    fig, (ax0, ax1) = plt.subplots(1,2, figsize=(8,6))
+    eng = matlab.engine.start_matlab()
+    for light_level, (frequencies, amplitudes, videos_fps) in light_level_ts_map.items():   
+        ax1.plot(np.log10(frequencies), videos_fps, linestyle='-', marker='o', label=f"{light_level}NDF FPS")
+        ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF_Obs")
+        
+    sourceFreqsHz = matlab.double(np.logspace(0,2,))
+    dTsignal = 1/videos_fps[0]
+    ideal_device_curve = np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten()
+    ax0.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")
 
-    plt.xlabel("Frequency [log]")
-    plt.ylabel("Amplitude")
-    plt.title("Camera TTF Plot")
-    plt.legend()
+    eng.quit()
+
+    ax0.set_xlabel("Frequency [log]")
+    ax0.set_ylabel("Amplitude")
+    ax0.set_title("Camera TTF Plot")
+    ax0.legend()
+
+    ax1.set_xlabel("Frequency [log]")
+    ax1.set_ylabel("FPS")
+    ax1.set_title("FPS by Frequency/Light Level")
+    ax1.legend()
+
     plt.show()
 
 
@@ -296,8 +325,9 @@ def record_video(output_path: str, duration: float):
     # Stop recording and close the picam object 
     cam.close() 
     
-    # Save the raw video frames
-    np.save(output_path, frames)
+    # Reconstruct the video from the frames  
+    # and save the video 
+    reconstruct_video(frames, output_path)
 
 def initialize_camera() -> Picamera2:
     # Initialize camera 
@@ -326,9 +356,9 @@ def initialize_camera() -> Picamera2:
 def main():    
     recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
 
-    analyze_temporal_sensitivity(recordings_dir, experiment_filename, high_bound_ndf)
+    #analyze_temporal_sensitivity(recordings_dir, experiment_filename, high_bound_ndf)
 
-    #generate_TTF(recordings_dir, experiment_filename, [low_bound_ndf, '2', high_bound_ndf], save_path)
+    generate_TTF(recordings_dir, experiment_filename, ['4','2','0x2'], save_path)
 
 if(__name__ == '__main__'):
     main()
