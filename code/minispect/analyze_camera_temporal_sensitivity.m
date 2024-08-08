@@ -47,7 +47,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     host = '10.103.10.181'; % IP/Hostname
     username = 'eds'; % Username to log into
     password = '1234'; % Password for this user
-    recordings_dir = './code/minispect/raspberry_pi_firmware/recordings/';
+    recordings_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_data/recordings/'];
 
     disp('Trying remote connection to RP...')
     ssh2_conn = ssh2_config(host, username, password); % attempt to open a connection
@@ -80,16 +80,16 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     
     % Step 9: Define the NDF range and frequencies
     % for which to conduct the experiment 
-    ndf_range = [2];
-    frequencies = [0.5];
+    ndf_range = [3, 1];
+    frequencies = [100, 50, 25, 12, 6, 3, 1];
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
         NDF = ndf_range(bb);
 
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
-        %fprintf('You now have 30 seconds to leave the room if desired.\n');
-        %pause(30)
+        fprintf('You now have 30 seconds to leave the room if desired.\n');
+        pause(30)
        
         for ff = 1:numel(frequencies)  % At each NDF level, examine different frequencies
             frequency = frequencies(ff);
@@ -104,7 +104,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             % Step 9 : Begin recording to the desired output path for the desired duration
             disp('Begin recording...')
             remote_command = sprintf('python3 %s %s %f', recorder_path, output_file, duration);
-            remote_execute.run_ssh_comman(py.str(char(host)), 22, py.str(char(username)), py.str(char(password)), py.str(char(remote_command)))
+            remote_execute.run_ssh_command(py.str(char(host)), py.int(22), py.str(char(username)), py.str(char(password)), py.str(char(remote_command)))
             
             % Step 10: Stop the flicker of this frequency
             CL.goDark();
@@ -141,7 +141,6 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     Camera_util.generate_TFF(py.str(char(recordings_dir)), py.str(char(output_filename)), py.list(arrayfun(@ndf2str, ndf_range)), py.str(char('test')));
 
     % Step 16: Save the results and flicker information
-    drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
     save(sprintf('%s%s_TemporalSensitivityFlicker.mat', drop_box_dir, 'camera'), 'modResult');
 
     return ;

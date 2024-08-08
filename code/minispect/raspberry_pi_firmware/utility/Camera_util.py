@@ -141,7 +141,7 @@ def parse_recording_filename(filename: str) -> dict:
 
     return {field: token for field, token in zip(fields, tokens)}
 
-def read_light_level_videos(recordings_dir: str, experiment_filename: str, light_level: str) -> tuple:
+def read_light_level_videos(recordings_dir: str, experiment_filename: str, light_level: str, parser: object) -> tuple:
     frequencies_and_videos: dict = {}
 
     print(f"Reading in {experiment_filename} {light_level}NDF videos...")
@@ -155,7 +155,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
         if(experiment_info["NDF"] != str2ndf(light_level)):
             continue 
         
-        frequencies_and_videos[experiment_info["frequency"]] = parse_mean_video(os.path.join(recordings_dir, file))
+        frequencies_and_videos[experiment_info["frequency"]] = parser(os.path.join(recordings_dir, file))
 
     sorted_by_frequencies: list = sorted(frequencies_and_videos.items())
 
@@ -167,7 +167,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
 
     return frequencies, videos
 
-def fit_source_modulation(signal: np.array, light_level: str, frequency: float) -> float:     
+def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes) -> tuple:     
     eng = matlab.engine.start_matlab()
     
     signal_mean = np.mean(signal)
@@ -184,19 +184,16 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float) 
     observed_signal_T: np.array = np.array(observed_signal_T).flatten()
     observed_model_T: np.array = np.array(observed_model_T).flatten()
     observed_fit: np.array = np.array(observed_fit).flatten()
-    
-    
-    plt.plot(observed_signal_T, signal-np.mean(signal), linestyle='-', label="Measured")
-    plt.plot(observed_model_T, observed_fit, linestyle='-', label="Fit")
-    plt.legend()
-    plt.title(f"Measured vs Fit Modulation {light_level}NDF {frequency}hz")
-    plt.show(block=False)
-    #plt.pause(10)
 
-    plt.close()
+    ax.plot(observed_signal_T, signal-np.mean(signal), linestyle='-', label="Measured")
+    ax.plot(observed_model_T, observed_fit, linestyle='-', label="Fit")
+    ax.legend()
+    ax.set_title(f"Measured vs Fit Modulation {light_level}NDF {frequency}hz")
+    ax.set_xlabel('Time [seconds]')
+    ax.set_ylabel('Contrast')
 
     return observed_amplitude, observed_phase, observed_fps
-   
+
 """Analyze the temporal sensitivity of a single light level, showing fit of 
    source modulation to observed and TS plot across different frequencies 
    at a single light level"""
@@ -212,13 +209,15 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     # Assert all of the videos are grayscale 
     assert all(len(vid.shape) < 3 for vid in mean_videos)
     
+    total_axes = len(frequencies)+1
+    fig, axes = plt.subplots(total_axes, figsize=(18,16))
     amplitudes, videos_fps = [], []
     for ind, (frequency, mean_video) in enumerate(zip(frequencies, mean_videos)):
         print(f"Fitting Source vs Observed Modulation: {light_level}NDF {frequency}hz")
 
         # Fit the source modulation to the observed for this frequency, 
         # and find the amplitude
-        observed_amplitude, observed_phase, observed_fps = fit_source_modulation(mean_video, light_level, frequency)
+        observed_amplitude, observed_phase, observed_fps = fit_source_modulation(mean_video, light_level, frequency, axes[ind])
         
         # Append this amplitude to the running list
         amplitudes.append(observed_amplitude)
@@ -229,19 +228,23 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     videos_fps = np.array(videos_fps, dtype=np.float32)
 
     # Plot the TTF for one light level
-    plt.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label='Observed Device')
-    plt.ylim(bottom=0)
-    plt.xlabel('Frequency [log]')
-    plt.ylabel('Amplitude')
-    plt.title(f'Amplitude by Frequency [log] {light_level}NDF')
-    plt.legend()
-    plt.show(block=False)
+    ax = axes[-1]
+    ax.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label='Observed Device')
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel('Frequency [log]')
+    ax.set_ylabel('Amplitude')
+    ax.set_title(f'Amplitude by Frequency [log] {light_level}NDF')
+    ax.legend()
+    plt.subplots_adjust(hspace=2)
+
+    plt.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/TemporalSensitivity{light_level}NDF.png')
+    #plt.show(block=False)
 
     # Display the plot for 3 seconds
     #plt.pause(10)
     
     # Close the plot and clear the canvas
-    plt.close()
+    plt.close(fig)
 
     return frequencies, amplitudes, videos_fps
 
@@ -252,7 +255,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     light_level_ts_map = {str2ndf(light_level): analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
                           for light_level in light_levels}
     
-    fig, (ax0, ax1) = plt.subplots(1,2, figsize=(8,6))
+    fig, (ax0, ax1) = plt.subplots(1,2, figsize=(10,8))
     eng = matlab.engine.start_matlab()
     for light_level, (frequencies, amplitudes, videos_fps) in light_level_ts_map.items():   
         ax1.plot(np.log10(frequencies), videos_fps, linestyle='-', marker='o', label=f"{light_level}NDF FPS")
@@ -275,11 +278,37 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     ax1.set_title("FPS by Frequency/Light Level")
     ax1.legend()
 
+    plt.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.png')
     plt.show()
 
+def generate_row_phase_plot(video: np.array, light_level: str, frequency: float):
+    eng = matlab.engine.start_matlab()
 
+    signal = np.mean(video, axis=(1,2))
+    signal_as_double: matlab.double = matlab.double(signal.astype(np.float64))
+    frequency_as_double: matlab.double = matlab.double(frequency)
 
-"""
+    observed_fps: matlab.double = eng.findObservedFPS(signal_as_double, frequency_as_double, nargout=1)
+
+    phases = []
+    for r in range(video.shape[1]):
+        row_video: np.array = np.mean(np.ascontiguousarray(video[:,r,:].astype(np.float64)), axis=1).flatten()
+
+        print(f"Row_video shape {row_video.shape}")
+        signal_as_double = matlab.double(row_video)
+
+        observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(signal_as_double, frequency_as_double, observed_fps, nargout=6)
+        phases.append(observed_phase)
+
+    phases = np.array(phases)
+
+    plt.plot(range(video.shape[1]), phases)
+    plt.title('Phase by Row Number')
+    plt.xlabel('Row Number')
+    plt.ylabel('Phase')
+    plt.show()
+
+"""     
 #Record a video from the raspberry pi camera
 def record_video(output_path: str, duration: float):
     # # Begin Recording 
@@ -358,7 +387,7 @@ def main():
 
     #analyze_temporal_sensitivity(recordings_dir, experiment_filename, high_bound_ndf)
 
-    generate_TTF(recordings_dir, experiment_filename, ['4','2','0x2'], save_path)
+    generate_TTF(recordings_dir, experiment_filename, ['4','3','2','1','0x2'], save_path)
 
 if(__name__ == '__main__'):
     main()
