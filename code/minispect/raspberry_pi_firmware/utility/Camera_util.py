@@ -201,7 +201,7 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     print(f"Generating TTF : {light_level}NDF")
 
     # Read in the videos at different frequencies 
-    (frequencies, mean_videos) = read_light_level_videos(recordings_dir, experiment_filename, light_level)
+    (frequencies, mean_videos) = read_light_level_videos(recordings_dir, experiment_filename, light_level, parse_mean_video)
 
     # Assert we read in some videos
     assert len(mean_videos) != 0 
@@ -263,7 +263,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
         
     sourceFreqsHz = matlab.double(np.logspace(0,2,))
     dTsignal = 1/videos_fps[0]
-    ideal_device_curve = np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten()
+    ideal_device_curve = np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten() * 0.5
     ax0.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")
 
     eng.quit()
@@ -387,7 +387,7 @@ def main():
 
     #analyze_temporal_sensitivity(recordings_dir, experiment_filename, high_bound_ndf)
 
-    generate_TTF(recordings_dir, experiment_filename, ['4','3','2','1','0x2'], save_path)
+    generate_TTF(recordings_dir, experiment_filename, ['1','1x5','1x7', '2'], save_path)
 
 if(__name__ == '__main__'):
     main()
