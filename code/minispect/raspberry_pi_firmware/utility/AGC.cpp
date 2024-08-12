@@ -116,9 +116,6 @@ extern "C" {
 }
 
 int main() {
-
-
-   // Test the add function
     double gain = 1.0; 
     double exposure = 37.0; 
     double speed_setting = 0.99; 
