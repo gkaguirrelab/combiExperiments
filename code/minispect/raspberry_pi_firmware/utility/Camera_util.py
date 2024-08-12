@@ -10,7 +10,7 @@ import argparse
 import pickle
 from scipy.interpolate import interp1d
 import multiprocessing as mp
-#import matlab.engine
+import matlab.engine
 
 CAM_FPS = 206.65
 
@@ -77,7 +77,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 
     # Release the VideoWriter object
     out.release()
-"""
+
 def parse_mean_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
      # Initialize a video capture object
     video_capture = cv2.VideoCapture(path_to_video)
@@ -328,14 +328,14 @@ def generate_row_phase_plot(video: np.array, light_level: str, frequency: float)
     plt.ylabel('Phase')
     plt.show()
 
-"""     
+ 
 #Record a video from the raspberry pi camera
 def record_video(output_path: str, duration: float, capture_queue: mp.Queue, write_queue: mp.Queue):    
 	 # Create output directory for frames + metadata    
     if(not os.path.exists(output_path)):
-    	os.mkdir(os.path.basename(output_path))    
+        os.mkdir(os.path.basename(output_path))
     
-    # Connect to and set up camera 
+    # Connect to and set up camera
     cam = initialize_camera()
     
     # Begin Recording 
@@ -368,11 +368,9 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
         
         # Experiment with changing gain on the fly 
         if((current_time - last_gain_change)  > 1):
-        	#print('HERE!!!!!!!!!!!')
-        	new_gain = gains[change]
-        	cam.set_controls({'AnalogueGain': new_gain}) 
-        	#cam.video_configuration.controls['AnalogueGain'] = new_gain   
-        	last_gain_change = current_time
+            new_gain = gains[change]
+            cam.set_controls({'AnalogueGain': new_gain}) 
+            last_gain_change = current_time
         	
         change = (change + 1) % 2  
         frame_num += 1 
@@ -381,7 +379,6 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
         if((current_time - start_capture_time) > duration):
             break   
             
-   
     # Record timing of end of capture 
     end_capture_time = time.time()
     

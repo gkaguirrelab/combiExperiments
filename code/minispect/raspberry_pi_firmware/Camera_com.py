@@ -1,7 +1,19 @@
-from utility.Camera_util import record_video, write_frame, running_frame_mean
+#from utility.Camera_util import record_video, write_frame, running_frame_mean
 import argparse
 import multiprocessing as mp
 import time
+import ctypes
+
+class RetVal(ctypes.Structure):
+    _fields_ = [("adjusted_gain", ctypes.c_double),
+                ("adjusted_exposure", ctypes.c_double)]
+
+    
+agc_lib = ctypes.CDLL('./utility/AGC.so') 
+agc_lib.AGC.argtypes = [ctypes.c_double]*4
+agc_lib.AGC.restype = RetVal
+
+
 
 def parseArgs():
     parser = argparse.ArgumentParser(description='Record videos from the camera via the RP')
@@ -14,11 +26,18 @@ def parseArgs():
 
 def main():
     output_path, duration = parseArgs()
-    
+
     capture_queue = mp.Queue()
     write_queue = mp.Queue() 
     gain_control_queue = mp.Queue()
+
+    ret = agc_lib.AGC(127.0, 1.0, 37.0, 0.99)
+
+    print(ret.adjusted_gain)
+
     
+    """
+
     capture_process = mp.Process(target=record_video, args=(output_path, duration, capture_queue, write_queue))															   
     write_process = mp.Process(target=write_frame, args=(write_queue,))
     
@@ -41,6 +60,7 @@ def main():
     
     print('Processes finished')
 
+    """
 
 
 if(__name__ == '__main__'):
