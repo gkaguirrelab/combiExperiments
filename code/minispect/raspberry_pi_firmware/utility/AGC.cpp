@@ -22,7 +22,7 @@ extern "C" {
         std::vector<double> exposure_range = {37, std::floor(1e6/206.65)}; // The range of possible exposure values
         std::vector<double> signal_range = {0,255}; // The range of possible signal values
         enum class Correction_Direction {
-            TURN_DOWN, //0 
+            TURN_DOWN, // 0 
             TURN_UP,   // 1
         };
 
