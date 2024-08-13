@@ -5,12 +5,11 @@
 #include <algorithm>
 #include <iostream> 
 
-struct RetVal {
+extern "C" {
+    struct RetVal {
         double adjusted_gain; 
         double adjusted_exposure; 
     }; 
-
-extern "C" {
 
     RetVal AGC(double signal, double gain, double exposure,
                                 double speed_setting) 
@@ -18,20 +17,12 @@ extern "C" {
         RetVal ret_val; 
         ret_val.adjusted_gain = gain; 
         ret_val.adjusted_exposure = exposure;
-
-        std::cout << "IN CPP" << std::endl; 
-        std::cout << "signal: " << signal << std::endl ;
-        std::cout << "gain: " << gain << std::endl ;
-        std::cout << "exposure: " << exposure << std::endl; 
-        std::cout << "speed_setting: " << speed_setting << std::endl ;
-
-
         
         double signal_target = 127.0; //target value for the signal at any given light source 
-        std::vector<double> gain_range = {1.0, 10.6666}; // The range of possible gain values
+        std::vector<double> gain_range = {1.0, 10.666}; // The range of possible gain values
         std::vector<double> exposure_range = {37, std::floor(1e6/206.65)}; // The range of possible exposure values
         std::vector<double> signal_range = {0,255}; // The range of possible signal values
-        const double precision_error_margin = 0.01;
+        const double precision_error_margin = 0.025;
         enum class Correction_Direction {
             TURN_DOWN, // 0 
             TURN_UP,   // 1
@@ -44,7 +35,7 @@ extern "C" {
         double speed = speed_setting; 
 
         // Move quickly if we are pegged at the signal range
-        if(signal == signal_range[0]  || signal == signal_range[1]) {
+        if(std::abs(signal - signal_range[0]) <= precision_error_margin || std::abs(signal - signal_range[1]) <= precision_error_margin ) {
             speed  = speed_setting * speed_setting;  
         }
 
@@ -57,11 +48,13 @@ extern "C" {
         correction = 1 + ( (1 - speed) * (correction - 1) );
 
         // If correction == 1, nothing to be done
-        if(std::abs(correction - 1) < precision_error_margin) {
+        if(std::abs(correction - 1) > precision_error_margin) {
+            //std::cout << "DOING NOTHING" << std::endl; 
+            //std::cout << std::abs(correction - 1) << std::endl;
             return ret_val; 
         }
 
-        std::cout << "Correction " << correction << std::endl;
+        //std::cout << "Correction " << correction << std::endl;
 
         // Determine whether we need to turn settings up (true)
         // or down (false)
@@ -69,13 +62,13 @@ extern "C" {
         bool exposure_not_max = exposure < exposure_range[1];
         bool gain_not_min = gain > gain_range[0]; 
 
-        std::cout << "gain later: " << gain << std::endl ;
-        std::cout << "gain min? " << gain_not_min << std::endl; 
+        //std::cout << "gain later: " << gain << std::endl ;
+        //std::cout << "gain min? " << gain_not_min << std::endl; 
 
         switch(mode){
             // If correction > 1, it means we need to turn up gain or exposure.
             case Correction_Direction::TURN_UP:
-                std::cout << "INCREASING SETTINGS" << std::endl; 
+                //std::cout << "INCREASING SETTINGS" << std::endl; 
 
                 // First choice is to turn up exposure
                 if(exposure_not_max) {
@@ -97,7 +90,7 @@ extern "C" {
 
             // If correction < 1, it means we need to turn down gain or exposure.
             case Correction_Direction::TURN_DOWN:
-                std::cout << "DECREASING SETTINGS" << std::endl; 
+                //std::cout << "DECREASING SETTINGS" << std::endl; 
 
                 // First choice is to turn down gain
                 if(gain_not_min) {
@@ -129,17 +122,14 @@ extern "C" {
 }
 
 int main() {
-    /*
     double gain = 1.0; 
     double exposure = 37.0; 
     double speed_setting = 0.99; 
 
-    RetVal test = AGC(127.0, gain, exposure, speed_setting);
+    RetVal test = AGC(255, gain, exposure, speed_setting);
 
     std::cout << test.adjusted_gain << std::endl; 
     std::cout << test.adjusted_exposure << std::endl; 
-
-    */ 
 
     
     return 0 ; 
