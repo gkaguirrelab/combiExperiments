@@ -1,6 +1,6 @@
 import pickle 
 import argparse
-import matlab.engine
+#import matlab.engine
 import numpy as np
 
 def parse_args():
@@ -24,7 +24,7 @@ def AGC(signal: float, gain: float, exposure: float, speed_setting: float):
                     ("adjusted_exposure", ctypes.c_double)]
 
         
-    agc_lib = ctypes.CDLL('./AGC.so') 
+    agc_lib = ctypes.CDLL('./utility/AGC.so') 
     agc_lib.AGC.argtypes = [ctypes.c_double]*4
     agc_lib.AGC.restype = RetVal
 
@@ -33,6 +33,7 @@ def AGC(signal: float, gain: float, exposure: float, speed_setting: float):
     return {"adjusted_gain": ret_val.adjusted_gain,
             "adjusted_exposure": ret_val.adjusted_exposure}
 
+"""
 def QC_AGC():
     # Test 1: If we need to decrease settings but gain is pegged
     test1 = [123, 1.0, 3925.43, 0.99]
@@ -66,7 +67,7 @@ def QC_AGC():
 
         print(f"MATLAB Gain: {MATLAB_gain} | CPP Gain: {cpp_gain} | Difference: {gain_difference}")
         print(f"MATLAB Exposure: {MATLAB_exposure} | CPP Exposure: {cpp_exposure} | Difference: {exposure_difference}")
-
+"""
 
 
 def main():

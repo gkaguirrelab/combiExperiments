@@ -1,18 +1,8 @@
-#from utility.Camera_util import record_video, write_frame, running_frame_mean
+from utility.Camera_util import record_video, write_frame, mean_frame_intensity 
 import argparse
 import multiprocessing as mp
 import time
 import ctypes
-
-class RetVal(ctypes.Structure):
-    _fields_ = [("adjusted_gain", ctypes.c_double),
-                ("adjusted_exposure", ctypes.c_double)]
-
-    
-agc_lib = ctypes.CDLL('./utility/AGC.so') 
-agc_lib.AGC.argtypes = [ctypes.c_double]*4
-agc_lib.AGC.restype = RetVal
-
 
 
 def parseArgs():
@@ -29,38 +19,32 @@ def main():
 
     capture_queue = mp.Queue()
     write_queue = mp.Queue() 
-    gain_control_queue = mp.Queue()
+    agc_queue = mp.Queue()
+    current_settings_queue = mp.Queue()
+    future_settings_queue = mp.Queue()
+    future_settings_queue.put(None)
 
-    ret = agc_lib.AGC(127.0, 1.0, 37.0, 0.99)
-
-    print(ret.adjusted_gain)
-
-    
-    """
-
-    capture_process = mp.Process(target=record_video, args=(output_path, duration, capture_queue, write_queue))															   
+    capture_process = mp.Process(target=record_video, args=(output_path, duration,
+                                                            capture_queue, write_queue,
+                                                            agc_queue,
+                                                            current_settings_queue, future_settings_queue))
     write_process = mp.Process(target=write_frame, args=(write_queue,))
-    
-  
-    #running_mean = mp.Process(target=running_frame_mean, args=(frame_queue, mean_queue, 1))
+    agc_process = mp.Process(target=mean_frame_intensity, args=(agc_queue,
+                                                                future_settings_queue))
     
     capture_process.start()
     write_process.start()
-    #running_mean.start()
+    agc_process.start()
     
-    while(capture_process.is_alive() and write_process.is_alive()):
-    	time.sleep(1)    
-    
-    capture_process.terminate()
-    capture_process.join()
-    	
-    
-    write_process.terminate()
-    write_process.join()
+    while( write_process.is_alive() ):
+        time.sleep(1)
+        
+    for process in (capture_process, write_process, agc_process):
+        process.terminate()
+        process.join()    
     
     print('Processes finished')
 
-    """
 
 
 if(__name__ == '__main__'):

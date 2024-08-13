@@ -10,7 +10,9 @@ import argparse
 import pickle
 from scipy.interpolate import interp1d
 import multiprocessing as mp
-import matlab.engine
+from utility.PyAGC import AGC
+#import matlab.engine
+import traceback
 
 CAM_FPS = 206.65
 
@@ -28,39 +30,51 @@ def parse_args():
 
     return args.recordings_dir, args.experiment_filename, args.low_bound_ndf, args.high_bound_ndf, args.save_path
 
-def plot_intensity_over_time(frames: list, save_path: str):
-	print(f"Frames: {len(frames)} | Frame shape:")
-	#frame_avgs = [np.mean(frame, axis=(0,1)) for frame in frames]
-	plt.plot(range(0, len(frames)), frames)
-	plt.savefig(save_path)
-
 def write_frame(write_queue: mp.Queue):
-	while(True):		
-		ret = write_queue.get()
-		
-		if(ret is None):
-			print('BREAKING WRITING')
-			break
-		
-		frame, save_path = ret
-		print(f'writing {save_path}')
-		
-		cv2.imwrite(save_path, frame)
-	
-	print('finishing writing')
-	
+    try:
+    
+    while(True):
+        ret = write_queue.get()
+        
+        if(ret is None):
+            print('BREAKING WRITING')
+            break
 
-def running_frame_mean(frame_queue: mp.Queue, mean_queue: mp.Queue, n: int) -> float:	
-	while(True):
-		past_n_frames = []		
-		for i in range(n):			
-			frame = frame_queue.get()
-			
-			past_n_frames.append(frame)
-			
-		past_n_frames = np.array(past_n_frames)
-		mean = np.mean(past_n_frames, axis=(0,1,2))
-		#print(f"MEAN IS: {mean}")
+        frame, save_path = ret
+        print(f'writing {save_path}')
+
+        cv2.imwrite(save_path, frame)
+    
+    except Exception as e:
+        traceback.print_exc()
+        break
+    
+    print('finishing writing')
+
+
+def mean_frame_intensity(agc_queue: mp.Queue, future_settings_queue: mp.Queue) -> float:
+    try:
+        while(True):
+            print('TAKING THE MEAN')
+        
+            ret = agc_queue.get()
+        
+            if(ret is None):
+                print(f"BREAKING AGC")
+                break
+        
+            frame, current_gain, current_exposure = ret 
+        
+            mean_intensity = np.mean(frame, axis=(0,1))
+        
+        
+        #ret = AGC(mean_intensity, current_gain, current_exposure, 0.99)
+        
+        #print(ret)
+    except Exception as e:
+        traceback.print_exc()
+        break
+
 
 """Reconstruct a video from a series of frames"""
 def reconstruct_video(video_frames: np.array, output_path: str):
@@ -193,6 +207,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
 
     return frequencies, videos
 
+"""
 def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes) -> tuple:     
     eng = matlab.engine.start_matlab()
     
@@ -327,11 +342,17 @@ def generate_row_phase_plot(video: np.array, light_level: str, frequency: float)
     plt.xlabel('Row Number')
     plt.ylabel('Phase')
     plt.show()
-
+"""
  
 #Record a video from the raspberry pi camera
-def record_video(output_path: str, duration: float, capture_queue: mp.Queue, write_queue: mp.Queue):    
-	 # Create output directory for frames + metadata    
+def record_video(output_path: str, duration: float,
+                 capture_queue: mp.Queue, write_queue: mp.Queue,
+                 agc_queue: mp.Queue,
+                 current_settings_queue: mp.Queue,
+                 future_settings_queue: mp.Queue):    
+	try:
+	
+	# Create output directory for frames + metadata    
     if(not os.path.exists(output_path)):
         os.mkdir(os.path.basename(output_path))
     
@@ -344,6 +365,9 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
     # Initialize array to hold video frames
     frames = []
     
+    current_gain, current_exposure = (cam.capture_metadata()["AnalogueGain"], cam.capture_metadata()["ExposureTime"])
+    future_gain, future_exposure = None, None
+    
     # Begin timing capture
     start_capture_time = time.time()
     last_gain_change = time.time()
@@ -353,19 +377,40 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
     frame_num = 0 
     # Record frames and append them to frames array  
     while(True):
-        frame = cam.capture_array("raw")
-        metadata = cam.capture_metadata
-        save_path = os.path.join(output_path, f"{frame_num}.tiff")        
-                
-        frames.append(frame)
-        capture_queue.put(frame)
-        write_queue.put((frame, save_path)) 
-        print(f"capturing frame {frame_num}")
+        print('here3')
         
-        #print(f'Len frame queue: {capture_queue.qsize()}')        
+        ret = future_settings_queue.get()
+        
+        print('here4')
+        
+        if(ret is not None):
+            future_gain, future_exposure = ret    
+        else:
+            future_gain, future_exposure = current_gain, current_exposure
+        
+        
+        
+        cam.set_controls({'AnalogueGain': future_gain,
+                          'ExposureTime': future_exposure})
+        
+        
+        frame = cam.capture_array("raw")
+        metadata = cam.capture_metadata()
+        save_path = os.path.join(output_path, f"{frame_num}.tiff")        
+        
+        frames.append(frame)
+        current_gain, current_exposure = future_gain, future_exposure
+        
+        capture_queue.put(frame)
+        agc_queue.put((frame, current_gain, current_exposure))
+        write_queue.put((frame, save_path)) 
+        print(f"capturing frame {frame_num}")      
          
         current_time = time.time()
         
+
+        
+        """
         # Experiment with changing gain on the fly 
         if((current_time - last_gain_change)  > 1):
             new_gain = gains[change]
@@ -373,6 +418,8 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
             last_gain_change = current_time
         	
         change = (change + 1) % 2  
+        """
+        
         frame_num += 1 
         
         # If recording longer than duration, stop
@@ -383,6 +430,7 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
     end_capture_time = time.time()
     
     write_queue.put(None)
+    agc_queue.put(None)
     
     # Convert frames to standardized np.array
     frames = np.array(frames, dtype=np.uint8)    
@@ -405,6 +453,9 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
     
     print('Finishing recording')
     
+    except Exception as e:
+        traceback.print_exc()
+        break
     
     # Reconstruct the video from the frames  
     # and save the video 

@@ -10,7 +10,7 @@ import argparse
 import pickle
 from scipy.interpolate import interp1d
 import multiprocessing as mp
-#import matlab.engine
+import matlab.engine
 
 CAM_FPS = 206.65
 
@@ -42,6 +42,7 @@ def write_frame(write_queue: mp.Queue):
 			print('BREAKING WRITING')
 			break
 		
+		frame, save_path = ret
 		print(f'writing {save_path}')
 		
 		cv2.imwrite(save_path, frame)
@@ -49,17 +50,13 @@ def write_frame(write_queue: mp.Queue):
 	print('finishing writing')
 	
 
-def running_frame_mean(frame_queue: mp.Queue, mean_queue: mp.Queue, n: int) -> float:	
+def mean_frame_intensity(frame_queue: mp.Queue, agc_queue: mp.Queue) -> float:	
 	while(True):
-		past_n_frames = []		
-		for i in range(n):			
-			frame = frame_queue.get()
-			
-			past_n_frames.append(frame)
-			
-		past_n_frames = np.array(past_n_frames)
-		mean = np.mean(past_n_frames, axis=(0,1,2))
-		#print(f"MEAN IS: {mean}")
+		frame = frame_queue.get()
+		mean_intensity = np.mean(past_n_frames, axis=(0,1,2))
+		
+		agc_queue.put(mean_intensity)		
+		
 
 """Reconstruct a video from a series of frames"""
 def reconstruct_video(video_frames: np.array, output_path: str):
@@ -76,7 +73,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 
     # Release the VideoWriter object
     out.release()
-"""
+
 def parse_mean_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
      # Initialize a video capture object
     video_capture = cv2.VideoCapture(path_to_video)
@@ -327,14 +324,14 @@ def generate_row_phase_plot(video: np.array, light_level: str, frequency: float)
     plt.ylabel('Phase')
     plt.show()
 
-"""     
+ 
 #Record a video from the raspberry pi camera
-def record_video(output_path: str, duration: float, capture_queue: mp.Queue, write_queue: mp.Queue):    
+def record_video(output_path: str, duration: float, capture_queue: mp.Queue, write_queue: mp.Queue, agc_queue: mp.Queue):    
 	 # Create output directory for frames + metadata    
     if(not os.path.exists(output_path)):
-    	os.mkdir(os.path.basename(output_path))    
+        os.mkdir(os.path.basename(output_path))
     
-    # Connect to and set up camera 
+    # Connect to and set up camera
     cam = initialize_camera()
     
     # Begin Recording 
@@ -358,6 +355,7 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
                 
         frames.append(frame)
         capture_queue.put(frame)
+        agc_queue.put(frame)
         write_queue.put((frame, save_path)) 
         print(f"capturing frame {frame_num}")
         
@@ -367,11 +365,9 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
         
         # Experiment with changing gain on the fly 
         if((current_time - last_gain_change)  > 1):
-        	#print('HERE!!!!!!!!!!!')
-        	new_gain = gains[change]
-        	cam.set_controls({'AnalogueGain': new_gain}) 
-        	#cam.video_configuration.controls['AnalogueGain'] = new_gain   
-        	last_gain_change = current_time
+            new_gain = gains[change]
+            cam.set_controls({'AnalogueGain': new_gain}) 
+            last_gain_change = current_time
         	
         change = (change + 1) % 2  
         frame_num += 1 
@@ -380,7 +376,6 @@ def record_video(output_path: str, duration: float, capture_queue: mp.Queue, wri
         if((current_time - start_capture_time) > duration):
             break   
             
-   
     # Record timing of end of capture 
     end_capture_time = time.time()
     
