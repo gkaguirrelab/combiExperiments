@@ -13,6 +13,7 @@ import multiprocessing as mp
 from utility.PyAGC import AGC
 #import matlab.engine
 import traceback
+import psutil 
 
 CAM_FPS = 206.65
 
@@ -32,7 +33,8 @@ def parse_args():
 
 def write_frame(write_queue: mp.Queue):
     try:
-    
+        #p = psutil.Process()
+        #p.cpu_affinity([2])
         while(True):
             ret = write_queue.get()
             
@@ -53,9 +55,10 @@ def write_frame(write_queue: mp.Queue):
 
 def mean_frame_intensity(agc_queue: mp.Queue, future_settings_queue: mp.Queue) -> float:
     try:
-        while(True):
-            print('TAKING THE MEAN')
+        #p = psutil.Process()
+        #p.cpu_affinity([1])
         
+        while(True):
             ret = agc_queue.get()
         
             if(ret is None):
@@ -67,9 +70,10 @@ def mean_frame_intensity(agc_queue: mp.Queue, future_settings_queue: mp.Queue) -
             mean_intensity = np.mean(frame, axis=(0,1))
         
         
-        #ret = AGC(mean_intensity, current_gain, current_exposure, 0.99)
-        
-        #print(ret)
+            ret = AGC(mean_intensity, current_gain, current_exposure, 0.99)
+            
+            future_settings_queue.put((ret['adjusted_gain'], int(ret['adjusted_exposure'])))            
+            
     except Exception as e:
         traceback.print_exc()
         print(e)
@@ -354,6 +358,9 @@ def record_video(output_path: str, duration: float,
 
     try:     
     
+        #p = psutil.Process()
+        #p.cpu_affinity([0])
+    
         # Create output directory for frames + metadata    
         if(not os.path.exists(output_path)):
             os.mkdir(os.path.basename(output_path))
@@ -365,7 +372,7 @@ def record_video(output_path: str, duration: float,
         cam.start("video")    
         
         # Initialize array to hold video frames
-        frames = []
+        #frames = []
         
         current_gain, current_exposure = (cam.capture_metadata()["AnalogueGain"], cam.capture_metadata()["ExposureTime"])
         future_gain, future_exposure = None, None
@@ -377,37 +384,36 @@ def record_video(output_path: str, duration: float,
         change = 1     
         
         frame_num = 0 
+        ret = None
     
         # Record frames and append them to frames array  
         while(True):
-            print('here3')
             
-            ret = future_settings_queue.get()
-            
-            print('here4')
-            
-            if(ret is not None):
-                future_gain, future_exposure = ret    
-            else:
-                future_gain, future_exposure = current_gain, current_exposure
-            
-            
-            
-            cam.set_controls({'AnalogueGain': future_gain,
-                            'ExposureTime': future_exposure})
+            # Retrieve the settings to set the camera to
+            #ret = None if future_settings_queue.qsize() == 0 else future_settings_queue.get()
+        
+            # If there are no new settings, use the current settings
+            #if(ret is None):
+                #future_gain, future_exposure = current_gain, current_exposure
+            #else:
+            #    future_gain, future_exposure = ret    
+                
+            # Set the camera to the new settings  
+            #cam.set_controls({'AnalogueGain': future_gain,
+             #               'ExposureTime': future_exposure})
             
             
             frame = cam.capture_array("raw")
             metadata = cam.capture_metadata()
             save_path = os.path.join(output_path, f"{frame_num}.tiff")        
             
-            frames.append(frame)
-            current_gain, current_exposure = future_gain, future_exposure
+            #frames.append(frame)
+            #current_gain, current_exposure = future_gain, future_exposure
             
-            capture_queue.put(frame)
-            agc_queue.put((frame, current_gain, current_exposure))
-            write_queue.put((frame, save_path)) 
-            print(f"capturing frame {frame_num}")      
+            #capture_queue.put(frame)
+            #agc_queue.put((frame, current_gain, current_exposure))
+            #write_queue.put((frame, save_path)) 
+            #print(f"capturing frame {frame_num}")      
             
             current_time = time.time()
             
@@ -432,16 +438,16 @@ def record_video(output_path: str, duration: float,
         # Record timing of end of capture 
         end_capture_time = time.time()
         
-        write_queue.put(None)
-        agc_queue.put(None)
+       # write_queue.put(None)
+       # agc_queue.put(None)
         
         # Convert frames to standardized np.array
-        frames = np.array(frames, dtype=np.uint8)    
+       # frames = np.array(frames, dtype=np.uint8)    
         
         # Calculate the approximate FPS the frames were taken at 
         # (approximate due to time taken for other computation)
-        observed_fps = frames.shape[0]/(end_capture_time-start_capture_time)
-        print(f'I captured {len(frames)} at {observed_fps} fps')
+        observed_fps = frame_num/(end_capture_time-start_capture_time)
+        print(f'I captured {frame_num} at {observed_fps} fps')
         
         # Assert that we captured the frames at the target FPS,
         # with margin of error
@@ -455,6 +461,8 @@ def record_video(output_path: str, duration: float,
         cam.close() 
         
         print('Finishing recording')
+        
+        return
     
     except Exception as e:
         traceback.print_exc()
