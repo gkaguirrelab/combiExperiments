@@ -33,23 +33,22 @@ def parse_args():
 def write_frame(write_queue: mp.Queue):
     try:
     
-    while(True):
-        ret = write_queue.get()
+        while(True):
+            ret = write_queue.get()
+            
+            if(ret is None):
+                print('BREAKING WRITING')
+                break
+
+            frame, save_path = ret
+            print(f'writing {save_path}')
+
+            cv2.imwrite(save_path, frame)
         
-        if(ret is None):
-            print('BREAKING WRITING')
-            break
-
-        frame, save_path = ret
-        print(f'writing {save_path}')
-
-        cv2.imwrite(save_path, frame)
-    
     except Exception as e:
         traceback.print_exc()
-        break
-    
-    print('finishing writing')
+        print(e)
+        return 
 
 
 def mean_frame_intensity(agc_queue: mp.Queue, future_settings_queue: mp.Queue) -> float:
@@ -73,7 +72,9 @@ def mean_frame_intensity(agc_queue: mp.Queue, future_settings_queue: mp.Queue) -
         #print(ret)
     except Exception as e:
         traceback.print_exc()
-        break
+        print(e)
+
+        return 
 
 
 """Reconstruct a video from a series of frames"""
@@ -349,113 +350,117 @@ def record_video(output_path: str, duration: float,
                  capture_queue: mp.Queue, write_queue: mp.Queue,
                  agc_queue: mp.Queue,
                  current_settings_queue: mp.Queue,
-                 future_settings_queue: mp.Queue):    
-	try:
-	
-	# Create output directory for frames + metadata    
-    if(not os.path.exists(output_path)):
-        os.mkdir(os.path.basename(output_path))
-    
-    # Connect to and set up camera
-    cam = initialize_camera()
-    
-    # Begin Recording 
-    cam.start("video")    
-    
-    # Initialize array to hold video frames
-    frames = []
-    
-    current_gain, current_exposure = (cam.capture_metadata()["AnalogueGain"], cam.capture_metadata()["ExposureTime"])
-    future_gain, future_exposure = None, None
-    
-    # Begin timing capture
-    start_capture_time = time.time()
-    last_gain_change = time.time()
-    gains = [1.5,1.75]
-    change = 1     
-    
-    frame_num = 0 
-    # Record frames and append them to frames array  
-    while(True):
-        print('here3')
-        
-        ret = future_settings_queue.get()
-        
-        print('here4')
-        
-        if(ret is not None):
-            future_gain, future_exposure = ret    
-        else:
-            future_gain, future_exposure = current_gain, current_exposure
-        
-        
-        
-        cam.set_controls({'AnalogueGain': future_gain,
-                          'ExposureTime': future_exposure})
-        
-        
-        frame = cam.capture_array("raw")
-        metadata = cam.capture_metadata()
-        save_path = os.path.join(output_path, f"{frame_num}.tiff")        
-        
-        frames.append(frame)
-        current_gain, current_exposure = future_gain, future_exposure
-        
-        capture_queue.put(frame)
-        agc_queue.put((frame, current_gain, current_exposure))
-        write_queue.put((frame, save_path)) 
-        print(f"capturing frame {frame_num}")      
-         
-        current_time = time.time()
-        
+                 future_settings_queue: mp.Queue):
 
+    try:     
+    
+        # Create output directory for frames + metadata    
+        if(not os.path.exists(output_path)):
+            os.mkdir(os.path.basename(output_path))
         
-        """
-        # Experiment with changing gain on the fly 
-        if((current_time - last_gain_change)  > 1):
-            new_gain = gains[change]
-            cam.set_controls({'AnalogueGain': new_gain}) 
-            last_gain_change = current_time
-        	
-        change = (change + 1) % 2  
-        """
+        # Connect to and set up camera
+        cam = initialize_camera()
         
-        frame_num += 1 
+        # Begin Recording 
+        cam.start("video")    
         
-        # If recording longer than duration, stop
-        if((current_time - start_capture_time) > duration):
-            break   
+        # Initialize array to hold video frames
+        frames = []
+        
+        current_gain, current_exposure = (cam.capture_metadata()["AnalogueGain"], cam.capture_metadata()["ExposureTime"])
+        future_gain, future_exposure = None, None
+        
+        # Begin timing capture
+        start_capture_time = time.time()
+        last_gain_change = time.time()
+        gains = [1.5,1.75]
+        change = 1     
+        
+        frame_num = 0 
+    
+        # Record frames and append them to frames array  
+        while(True):
+            print('here3')
             
-    # Record timing of end of capture 
-    end_capture_time = time.time()
-    
-    write_queue.put(None)
-    agc_queue.put(None)
-    
-    # Convert frames to standardized np.array
-    frames = np.array(frames, dtype=np.uint8)    
-    
-    # Calculate the approximate FPS the frames were taken at 
-    # (approximate due to time taken for other computation)
-    observed_fps = frames.shape[0]/(end_capture_time-start_capture_time)
-    print(f'I captured {len(frames)} at {observed_fps} fps')
-    
-    # Assert that we captured the frames at the target FPS,
-    # with margin of error
-    #assert abs(CAM_FPS - observed_fps) < 10     
-    
-    # Assert the images are grayscale (as they should be 
-    # for raw images)
-    #assert len(frames.shape) == 3 
-    
-    # Stop recording and close the picam object 
-    cam.close() 
-    
-    print('Finishing recording')
+            ret = future_settings_queue.get()
+            
+            print('here4')
+            
+            if(ret is not None):
+                future_gain, future_exposure = ret    
+            else:
+                future_gain, future_exposure = current_gain, current_exposure
+            
+            
+            
+            cam.set_controls({'AnalogueGain': future_gain,
+                            'ExposureTime': future_exposure})
+            
+            
+            frame = cam.capture_array("raw")
+            metadata = cam.capture_metadata()
+            save_path = os.path.join(output_path, f"{frame_num}.tiff")        
+            
+            frames.append(frame)
+            current_gain, current_exposure = future_gain, future_exposure
+            
+            capture_queue.put(frame)
+            agc_queue.put((frame, current_gain, current_exposure))
+            write_queue.put((frame, save_path)) 
+            print(f"capturing frame {frame_num}")      
+            
+            current_time = time.time()
+            
+
+            
+            """
+            # Experiment with changing gain on the fly 
+            if((current_time - last_gain_change)  > 1):
+                new_gain = gains[change]
+                cam.set_controls({'AnalogueGain': new_gain}) 
+                last_gain_change = current_time
+                
+            change = (change + 1) % 2  
+            """
+            
+            frame_num += 1 
+            
+            # If recording longer than duration, stop
+            if((current_time - start_capture_time) > duration):
+                break   
+                
+        # Record timing of end of capture 
+        end_capture_time = time.time()
+        
+        write_queue.put(None)
+        agc_queue.put(None)
+        
+        # Convert frames to standardized np.array
+        frames = np.array(frames, dtype=np.uint8)    
+        
+        # Calculate the approximate FPS the frames were taken at 
+        # (approximate due to time taken for other computation)
+        observed_fps = frames.shape[0]/(end_capture_time-start_capture_time)
+        print(f'I captured {len(frames)} at {observed_fps} fps')
+        
+        # Assert that we captured the frames at the target FPS,
+        # with margin of error
+        #assert abs(CAM_FPS - observed_fps) < 10     
+        
+        # Assert the images are grayscale (as they should be 
+        # for raw images)
+        #assert len(frames.shape) == 3 
+        
+        # Stop recording and close the picam object 
+        cam.close() 
+        
+        print('Finishing recording')
     
     except Exception as e:
         traceback.print_exc()
-        break
+        print(e)
+        return 
+    
     
     # Reconstruct the video from the frames  
     # and save the video 
