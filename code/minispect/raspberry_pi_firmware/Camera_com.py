@@ -3,6 +3,7 @@ import threading
 import queue
 import argparse
 import os
+import shutil
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Record videos from the camera via the RP')
@@ -34,6 +35,8 @@ def main():
     print('Generating video...')
     frames = vid_array_from_file(filename)
     reconstruct_video(frames, output_path)
+    shutil.rmtree(filename)
+    
     
     print('Video output')
     
