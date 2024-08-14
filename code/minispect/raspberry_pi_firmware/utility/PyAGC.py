@@ -28,14 +28,10 @@ def AGC(signal: float, gain: float, exposure: float, speed_setting: float):
     agc_lib.AGC.argtypes = [ctypes.c_double]*4
     agc_lib.AGC.restype = RetVal
 
-    ret_val = agc_lib.AGC(ctypes.c_double(signal),
-                          ctypes.c_double(gain),
-                          ctypes.c_double(exposure),
-                          ctypes.c_double(speed_setting))
+    ret_val = agc_lib.AGC(signal, gain, exposure, speed_setting)
 
     return {"adjusted_gain": ret_val.adjusted_gain,
             "adjusted_exposure": ret_val.adjusted_exposure}
-
 """
 def QC_AGC():
     # Test 1: If we need to decrease settings but gain is pegged
