@@ -33,14 +33,11 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     % Step 1: Add paths to and retrieve libraries
     addpath('~/Library/Application Support/MathWorks/MATLAB Add-Ons/Collections/SSH_SFTP_SCP For Matlab (v2)/ssh2_v2_m1_r7') % add path to ssh_command library
 
-    modules_path = './code/minispect/raspberry_pi_firmware/utility'; % Add path to Python helper functions
-    if count(py.sys.path, modules_path) == 0  
-        insert(py.sys.path, int32(0), modules_path);
-    end
-
+    current_dir = pwd; 
+    cd('~/Documents/MATLAB/projects/combiExperiments/code/minispect/raspberry_pi_firmware/utility')
     remote_execute = py.importlib.import_module('remote_execute');
     Camera_util = py.importlib.import_module('Camera_util');
-
+    cd(current_dir);
 
     % Step 2: Define remote connection to raspberry pi
     
@@ -80,8 +77,8 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     
     % Step 9: Define the NDF range and frequencies
     % for which to conduct the experiment 
-    ndf_range = [1.7];
-    frequencies = [100, 50, 25, 12, 6, 3, 1];
+    ndf_range = [0];    % NDFs to try: [0,1,2,3,4]
+    frequencies = [1];  % Frequencies we have been doing + also 0.5hz
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
         NDF = ndf_range(bb);

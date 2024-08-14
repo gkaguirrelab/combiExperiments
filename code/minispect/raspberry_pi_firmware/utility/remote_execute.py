@@ -34,6 +34,7 @@ def run_ssh_command(hostname: str, port: int, username: str, password: str, comm
         # external programming calling this program to wait 
         # for it to finish
         stdout.read()
+        stderr.read()
 
     except paramiko.SSHException as e:
         print(f"SSH connection failed: {e}")
@@ -43,7 +44,12 @@ def run_ssh_command(hostname: str, port: int, username: str, password: str, comm
         ssh.close()
 
 def main():
-    host, port, username, password, command = parseArgs()
+    host = '10.102.183.211' 
+    username = 'eds' 
+    port = '22'
+    password = '1234'
+    command = 'python3 /home/eds/combiExperiments/code/minispect/raspberry_pi_firmware/Camera_com.py myAgcTest.avi 10'
+    #host, port, username, password, command = parseArgs()
     
     run_ssh_command(host, port, username, password, command)
 

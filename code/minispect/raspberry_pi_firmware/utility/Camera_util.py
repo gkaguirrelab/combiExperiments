@@ -1,4 +1,4 @@
-#from picamera2 import Picamera2, Preview
+from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -11,7 +11,9 @@ import pickle
 from scipy.interpolate import interp1d
 import multiprocessing as mp
 from utility.PyAGC import AGC
-import matlab.engine
+from natsort import natsorted
+
+#import matlab.engine
 
 CAM_FPS = 206.65
 
@@ -53,7 +55,7 @@ def write_frame(write_queue, output_path):
     print('finishing writing')
         
 def vid_array_from_file(path: str):
-    frames = [cv2.imread(os.path.join(path, frame)) for frame in os.listdir(path) ] 
+    frames = [cv2.imread(os.path.join(path, frame)) for frame in natsorted(os.listdir(path)) ] 
     
     return np.array(frames, dtype=np.uint8)
 
@@ -72,7 +74,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 
     # Release the VideoWriter object
     out.release()
-
+    
 def parse_mean_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
      # Initialize a video capture object
     video_capture = cv2.VideoCapture(path_to_video)
@@ -333,6 +335,7 @@ def record_video(duration: float, write_queue):
     cam.start("video")  
     initial_metadata = cam.capture_metadata()
     current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
+    cam.set_controls({'AeEnable':0})     
     
     # Begin timing capture
     start_capture_time = time.time()
@@ -418,12 +421,13 @@ def initialize_camera() -> Picamera2:
     
     # Set runtime camera information, such as auto-gain
     # auto exposure, white point balance, etc
-    gain = 1.5
+    gain = 1.0
+    exposure = 1000
     # Note, AeEnable changes both AEC and AGC		
     cam.video_configuration.controls['AwbEnable'] = 0
-    cam.video_configuration.controls['AeEnable'] = 0    
+    cam.video_configuration.controls['AeEnable'] = 0  
     cam.video_configuration.controls['AnalogueGain'] = gain
-    #cam.video_configuration.controls['ExposureTime'] = 5883414
+    cam.video_configuration.controls['ExposureTime'] = exposure
     
     return cam
 
