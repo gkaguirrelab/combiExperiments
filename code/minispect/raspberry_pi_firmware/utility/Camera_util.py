@@ -1,4 +1,4 @@
-from picamera2 import Picamera2, Preview
+#from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -11,7 +11,7 @@ import pickle
 from scipy.interpolate import interp1d
 import multiprocessing as mp
 from utility.PyAGC import AGC
-#import matlab.engine
+import matlab.engine
 
 CAM_FPS = 206.65
 
@@ -72,7 +72,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 
     # Release the VideoWriter object
     out.release()
-"""
+
 def parse_mean_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
      # Initialize a video capture object
     video_capture = cv2.VideoCapture(path_to_video)
@@ -322,7 +322,7 @@ def generate_row_phase_plot(video: np.array, light_level: str, frequency: float)
     plt.xlabel('Row Number')
     plt.ylabel('Phase')
     plt.show()
-"""
+
  
 #Record a video from the raspberry pi camera
 def record_video(duration: float, write_queue):        
@@ -354,7 +354,7 @@ def record_video(duration: float, write_queue):
         if((current_time - last_gain_change)  > 0.250):
             mean_intensity = np.mean(frame, axis=(0,1))
             
-            ret = AGC(mean_intensity, current_gain, current_exposure, 0.99)
+            ret = AGC(mean_intensity, current_gain, current_exposure, 0.7)
             new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
             cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
             last_gain_change = current_time

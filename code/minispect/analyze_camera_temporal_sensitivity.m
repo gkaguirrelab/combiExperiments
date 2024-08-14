@@ -44,7 +44,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
 
     % Step 2: Define remote connection to raspberry pi
     
-    host = '10.103.10.181'; % IP/Hostname
+    host = '10.102.183.211'; % IP/Hostname
     username = 'eds'; % Username to log into
     password = '1234'; % Password for this user
     recordings_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_data/recordings/'];

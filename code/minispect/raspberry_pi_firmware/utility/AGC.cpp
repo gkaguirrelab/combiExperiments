@@ -36,7 +36,7 @@ extern "C" {
 
         // Move quickly if we are pegged at the signal range
         if(std::abs(signal - signal_range[0]) <= precision_error_margin || std::abs(signal - signal_range[1]) <= precision_error_margin ) {
-            speed  = speed_setting * speed_setting;  
+            speed  = speed_setting * speed_setting * speed_setting;  
         }
 
         // Move quickly if we are close to the destination
