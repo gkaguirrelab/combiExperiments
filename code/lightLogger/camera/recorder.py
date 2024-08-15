@@ -23,8 +23,6 @@ def write_frame(write_queue, output_path):
     # Initialize container for per-frame info
    
     while(True):  
-        print('here3')
-
         ret = write_queue.get()
 
         if(ret is None):
@@ -93,7 +91,6 @@ def record_video(duration: float, write_queue: queue.Queue):
         
         # Change gain every N ms
         if((current_time - last_gain_change)  > gain_change_interval):
-            print('CORRECTING AGC')
             mean_intensity = np.mean(frame, axis=(0,1))
             
             ret = AGC(mean_intensity, current_gain, current_exposure, 0.2)
