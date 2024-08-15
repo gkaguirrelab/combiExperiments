@@ -32,10 +32,12 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
 %}
     % Step 1: Add paths to and retrieve libraries
     addpath('~/Library/Application Support/MathWorks/MATLAB Add-Ons/Collections/SSH_SFTP_SCP For Matlab (v2)/ssh2_v2_m1_r7') % add path to ssh_command library
+    addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/libraries_matlab/')
 
     current_dir = pwd; 
-    cd('~/Documents/MATLAB/projects/combiExperiments/code/minispect/raspberry_pi_firmware/utility')
+    cd('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/libraries_python/')
     remote_execute = py.importlib.import_module('remote_execute');
+    cd('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/')
     Camera_util = py.importlib.import_module('Camera_util');
     cd(current_dir);
 
