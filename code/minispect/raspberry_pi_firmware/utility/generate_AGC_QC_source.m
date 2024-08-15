@@ -1,7 +1,9 @@
 
+function [ts, source, speedSetting ] = generate_AGC_QC_source() 
+
 
 % "Speed" parameter
-speedSetting = 0.99;
+speedSetting = 0.2;
 
 % Camera fps
 fps = 206.65;
@@ -46,3 +48,5 @@ source = [...
 % Define the time domain of the measure
 deltaT = 1/fps;
 ts = 0:deltaT:(length(source)-1)*deltaT;
+
+end 

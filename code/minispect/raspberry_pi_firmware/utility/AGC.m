@@ -1,19 +1,21 @@
 function [gain, exposure] = AGC(s, gain, exposure, speedSetting)
 
-    signalTarget = 127;
-    gainRange = [1 10.666];
-    exposureRange = [37,floor(1e6/206.65)];
-    signalRange = [0,255];
-    
+        signalTarget = 127;
+        gainRange = [1 10.666];
+        exposureRange = [37,floor(1e6/206.65)];
+        signalRange = [0,255];
+        
         % Calculate the adjustment
         correction = 1+(signalTarget-s)/signalTarget;
-    
+
+        fprintf('Correction_1 %f\n', correction)
+
         % Set the speed
         speed = speedSetting;
     
         % Move quickly if we are pegged at the signal range
         if s == signalRange(1) || s == signalRange(2)
-            speed = speedSetting^2;
+            speed = speedSetting^3;
         end
     
         % Move quickly if we are close to the destination
@@ -23,6 +25,9 @@ function [gain, exposure] = AGC(s, gain, exposure, speedSetting)
     
         % Correct the correction
         correction = 1 + ((1-speed) * (correction-1));
+
+        fprintf('Correction_2 %f\n', correction)
+
     
         % If correction > 1, it means we need to turn up gain or exposure.
         if correction > 1
