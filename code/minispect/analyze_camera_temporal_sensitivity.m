@@ -39,6 +39,10 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     Camera_util = py.importlib.import_module('Camera_util');
     cd(current_dir);
 
+
+    % Record for 13 seconds, 3 seconds where the camera is just recording background 
+    % then 10 seconds of recording modulation
+
     % Step 2: Define remote connection to raspberry pi
     
     host = '10.102.183.211'; % IP/Hostname

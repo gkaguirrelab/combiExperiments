@@ -7,21 +7,20 @@ import shutil
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Record videos from the camera via the RP')
-    parser.add_argument('output_path', type=str, help='Path to output the recorded video to')
+    parser.add_argument('output_path', type=str, help='Path to output the recorded video to') 
     parser.add_argument('duration', type=float, help='Duration of the video')
-    parser.add_argument('debug', type=bool, help="Record in debug mode and output frame metadata while recording")
-
+   
     args = parser.parse_args()
     
-    return args.output_path, args.duration, args.debug
+    return args.output_path, args.duration
 
 def main():
-    output_path, duration, debug_mode = parse_args()
+    output_path, duration = parse_args()
     filename, extension = os.path.splitext(output_path) 
 
     write_queue = queue.Queue()
     
-    capture_thread = threading.Thread(target=record_video, args=(duration, write_queue, debug_mode))
+    capture_thread = threading.Thread(target=record_video, args=(duration, write_queue))
     write_thread = threading.Thread(target=write_frame, args=(write_queue, filename))
     
 

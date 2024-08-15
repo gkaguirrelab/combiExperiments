@@ -35,18 +35,13 @@ def parse_args():
 
 
 
-def write_frame(write_queue, output_path, debug_mode):
+def write_frame(write_queue, output_path):
     # Create output directory for frames + metadata    
     if(not os.path.exists(output_path)):
         os.mkdir(os.path.basename(output_path))
-
-    metadata_file = open(os.path.join(output_path, 'metadata.txt'), 'a')
     
-    print('here2')
 
     # Initialize container for per-frame info
-    frame, frame_num, metadata = None, None, None
-    frame_info = [frame, frame_num, metadata]
    
     while(True):  
         print('here3')
@@ -57,24 +52,14 @@ def write_frame(write_queue, output_path, debug_mode):
             print('BREAKING WRITING')
             break
         
-        for i, val in ret:
-            frame_info[i] = val
 
-        save_path = os.path.join(output_path, f"{frame_info[1]}.tiff")
+        frame, frame_num = ret
+        save_path = os.path.join(output_path, f"{frame_num}.tiff")
         print(f'writing {save_path}')
 
         cv2.imwrite(save_path, frame)
 
-        if(debug_mode is True):
-            write_string = f"Frame {frame_info[1]} "
-
-            for key, val in frame_info[2].items():
-                write_string += f"| {key}:{val} "
-
-            metadata_file.write(write_string)
-
     # Close the metadata file
-    metadata_file.close()
     print('finishing writing')
         
 def vid_array_from_file(path: str):
@@ -82,7 +67,7 @@ def vid_array_from_file(path: str):
     
     return np.array(frames, dtype=np.uint8)
 
-"""Reconstruct a video from a series of frames"""
+
 def reconstruct_video(video_frames: np.array, output_path: str):
     # Define the information about the video to use for writing
     fps = CAM_FPS  # Frames per second of the camera to reconstruct
@@ -97,7 +82,8 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 
     # Release the VideoWriter object
     out.release()
-    
+
+"""
 def parse_mean_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
      # Initialize a video capture object
     video_capture = cv2.VideoCapture(path_to_video)
@@ -348,9 +334,9 @@ def generate_row_phase_plot(video: np.array, light_level: str, frequency: float)
     plt.ylabel('Phase')
     plt.show()
 
-
+"""
 #Record a video from the raspberry pi camera
-def record_video(duration: float, write_queue: queue.Queue, debug_mode: bool):        
+def record_video(duration: float, write_queue: queue.Queue):        
     # Connect to and set up camera
     print(f"Initializing camera")
     cam = initialize_camera()
@@ -374,7 +360,9 @@ def record_video(duration: float, write_queue: queue.Queue, debug_mode: bool):
         frame = cam.capture_array("raw")
 
         # Append it and its information to the write_queue
-        write_data = [frame, frame_num]
+       # write_data = [frame, frame_num]
+
+        write_queue.put((frame, frame_num))
 
         # Capture the current time
         current_time = time.time()
@@ -392,6 +380,7 @@ def record_video(duration: float, write_queue: queue.Queue, debug_mode: bool):
             last_gain_change = current_time
             current_gain, current_exposure = new_gain, new_exposure
 
+        """
         # Write debug information if true
         if(debug_mode is True): 
             metadata = cam.capture_metadata()
@@ -402,9 +391,8 @@ def record_video(duration: float, write_queue: queue.Queue, debug_mode: bool):
             write_data.append(metadata)
         
         print(metadata)
-
+        """
         
-        write_queue.put(write_data)
         
         # If reached desired duration, stop recording
         if((current_time - start_capture_time) > duration):
@@ -455,7 +443,7 @@ def initialize_camera() -> Picamera2:
     # Set runtime camera information, such as auto-gain
     # auto exposure, white point balance, etc
     gain = 1.0
-    exposure = 100
+    exposure = 1000
     # Note, AeEnable changes both AEC and AGC		
     cam.video_configuration.controls['AwbEnable'] = 0
     cam.video_configuration.controls['AeEnable'] = 0  

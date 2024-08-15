@@ -1,6 +1,6 @@
 import pickle 
 import argparse
-import matlab.engine
+#import matlab.engine
 import numpy as np
 import os
 
@@ -35,6 +35,7 @@ def AGC(signal: float, gain: float, exposure: float, speed_setting: float):
     return {"adjusted_gain": ret_val.adjusted_gain,
             "adjusted_exposure": ret_val.adjusted_exposure}
 
+"""
 
 def QC_AGC():
     # Test 1: If we need to decrease settings but gain is pegged
@@ -87,7 +88,7 @@ def QC_AGC():
         print(f"MATLAB Exposure: {MATLAB_exposure} | CPP Exposure: {cpp_exposure} | Difference: {exposure_difference}")
 
 
-
+"""
     
 
 
