@@ -4,6 +4,13 @@ import cv2
 from picamera2 import Picamera2, Preview
 import queue
 from natsort import natsorted
+import numpy as np
+import sys
+
+# Import the custom AGC library
+agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
+sys.path.append(os.path.abspath(agc_lib_path))
+from PyAGC import AGC
 
 CAM_FPS = 206.65
 

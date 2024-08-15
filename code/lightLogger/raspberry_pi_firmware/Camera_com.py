@@ -1,12 +1,15 @@
+# Import public libraries
 import sys
-sys.path.append('../camera/') 
-from PyAGC import AGC
-from recorder import record_video, write_frame, vid_array_from_file, reconstruct_video
 import threading
 import queue
 import argparse
 import os
 import shutil
+
+# Import utility functions from the RPI recorder
+recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'camera')
+sys.path.append(os.path.abspath(recorder_lib_path))
+from recorder import record_video, write_frame, vid_array_from_file, reconstruct_video
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Record videos from the camera via the RP')
