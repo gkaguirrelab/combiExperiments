@@ -1,4 +1,4 @@
-#from picamera2 import Picamera2, Preview
+from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -10,9 +10,10 @@ import argparse
 import pickle
 from scipy.interpolate import interp1d
 import multiprocessing as mp
-from PyAGC import AGC
-import matlab.engine
+from utility.PyAGC import AGC
+#import matlab.engine
 from natsort import natsorted
+import queue
 
 #import matlab.engine
 
@@ -34,25 +35,46 @@ def parse_args():
 
 
 
-def write_frame(write_queue, output_path):
+def write_frame(write_queue, output_path, debug_mode):
     # Create output directory for frames + metadata    
     if(not os.path.exists(output_path)):
         os.mkdir(os.path.basename(output_path))
+
+    metadata_file = open(os.path.join(output_path, 'metadata.txt'), 'a')
     
+    print('here2')
+
+    # Initialize container for per-frame info
+    frame, frame_num, metadata = None, None, None
+    frame_info = [frame, frame_num, metadata]
+   
     while(True):  
+        print('here3')
+
         ret = write_queue.get()
 
         if(ret is None):
             print('BREAKING WRITING')
             break
+        
+        for i, val in ret:
+            frame_info[i] = val
 
-        frame, frame_num = ret
-        save_path = os.path.join(output_path, f"{frame_num}.tiff")
+        save_path = os.path.join(output_path, f"{frame_info[1]}.tiff")
         print(f'writing {save_path}')
 
         cv2.imwrite(save_path, frame)
-        
 
+        if(debug_mode is True):
+            write_string = f"Frame {frame_info[1]} "
+
+            for key, val in frame_info[2].items():
+                write_string += f"| {key}:{val} "
+
+            metadata_file.write(write_string)
+
+    # Close the metadata file
+    metadata_file.close()
     print('finishing writing')
         
 def vid_array_from_file(path: str):
@@ -326,11 +348,13 @@ def generate_row_phase_plot(video: np.array, light_level: str, frequency: float)
     plt.ylabel('Phase')
     plt.show()
 
-"""
+
 #Record a video from the raspberry pi camera
-def record_video(duration: float, write_queue):        
+def record_video(duration: float, write_queue: queue.Queue, debug_mode: bool):        
     # Connect to and set up camera
+    print(f"Initializing camera")
     cam = initialize_camera()
+    gain_change_interval: float = 0.250
     
     # Begin Recording 
     cam.start("video")  
@@ -342,55 +366,63 @@ def record_video(duration: float, write_queue):
     start_capture_time = time.time()
     last_gain_change = time.time()  
     
-    frame_num = 0 
-    # Record frames and append them to frames array  
+    # Capture 10 seconds of frames
+    frame_num = 1 
     while(True):
+        # Capture the frame
+        print(f'capturing frame {frame_num}')
         frame = cam.capture_array("raw")
-        write_queue.put((frame, frame_num))
-        #write_queue.put((frame, save_path)) 
-        #print(f"capturing frame {frame_num}")
-        
-        #print(f'Len frame queue: {capture_queue.qsize()}')        
-         
+
+        # Append it and its information to the write_queue
+        write_data = [frame, frame_num]
+
+        # Capture the current time
         current_time = time.time()
         
-        # Experiment with changing gain on the fly 
-        if((current_time - last_gain_change)  > 0.250):
+        # Change gain every N ms
+        if((current_time - last_gain_change)  > gain_change_interval):
+            print('CORRECTING AGC')
             mean_intensity = np.mean(frame, axis=(0,1))
             
-            ret = AGC(mean_intensity, current_gain, current_exposure, 0.7)
+            ret = AGC(mean_intensity, current_gain, current_exposure, 0.2)
             new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
             cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
+            
+
             last_gain_change = current_time
             current_gain, current_exposure = new_gain, new_exposure
-        	
-        #change = (change + 1) % 2
-        frame_num += 1 
+
+        # Write debug information if true
+        if(debug_mode is True): 
+            metadata = cam.capture_metadata()
+            metadata['meanFrameIntensity'] = np.mean(frame, axis=(0,1))
+            metadata['adjusted_gain'] = current_gain
+            metadata['adjusted_exposure'] = current_exposure
+            
+            write_data.append(metadata)
         
-        # If recording longer than duration, stop
+        print(metadata)
+
+        
+        write_queue.put(write_data)
+        
+        # If reached desired duration, stop recording
         if((current_time - start_capture_time) > duration):
-            break   
+            break  
+
+        # Record the next frame number
+        frame_num += 1 
             
     # Record timing of end of capture 
     end_capture_time = time.time()
     
-    write_queue.put(None)
-    
-    # Convert frames to standardized np.array
-    #frames = np.array(frames, dtype=np.uint8)    
+    # Signal the end of the write queue
+    write_queue.put(None) 
     
     # Calculate the approximate FPS the frames were taken at 
     # (approximate due to time taken for other computation)
     observed_fps = frame_num/(end_capture_time-start_capture_time)
     print(f'I captured {frame_num} at {observed_fps} fps')
-    
-    # Assert that we captured the frames at the target FPS,
-    # with margin of error
-    #assert abs(CAM_FPS - observed_fps) < 10     
-    
-    # Assert the images are grayscale (as they should be 
-    # for raw images)
-    #assert len(frames.shape) == 3 
     
     # Stop recording and close the picam object 
     cam.close() 
@@ -423,7 +455,7 @@ def initialize_camera() -> Picamera2:
     # Set runtime camera information, such as auto-gain
     # auto exposure, white point balance, etc
     gain = 1.0
-    exposure = 1000
+    exposure = 100
     # Note, AeEnable changes both AEC and AGC		
     cam.video_configuration.controls['AwbEnable'] = 0
     cam.video_configuration.controls['AeEnable'] = 0  
@@ -431,7 +463,7 @@ def initialize_camera() -> Picamera2:
     cam.video_configuration.controls['ExposureTime'] = exposure
     
     return cam
-"""
+
 
 def main():    
     recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
