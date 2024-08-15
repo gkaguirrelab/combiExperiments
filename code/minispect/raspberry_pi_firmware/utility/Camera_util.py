@@ -1,4 +1,4 @@
-#from picamera2 import Picamera2, Preview
+from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ import argparse
 import pickle
 from scipy.interpolate import interp1d
 import multiprocessing as mp
-from PyAGC import AGC
+from utility.PyAGC import AGC # when you call this on the RPI, you need to do utility.PyAGC, on the MAC, just AGC. 
 #import matlab.engine
 from natsort import natsorted
 import queue
@@ -83,7 +83,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     # Release the VideoWriter object
     out.release()
 
-
+"""
 def parse_mean_video(path_to_video: str, start_frame: int=0, pixel_indices: np.array=None) -> np.array:
      # Initialize a video capture object
     video_capture = cv2.VideoCapture(path_to_video)
@@ -333,8 +333,9 @@ def generate_row_phase_plot(video: np.array, light_level: str, frequency: float)
     plt.xlabel('Row Number')
     plt.ylabel('Phase')
     plt.show()
-
 """
+
+
 #Record a video from the raspberry pi camera
 def record_video(duration: float, write_queue: queue.Queue):        
     # Connect to and set up camera
@@ -359,9 +360,6 @@ def record_video(duration: float, write_queue: queue.Queue):
         print(f'capturing frame {frame_num}')
         frame = cam.capture_array("raw")
 
-        # Append it and its information to the write_queue
-       # write_data = [frame, frame_num]
-
         write_queue.put((frame, frame_num))
 
         # Capture the current time
@@ -379,20 +377,6 @@ def record_video(duration: float, write_queue: queue.Queue):
 
             last_gain_change = current_time
             current_gain, current_exposure = new_gain, new_exposure
-
-        
-        # Write debug information if true
-        if(debug_mode is True): 
-            metadata = cam.capture_metadata()
-            metadata['meanFrameIntensity'] = np.mean(frame, axis=(0,1))
-            metadata['adjusted_gain'] = current_gain
-            metadata['adjusted_exposure'] = current_exposure
-            
-            write_data.append(metadata)
-        
-        print(metadata)
-        
-        
         
         # If reached desired duration, stop recording
         if((current_time - start_capture_time) > duration):
@@ -451,14 +435,14 @@ def initialize_camera() -> Picamera2:
     cam.video_configuration.controls['ExposureTime'] = exposure
     
     return cam
-"""
+
 
 def main():    
     recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
 
     #analyze_temporal_sensitivity(recordings_dir, experiment_filename, high_bound_ndf)
 
-    generate_TTF(recordings_dir, experiment_filename, ['1','1x5','1x7', '2'], save_path)
+    #generate_TTF(recordings_dir, experiment_filename, ['1','1x5','1x7', '2'], save_path)
 
 if(__name__ == '__main__'):
     main()
