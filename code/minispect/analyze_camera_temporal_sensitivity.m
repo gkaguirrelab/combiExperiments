@@ -57,7 +57,9 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     recorder_path = '~/combiExperiments/code/minispect/raspberry_pi_firmware/Camera_com.py';
 
     % Step 4: Define parameters for the recording and command to execute 
-    duration = 10; 
+    % 3 seconds for warmup, 10 seconds for real recording
+    warmup = 3; 
+    duration = 10 + warmup;
     
     % Step 5: Load in the calibration file for the CombiLED
     load(cal_path,'cals'); % Load the cal file

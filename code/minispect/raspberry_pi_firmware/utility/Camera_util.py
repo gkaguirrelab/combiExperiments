@@ -1,4 +1,4 @@
-from picamera2 import Picamera2, Preview
+#from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ import argparse
 import pickle
 from scipy.interpolate import interp1d
 import multiprocessing as mp
-from utility.PyAGC import AGC
+from PyAGC import AGC
 #import matlab.engine
 from natsort import natsorted
 import queue
@@ -83,8 +83,8 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     # Release the VideoWriter object
     out.release()
 
-"""
-def parse_mean_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
+
+def parse_mean_video(path_to_video: str, start_frame: int=0, pixel_indices: np.array=None) -> np.array:
      # Initialize a video capture object
     video_capture = cv2.VideoCapture(path_to_video)
 
@@ -118,9 +118,9 @@ def parse_mean_video(path_to_video: str, pixel_indices: np.array=None) -> np.arr
     # Convert frames to standardized np.array
     frames = np.array(frames, dtype=np.uint8)
 
-    return frames
+    return frames[start_frame:]
 
-def parse_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
+def parse_video(path_to_video: str, start_frame: int=0, pixel_indices: np.array=None) -> np.array:
     # Initialize a video capture object
     video_capture = cv2.VideoCapture(path_to_video)
 
@@ -148,7 +148,7 @@ def parse_video(path_to_video: str, pixel_indices: np.array=None) -> np.array:
     # Select only one channel as pixel intensity value, since 
     # the grayscale images are read in as RGB, all channels are equal, 
     # just choose the first one
-    frames = frames[:,:,:,0]
+    frames = frames[start_frame:,:,:,0]
 
     # If we simply want the entire images, return them now 
     if(pixel_indices is None): return frames
@@ -187,7 +187,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
         if(experiment_info["NDF"] != str2ndf(light_level)):
             continue 
         
-        frequencies_and_videos[experiment_info["frequency"]] = parser(os.path.join(recordings_dir, file))
+        frequencies_and_videos[experiment_info["frequency"]] = parser(os.path.join(recordings_dir, file), start_frame=CAM_FPS)
 
     sorted_by_frequencies: list = sorted(frequencies_and_videos.items())
 
@@ -380,7 +380,7 @@ def record_video(duration: float, write_queue: queue.Queue):
             last_gain_change = current_time
             current_gain, current_exposure = new_gain, new_exposure
 
-        """
+        
         # Write debug information if true
         if(debug_mode is True): 
             metadata = cam.capture_metadata()
@@ -391,7 +391,7 @@ def record_video(duration: float, write_queue: queue.Queue):
             write_data.append(metadata)
         
         print(metadata)
-        """
+        
         
         
         # If reached desired duration, stop recording
@@ -451,7 +451,7 @@ def initialize_camera() -> Picamera2:
     cam.video_configuration.controls['ExposureTime'] = exposure
     
     return cam
-
+"""
 
 def main():    
     recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
