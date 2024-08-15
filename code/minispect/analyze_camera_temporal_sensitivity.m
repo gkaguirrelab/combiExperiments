@@ -77,8 +77,8 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     
     % Step 9: Define the NDF range and frequencies
     % for which to conduct the experiment 
-    ndf_range = [0];    % NDFs to try: [0,1,2,3,4]
-    frequencies = [1];  % Frequencies we have been doing + also 0.5hz
+    ndf_range = [3,2,1,0];    % NDFs to try: [0,1,2,3,4]
+    frequencies = [100, 50, 25, 12, 6, 3, 1, 0.5];  % Frequencies we have been doing + also 0.5hz
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
         NDF = ndf_range(bb);
@@ -126,6 +126,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     % Step 13: Close the connection to the CombiLED
     CL.serialClose(); 
 
+    return ; 
     % Step 14: Plot and the temporal sensitivity with the help of
     % Python to parse the video, generate source/measured curves 
     % over the course of the frequencies

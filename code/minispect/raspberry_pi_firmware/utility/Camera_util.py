@@ -1,4 +1,4 @@
-from picamera2 import Picamera2, Preview
+#from picamera2 import Picamera2, Preview
 import time
 import cv2
 import matplotlib.pyplot as plt
@@ -10,7 +10,8 @@ import argparse
 import pickle
 from scipy.interpolate import interp1d
 import multiprocessing as mp
-from utility.PyAGC import AGC
+from PyAGC import AGC
+import matlab.engine
 from natsort import natsorted
 
 #import matlab.engine
@@ -325,7 +326,7 @@ def generate_row_phase_plot(video: np.array, light_level: str, frequency: float)
     plt.ylabel('Phase')
     plt.show()
 
- 
+"""
 #Record a video from the raspberry pi camera
 def record_video(duration: float, write_queue):        
     # Connect to and set up camera
@@ -430,6 +431,7 @@ def initialize_camera() -> Picamera2:
     cam.video_configuration.controls['ExposureTime'] = exposure
     
     return cam
+"""
 
 def main():    
     recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
