@@ -41,7 +41,9 @@ def write_frame(write_queue, output_path):
     print('finishing writing')
 
 def vid_array_from_file(path: str):
-    frames = [cv2.imread(os.path.join(path, frame)) for frame in natsorted(os.listdir(path)) ] 
+    frames = [cv2.imread(os.path.join(path, frame)) 
+              for frame in natsorted(os.listdir(path)) 
+              if '.pkl' not in frame and '.txt' not in frame] 
     
     return np.array(frames, dtype=np.uint8)
 
