@@ -120,6 +120,8 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
     print(f"Reading in {experiment_filename} {light_level}NDF videos...")
 
     for file in os.listdir(recordings_dir):
+        if(file == '.DS_Store'): continue
+            
         experiment_info: dict = parse_recording_filename(file)
 
         if(experiment_info["experiment_name"] != experiment_filename):
@@ -128,7 +130,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
         if(experiment_info["NDF"] != str2ndf(light_level)):
             continue 
         
-        frequencies_and_videos[experiment_info["frequency"]] = parser(os.path.join(recordings_dir, file), start_frame=CAM_FPS)
+        frequencies_and_videos[experiment_info["frequency"]] = parser(os.path.join(recordings_dir, file), start_frame=int(CAM_FPS*3))
 
     sorted_by_frequencies: list = sorted(frequencies_and_videos.items())
 
@@ -280,11 +282,14 @@ def generate_row_phase_plot(video: np.array, light_level: str, frequency: float)
 
 
 def main():    
-    recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
+    #recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
 
     #analyze_temporal_sensitivity(recordings_dir, experiment_filename, high_bound_ndf)
+    recordings_dir = '/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_data/recordings'
+    experiment_filename = 'realMeasurements'
+    save_path = './test'
 
-    #generate_TTF(recordings_dir, experiment_filename, ['1','1x5','1x7', '2'], save_path)
+    generate_TTF(recordings_dir, experiment_filename, ['0', '1', '2', '3'], save_path)
 
 if(__name__ == '__main__'):
     main()
