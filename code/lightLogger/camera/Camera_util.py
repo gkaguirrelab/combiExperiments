@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import argparse 
-from utility.PyAGC import AGC # when you call this on the RPI, you need to do utility.PyAGC, on the MAC, just AGC. 
+import sys 
 import matlab.engine
 from natsort import natsorted
 
