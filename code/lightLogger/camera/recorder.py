@@ -6,6 +6,7 @@ import queue
 from natsort import natsorted
 import numpy as np
 import sys
+import pickle
 
 # Import the custom AGC library
 agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
@@ -61,7 +62,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     out.release()
 
 #Record a video from the raspberry pi camera
-def record_video(duration: float, write_queue: queue.Queue):        
+def record_video(duration: float, write_queue: queue.Queue, output_path: str):        
     # Connect to and set up camera
     print(f"Initializing camera")
     cam = initialize_camera()
@@ -73,6 +74,8 @@ def record_video(duration: float, write_queue: queue.Queue):
     current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
     cam.set_controls({'AeEnable':0})     
     
+    gain_history, exposure_history = [current_gain], [current_exposure] 
+
     # Begin timing capture
     start_capture_time = time.time()
     last_gain_change = time.time()  
@@ -100,6 +103,8 @@ def record_video(duration: float, write_queue: queue.Queue):
 
             last_gain_change = current_time
             current_gain, current_exposure = new_gain, new_exposure
+            gain_history.append(current_gain)
+            exposure_history.append(current_exposure)
         
         # If reached desired duration, stop recording
         if((current_time - start_capture_time) > duration):
@@ -124,10 +129,11 @@ def record_video(duration: float, write_queue: queue.Queue):
     
     print('Finishing recording')
     
+    with open(os.path.join(output_path, 'settings_history.pkl'), 'wb') as f:
+        pickle.dump({'gain_history': np.array(gain_history),
+                     'exposure_history': np.array(exposure_history)},
+                     f)
     
-    # Reconstruct the video from the frames  
-    # and save the video 
-    #reconstruct_video(frames, os.path.join(output_path, avi))
 
 def initialize_camera() -> Picamera2:
     # Initialize camera 

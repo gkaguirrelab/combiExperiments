@@ -26,7 +26,7 @@ def main():
 
     write_queue = queue.Queue()
     
-    capture_thread = threading.Thread(target=record_video, args=(duration, write_queue))
+    capture_thread = threading.Thread(target=record_video, args=(duration, write_queue, filename))
     write_thread = threading.Thread(target=write_frame, args=(write_queue, filename))
     
 
