@@ -56,7 +56,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     ssh2_conn = ssh2_config(host, username, password); % attempt to open a connection
 
     % Step 3: Define recording script to use
-    recorder_path = '~/combiExperiments/code/minispect/raspberry_pi_firmware/Camera_com.py';
+    recorder_path = '~/combiExperiments/code/lightLogger/raspberry_pi_firmware/Camera_com.py';
 
     % Step 4: Define parameters for the recording and command to execute 
     % 3 seconds for warmup, 10 seconds for real recording

@@ -48,7 +48,7 @@ def main():
     username = 'eds' 
     port = '22'
     password = '1234'
-    command = 'python3 /home/eds/combiExperiments/code/minispect/raspberry_pi_firmware/Camera_com.py myAgcTest.avi 10'
+    command = 'python3 /home/eds/combiExperiments/code/lightLogger/raspberry_pi_firmware/Camera_com.py test.avi 10'
     #host, port, username, password, command = parseArgs()
     
     run_ssh_command(host, port, username, password, command)
