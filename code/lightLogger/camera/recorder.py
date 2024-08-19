@@ -86,7 +86,7 @@ def record_video(duration: float, write_queue: queue.Queue, output_path: str):
     frame_num = 1 
     while(True):
         # Capture the frame
-        print(f'capturing frame {frame_num}')
+        #print(f'capturing frame {frame_num}')
         frame = cam.capture_array("raw")
 
         write_queue.put((frame, frame_num))

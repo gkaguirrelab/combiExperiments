@@ -40,14 +40,14 @@ def main():
     
     print('Generating video...')
     frames = vid_array_from_file(filename)
-    reconstruct_video(frames, output_path)
+    reconstruct_video(frames, os.path.join(filename, output_path))
     
+    print('Video output')
+
+    print('Removing frames...')
     for file in os.listdir(filename):
         if('.pkl' not in file):
             os.remove(os.path.join(filename, file))
-    
-    
-    print('Video output')
     
 
     
