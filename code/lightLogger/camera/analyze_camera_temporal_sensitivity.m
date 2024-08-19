@@ -138,7 +138,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             
             % Step 9 : Begin recording to the desired output path for the desired duration
             disp('Begin recording...')
-            remote_command = sprintf('python3 %s %s %f %f %d', recorder_path, output_file, duration, initial_gain, initial_exposure);
+            remote_command = sprintf('python3 %s %s %f --initial_gain %f --initial_exposure %d', recorder_path, output_file, duration, initial_gain, initial_exposure);
             remote_execute.run_ssh_command(py.str(char(host)), py.int(22), py.str(char(username)), py.str(char(password)), py.str(char(remote_command)))
             
             % Step 10: Stop the flicker of this frequency
