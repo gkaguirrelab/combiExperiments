@@ -286,10 +286,10 @@ def main():
 
     #analyze_temporal_sensitivity(recordings_dir, experiment_filename, high_bound_ndf)
     recordings_dir = '/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_data/recordings'
-    experiment_filename = 'realMeasurements'
+    experiment_filename = 'includingWarmup'
     save_path = './test'
 
-    generate_TTF(recordings_dir, experiment_filename, ['0', '1', '2', '3'], save_path)
+    generate_TTF(recordings_dir, experiment_filename, ['0'], save_path)
 
 if(__name__ == '__main__'):
     main()

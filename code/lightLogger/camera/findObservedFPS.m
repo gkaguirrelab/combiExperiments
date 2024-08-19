@@ -42,7 +42,7 @@ function fps = findObservedFPS( signal, f0, fpsRange )
 arguments
     signal (1,:) {mustBeFloat}
     f0 (1,1) {mustBeNumeric}
-    fpsRange (1,2) {mustBeNumeric} = [201,206.7];
+    fpsRange (1,2) {mustBeNumeric} = [206,207];
 end
 
 % Define an objective
