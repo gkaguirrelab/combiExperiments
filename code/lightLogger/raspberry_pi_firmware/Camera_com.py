@@ -16,13 +16,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Record videos from the camera via the RP')
     parser.add_argument('output_path', type=str, help='Path to output the recorded video to') 
     parser.add_argument('duration', type=float, help='Duration of the video')
-    parser.add_argument('--save_video', default=True, type=bool, help='Choose whether to actually save the video or not')
+    parser.add_argument('--save_video', default=0, type=int, help='Choose whether to actually save the video or not')
     parser.add_argument('--initial_gain', default=1.0, type=float, help='Gain value with which to initialize the camera')
     parser.add_argument('--initial_exposure', default=37, type=int, help='Gain value with which to initialize the camera')
    
     args = parser.parse_args()
     
-    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, args.save_video
+    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video)
 
 def main():
     output_path, duration, initial_gain, initial_exposure, save_video = parse_args()
