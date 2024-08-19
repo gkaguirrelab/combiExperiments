@@ -100,7 +100,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str):
         if((current_time - last_gain_change)  > gain_change_interval):
             mean_intensity = np.mean(frame, axis=(0,1))
             
-            ret = AGC(mean_intensity, current_gain, current_exposure, 0.2)
+            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95)
             new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
             cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
             

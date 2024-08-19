@@ -51,6 +51,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     username = 'eds'; % Username to log into
     password = '1234'; % Password for this user
     recordings_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_data/recordings/'];
+    metadata_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_data/recordings_metadata/'];
 
     disp('Trying remote connection to RP...')
     ssh2_conn = ssh2_config(host, username, password); % attempt to open a connection
@@ -59,9 +60,9 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     recorder_path = '~/combiExperiments/code/lightLogger/raspberry_pi_firmware/Camera_com.py';
 
     % Step 4: Define parameters for the recording and command to execute 
-    % 3 seconds for warmup, 10 seconds for real recording
-    warmup = 3; 
-    duration = 10 + warmup;
+    % 30 seconds for warmup, 10 seconds for real recording
+    warmup = 30; 
+    duration = 10;
     
     % Step 5: Load in the calibration file for the CombiLED
     load(cal_path,'cals'); % Load the cal file
@@ -86,7 +87,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     % Step 9: Define the NDF range and frequencies
     % for which to conduct the experiment 
     ndf_range = [3];    % NDFs to try: [0,1,2,3,4]
-    frequencies = [3, 6, 12, 25, 50, 100 ];  % Frequencies we have been doing + also 0.5hz
+    frequencies = [0.25, 0.5, 1, 3, 6, 12, 25, 50, 100 ];  % Frequencies we have been doing + also 0.5hz
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
         NDF = ndf_range(bb);
@@ -95,11 +96,32 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         pause()
         fprintf('You now have 30 seconds to leave the room if desired.\n');
         pause(30)
+
+        fprintf('Taking %.1f NDF warm up video...'); 
+        warmup_file = sprintf('%s_%.1fhz_%sNDF_warmup.avi', output_filename, frequency, ndf2str(NDF)); 
+        warmup_metadata = sprintf('%s_0hz_%sNDF_warmup_settings_history.pkl', output_filename, ndf2str(NDF)); 
+        
+        % Record the warm up video
+        remote_command = sprintf('python3 %s %s %f', recorder_path, warmup_file, warmup);
+        remote_execute.run_ssh_command(py.str(char(host)), py.int(22), py.str(char(username)), py.str(char(password)), py.str(char(remote_command)))
+        
+        % Retrieve the warmup settings
+        disp('Retrieving the settings file...')
+        ssh2_conn = scp_get(ssh2_conn, warmup_metadata, metadata_dir, '~/'); 
+
+        % Delete the warmup settings and video
+        disp('Deleting the file over of raspberry pi...')
+        ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_file));
+        ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_metdata));
+        
+        return ; 
+
        
         for ff = 1:numel(frequencies)  % At each NDF level, examine different frequencies
             frequency = frequencies(ff);
             fprintf('Recording %0.1f NDF %0.1f hz\n', NDF, frequency);
             output_file = sprintf('%s_%.1fhz_%sNDF.avi', output_filename, frequency, ndf2str(NDF)); 
+            metadata_file = sprintf('%s_%.1fhz_%sNDF_settings_history.pkl', output_filename, frequency, ndf2str(NDF)); 
 
             CL.setFrequency(frequency); % Set the CL flicker to current frequency
 
@@ -115,9 +137,12 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             CL.goDark();
             CL.stopModulation(); 
             
-            % Step 11 : Retrieve the file from the raspberry pi and save it in the recordings 
+            % Step 11 : Retrieve the files from the raspberry pi and save it in the recordings 
             % directory
-            disp('Retrieving the file...')
+            disp('Retrieving the settings file...')
+            ssh2_conn = scp_get(ssh2_conn, metadata_file, metadata_dir, '~/'); 
+
+            disp('Retrieving the video file...')
             ssh2_conn = scp_get(ssh2_conn, output_file, recordings_dir, '~/'); 
 
             % Step 12: Delete the file from the raspberry pi
