@@ -27,11 +27,6 @@ def main():
     output_path, duration, initial_gain, initial_exposure = parse_args()
     filename, extension = os.path.splitext(output_path) 
 
-    print(type(initial_gain))
-    print(type(initial_exposure))
-
-    return 
-
     write_queue: queue.Queue = queue.Queue()
     
     capture_thread: threading.Thread = threading.Thread(target=record_video, args=(duration, write_queue, filename, initial_gain, initial_exposure))
