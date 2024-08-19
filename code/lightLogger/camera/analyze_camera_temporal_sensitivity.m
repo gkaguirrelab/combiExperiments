@@ -97,8 +97,8 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         fprintf('You now have 30 seconds to leave the room if desired.\n');
         pause(30)
 
-        fprintf('Taking %.1f NDF warm up video...'); 
-        warmup_file = sprintf('%s_%.1fhz_%sNDF_warmup.avi', output_filename, frequency, ndf2str(NDF)); 
+        fprintf('Taking %.1f NDF warm up video...', NDF); 
+        warmup_file = sprintf('%s_0hz_%sNDF_warmup.avi', output_filename, ndf2str(NDF)); 
         warmup_metadata = sprintf('%s_0hz_%sNDF_warmup_settings_history.pkl', output_filename, ndf2str(NDF)); 
         
         % Record the warm up video
@@ -112,7 +112,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         % Delete the warmup settings and video
         disp('Deleting the file over of raspberry pi...')
         ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_file));
-        ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_metdata));
+        ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_metadata));
         
         return ; 
 
