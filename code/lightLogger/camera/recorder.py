@@ -76,7 +76,7 @@ def record_video(duration: float, write_queue: queue.Queue, output_path: str):
     current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
     cam.set_controls({'AeEnable':0})     
     
-    gain_history, exposure_history = [current_gain], [current_exposure] 
+    gain_history, exposure_history = [], [] 
 
     # Begin timing capture
     start_capture_time = time.time()
@@ -90,6 +90,8 @@ def record_video(duration: float, write_queue: queue.Queue, output_path: str):
         frame = cam.capture_array("raw")
 
         write_queue.put((frame, frame_num))
+        gain_history.append(current_gain)
+        exposure_history.append(current_exposure)
 
         # Capture the current time
         current_time = time.time()
@@ -105,8 +107,6 @@ def record_video(duration: float, write_queue: queue.Queue, output_path: str):
 
             last_gain_change = current_time
             current_gain, current_exposure = new_gain, new_exposure
-            gain_history.append(current_gain)
-            exposure_history.append(current_exposure)
         
         # If reached desired duration, stop recording
         if((current_time - start_capture_time) > duration):
