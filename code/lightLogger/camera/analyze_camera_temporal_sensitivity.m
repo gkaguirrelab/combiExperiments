@@ -116,7 +116,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_metadata));
 
         % Retrieve the initial gain and exposure value to set the camera with
-        fileID = py.open(fulfile(metadata_dir, warmup_metdata), 'rb');
+        fileID = py.open(fullfile(metadata_dir, warmup_metadata), 'rb');
         py_data = pickle.load(fileID);
         warmup_metadata_struct = struct(py_data);
         gain_values = double(warmup_metadata_struct.gain_history);
