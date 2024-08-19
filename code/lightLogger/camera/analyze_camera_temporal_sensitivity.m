@@ -129,7 +129,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             fprintf('Recording %0.1f NDF %0.1f hz\n', NDF, frequency);
             fprintf('with initial gain %f and initial exposure %d\n', initial_gain, initial_exposure);
             output_file = sprintf('%s_%.1fhz_%sNDF.avi', output_filename, frequency, ndf2str(NDF)); 
-            metadata_file = sprintf('%s_%.1fhz_%sNDF_settings_history.pkl', output_filename, frequency, ndf2str(NDF)); 
+            metadata_file = sprintf('%s_%.1fhz_%sNDF_settingsHistory.pkl', output_filename, frequency, ndf2str(NDF)); 
 
 
             CL.setFrequency(frequency); % Set the CL flicker to current frequency
