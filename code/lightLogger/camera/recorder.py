@@ -64,10 +64,10 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     out.release()
 
 #Record a video from the raspberry pi camera
-def record_video(duration: float, write_queue: queue.Queue, filename: str):        
+def record_video(duration: float, write_queue: queue.Queue, filename: str, initial_gain: float, initial_exposure: int):        
     # Connect to and set up camera
     print(f"Initializing camera")
-    cam = initialize_camera()
+    cam = initialize_camera(initial_gain, initial_exposure)
     gain_change_interval: float = 0.250
     
     # Begin Recording 
@@ -137,7 +137,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str):
                      f)
     
 
-def initialize_camera() -> Picamera2:
+def initialize_camera(initial_gain: float, initial_exposure: int) -> Picamera2:
     # Initialize camera 
     cam: Picamera2 = Picamera2()
     
@@ -157,12 +157,10 @@ def initialize_camera() -> Picamera2:
     
     # Set runtime camera information, such as auto-gain
     # auto exposure, white point balance, etc
-    gain = 1.0
-    exposure = 1000
     # Note, AeEnable changes both AEC and AGC		
     cam.video_configuration.controls['AwbEnable'] = 0
     cam.video_configuration.controls['AeEnable'] = 0  
-    cam.video_configuration.controls['AnalogueGain'] = gain
-    cam.video_configuration.controls['ExposureTime'] = exposure
+    cam.video_configuration.controls['AnalogueGain'] = initial_gain
+    cam.video_configuration.controls['ExposureTime'] = initial_exposure
     
     return cam

@@ -40,6 +40,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     cd('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/')
     Camera_util = py.importlib.import_module('Camera_util');
     cd(current_dir);
+    pickle = py.importlib.import_module('pickle');
 
 
     % Record for 13 seconds, 3 seconds where the camera is just recording background 
@@ -113,10 +114,17 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         disp('Deleting the file over of raspberry pi...')
         ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_file));
         ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_metadata));
-        
-        return ; 
 
-       
+        % Retrieve the initial gain and exposure value to set the camera with
+        fileID = py.open(fulfile(metadata_dir, warmup_metdata), 'rb');
+        py_data = pickle.load(fileID);
+        warmup_metadata_struct = struct(py_data);
+        gain_values = double(warmup_metadata_struct.gain_history);
+        exposure_values = double(warmup_metadata_struct.exposure_history);
+
+        initial_gain = gain_values(end);
+        initial_exposure = exposure_values(end);
+               
         for ff = 1:numel(frequencies)  % At each NDF level, examine different frequencies
             frequency = frequencies(ff);
             fprintf('Recording %0.1f NDF %0.1f hz\n', NDF, frequency);

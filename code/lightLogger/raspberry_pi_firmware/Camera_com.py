@@ -5,6 +5,7 @@ import queue
 import argparse
 import os
 import shutil
+import numpy as np
 
 # Import utility functions from the RPI recorder
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'camera')
@@ -15,19 +16,26 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Record videos from the camera via the RP')
     parser.add_argument('output_path', type=str, help='Path to output the recorded video to') 
     parser.add_argument('duration', type=float, help='Duration of the video')
+    parser.add_arugment('initial_gain', default=1.0, type=float, help='Gain value with which to initialize the camera')
+    parser.add_arugment('initial_exposure', default=37, type=int, help='Gain value with which to initialize the camera')
    
     args = parser.parse_args()
     
-    return args.output_path, args.duration
+    return args.output_path, args.duration, args.initial_gain, args.initial_exposure
 
 def main():
-    output_path, duration = parse_args()
+    output_path, duration, initial_gain, initial_exposure = parse_args()
     filename, extension = os.path.splitext(output_path) 
 
-    write_queue = queue.Queue()
+    print(type(initial_gain))
+    print(type(initial_exposure))
+
+    return 
+
+    write_queue: queue.Queue = queue.Queue()
     
-    capture_thread = threading.Thread(target=record_video, args=(duration, write_queue, filename))
-    write_thread = threading.Thread(target=write_frame, args=(write_queue, filename))
+    capture_thread: threading.Thread = threading.Thread(target=record_video, args=(duration, write_queue, filename, initial_gain, initial_exposure))
+    write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename))
     
 
     for thread in (capture_thread, write_thread):
@@ -39,7 +47,7 @@ def main():
     print('Capture/Write processes finished')
     
     print('Generating video...')
-    frames = vid_array_from_file(filename)
+    frames: np.array = vid_array_from_file(filename)
     reconstruct_video(frames, output_path)
     shutil.rmtree(filename)
     
