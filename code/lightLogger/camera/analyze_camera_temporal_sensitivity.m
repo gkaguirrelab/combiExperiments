@@ -103,7 +103,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         warmup_metadata = sprintf('%s_0hz_%sNDF_warmup_settings_history.pkl', output_filename, ndf2str(NDF)); 
         
         % Record the warm up video
-        remote_command = sprintf('python3 %s %s %f', recorder_path, warmup_file, warmup);
+        remote_command = sprintf('python3 %s %s %f --save_video 0', recorder_path, warmup_file, warmup);
         remote_execute.run_ssh_command(py.str(char(host)), py.int(22), py.str(char(username)), py.str(char(password)), py.str(char(remote_command)))
         
         % Retrieve the warmup settings
@@ -112,7 +112,6 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
 
         % Delete the warmup settings and video
         disp('Deleting the file over of raspberry pi...')
-        ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_file));
         ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_metadata));
 
         % Retrieve the initial gain and exposure value to set the camera with
@@ -128,8 +127,10 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         for ff = 1:numel(frequencies)  % At each NDF level, examine different frequencies
             frequency = frequencies(ff);
             fprintf('Recording %0.1f NDF %0.1f hz\n', NDF, frequency);
+            fprintf('with initial gain %f and initial exposure %d\n', initial_gain, initial_exposure);
             output_file = sprintf('%s_%.1fhz_%sNDF.avi', output_filename, frequency, ndf2str(NDF)); 
             metadata_file = sprintf('%s_%.1fhz_%sNDF_settings_history.pkl', output_filename, frequency, ndf2str(NDF)); 
+
 
             CL.setFrequency(frequency); % Set the CL flicker to current frequency
 
@@ -138,7 +139,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             
             % Step 9 : Begin recording to the desired output path for the desired duration
             disp('Begin recording...')
-            remote_command = sprintf('python3 %s %s %f --initial_gain %f --initial_exposure %d', recorder_path, output_file, duration, initial_gain, initial_exposure);
+            remote_command = sprintf('python3 %s %s %f --save_video 1 --initial_gain %f --initial_exposure %d', recorder_path, output_file, duration, initial_gain, initial_exposure);
             remote_execute.run_ssh_command(py.str(char(host)), py.int(22), py.str(char(username)), py.str(char(password)), py.str(char(remote_command)))
             
             % Step 10: Stop the flicker of this frequency

@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument('duration', type=float, help='Duration of the video')
     parser.add_argument('--save_video', default=0, type=int, help='Choose whether to actually save the video or not')
     parser.add_argument('--initial_gain', default=1.0, type=float, help='Gain value with which to initialize the camera')
-    parser.add_argument('--initial_exposure', default=37, type=int, help='Gain value with which to initialize the camera')
+    parser.add_argument('--initial_exposure', default=1000, type=int, help='Gain value with which to initialize the camera')
    
     args = parser.parse_args()
     
