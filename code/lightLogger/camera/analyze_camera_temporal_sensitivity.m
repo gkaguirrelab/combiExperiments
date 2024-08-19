@@ -87,7 +87,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     
     % Step 9: Define the NDF range and frequencies
     % for which to conduct the experiment 
-    ndf_range = [3];    % NDFs to try: [0,1,2,3,4]
+    ndf_range = [0];    % NDFs to try: [0,1,2,3,4]
     frequencies = [0.25, 0.5, 1, 3, 6, 12, 25, 50, 100 ];  % Frequencies we have been doing + also 0.5hz
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
@@ -100,7 +100,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
 
         fprintf('Taking %.1f NDF warm up video...\n', NDF); 
         warmup_file = sprintf('%s_0hz_%sNDF_warmup.avi', output_filename, ndf2str(NDF)); 
-        warmup_metadata = sprintf('%s_0hz_%sNDF_warmup_settings_history.pkl', output_filename, ndf2str(NDF)); 
+        warmup_metadata = sprintf('%s_0hz_%sNDF_warmupSettingsHistory.pkl', output_filename, ndf2str(NDF)); 
         
         % Record the warm up video
         remote_command = sprintf('python3 %s %s %f --save_video 0', recorder_path, warmup_file, warmup);
