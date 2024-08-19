@@ -100,7 +100,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
 
         fprintf('Taking %.1f NDF warm up video...\n', NDF); 
         warmup_file = sprintf('%s_0hz_%sNDF_warmup.avi', output_filename, ndf2str(NDF)); 
-        warmup_metadata = sprintf('%s_0hz_%sNDF_warmupSettingsHistory.pkl', output_filename, ndf2str(NDF)); 
+        warmup_metadata = sprintf('%s_0hz_%sNDF_warmup_settingsHistory.pkl', output_filename, ndf2str(NDF)); 
         
         % Record the warm up video
         remote_command = sprintf('python3 %s %s %f --save_video 0', recorder_path, warmup_file, warmup);

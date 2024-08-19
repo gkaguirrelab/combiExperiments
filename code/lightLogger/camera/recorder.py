@@ -131,7 +131,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str, initi
     
     print('Finishing recording')
     
-    with open(f'{filename}settingsHistory.pkl', 'wb') as f:
+    with open(f'{filename}_settingsHistory.pkl', 'wb') as f:
         pickle.dump({'gain_history': np.array(gain_history),
                      'exposure_history': np.array(exposure_history)},
                      f)
