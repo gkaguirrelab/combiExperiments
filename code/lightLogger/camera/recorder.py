@@ -16,7 +16,7 @@ from PyAGC import AGC
 CAM_FPS = 206.65
 
 def write_frame(write_queue, output_path):
-    # Create output directory for frames + metadata    
+    # Create output directory for frames   
     if(not os.path.exists(output_path)):
         os.mkdir(os.path.basename(output_path))
     
@@ -64,7 +64,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     out.release()
 
 #Record a video from the raspberry pi camera
-def record_video(duration: float, write_queue: queue.Queue, output_path: str):        
+def record_video(duration: float, write_queue: queue.Queue, filename: str):        
     # Connect to and set up camera
     print(f"Initializing camera")
     cam = initialize_camera()
@@ -131,7 +131,7 @@ def record_video(duration: float, write_queue: queue.Queue, output_path: str):
     
     print('Finishing recording')
     
-    with open(os.path.join(output_path, 'settings_history.pkl'), 'wb') as f:
+    with open(f'{filename}_settings_history.pkl', 'wb') as f:
         pickle.dump({'gain_history': np.array(gain_history),
                      'exposure_history': np.array(exposure_history)},
                      f)
