@@ -151,7 +151,8 @@ def initialize_camera(initial_gain: float, initial_exposure: int) -> Picamera2:
     # Ensure the frame rate; This is calculated by
     # FPS = 1,000,000 / FrameDurationLimits 
     # e.g. 206.65 = 1000000/FDL => FDL = 1000000/206.65
-    frame_duration_limit = int(np.ceil(1000000/sensor_mode['fps']))
+    # 200 = 
+    frame_duration_limit = int(np.ceil(1000000/200)) #int(np.ceil(1000000/sensor_mode['fps']))
     cam.video_configuration.controls['NoiseReductionMode'] = 0
     cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # *2 for lower,upper bound equal
     
