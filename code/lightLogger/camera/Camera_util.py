@@ -130,7 +130,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str, light
         if(experiment_info["NDF"] != str2ndf(light_level)):
             continue 
         
-        frequencies_and_videos[experiment_info["frequency"]] = parser(os.path.join(recordings_dir, file), start_frame=int(CAM_FPS*3))
+        frequencies_and_videos[experiment_info["frequency"]] = parser(os.path.join(recordings_dir, file))
 
     sorted_by_frequencies: list = sorted(frequencies_and_videos.items())
 
@@ -150,10 +150,34 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
 
     signal_as_double: matlab.double = matlab.double(signal.astype(np.float64))
     frequency_as_double: matlab.double = matlab.double(frequency)
-
-    observed_fps: matlab.double = eng.findObservedFPS(signal_as_double, frequency_as_double, nargout=1)
-    observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(signal_as_double, frequency_as_double, observed_fps, nargout=6)
     
+    observed_fps_list = []
+    fit_ret_val_container = []
+    for fps_range in ([206.25, 206.65], [205.25, 205.5], [204.75, 205.0]):
+        observed_fps: matlab.double = eng.findObservedFPS(signal_as_double, frequency_as_double, matlab.double(fps_range), nargout=1)
+        observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(signal_as_double, frequency_as_double, observed_fps, nargout=6)
+
+        observed_fps_list.append(observed_fps)
+        fit_ret_val_container.append((observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T))
+
+    best_r2 = float('-INF')
+    best_fit_fps_index = float('-INF')
+    for i, ret_val in enumerate(fit_ret_val_container):
+        if(ret_val[0] > best_r2):
+            best_r2 = ret_val[0]
+            best_fit_fps_index = i
+    
+
+
+    best_fit_fps = observed_fps_list[best_fit_fps_index]
+    print(f"Light light: {light_level} best FPS: {best_fit_fps}")
+
+    observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = fit_ret_val_container[best_fit_fps_index]
+
+    
+    #fps_range: matlab.double = matlab.double([206, 207]) if light_level == '0' else matlab.double([204.75, 205])
+
+  
     eng.quit()
     
     observed_signal_T: np.array = np.array(observed_signal_T).flatten()
@@ -289,7 +313,7 @@ def main():
     experiment_filename = 'includingWarmup'
     save_path = './test'
 
-    generate_TTF(recordings_dir, experiment_filename, ['0'], save_path)
+    generate_TTF(recordings_dir, experiment_filename, ['0','1','2','3'], save_path)
 
 if(__name__ == '__main__'):
     main()

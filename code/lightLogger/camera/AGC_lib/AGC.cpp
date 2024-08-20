@@ -31,7 +31,7 @@ extern "C" {
         // Calculate the adjustment
         double correction = 1+(signal_target - signal) / signal_target;
 
-        std::cout << "Correction_1" << correction << std::endl; 
+        //std::cout << "Correction_1" << correction << std::endl; 
 
         // Speed
         double speed = speed_setting; 
@@ -49,7 +49,7 @@ extern "C" {
         // Correct the correction
         correction = 1 + ( (1 - speed) * (correction - 1) );
 
-        std::cout << "Correction_2" << correction << std::endl; 
+        //std::cout << "Correction_2" << correction << std::endl; 
 
         // If correction == 1, nothing to be done
         if(correction == 1) {
