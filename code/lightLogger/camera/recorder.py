@@ -109,7 +109,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str, initi
             current_gain, current_exposure = new_gain, new_exposure
         
         # If reached desired duration, stop recording
-        if((current_time - start_capture_time) > duration):
+        if((current_time - start_capture_time) >= duration):
             break  
 
         # Record the next frame number
