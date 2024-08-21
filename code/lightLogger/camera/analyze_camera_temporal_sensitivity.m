@@ -87,7 +87,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     
     % Step 9: Define the NDF range and frequencies
     % for which to conduct the experiment 
-    ndf_range = [0.5];    % NDFs to try: [0,1,2,3,4]
+    ndf_range = [3,2,1,0];    % NDFs to try: [0,1,2,3,4]
     frequencies = [0.25, 0.5, 1, 3, 6, 12, 25, 50, 100 ];  % Frequencies we have been doing + also 0.5hz
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
@@ -176,7 +176,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
     addpath(ndf2str_path); 
     
-    Camera_util.generate_TFF(py.str(char(recordings_dir)), py.str(char(output_filename)), py.list(arrayfun(@ndf2str, ndf_range, "UniformOutput", false)), py.str(char('test')));
+    Camera_util.generate_TTF(py.str(char(recordings_dir)), py.str(char(output_filename)), py.list(arrayfun(@ndf2str, ndf_range, "UniformOutput", false)), py.str(char('test')));
 
     % Step 16: Save the results and flicker information
     save(sprintf('%s%s_TemporalSensitivityFlicker.mat', drop_box_dir, 'camera'), 'modResult');

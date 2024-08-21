@@ -1,60 +1,66 @@
 import time
 import os 
 import cv2 
-from picamera2 import Picamera2, Preview
 import queue
 from natsort import natsorted
 import numpy as np
 import sys
 import pickle
 
-# Import the custom AGC library
+"""Import the custom AGC library"""
 agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
 sys.path.append(os.path.abspath(agc_lib_path))
 from PyAGC import AGC
 
-CAM_FPS = 206.65
+# The FPS we have locked the camera to
+CAM_FPS: float = 200
 
+"""Write a frame in the write queue to disk in the output_path directory"""
 def write_frame(write_queue, output_path):
     # Create output directory for frames   
     if(not os.path.exists(output_path)):
         os.mkdir(os.path.basename(output_path))
-    
-
-    # Initialize container for per-frame info
-   
+      
     while(True):  
-        ret = write_queue.get()
+        # Retrieve a tuple of (frame, frame_num) from the queue
+        ret: tuple = write_queue.get()
 
+        # If we didn't receive a frame, we are at the end 
+        # of the video, finish writing
         if(ret is None):
             print('BREAKING WRITING')
             break
         
-
+        # Extract frame and frame_num by name
         frame, frame_num = ret
-        save_path = os.path.join(output_path, f"{frame_num}.tiff")
+
+        # Construct the path to save this frame to
+        save_path: str = os.path.join(output_path, f"{frame_num}.tiff")
+        
         print(f'writing {save_path}')
 
+        # Write the frame
         cv2.imwrite(save_path, frame)
 
-    # Close the metadata file
     print('finishing writing')
 
-def vid_array_from_file(path: str):
+"""Read in a video from a file to an 8-bit unsigned np.array"""
+def vid_array_from_file(path: str) -> np.array:
     frames = [cv2.imread(os.path.join(path, frame)) 
               for frame in natsorted(os.listdir(path)) 
               if '.pkl' not in frame and '.txt' not in frame] 
     
     return np.array(frames, dtype=np.uint8)
 
-
+"""Construct a video from a series of frames, output to output_path"""
 def reconstruct_video(video_frames: np.array, output_path: str):
     # Define the information about the video to use for writing
-    fps = CAM_FPS  # Frames per second of the camera to reconstruct
+    fps = CAM_FPS  
     height, width = video_frames[0].shape[:2]
 
     # Initialize VideoWriter object to write frames to
-    out = cv2.VideoWriter(output_path, 0, fps, (width, height), isColor=len(video_frames.shape) > 3)
+    out = cv2.VideoWriter(output_path, 0, fps, (width, height), 
+                          isColor=len(video_frames.shape) > 3)
 
     # Write all of the frames to the video
     for i in range(video_frames.shape[0]):
@@ -63,19 +69,27 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     # Release the VideoWriter object
     out.release()
 
-#Record a video from the raspberry pi camera
-def record_video(duration: float, write_queue: queue.Queue, filename: str, initial_gain: float, initial_exposure: int):        
+"""Record a viceo from the Raspberry Pi camera"""
+def record_video(duration: float, write_queue: queue.Queue, filename: str, 
+                 initial_gain: float, initial_exposure: int): 
+    from picamera2 import Picamera2, Preview
+
     # Connect to and set up camera
     print(f"Initializing camera")
-    cam = initialize_camera(initial_gain, initial_exposure)
-    gain_change_interval: float = 0.250
+    cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
+    gain_change_interval: float = 0.250 # the time between AGC adjustments 
     
-    # Begin Recording 
+    # Begin Recording and capture initial metadata 
     cam.start("video")  
     initial_metadata = cam.capture_metadata()
     current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
-    cam.set_controls({'AeEnable':0})     
     
+    # Make absolutely certain Ae and AWB are off 
+    # (had to put this here at some point) for it to work 
+    cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
+    
+    # Create containers to store the gain and exposure 
+    # of every frame
     gain_history, exposure_history = [], [] 
 
     # Begin timing capture
@@ -86,9 +100,10 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str, initi
     frame_num = 1 
     while(True):
         # Capture the frame
-        #print(f'capturing frame {frame_num}')
         frame = cam.capture_array("raw")
 
+        # Append the frame and its relevant information 
+        # to the storage containers
         write_queue.put((frame, frame_num))
         gain_history.append(current_gain)
         exposure_history.append(current_exposure)
@@ -98,13 +113,18 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str, initi
         
         # Change gain every N ms
         if((current_time - last_gain_change)  > gain_change_interval):
+            # Take the mean intensity of the frame
             mean_intensity = np.mean(frame, axis=(0,1))
             
+            # Feed the settings into the the AGC 
             ret = AGC(mean_intensity, current_gain, current_exposure, 0.95)
+
+            # Retrieve and set the new gain and exposure from our custom AGC
             new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
             cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
             
-
+            # Update the current_gain and current_exposure, 
+            # wait for next gain change time
             last_gain_change = current_time
             current_gain, current_exposure = new_gain, new_exposure
         
@@ -131,13 +151,16 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str, initi
     
     print('Finishing recording')
     
+    # Write the metadata information to a settings file
     with open(f'{filename}_settingsHistory.pkl', 'wb') as f:
         pickle.dump({'gain_history': np.array(gain_history),
                      'exposure_history': np.array(exposure_history)},
                      f)
     
+"""Connect to the camera and initialize a control object"""
+def initialize_camera(initial_gain: float, initial_exposure: int) -> object:
+    from picamera2 import Picamera2, Preview
 
-def initialize_camera(initial_gain: float, initial_exposure: int) -> Picamera2:
     # Initialize camera 
     cam: Picamera2 = Picamera2()
     

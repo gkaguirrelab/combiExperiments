@@ -13,7 +13,9 @@ extern "C" {
 
     RetVal AGC(double signal, double gain, double exposure,
                                 double speed_setting) 
-    {
+    {   
+
+        // Initialize a struct of return values
         RetVal ret_val; 
         ret_val.adjusted_gain = gain; 
         ret_val.adjusted_exposure = exposure;
@@ -22,7 +24,7 @@ extern "C" {
         std::vector<double> gain_range = {1.0, 10.666}; // The range of possible gain values
         std::vector<double> exposure_range = {37, std::floor(1e6/206.65)}; // The range of possible exposure values
         std::vector<double> signal_range = {0,255}; // The range of possible signal values
-        const double precision_error_margin = 0.025;
+        const double precision_error_margin = 0.025; // the allowable margin of floating point error between calculations
         enum class Correction_Direction {
             TURN_DOWN, // 0 
             TURN_UP,   // 1
@@ -30,8 +32,6 @@ extern "C" {
 
         // Calculate the adjustment
         double correction = 1+(signal_target - signal) / signal_target;
-
-        //std::cout << "Correction_1" << correction << std::endl; 
 
         // Speed
         double speed = speed_setting; 
@@ -49,16 +49,10 @@ extern "C" {
         // Correct the correction
         correction = 1 + ( (1 - speed) * (correction - 1) );
 
-        //std::cout << "Correction_2" << correction << std::endl; 
-
         // If correction == 1, nothing to be done
         if(correction == 1) {
-            //std::cout << "DOING NOTHING" << std::endl; 
-            //std::cout << std::abs(correction - 1) << std::endl;
             return ret_val; 
         }
-
-        //std::cout << "Correction " << correction << std::endl;
 
         // Determine whether we need to turn settings up (true)
         // or down (false)
@@ -66,14 +60,9 @@ extern "C" {
         bool exposure_not_max = exposure < exposure_range[1];
         bool gain_not_min = gain > gain_range[0]; 
 
-        //std::cout << "gain later: " << gain << std::endl ;
-        //std::cout << "gain min? " << gain_not_min << std::endl; 
-
         switch(mode){
             // If correction > 1, it means we need to turn up gain or exposure.
             case Correction_Direction::TURN_UP:
-                //std::cout << "INCREASING SETTINGS" << std::endl; 
-
                 // First choice is to turn up exposure
                 if(exposure_not_max) {
                     ret_val.adjusted_exposure = exposure * correction; 
@@ -94,8 +83,6 @@ extern "C" {
 
             // If correction < 1, it means we need to turn down gain or exposure.
             case Correction_Direction::TURN_DOWN:
-                //std::cout << "DECREASING SETTINGS" << std::endl; 
-
                 // First choice is to turn down gain
                 if(gain_not_min) {
                     ret_val.adjusted_gain = gain * correction; 

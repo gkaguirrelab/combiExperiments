@@ -1,4 +1,28 @@
 function [gain, exposure] = AGC(s, gain, exposure, speedSetting)
+% Description:
+% The MATLAB implementation of our custom AGC
+%
+% Inputs:
+%   s                       - Double. Represents the mean intensity 
+%                             value of a given frame
+%
+%   gain                    - Double. Represents the current gain setting
+%                           that led to s 
+%
+%   exposure                - Double. Represents the current exposure setting
+%                           that led to s
+%
+%   speedSetting            - Double. Represents the current speed setting 
+%                           of how to adjust the AGC
+% Examples:
+%{
+	s = 123; 
+    gain = 1.0; 
+    exposure = 52; 
+    speedSetting = 0.99;
+	[gain, exposure] = AGC(s, gain, exposure, speedSetting); 
+%}
+
 
         signalTarget = 127;
         gainRange = [1 10.666];
