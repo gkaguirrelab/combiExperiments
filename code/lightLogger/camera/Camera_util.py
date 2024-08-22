@@ -231,9 +231,6 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
     observed_model_T: np.array = np.array(observed_model_T).flatten()
     observed_fit: np.array = np.array(observed_fit).flatten()
 
-
-    # set the ylim to be between -0.5 and 0.5
-
     # Plot the fit on a given axis 
     ax.plot(observed_signal_T, signal-np.mean(signal), linestyle='-', label="Measured")
     ax.plot(observed_model_T, observed_fit, linestyle='-', label="Fit")
