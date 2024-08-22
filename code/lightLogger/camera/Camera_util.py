@@ -6,6 +6,7 @@ import argparse
 import sys 
 import matlab.engine
 from natsort import natsorted
+from collections.abc import Iterable
 import pickle
 
 """Import the FPS of the camera"""
@@ -150,7 +151,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
         # If the video is not from this light_level, skip 
         if(experiment_info["NDF"] != str2ndf(light_level)):
             continue 
-            
+        
         # Find the path to the warmup (0hz) file itself 
         tokens: list = os.path.splitext(file)[0].split('_') # Split based on meaningful _ character 
 
@@ -231,19 +232,24 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
     observed_fit: np.array = np.array(observed_fit).flatten()
 
 
+    # set the ylim to be between -0.5 and 0.5
+
     # Plot the fit on a given axis 
     ax.plot(observed_signal_T, signal-np.mean(signal), linestyle='-', label="Measured")
     ax.plot(observed_model_T, observed_fit, linestyle='-', label="Fit")
-    ax.legend()
+    ax.legend(fontsize=4)
     ax.set_title(f"Measured vs Fit Modulation {light_level}NDF {frequency}hz")
     ax.set_xlabel('Time [seconds]')
     ax.set_ylabel('Contrast')
+    ax.set_ylim((-0.5, 0.5))
 
     return observed_amplitude, observed_phase, observed_fps
 
 """Analyze the temporal sensitivity of a given light level, fit source vs observed for all frequencies"""
 def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_level: str) -> tuple:
     print(f"Generating TTF : {light_level}NDF")
+
+    # Make another document for just the warmup values per NDF
 
     # Read in the videos at different frequencies 
     (frequencies, mean_videos, warmup_settings, video_settings) = read_light_level_videos(recordings_dir, experiment_filename, light_level, parse_mean_video)
@@ -259,6 +265,9 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     moldulation_fig, modulation_axes = plt.subplots(total_axes, figsize=(18,16))
     settings_fig, settings_axes = plt.subplots(total_axes-1, figsize=(18,16))
     
+    # Ensure the settings are an iterable format
+    settings_axes = settings_axes if isinstance(settings_axes, Iterable) else [settings_axes]
+
     # Find the amplitude and FPS of the videos
     amplitudes, videos_fps = [], []
     for ind, (frequency, mean_video, warmup_settings_history, video_settings_history) in enumerate(zip(frequencies, mean_videos, warmup_settings, video_settings)):
@@ -270,33 +279,27 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
         observed_amplitude, observed_phase, observed_fps = fit_source_modulation(mean_video, light_level, frequency, moduation_axis)
 
         # Build the temporal support of the settings values by converting frame num to second
-        warmup_t: np.array = np.arange(0, warmup_settings_history['gain_history'].shape[0]/observed_fps, 1/observed_fps)
-        settings_t: np.array = warmup_settings_history['gain_history'].shape[0]/observed_fps + np.arange(0, mean_video.shape[0]/observed_fps, 1/observed_fps)
+        #warmup_t: np.array = np.arange(0, warmup_settings_history['gain_history'].shape[0]/observed_fps, 1/observed_fps)
+        settings_t: np.array = np.arange(0, mean_video.shape[0]/observed_fps, 1/observed_fps)
         
         # Because we are counting by float, sometimes the shapes are off by a frame, so just 
         # take how many points we actually have 
-        num_warmup_points = len(warmup_settings_history['gain_history'])
         num_video_points = len(video_settings_history['gain_history'])
-        warmup_t = warmup_t[:num_warmup_points]
         settings_t = settings_t[:num_video_points]
 
-        # Plot the gain of the warmup video
-        gain_axis.plot(warmup_t, warmup_settings_history['gain_history'], color='blue', label='Warmup Gain')
+        # Plot the gain of the camera over the course of the modulation video
+        gain_axis.plot(settings_t, video_settings_history['gain_history'], color='red', label='Gain') 
         gain_axis.set_title(f'Camera Settings {light_level}NDF {frequency}hz')
         gain_axis.set_xlabel('Time [seconds]')
-        gain_axis.set_ylabel('Gain Value')
-
-        # Plot the exposure of the warmup video
+        gain_axis.set_ylabel('Gain', color='red')
+        gain_axis.set_ylim([0.5,11])
+        
+        # Plot the exposure of the camera over the course of the modulation video on the same plot
+        # but with a different axis
         exposure_axis = gain_axis.twinx()
-        exposure_axis.plot(warmup_t, warmup_settings_history['exposure_history'], color='green', label='Warmup Exposure Time')
-
-        # Plot the settings of the camera over the course of the modulation video
-        gain_axis.plot(settings_t, video_settings_history['gain_history'], color='red', label='Gain')
         exposure_axis.plot(settings_t, video_settings_history['exposure_history'], color='orange', label='Exposure Time')
-
-        # Attach the legends to the settings plot
-        gain_axis.legend(loc='lower left')
-        exposure_axis.legend(loc='upper right')
+        exposure_axis.set_ylabel('Exposure', color='orange')
+        exposure_axis.set_ylim([35,5000])
 
         # Append this amplitude to the running list
         amplitudes.append(observed_amplitude)
@@ -314,35 +317,61 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     ax.set_ylabel('Amplitude')
     ax.set_title(f'Amplitude by Frequency [log] {light_level}NDF')
     ax.legend()
+    
+    # Adjust the spacing between the plots
     moldulation_fig.subplots_adjust(hspace=2)
+    settings_fig.subplots_adjust(hspace=2)
 
     # Save the figure
-    moldulation_fig.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/TemporalSensitivity{light_level}NDF.png')
-    settings_fig.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/cameraSettings{light_level}NDF.png')
+    moldulation_fig.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/TemporalSensitivity{light_level}NDF.pdf')
+    settings_fig.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/cameraSettings{light_level}NDF.pdf')
 
     # Close the plot and clear the canvas
     plt.close(moldulation_fig)
     plt.close(settings_fig)
 
-
-
-
-    return frequencies, amplitudes, videos_fps
+    return frequencies, amplitudes, videos_fps, warmup_settings
 
 """Generate a TTF plot for several light levels"""
 def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_dir: str): 
     # Create a mapping between light levels and their (frequencies, amplitudes)
     light_level_ts_map: dict = {str2ndf(light_level): analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
-                                for light_level in light_levels}
+                                                      for light_level in light_levels}
     
-    # Create a plot to measure data
-    fig, (ax0, ax1) = plt.subplots(1,2, figsize=(10,8))
+    # Create a TTF plot to measure data
+    ttf_fig, (ttf_ax0, ttf_ax1) = plt.subplots(1, 2, figsize=(10,8))
+
+    # Create a plot to measure warmup times per light-level
+    warmup_fig, warmup_axes = plt.subplots(len(light_level_ts_map), 1, figsize=(10,8))
+
+    # Ensure warmup_axes is an iterable object
+    warmup_axes = warmup_axes if isinstance(warmup_axes, Iterable) else [warmup_axes]
     
     # Plot the light levels' amplitudes by frequencies
-    for light_level, (frequencies, amplitudes, videos_fps) in light_level_ts_map.items():      
-        ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
-        ax1.plot(np.log10(frequencies), videos_fps, linestyle='-', marker='o', label=f"{light_level}NDF FPS") 
+    for ind, (light_level, (frequencies, amplitudes, videos_fps, warmup_settings)) in enumerate(light_level_ts_map.items()):      
+        # Plot the amplitude and FPS
+        ttf_ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
+        ttf_ax1.plot(np.log10(frequencies), videos_fps, linestyle='-', marker='o', label=f"{light_level}NDF FPS")
+        
+        # Retrieve info to plot the camera settings over the warmup period
+        gain_axis = warmup_axes[ind]
+        gain_history: np.array = warmup_settings[0]['gain_history']
+        exposure_history: np.array = warmup_settings[0]['exposure_history']
+        warmup_t: np.array = np.arange(0, len(gain_history)/CAM_FPS, 1/CAM_FPS)
 
+        # Plot the gain of the camera over the course of the warmup video
+        gain_axis.plot(warmup_t, gain_history, color='red', label='Gain') 
+        gain_axis.set_title(f'Camera Settings {light_level}NDF {frequencies[0]}hz')
+        gain_axis.set_xlabel('Time [seconds]')
+        gain_axis.set_ylabel('Gain', color='red')
+        gain_axis.set_ylim([0.5,11])
+        
+        # Plot the exposure of the camera over the course of the warmup video on the same plot
+        # but with a different axis
+        exposure_axis = gain_axis.twinx()
+        exposure_axis.plot(warmup_t, exposure_history, color='orange', label='Exposure Time')
+        exposure_axis.set_ylabel('Exposure', color='orange')
+        exposure_axis.set_ylim([35,5000])
 
     # Retrieve the ideal device curve from MATLAB
     eng = matlab.engine.start_matlab() 
@@ -351,23 +380,29 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     ideal_device_curve = np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten() * 0.5
     
     # Add the ideal device to the plot
-    ax0.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")
+    ttf_ax0.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")
 
+    # Close the MATLAB engine 
     eng.quit()
 
-    ax0.set_xlabel("Frequency [log]")
-    ax0.set_ylabel("Amplitude")
-    ax0.set_title("Camera TTF Plot")
-    ax0.legend()
+    # Label TTF and FPS plot
+    ttf_ax0.set_xlabel("Frequency [log]")
+    ttf_ax0.set_ylabel("Amplitude")
+    ttf_ax0.set_title("Camera TTF Plot")
+    ttf_ax0.legend()
 
+    ttf_ax1.set_xlabel("Frequency [log]")
+    ttf_ax1.set_ylabel("FPS")
+    ttf_ax1.set_title("FPS by Frequency/Light Level")
+    ttf_ax1.legend()
 
-    ax1.set_xlabel("Frequency [log]")
-    ax1.set_ylabel("FPS")
-    ax1.set_title("FPS by Frequency/Light Level")
-    ax1.legend()
+    # Adjust spacing between subplots
+    ttf_fig.subplots_adjust(hspace=2)
+    warmup_fig.subplots_adjust(hspace=2)
 
     # Save the figure
-    plt.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.png')
+    ttf_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.pdf')
+    warmup_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/warmupSettings.pdf')
     
     plt.show()
 
