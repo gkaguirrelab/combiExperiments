@@ -6,6 +6,7 @@ import argparse
 import sys 
 import matlab.engine
 from natsort import natsorted
+import pickle
 
 """Import the FPS of the camera"""
 agc_lib_path = os.path.join(os.path.dirname(__file__))
@@ -123,6 +124,10 @@ def parse_recording_filename(filename: str) -> dict:
 """Read all videos in of a certain light level"""
 def read_light_level_videos(recordings_dir: str, experiment_filename: str, 
                             light_level: str, parser: object) -> tuple:
+    
+    # Construct the path to the metadata directory
+    metadata_dir: str = recordings_dir + '_metadata'
+    
     # Create container to map frequencies and their videos
     frequencies_and_videos: dict = {}
 
@@ -132,6 +137,9 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
     for file in os.listdir(recordings_dir):
         if(file == '.DS_Store'): continue
         
+        # Build the complete path to the file
+        filepath = os.path.join(recordings_dir, file)
+
         # Parse the experiment information out of the filename
         experiment_info: dict = parse_recording_filename(file)
 
@@ -142,9 +150,34 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
         # If the video is not from this light_level, skip 
         if(experiment_info["NDF"] != str2ndf(light_level)):
             continue 
+            
+        # Find the path to the warmup (0hz) file itself 
+        tokens: list = os.path.splitext(file)[0].split('_') # Split based on meaningful _ character 
+
+        tokens[1] = '0hz' # set frequency part equal to 0hz 
+        warmup_settings_filename: str = '_'.join(tokens) + '_warmup_settingsHistory.pkl' # construct the warmup_settings filename
+        warmup_settings_filepath: str = os.path.join(metadata_dir, warmup_settings_filename) # append it to the metadata dir path 
+        
+        # Find the path to the settings file for the video
+        video_settings_filepath: str = os.path.join(metadata_dir, os.path.splitext(file)[0] + '_settingsHistory.pkl')
         
         # Parse the video and pair it with its frequency 
-        frequencies_and_videos[experiment_info["frequency"]] = parser(os.path.join(recordings_dir, file))
+        print(f"Reading {light_level}NDF {experiment_info['frequency']}hz from {file}")
+        print(f'Warmup settings from: {os.path.basename(warmup_settings_filepath)}')
+        print(f'Video settings from: {os.path.basename(video_settings_filepath)}')
+
+        # Read in the gain + exposure settings of the camera 
+        warmup_settings: dict = None 
+        video_settings : dict = None 
+
+        with open(warmup_settings_filepath, 'rb') as f:
+            warmup_settings = pickle.load(f)
+        
+        with open(video_settings_filepath, 'rb') as f:
+            video_settings = pickle.load(f)
+
+        # Associate the frequency to this tuple of (video, warmup_settings, settings)
+        frequencies_and_videos[experiment_info["frequency"]] = (parser(filepath), warmup_settings, video_settings)
 
     # Sort the videos by their frequencies
     sorted_by_frequencies: list = sorted(frequencies_and_videos.items())
@@ -152,26 +185,42 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
     # Split the two back into seperate lists
     frequencies: list = []
     videos: list = []
-    for (frequency, video) in sorted_by_frequencies:
+    warmup_settings_list: list = []
+    video_settings_list: list = []
+    for (frequency, (video, warmup_settings, video_settings)) in sorted_by_frequencies:
         frequencies.append(frequency)
         videos.append(video)
+        warmup_settings_list.append(warmup_settings)
+        video_settings_list.append(video_settings)
 
-    return frequencies, videos
+    return np.array(frequencies, dtype=np.float64), videos, warmup_settings_list, video_settings_list
 
 """Fit the source modulation to the observed and plot the fit"""
 def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes) -> tuple:     
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
+
+    # Ensure MATLAB started properly
+    assert eng is not None
     
     # Convert signal to contrast
     signal_mean = np.mean(signal)
     signal = (signal - signal_mean) / signal_mean
+
+    # Find the actual FPS of the observed data (might be slightly different than our guess)
+    observed_fps: matlab.double = eng.findObservedFPS(matlab.double(signal), 
+                                                      matlab.double(frequency), 
+                                                      matlab.double([CAM_FPS-0, CAM_FPS+0.25]), 
+                                                      nargout=1)
     
     # Fit the data
     observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(matlab.double(signal), 
                                                                                                                                matlab.double(frequency), 
-                                                                                                                               matlab.double(CAM_FPS), 
+                                                                                                                               observed_fps, 
                                                                                                                                nargout=6)
+    print(f"Observed FPS: {observed_fps}")
+    print(f"R2: {observed_r2}")
+    print(f"Amplitude: {observed_amplitude}")
 
     # Close the MATLAB engine 
     eng.quit()
@@ -181,6 +230,7 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
     observed_model_T: np.array = np.array(observed_model_T).flatten()
     observed_fit: np.array = np.array(observed_fit).flatten()
 
+
     # Plot the fit on a given axis 
     ax.plot(observed_signal_T, signal-np.mean(signal), linestyle='-', label="Measured")
     ax.plot(observed_model_T, observed_fit, linestyle='-', label="Fit")
@@ -189,14 +239,14 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
     ax.set_xlabel('Time [seconds]')
     ax.set_ylabel('Contrast')
 
-    return observed_amplitude, observed_phase
+    return observed_amplitude, observed_phase, observed_fps
 
 """Analyze the temporal sensitivity of a given light level, fit source vs observed for all frequencies"""
 def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_level: str) -> tuple:
     print(f"Generating TTF : {light_level}NDF")
 
     # Read in the videos at different frequencies 
-    (frequencies, mean_videos) = read_light_level_videos(recordings_dir, experiment_filename, light_level, parse_mean_video)
+    (frequencies, mean_videos, warmup_settings, video_settings) = read_light_level_videos(recordings_dir, experiment_filename, light_level, parse_mean_video)
 
     # Assert we read in some videos
     assert len(mean_videos) != 0 
@@ -205,40 +255,79 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     assert all(len(vid.shape) < 3 for vid in mean_videos)
     
     # Create axis for all of the frequencies to fit
-    total_axes = len(frequencies)+1
-    fig, axes = plt.subplots(total_axes, figsize=(18,16))
+    total_axes = len(frequencies)+1 # frequencies + 1 for the TTF 
+    moldulation_fig, modulation_axes = plt.subplots(total_axes, figsize=(18,16))
+    settings_fig, settings_axes = plt.subplots(total_axes-1, figsize=(18,16))
     
-    amplitudes = []
-    for ind, (frequency, mean_video) in enumerate(zip(frequencies, mean_videos)):
+    # Find the amplitude and FPS of the videos
+    amplitudes, videos_fps = [], []
+    for ind, (frequency, mean_video, warmup_settings_history, video_settings_history) in enumerate(zip(frequencies, mean_videos, warmup_settings, video_settings)):
         print(f"Fitting Source vs Observed Modulation: {light_level}NDF {frequency}hz")
+        moduation_axis, gain_axis = modulation_axes[ind], settings_axes[ind]
 
         # Fit the source modulation to the observed for this frequency, 
         # and find the amplitude
-        observed_amplitude, observed_phase = fit_source_modulation(mean_video, light_level, frequency, axes[ind])
+        observed_amplitude, observed_phase, observed_fps = fit_source_modulation(mean_video, light_level, frequency, moduation_axis)
+
+        # Build the temporal support of the settings values by converting frame num to second
+        warmup_t: np.array = np.arange(0, warmup_settings_history['gain_history'].shape[0]/observed_fps, 1/observed_fps)
+        settings_t: np.array = warmup_settings_history['gain_history'].shape[0]/observed_fps + np.arange(0, mean_video.shape[0]/observed_fps, 1/observed_fps)
         
+        # Because we are counting by float, sometimes the shapes are off by a frame, so just 
+        # take how many points we actually have 
+        num_warmup_points = len(warmup_settings_history['gain_history'])
+        num_video_points = len(video_settings_history['gain_history'])
+        warmup_t = warmup_t[:num_warmup_points]
+        settings_t = settings_t[:num_video_points]
+
+        # Plot the gain of the warmup video
+        gain_axis.plot(warmup_t, warmup_settings_history['gain_history'], color='blue', label='Warmup Gain')
+        gain_axis.set_title(f'Camera Settings {light_level}NDF {frequency}hz')
+        gain_axis.set_xlabel('Time [seconds]')
+        gain_axis.set_ylabel('Gain Value')
+
+        # Plot the exposure of the warmup video
+        exposure_axis = gain_axis.twinx()
+        exposure_axis.plot(warmup_t, warmup_settings_history['exposure_history'], color='green', label='Warmup Exposure Time')
+
+        # Plot the settings of the camera over the course of the modulation video
+        gain_axis.plot(settings_t, video_settings_history['gain_history'], color='red', label='Gain')
+        exposure_axis.plot(settings_t, video_settings_history['exposure_history'], color='orange', label='Exposure Time')
+
+        # Attach the legends to the settings plot
+        gain_axis.legend(loc='lower left')
+        exposure_axis.legend(loc='upper right')
+
         # Append this amplitude to the running list
         amplitudes.append(observed_amplitude)
+        videos_fps.append(observed_fps)
 
     # Convert amplitudes to standardized np.array
     amplitudes = np.array(amplitudes, dtype=np.float64)
+    videos_fps = np.array(videos_fps, dtype=np.float32)
 
     # Plot the TTF for one light level
-    ax = axes[-1]
+    ax = modulation_axes[-1]
     ax.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label='Observed Device')
     ax.set_ylim(bottom=0)
     ax.set_xlabel('Frequency [log]')
     ax.set_ylabel('Amplitude')
     ax.set_title(f'Amplitude by Frequency [log] {light_level}NDF')
     ax.legend()
-    plt.subplots_adjust(hspace=2)
+    moldulation_fig.subplots_adjust(hspace=2)
 
     # Save the figure
-    plt.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/TemporalSensitivity{light_level}NDF.png')
-    
-    # Close the plot and clear the canvas
-    plt.close(fig)
+    moldulation_fig.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/TemporalSensitivity{light_level}NDF.png')
+    settings_fig.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/cameraSettings{light_level}NDF.png')
 
-    return frequencies, amplitudes
+    # Close the plot and clear the canvas
+    plt.close(moldulation_fig)
+    plt.close(settings_fig)
+
+
+
+
+    return frequencies, amplitudes, videos_fps
 
 """Generate a TTF plot for several light levels"""
 def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_dir: str): 
@@ -250,8 +339,9 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     fig, (ax0, ax1) = plt.subplots(1,2, figsize=(10,8))
     
     # Plot the light levels' amplitudes by frequencies
-    for light_level, (frequencies, amplitudes) in light_level_ts_map.items():   
-        ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF_Obs")
+    for light_level, (frequencies, amplitudes, videos_fps) in light_level_ts_map.items():      
+        ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
+        ax1.plot(np.log10(frequencies), videos_fps, linestyle='-', marker='o', label=f"{light_level}NDF FPS") 
 
 
     # Retrieve the ideal device curve from MATLAB
@@ -269,6 +359,12 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     ax0.set_ylabel("Amplitude")
     ax0.set_title("Camera TTF Plot")
     ax0.legend()
+
+
+    ax1.set_xlabel("Frequency [log]")
+    ax1.set_ylabel("FPS")
+    ax1.set_title("FPS by Frequency/Light Level")
+    ax1.legend()
 
     # Save the figure
     plt.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.png')
