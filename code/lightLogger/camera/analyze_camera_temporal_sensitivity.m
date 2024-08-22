@@ -176,7 +176,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
     addpath(ndf2str_path); 
     
-    Camera_util.generate_TTF(py.str(char(recordings_dir)), py.str(char(output_filename)), py.list(arrayfun(@ndf2str, ndf_range, "UniformOutput", false)), py.str(char('test')));
+    Camera_util.generate_TTF(py.str(char(recordings_dir)), py.str(char(output_filename)), py.list(arrayfun(@ndf2str, ndf_range, "UniformOutput", false)));
 
     % Step 16: Save the results and flicker information
     save(sprintf('%s%s_TemporalSensitivityFlicker.mat', drop_box_dir, 'camera'), 'modResult');

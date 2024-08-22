@@ -289,14 +289,12 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
         gain_axis.set_title(f'Camera Settings {light_level}NDF {frequency}hz')
         gain_axis.set_xlabel('Time [seconds]')
         gain_axis.set_ylabel('Gain', color='red')
-        gain_axis.set_ylim([0.5,11])
         
         # Plot the exposure of the camera over the course of the modulation video on the same plot
         # but with a different axis
         exposure_axis = gain_axis.twinx()
         exposure_axis.plot(settings_t, video_settings_history['exposure_history'], color='orange', label='Exposure Time')
         exposure_axis.set_ylabel('Exposure', color='orange')
-        exposure_axis.set_ylim([35,5000])
 
         # Append this amplitude to the running list
         amplitudes.append(observed_amplitude)
@@ -330,7 +328,7 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     return frequencies, amplitudes, videos_fps, warmup_settings
 
 """Generate a TTF plot for several light levels"""
-def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_dir: str): 
+def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple): 
     # Create a mapping between light levels and their (frequencies, amplitudes)
     light_level_ts_map: dict = {str2ndf(light_level): analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
                                                       for light_level in light_levels}
@@ -404,26 +402,23 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     plt.show()
 
 """Generate a plot of phase by row"""
-def generate_row_phase_plot(video: np.array, frequency: float):
+def generate_row_phase_plot(video: np.array, frequency: float) -> float:
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
 
-    # Convert frequency to MATLAB datatype
-    frequency_as_double: matlab.double = matlab.double(frequency)
-
-    phases: list = []
     # Calculate the phase for each row of the video 
+    phases: list = []
     for r in range(video.shape[1]):
         # Get the mean video of just this row
         row_video: np.array = np.mean(np.ascontiguousarray(video[:,r,:].astype(np.float64)), axis=1).flatten()
 
-        print(f"Row_video shape {row_video.shape}")
-
-        # Convert the row video to MATLAB type
-        signal_as_double = matlab.double(row_video)
+        #print(f"Row_video shape {row_video.shape}")
 
         # Find the phase
-        observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(signal_as_double, frequency_as_double, CAM_FPS, nargout=6)
+        observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(matlab.double(row_video),
+                                                                                                                                   matlab.double(frequency), 
+                                                                                                                                   matlab.double(CAM_FPS), 
+                                                                                                                                   nargout=6)
         
         # Append the phase to the storage container
         phases.append(observed_phase)
@@ -431,12 +426,23 @@ def generate_row_phase_plot(video: np.array, frequency: float):
     # Convert the list of phases to standardized np.array
     phases = np.array(phases)
 
+    x, y = range(video.shape[1]), phases
+
+    # Fit a linear polynomial (degree 1)
+    coefficients: list = np.polyfit(x, y, 1)
+    slope: float = coefficients[0]
+
     # Plot the phases by row
-    plt.plot(range(video.shape[1]), phases)
+    plt.plot(x, y)
     plt.title('Phase by Row Number')
     plt.xlabel('Row Number')
     plt.ylabel('Phase')
     plt.show()
+
+    return slope
+
+
+
 
 def main():    
     #recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
@@ -446,7 +452,7 @@ def main():
     experiment_filename = '200FPS'
     save_path = './test'
 
-    generate_TTF(recordings_dir, experiment_filename, ['0','1','2','3'], save_path)
+    generate_TTF(recordings_dir, experiment_filename, ['0','1','2','3'])
 
 if(__name__ == '__main__'):
     main()
