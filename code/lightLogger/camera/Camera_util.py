@@ -8,6 +8,7 @@ import matlab.engine
 from natsort import natsorted
 from collections.abc import Iterable
 import pickle
+import scipy.io
 
 """Import the FPS of the camera"""
 agc_lib_path = os.path.join(os.path.dirname(__file__))
@@ -197,7 +198,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
     return np.array(frequencies, dtype=np.float64), videos, warmup_settings_list, video_settings_list
 
 """Fit the source modulation to the observed and plot the fit"""
-def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes) -> tuple:     
+def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes=None, fps_guess: float=CAM_FPS, fps_guess_increment: tuple=(0,0.25)) -> tuple:     
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
 
@@ -211,7 +212,7 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
     # Find the actual FPS of the observed data (might be slightly different than our guess)
     observed_fps: matlab.double = eng.findObservedFPS(matlab.double(signal), 
                                                       matlab.double(frequency), 
-                                                      matlab.double([CAM_FPS-0, CAM_FPS+0.25]), 
+                                                      matlab.double([fps_guess+fps_guess_increment[0], fps_guess+fps_guess_increment[1]]), 
                                                       nargout=1)
     
     # Fit the data
@@ -230,6 +231,10 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
     observed_signal_T: np.array = np.array(observed_signal_T).flatten()
     observed_model_T: np.array = np.array(observed_model_T).flatten()
     observed_fit: np.array = np.array(observed_fit).flatten()
+
+    # If we do not want to plot, simply return
+    if(ax is None):
+        return observed_amplitude, observed_phase, observed_fps
 
     # Plot the fit on a given axis 
     ax.plot(observed_signal_T, signal-np.mean(signal), linestyle='-', label="Measured")
@@ -326,6 +331,59 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     plt.close(settings_fig)
 
     return frequencies, amplitudes, videos_fps, warmup_settings
+
+"Plot the TTF of the Klein at a single light level"
+def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
+    videos = [ (file, scipy.io.loadmat(os.path.join(recordings_dir, file))) 
+              for file in os.listdir(recordings_dir)
+              if experiment_filename == file.split('_')[0]]
+    
+    fig, axes = plt.subplots(len(videos),1)
+    results = {}
+    for ind, (filename, mat) in enumerate(videos):
+        name, extension = os.path.splitext(filename)
+
+        filename = name + f'_0NDF{extension}'
+
+        print(f"Analyzing {filename}")
+
+        file_info = parse_recording_filename(filename)
+
+        light_level = file_info['NDF']
+        f = file_info['frequency']
+        video = mat['luminance256HzData'][0].flatten().astype(np.float64)
+
+        observed_amplitude, observed_phase, observed_fps = fit_source_modulation(video, light_level, f, ax=axes[ind], fps_guess=256)
+
+        results[f] = [observed_amplitude, observed_fps]
+
+    fig.show()
+
+    eng = matlab.engine.start_matlab() 
+    eng.addpath('/Users/zacharykelly/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
+
+    # Sort the results by frequency
+    sorted_by_frequency = sorted(results.items())
+    frequencies = []
+    amplitudes = []
+
+    for (frequency, (amplitude, fps)) in sorted_by_frequency:
+        frequencies.append(frequency)
+        amplitudes.append(amplitude)
+
+    frequencies = np.array(frequencies, dtype=np.float64)
+    amplitudes = np.array(amplitudes)
+    expected_amplitudes = np.array(eng.contrastAttenuationByFreq(matlab.double([6,12,25,50]))).flatten()*0.5
+
+
+    plt.plot(np.log10(frequencies), amplitudes, marker='.')
+    plt.plot(np.log10([6,12,25,50]),[0.5,0.4965,0.4715,0.4175], marker='x', color='red')
+    plt.plot(np.log10([6,12,25,50]), expected_amplitudes, marker='o', color='green')
+    plt.xlabel('Frequency [log]')
+    plt.ylabel('Amplitude')
+    plt.title('Klein TTF Plot (0 NDF)')
+    plt.show()
+
 
 """Generate a TTF plot for several light levels"""
 def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple): 
