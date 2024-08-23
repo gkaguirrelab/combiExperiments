@@ -376,23 +376,27 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
     expected_amplitudes = np.array(eng.contrastAttenuationByFreq(matlab.double([6,12,25,50]))).flatten()*0.5
 
 
-    plt.plot(np.log10(frequencies), amplitudes, marker='.')
-    plt.plot(np.log10([6,12,25,50]),[0.5,0.4965,0.4715,0.4175], marker='x', color='red')
-    plt.plot(np.log10([6,12,25,50]), expected_amplitudes, marker='o', color='green')
+    plt.plot(np.log10(frequencies), amplitudes, marker='.', label='Measured')
+    plt.plot(np.log10([6,12,25,50]),[0.5,0.4965,0.4715,0.4175], marker='x', color='red', label='Observed')
+    plt.plot(np.log10([6,12,25,50]), expected_amplitudes, marker='o', color='green', label='Expected')
     plt.xlabel('Frequency [log]')
     plt.ylabel('Amplitude')
     plt.title('Klein TTF Plot (0 NDF)')
+    plt.legend()
     plt.show()
 
 
 """Generate a TTF plot for several light levels"""
 def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple): 
+    eng = matlab.engine.start_matlab()
+    eng.addpath('/Users/zacharykelly/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
+   
     # Create a mapping between light levels and their (frequencies, amplitudes)
     light_level_ts_map: dict = {str2ndf(light_level): analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
                                                       for light_level in light_levels}
     
     # Create a TTF plot to measure data
-    ttf_fig, (ttf_ax0, ttf_ax1) = plt.subplots(1, 2, figsize=(10,8))
+    ttf_fig, (ttf_ax0, ttf_ax1, ttf_ax2) = plt.subplots(3, 1, figsize=(14,12))
 
     # Create a plot to measure warmup times per light-level
     warmup_fig, warmup_axes = plt.subplots(len(light_level_ts_map), 1, figsize=(10,8))
@@ -401,10 +405,19 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     warmup_axes = warmup_axes if isinstance(warmup_axes, Iterable) else [warmup_axes]
     
     # Plot the light levels' amplitudes by frequencies
-    for ind, (light_level, (frequencies, amplitudes, videos_fps, warmup_settings)) in enumerate(light_level_ts_map.items()):      
+    for ind, (light_level, (frequencies, amplitudes, videos_fps, warmup_settings)) in enumerate(light_level_ts_map.items()):  
+        # Frequencies above 80 are rejected by MATLAB, so splice them out of our set 
+        in_bound_indices: np.array = np.argwhere(frequencies < 80)
+        in_bound_frequencies: np.array = frequencies[in_bound_indices]
+        num_out_of_bound_freqs: int = abs(in_bound_indices[-1] - (len(frequencies) - 1))
+
+        # Find the corrected amplitude for these frequencies
+        corrected_amplitudes: np.array = np.array( (np.array(eng.contrastAttenuationByFreq(matlab.double(in_bound_frequencies))).flatten()*0.5).tolist() + [0.1]*num_out_of_bound_freqs )
+
         # Plot the amplitude and FPS
         ttf_ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
-        ttf_ax1.plot(np.log10(frequencies), videos_fps, linestyle='-', marker='o', label=f"{light_level}NDF FPS")
+        ttf_ax1.plot(np.log10(frequencies), amplitudes[:-num_out_of_bound_freqs] / corrected_amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
+        ttf_ax2.plot(np.log10(frequencies), videos_fps, linestyle='-', marker='o', label=f"{light_level}NDF FPS")
         
         # Retrieve info to plot the camera settings over the warmup period
         gain_axis = warmup_axes[ind]
@@ -445,9 +458,14 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     ttf_ax0.legend()
 
     ttf_ax1.set_xlabel("Frequency [log]")
-    ttf_ax1.set_ylabel("FPS")
-    ttf_ax1.set_title("FPS by Frequency/Light Level")
+    ttf_ax1.set_ylabel("Amplitude")
+    ttf_ax1.set_title("Corrected Camera TTF Plot")
     ttf_ax1.legend()
+
+    ttf_ax2.set_xlabel("Frequency [log]")
+    ttf_ax2.set_ylabel("FPS")
+    ttf_ax2.set_title("FPS by Frequency/Light Level")
+    ttf_ax2.legend()
 
     # Adjust spacing between subplots
     ttf_fig.subplots_adjust(hspace=2)
