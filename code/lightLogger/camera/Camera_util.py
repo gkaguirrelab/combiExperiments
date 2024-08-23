@@ -401,6 +401,65 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     
     plt.show()
 
+"""Generate a plot of mean microseconds per line by categorical exposure time"""
+def generate_ms_by_exposure_plot(recordings_dir: str, light_levels: list):
+    # Define containers used for plotting
+    x: list = []
+    y: list = []
+    yerr: list = []
+
+    # Iterate across light levels
+    for light_level in light_levels:
+        # Define frequencies to conduct plotting for
+        # and container for per-view results
+        frequencies_to_test: set = {6, 12, 25}
+        microseconds_per_row_list: list = []
+
+        # Retrieve the videos by finding videos whose light level matches and whose frequencies are 
+        # in the set of frequencies to test
+        print(f"Retreiving {light_level} videos")
+        videos = [(os.path.join(recordings_dir, file), parse_video(os.path.join(recordings_dir, file))) 
+                  for file in os.listdir(recordings_dir) 
+                  if f"{light_level}NDF" in file 
+                  and parse_recording_filename(file)['frequency'] in frequencies_to_test]
+
+        # Find the slope and associated microseconds per row of each video
+        for (path, video) in videos:
+            print(f'Plotting row phase for {path}')
+            
+            # Find the frequency for this video
+            f = parse_recording_filename(os.path.split(path)[1])['frequency']
+
+            # Calculate relevant information
+            slope = generate_row_phase_plot(video, f)
+            secs_per_row = slope/(2*np.pi*f)
+            microseconds_per_row_list.append(abs(secs_per_row*1000000))
+
+        # Convert list to standardized np.array
+        microseconds_per_row_list: np.array = np.array(microseconds_per_row_list)
+        
+        # Calculate values for this light level (exposure time is categorical here since it maxes at anything below 0)
+        exposure_time = 1 if light_level == '0' else 2
+        mean_microseconds_per_row = np.mean(microseconds_per_row_list)
+        std_microseconds_per_row = np.std(microseconds_per_row_list)
+
+        print(f"Exposure Time: {exposure_time}")
+        print(f"Mean Microseconds: {mean_microseconds_per_row}")
+        print(f"Std microseconds per row: {std_microseconds_per_row}")
+
+        # Append values to the plotting containers
+        x.append(exposure_time)
+        y.append(mean_microseconds_per_row)
+        yerr.append(std_microseconds_per_row)
+
+    # Plot the data
+    plt.errorbar(x, y, yerr=yerr, linestyle='', marker='o', color='blue', ecolor='red')
+    plt.title('Mean Microseconds per Row by Exposure')
+    plt.xlabel('Exposure Time')
+    plt.ylabel('Mean Microseconds per Row')
+    plt.show()
+
+
 """Generate a plot of phase by row"""
 def generate_row_phase_plot(video: np.array, frequency: float) -> float:
     # Start the MATLAB engine
@@ -424,7 +483,7 @@ def generate_row_phase_plot(video: np.array, frequency: float) -> float:
         phases.append(observed_phase)
 
     # Convert the list of phases to standardized np.array
-    phases = np.array(phases)
+    phases = np.unwrap(np.array(phases), period=np.pi/4)
 
     x, y = range(video.shape[1]), phases
 
