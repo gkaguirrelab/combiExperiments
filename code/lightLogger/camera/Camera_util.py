@@ -334,31 +334,46 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
 
 "Plot the TTF of the Klein at a single light level"
 def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
-    videos = [ (file, scipy.io.loadmat(os.path.join(recordings_dir, file))) 
+    # Read in the videos 
+    videos: list = [ (file, scipy.io.loadmat(os.path.join(recordings_dir, file))) 
               for file in os.listdir(recordings_dir)
               if experiment_filename == file.split('_')[0]]
     
+    # Construct plot to hold video fits as well as 
+    # association of frequencies to amplitudes and observed FPS
     fig, axes = plt.subplots(len(videos),1)
-    results = {}
+    results: dict = {}
+
+    # Iterate over the videos
     for ind, (filename, mat) in enumerate(videos):
+        # Find the filename and its extension
         name, extension = os.path.splitext(filename)
 
-        filename = name + f'_0NDF{extension}'
+        # Reformat the filename to fit the expected input 
+        # of parse_recording_filename
+        filename: str = name + f'_0NDF{extension}'
 
         print(f"Analyzing {filename}")
 
-        file_info = parse_recording_filename(filename)
+        # Parse the filename 
+        file_info: dict = parse_recording_filename(filename)
 
-        light_level = file_info['NDF']
-        f = file_info['frequency']
-        video = mat['luminance256HzData'][0].flatten().astype(np.float64)
+        # Retrieve relevant information from the filename 
+        # and the observed modulation video from the file
+        light_level: float = file_info['NDF']
+        f: float = file_info['frequency']
+        video: np.array = mat['luminance256HzData'][0].flatten().astype(np.float64)
 
+        # Calculate the observed amplitude and FPS
         observed_amplitude, observed_phase, observed_fps = fit_source_modulation(video, light_level, f, ax=axes[ind], fps_guess=256)
 
+        # Save these results
         results[f] = [observed_amplitude, observed_fps]
 
+    # Show the figure of source vs observed modulation fits
     fig.show()
 
+    # Initialize the MATLAB engine
     eng = matlab.engine.start_matlab() 
     eng.addpath('/Users/zacharykelly/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
 
@@ -371,14 +386,25 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
         frequencies.append(frequency)
         amplitudes.append(amplitude)
 
+    # Convert frequencies and amplitudes to standardized np.arrays
+    # float64 necessary when passing to MATLAB
     frequencies = np.array(frequencies, dtype=np.float64)
     amplitudes = np.array(amplitudes)
+
+    # Find the expected amplitudes from Geoff's previous work 
     expected_amplitudes = np.array(eng.contrastAttenuationByFreq(matlab.double([6,12,25,50]))).flatten()*0.5
 
+    plt.close(fig)
 
+    # Plot the amplitude that we measured from the videos
     plt.plot(np.log10(frequencies), amplitudes, marker='.', label='Measured')
+    
+    # Plot the amplitude that we observed from the klein software 
     plt.plot(np.log10([6,12,25,50]),[0.5,0.4965,0.4715,0.4175], marker='x', color='red', label='Observed')
+    
+    # Plot the amplitudes expected from Geoff's previous work
     plt.plot(np.log10([6,12,25,50]), expected_amplitudes, marker='o', color='green', label='Expected')
+    
     plt.xlabel('Frequency [log]')
     plt.ylabel('Amplitude')
     plt.title('Klein TTF Plot (0 NDF)')
@@ -453,8 +479,6 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     ttf_ax0.set_ylim([0, 0.65])
     ttf_ax1.set_ylim([0, 0.65])
 
-
-
     # Close the MATLAB engine 
     eng.quit()
 
@@ -485,7 +509,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     plt.show()
 
 """Generate a plot of mean microseconds per line by categorical exposure time"""
-def generate_ms_by_exposure_plot(recordings_dir: str, light_levels: list):
+def generate_ms_by_exposure_plot(recordings_dir: str, experiment_filename: str, light_levels: list):
     # Define containers used for plotting
     x: list = []
     y: list = []
@@ -502,9 +526,10 @@ def generate_ms_by_exposure_plot(recordings_dir: str, light_levels: list):
         # in the set of frequencies to test
         print(f"Retreiving {light_level} videos")
         videos = [(os.path.join(recordings_dir, file), parse_video(os.path.join(recordings_dir, file))) 
-                  for file in os.listdir(recordings_dir) 
-                  if f"{light_level}NDF" in file 
-                  and parse_recording_filename(file)['frequency'] in frequencies_to_test]
+                    for file in os.listdir(recordings_dir) 
+                    if f"{light_level}NDF" in file 
+                    and parse_recording_filename(file)['frequency'] in frequencies_to_test
+                    and parse_recording_filename(file)['experiment_name'] == experiment_filename]
 
         # Find the slope and associated microseconds per row of each video
         for (path, video) in videos:
@@ -537,6 +562,7 @@ def generate_ms_by_exposure_plot(recordings_dir: str, light_levels: list):
 
     # Plot the data
     plt.errorbar(x, y, yerr=yerr, linestyle='', marker='o', color='blue', ecolor='red')
+    plt.xticks([1,2], ['600usec', '4862usec'])
     plt.title('Mean Microseconds per Row by Exposure')
     plt.xlabel('Exposure Time')
     plt.ylabel('Mean Microseconds per Row')
@@ -553,8 +579,6 @@ def generate_row_phase_plot(video: np.array, frequency: float) -> float:
     for r in range(video.shape[1]):
         # Get the mean video of just this row
         row_video: np.array = np.mean(np.ascontiguousarray(video[:,r,:].astype(np.float64)), axis=1).flatten()
-
-        #print(f"Row_video shape {row_video.shape}")
 
         # Find the phase
         observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(matlab.double(row_video),
