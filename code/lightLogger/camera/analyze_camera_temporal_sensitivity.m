@@ -97,7 +97,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
         fprintf('You now have 30 seconds to leave the room if desired.\n');
-        %pause(30)
+        pause(30)
 
         fprintf('Taking %.1f NDF warm up video...\n', NDF); 
         warmup_file = sprintf('%s%s_0hz_%sNDF_warmup.avi', external_ssd_path, output_filename, ndf2str(NDF)); 

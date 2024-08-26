@@ -400,7 +400,7 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
     plt.plot(np.log10(frequencies), amplitudes, marker='.', label='Measured')
     
     # Plot the amplitude that we observed from the klein software 
-    plt.plot(np.log10([6,12,25,50]),[0.5,0.4965,0.4715,0.4175], marker='x', color='red', label='Observed')
+    plt.plot(np.log10([6,12,25,50,100]),[0.5,0.4965,0.4715,0.4175,0.31], marker='x', color='red', label='Observed')
     
     # Plot the amplitudes expected from Geoff's previous work
     plt.plot(np.log10([6,12,25,50]), expected_amplitudes, marker='o', color='green', label='Expected')
@@ -416,13 +416,20 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
 def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple): 
     eng = matlab.engine.start_matlab()
     eng.addpath('/Users/zacharykelly/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
-   
+
     # Create a mapping between light levels and their (frequencies, amplitudes)
-    light_level_ts_map: dict = {str2ndf(light_level): analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
-                                                      for light_level in light_levels}
-    
+    light_level_ts_map: dict = {str2ndf(light_level) : analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
+                                                       for light_level in light_levels}
+
+    # Create a mapping of the frequencies and their verified amplitudes 
+    # via the Klein chromasurf software.
+    klein_frequencies_and_amplitudes: dict = {freq : amp 
+                                            for freq, amp
+                                            in zip([6,12,25,50,100], np.array([0.5,0.4965,0.4715,0.4175,0.31]) / 0.5)}
+
+
     # Create a TTF plot to measure data
-    ttf_fig, (ttf_ax0, ttf_ax1, ttf_ax2) = plt.subplots(3, 1, figsize=(14,12))
+    ttf_fig, (ttf_ax0, ttf_ax1, ttf_ax2) = plt.subplots(1, 3, figsize=(14,12))
 
     # Create a plot to measure warmup times per light-level
     warmup_fig, warmup_axes = plt.subplots(len(light_level_ts_map), 1, figsize=(10,8))
@@ -430,19 +437,18 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     # Ensure warmup_axes is an iterable object
     warmup_axes = warmup_axes if isinstance(warmup_axes, Iterable) else [warmup_axes]
     
-    # Plot the light levels' amplitudes by frequencies
+        # Plot the light levels' amplitudes by frequencies
     for ind, (light_level, (frequencies, amplitudes, videos_fps, warmup_settings)) in enumerate(light_level_ts_map.items()):  
-        # Frequencies above 80 are rejected by MATLAB, so splice them out of our set 
-        in_bound_indices: np.array = np.argwhere(frequencies < 80).flatten()
-        in_bound_frequencies: np.array = frequencies[in_bound_indices]
-        num_out_of_bound_freqs: int = abs(in_bound_indices[-1] - (len(frequencies) - 1))
-
         # Find the corrected amplitude for these frequencies
-        corrected_amplitudes: np.array = np.array(np.array(eng.contrastAttenuationByFreq(matlab.double(in_bound_frequencies))).flatten().tolist() + [0.1]*num_out_of_bound_freqs )
+        corrected_amplitudes: np.array = np.array([amp if freq not in klein_frequencies_and_amplitudes 
+                                                    else amp / klein_frequencies_and_amplitudes[freq] 
+                                                    for freq, amp 
+                                                    in zip(frequencies, amplitudes)])
+
 
         # Plot the amplitude and FPS
         ttf_ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
-        ttf_ax1.plot(np.log10(frequencies), amplitudes / corrected_amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
+        ttf_ax1.plot(np.log10(frequencies), corrected_amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
         ttf_ax2.plot(np.log10(frequencies), videos_fps, linestyle='-', marker='o', label=f"{light_level}NDF FPS")
         
         # Retrieve info to plot the camera settings over the warmup period
@@ -453,7 +459,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
 
         # Plot the gain of the camera over the course of the warmup video
         gain_axis.plot(warmup_t, gain_history, color='red', label='Gain') 
-        gain_axis.set_title(f'Camera Settings {light_level}NDF {frequencies[0]}hz')
+        gain_axis.set_title(f'Camera Settings {light_level}NDF 0hz')
         gain_axis.set_xlabel('Time [seconds]')
         gain_axis.set_ylabel('Gain', color='red')
         gain_axis.set_ylim([0.5,11])
@@ -467,10 +473,10 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
 
     # Retrieve the ideal device curve from MATLAB
     eng = matlab.engine.start_matlab() 
-    sourceFreqsHz = matlab.double(np.logspace(0,2,))
+    sourceFreqsHz = matlab.double(np.logspace(0,2))
     dTsignal = 1/CAM_FPS
     ideal_device_curve = np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten() * 0.5
-    
+
     # Add the ideal device to the plot
     ttf_ax0.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")
     ttf_ax1.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")
@@ -500,12 +506,13 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
 
     # Adjust spacing between subplots
     ttf_fig.subplots_adjust(hspace=2)
-    warmup_fig.subplots_adjust(hspace=2)
+    ttf_fig.subplots_adjust(wspace=0.5)
+    warmup_fig.subplots_adjust(hspace=1)
 
     # Save the figure
     ttf_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.pdf')
     warmup_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/warmupSettings.pdf')
-    
+
     plt.show()
 
 """Generate a plot of mean microseconds per line by categorical exposure time"""
