@@ -407,16 +407,16 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     # Plot the light levels' amplitudes by frequencies
     for ind, (light_level, (frequencies, amplitudes, videos_fps, warmup_settings)) in enumerate(light_level_ts_map.items()):  
         # Frequencies above 80 are rejected by MATLAB, so splice them out of our set 
-        in_bound_indices: np.array = np.argwhere(frequencies < 80)
+        in_bound_indices: np.array = np.argwhere(frequencies < 80).flatten()
         in_bound_frequencies: np.array = frequencies[in_bound_indices]
         num_out_of_bound_freqs: int = abs(in_bound_indices[-1] - (len(frequencies) - 1))
 
         # Find the corrected amplitude for these frequencies
-        corrected_amplitudes: np.array = np.array( (np.array(eng.contrastAttenuationByFreq(matlab.double(in_bound_frequencies))).flatten()*0.5).tolist() + [0.1]*num_out_of_bound_freqs )
+        corrected_amplitudes: np.array = np.array(np.array(eng.contrastAttenuationByFreq(matlab.double(in_bound_frequencies))).flatten().tolist() + [0.1]*num_out_of_bound_freqs )
 
         # Plot the amplitude and FPS
         ttf_ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
-        ttf_ax1.plot(np.log10(frequencies), amplitudes[:-num_out_of_bound_freqs] / corrected_amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
+        ttf_ax1.plot(np.log10(frequencies), amplitudes / corrected_amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
         ttf_ax2.plot(np.log10(frequencies), videos_fps, linestyle='-', marker='o', label=f"{light_level}NDF FPS")
         
         # Retrieve info to plot the camera settings over the warmup period
@@ -447,6 +447,13 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     
     # Add the ideal device to the plot
     ttf_ax0.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")
+    ttf_ax1.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")
+
+    # Standardize the y axis scale
+    ttf_ax0.set_ylim([0, 0.65])
+    ttf_ax1.set_ylim([0, 0.65])
+
+
 
     # Close the MATLAB engine 
     eng.quit()
