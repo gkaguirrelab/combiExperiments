@@ -53,6 +53,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     password = '1234'; % Password for this user
     recordings_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_data/recordings/'];
     metadata_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_data/recordings_metadata/'];
+    external_ssd_path = '/media/eds/EXTERNAL1/'; 
 
     disp('Trying remote connection to RP...')
     ssh2_conn = ssh2_config(host, username, password); % attempt to open a connection
@@ -96,26 +97,28 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
         fprintf('You now have 30 seconds to leave the room if desired.\n');
-        pause(30)
+        %pause(30)
 
         fprintf('Taking %.1f NDF warm up video...\n', NDF); 
-        warmup_file = sprintf('%s_0hz_%sNDF_warmup.avi', output_filename, ndf2str(NDF)); 
-        warmup_metadata = sprintf('%s_0hz_%sNDF_warmup_settingsHistory.pkl', output_filename, ndf2str(NDF)); 
+        warmup_file = sprintf('%s%s_0hz_%sNDF_warmup.avi', external_ssd_path, output_filename, ndf2str(NDF)); 
+        warmup_metadata = sprintf('%s%s_0hz_%sNDF_warmup_settingsHistory.pkl', external_ssd_path, output_filename, ndf2str(NDF)); 
         
         % Record the warm up video
-        remote_command = sprintf('python3 %s %s %f --save_video 0', recorder_path, warmup_file, warmup);
+        remote_command = sprintf('python3 %s "%s" %f --save_video 0', recorder_path, warmup_file, warmup);
         remote_execute.run_ssh_command(py.str(char(host)), py.int(22), py.str(char(username)), py.str(char(password)), py.str(char(remote_command)))
         
+
         % Retrieve the warmup settings
         disp('Retrieving the settings file...')
-        ssh2_conn = scp_get(ssh2_conn, warmup_metadata, metadata_dir, '~/'); 
+        [~, baseName, ext] = fileparts(warmup_metadata);
+        ssh2_conn = scp_get(ssh2_conn, [baseName, ext], metadata_dir, external_ssd_path); 
 
         % Delete the warmup settings and video
         disp('Deleting the file over of raspberry pi...')
-        ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', warmup_metadata));
+        ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm "%s"', warmup_metadata));
 
         % Retrieve the initial gain and exposure value to set the camera with
-        fileID = py.open(fullfile(metadata_dir, warmup_metadata), 'rb');
+        fileID = py.open(fullfile(metadata_dir, [baseName, ext]), 'rb');
         py_data = pickle.load(fileID);
         warmup_metadata_struct = struct(py_data);
         gain_values = double(warmup_metadata_struct.gain_history);
@@ -128,9 +131,8 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             frequency = frequencies(ff);
             fprintf('Recording %0.1f NDF %0.1f hz\n', NDF, frequency);
             fprintf('with initial gain %f and initial exposure %d\n', initial_gain, initial_exposure);
-            output_file = sprintf('%s_%.1fhz_%sNDF.avi', output_filename, frequency, ndf2str(NDF)); 
-            metadata_file = sprintf('%s_%.1fhz_%sNDF_settingsHistory.pkl', output_filename, frequency, ndf2str(NDF)); 
-
+            output_file = sprintf('%s%s_%.1fhz_%sNDF.avi', external_ssd_path, output_filename, frequency, ndf2str(NDF)); 
+            metadata_file = sprintf('%s%s_%.1fhz_%sNDF_settingsHistory.pkl', external_ssd_path, output_filename, frequency, ndf2str(NDF)); 
 
             CL.setFrequency(frequency); % Set the CL flicker to current frequency
 
@@ -149,14 +151,16 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             % Step 11 : Retrieve the files from the raspberry pi and save it in the recordings 
             % directory
             disp('Retrieving the settings file...')
-            ssh2_conn = scp_get(ssh2_conn, metadata_file, metadata_dir, '~/'); 
+            [~, baseName, ext] = fileparts(metadata_file);
+            ssh2_conn = scp_get(ssh2_conn, [baseName, ext], metadata_dir, external_ssd_path); 
 
             disp('Retrieving the video file...')
-            ssh2_conn = scp_get(ssh2_conn, output_file, recordings_dir, '~/'); 
+            [~, baseName, ext] = fileparts(output_file);
+            ssh2_conn = scp_get(ssh2_conn, [baseName, ext], recordings_dir, external_ssd_path); 
 
             % Step 12: Delete the file from the raspberry pi
             disp('Deleting the file over of raspberry pi...')
-            ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm ./%s', output_file));
+            ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm %s', output_file));
 
         end
     end
