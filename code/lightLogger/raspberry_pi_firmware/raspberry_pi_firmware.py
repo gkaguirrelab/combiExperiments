@@ -1,24 +1,19 @@
-from datetime import datetime
-from utility.Pi_util import upload_data, has_internet, \
-                            DAILY_UPLOAD_TIME, LAST_UPLOAD_DATE
+# Import the live recording from the camera communication library
+from Camera_com import camera_live
 
-def main():
-    current_time:datetime = datetime.now()
-    
-    # Standard Practice, upload at a given time each day
-    if( current_time.time() == DAILY_UPLOAD_TIME and has_internet() is True):
-       
-        upload_data()
-        
-        LAST_UPLOAD_DATE = current_time
-    
-    # If we missed an upload, upload as soon as the user as internet again
-    elif((current_time - LAST_UPLOAD_DATE).days >= 1 and has_internet() is True):
-        upload_data()      
+# Import live recording from the minispect communication library
+from MS_com import minispect_live
 
-        LAST_UPLOAD_DATE = current_time                                 
+# Multiprocessing library for multiple, independent processes
+import multiprocessing as mp
+import asyncio
+
+async def main():
+    # Test out the minispect live funcitonality
+    # await minispect_live()
+
 
 
 
 if(__name__ == '__main__'):
-    main()
+    asyncio.run(main())

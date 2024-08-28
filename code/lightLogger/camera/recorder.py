@@ -15,32 +15,67 @@ from PyAGC import AGC
 # The FPS we have locked the camera to
 CAM_FPS: float = 200
 
-"""Write a frame in the write queue to disk in the output_path directory"""
-def write_frame(write_queue, output_path):
+"""Write a frame and its info in the write queue to disk 
+in the output_path directory and to the settings file"""
+def write_frame(write_queue: queue.Queue, filename: str):
     # Create output directory for frames   
-    if(not os.path.exists(output_path)):
-        os.mkdir(os.path.basename(output_path))
-      
-    while(True):  
-        # Retrieve a tuple of (frame, frame_num) from the queue
-        ret: tuple = write_queue.get()
+    if(not os.path.exists(filename)):
+        os.mkdir(os.path.basename(filename))
 
-        # If we didn't receive a frame, we are at the end 
-        # of the video, finish writing
-        if(ret is None):
-            print('BREAKING WRITING')
-            break
-        
-        # Extract frame and frame_num by name
-        frame, frame_num = ret
+    # Initialize a settings file for per-frame settings to be written to.
+    settings_file = open(f'{os.path.basename(filename)}_settingsHistory.txt', 'a')
 
-        # Construct the path to save this frame to
-        save_path: str = os.path.join(output_path, f"{frame_num}.tiff")
-        
-        print(f'writing {save_path}')
+    try: 
+        while(True):  
+            # Retrieve a tuple of (frame, frame_num) from the queue
+            ret: tuple = write_queue.get()
 
-        # Write the frame
-        cv2.imwrite(save_path, frame)
+            # If we didn't receive a frame, we are at the end 
+            # of the video, finish writing
+            if(ret is None):
+                print('BREAKING WRITING')
+                break
+            
+            # Extract frame and frame_num by name
+            frame, frame_num, current_gain, current_exposure = ret
+
+            # Construct the path to save this frame to
+            save_path: str = os.path.join(filename, f"{frame_num}.tiff")
+            
+            print(f'writing {save_path}')
+
+            # Write the frame
+            cv2.imwrite(save_path, frame)
+    
+    except Exception as e:
+        print('Exception! Flushing write queue')
+        print(e)
+
+        while(write_queue.qsize() > 0):
+            ret: tuple = write_queue.get()
+
+            # If we didn't receive a frame, we are at the end 
+            # of the video, finish writing
+            if(ret is None):
+                print('BREAKING WRITING')
+                break
+            
+            # Extract frame and frame_num by name
+            frame, frame_num = ret
+
+            # Construct the path to save this frame to
+            save_path: str = os.path.join(filename, f"{frame_num}.tiff")
+            
+            print(f'writing {save_path}')
+
+            # Write the frame
+            cv2.imwrite(save_path, frame)
+
+            # Write the frame info 
+            settings_file.write(f'{frame_num} | {current_gain} | {current_exposure}')
+
+        # Close the settings file
+        settings_file.close()
 
     print('finishing writing')
 
@@ -69,6 +104,74 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     # Release the VideoWriter object
     out.release()
 
+"""Record live from the camera with no specified duration"""
+def record_live(write_queue: queue.Queue, filename: str, 
+                initial_gain: float, initial_exposure: int,
+                settings_file: object):
+    from picamera2 import Picamera2, Preview
+
+    # Connect to and set up camera
+    print(f"Initializing camera")
+    cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
+    gain_change_interval: float = 0.250 # the time between AGC adjustments 
+    
+    # Begin Recording and capture initial metadata 
+    cam.start("video")  
+    initial_metadata = cam.capture_metadata()
+    current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
+    
+    # Make absolutely certain Ae and AWB are off 
+    # (had to put this here at some point) for it to work 
+    cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
+
+    # Initialize the last time we changed the gain as the current time
+    last_gain_change = time.time()  
+
+    try:
+        frame_num = 1 
+        while(True):
+            # Capture the frame
+            frame = cam.capture_array("raw")
+
+            # Append the frame and its relevant information 
+            # to the storage containers
+            write_queue.put((frame, frame_num, current_exposure, current_gain))
+
+            # Capture the current time
+            current_time = time.time()
+            
+            # Change gain every N ms
+            if((current_time - last_gain_change)  > gain_change_interval):
+                # Take the mean intensity of the frame
+                mean_intensity = np.mean(frame, axis=(0,1))
+                
+                # Feed the settings into the the AGC 
+                ret = AGC(mean_intensity, current_gain, current_exposure, 0.95)
+
+                # Retrieve and set the new gain and exposure from our custom AGC
+                new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
+                cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
+                
+                # Update the current_gain and current_exposure, 
+                # wait for next gain change time
+                last_gain_change = current_time
+                current_gain, current_exposure = new_gain, new_exposure
+
+            # Record the next frame number
+            frame_num += 1 
+    
+    except Exception as e:
+        print('EXCEPTION! Closing recording')
+        print(e)
+
+        # Signal the end of the write queue
+        write_queue.put(None) 
+        
+        # Stop recording and close the picam object 
+        cam.close() 
+
+
+
 """Record a viceo from the Raspberry Pi camera"""
 def record_video(duration: float, write_queue: queue.Queue, filename: str, 
                  initial_gain: float, initial_exposure: int): 
@@ -96,7 +199,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     start_capture_time = time.time()
     last_gain_change = time.time()  
     
-    # Capture 10 seconds of frames
+    # Capture duration (seconds) of frames
     frame_num = 1 
     while(True):
         # Capture the frame
