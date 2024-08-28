@@ -6,6 +6,7 @@ from natsort import natsorted
 import numpy as np
 import sys
 import pickle
+import threading
 
 """Import the custom AGC library"""
 agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
@@ -25,57 +26,33 @@ def write_frame(write_queue: queue.Queue, filename: str):
     # Initialize a settings file for per-frame settings to be written to.
     settings_file = open(f'{os.path.basename(filename)}_settingsHistory.txt', 'a')
 
-    try: 
-        while(True):  
-            # Retrieve a tuple of (frame, frame_num) from the queue
-            ret: tuple = write_queue.get()
+    while(True):  
+        # Retrieve a tuple of (frame, frame_num) from the queue
+        ret: tuple = write_queue.get()
 
-            # If we didn't receive a frame, we are at the end 
-            # of the video, finish writing
-            if(ret is None):
-                print('BREAKING WRITING')
-                break
-            
-            # Extract frame and frame_num by name
-            frame, frame_num, current_gain, current_exposure = ret
+        # If we didn't receive a frame, we are at the end 
+        # of the video, finish writing
+        if(ret is None):
+            print('BREAKING WRITING')
+            break
+        
+        # Extract frame and frame_num by name
+        frame, frame_num, current_gain, current_exposure = ret
 
-            # Construct the path to save this frame to
-            save_path: str = os.path.join(filename, f"{frame_num}.tiff")
-            
-            print(f'writing {save_path}')
+        # Construct the path to save this frame to
+        save_path: str = os.path.join(filename, f"{frame_num}.tiff")
+        
+        print(f'writing {save_path}')
+        print(f"There are {write_queue.qsize()} frames in queue")
 
-            # Write the frame
-            cv2.imwrite(save_path, frame)
-    
-    except Exception as e:
-        print('Exception! Flushing write queue')
-        print(e)
+        # Write the frame
+        cv2.imwrite(save_path, frame)
 
-        while(write_queue.qsize() > 0):
-            ret: tuple = write_queue.get()
+        # Write the frame info 
+        settings_file.write(f'{frame_num} | {current_gain} | {current_exposure}')
 
-            # If we didn't receive a frame, we are at the end 
-            # of the video, finish writing
-            if(ret is None):
-                print('BREAKING WRITING')
-                break
-            
-            # Extract frame and frame_num by name
-            frame, frame_num = ret
-
-            # Construct the path to save this frame to
-            save_path: str = os.path.join(filename, f"{frame_num}.tiff")
-            
-            print(f'writing {save_path}')
-
-            # Write the frame
-            cv2.imwrite(save_path, frame)
-
-            # Write the frame info 
-            settings_file.write(f'{frame_num} | {current_gain} | {current_exposure}')
-
-        # Close the settings file
-        settings_file.close()
+    # Close the settings file
+    settings_file.close()
 
     print('finishing writing')
 
@@ -105,9 +82,9 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     out.release()
 
 """Record live from the camera with no specified duration"""
-def record_live(write_queue: queue.Queue, filename: str, 
+def record_live(duration: float, write_queue: queue.Queue, filename: str, 
                 initial_gain: float, initial_exposure: int,
-                settings_file: object):
+                stop_flag: threading.Event):
     from picamera2 import Picamera2, Preview
 
     # Connect to and set up camera
@@ -127,54 +104,46 @@ def record_live(write_queue: queue.Queue, filename: str,
     # Initialize the last time we changed the gain as the current time
     last_gain_change = time.time()  
 
-    try:
-        frame_num = 1 
-        while(True):
-            # Capture the frame
-            frame = cam.capture_array("raw")
+    # Capture indefinite frames
+    frame_num = 1 
+    while(not stop_flag.is_set()):
+        # Capture the frame
+        frame = cam.capture_array("raw")
 
-            # Append the frame and its relevant information 
-            # to the storage containers
-            write_queue.put((frame, frame_num, current_exposure, current_gain))
+        # Append the frame and its relevant information 
+        # to the storage containers
+        write_queue.put((frame, frame_num, current_exposure, current_gain))
 
-            # Capture the current time
-            current_time = time.time()
-            
-            # Change gain every N ms
-            if((current_time - last_gain_change)  > gain_change_interval):
-                # Take the mean intensity of the frame
-                mean_intensity = np.mean(frame, axis=(0,1))
-                
-                # Feed the settings into the the AGC 
-                ret = AGC(mean_intensity, current_gain, current_exposure, 0.95)
-
-                # Retrieve and set the new gain and exposure from our custom AGC
-                new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
-                cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
-                
-                # Update the current_gain and current_exposure, 
-                # wait for next gain change time
-                last_gain_change = current_time
-                current_gain, current_exposure = new_gain, new_exposure
-
-            # Record the next frame number
-            frame_num += 1 
-    
-    except Exception as e:
-        print('EXCEPTION! Closing recording')
-        print(e)
-
-        # Signal the end of the write queue
-        write_queue.put(None) 
+        # Capture the current time
+        current_time = time.time()
         
-        # Stop recording and close the picam object 
-        cam.close() 
+        # Change gain every N ms
+        if((current_time - last_gain_change)  > gain_change_interval):
+            # Take the mean intensity of the frame
+            mean_intensity = np.mean(frame, axis=(0,1))
+            
+            # Feed the settings into the the AGC 
+            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95)
 
+            # Retrieve and set the new gain and exposure from our custom AGC
+            new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
+            cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
+            
+            # Update the current_gain and current_exposure, 
+            # wait for next gain change time
+            last_gain_change = current_time
+            current_gain, current_exposure = new_gain, new_exposure
 
+        # Record the next frame number
+        frame_num += 1 
+
+    # Signal the end of the write queue
+    write_queue.put(None) 
 
 """Record a viceo from the Raspberry Pi camera"""
 def record_video(duration: float, write_queue: queue.Queue, filename: str, 
-                 initial_gain: float, initial_exposure: int): 
+                 initial_gain: float, initial_exposure: int,
+                 stop_flag: threading.Event): 
     from picamera2 import Picamera2, Preview
 
     # Connect to and set up camera
@@ -207,7 +176,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
         # Append the frame and its relevant information 
         # to the storage containers
-        write_queue.put((frame, frame_num))
+        write_queue.put((frame, frame_num, current_gain, current_exposure))
         gain_history.append(current_gain)
         exposure_history.append(current_exposure)
 
