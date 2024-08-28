@@ -48,7 +48,6 @@ def main():
                                                                                stop_flag))
     write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename))
     
-
     # Begin the threads
     for thread in (capture_thread, write_thread):
         thread.start()
@@ -73,10 +72,6 @@ def main():
     finally:
         for thread in (capture_thread, write_thread):
             thread.join()
-
-    # Join the threads when they have completed
-   # for thread in (capture_thread, write_thread):
-   #     thread.join()
     
     print('Capture/Write processes finished')
 

@@ -1,20 +1,40 @@
-import time
 import os 
-import cv2 
-import queue
-from natsort import natsorted
+import time 
+import cv2
 import numpy as np
-import sys
 import pickle
+import queue
 import threading
+from natsort import natsorted
 
-"""Import the custom AGC library"""
-agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
-sys.path.append(os.path.abspath(agc_lib_path))
-from PyAGC import AGC
+CAM_FPS = 30
 
-# The FPS we have locked the camera to
-CAM_FPS: float = 200
+"""Read in a video from a file to an 8-bit unsigned np.array"""
+def vid_array_from_file(path: str) -> np.array:
+    frames = [cv2.imread(os.path.join(path, frame)) 
+              for frame in natsorted(os.listdir(path)) 
+              if '.pkl' not in frame and '.txt' not in frame] 
+    
+    return np.array(frames, dtype=np.uint8)
+
+"""Construct a video from a series of frames, output to output_path"""
+def reconstruct_video(video_frames: np.array, output_path: str):
+    # Define the information about the video to use for writing
+    fps = CAM_FPS  
+    height, width = video_frames[0].shape[:2]
+
+    # Initialize VideoWriter object to write frames to
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height), 
+                          isColor=len(video_frames.shape) > 3)
+
+    # Write all of the frames to the video
+    for i in range(video_frames.shape[0]):
+        out.write(video_frames[i])
+
+    # Release the VideoWriter object
+    out.release()
+
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
@@ -54,61 +74,28 @@ def write_frame(write_queue: queue.Queue, filename: str):
     # Close the settings file
     settings_file.close()
 
-    print('finishing writing')
-
-"""Read in a video from a file to an 8-bit unsigned np.array"""
-def vid_array_from_file(path: str) -> np.array:
-    frames = [cv2.imread(os.path.join(path, frame)) 
-              for frame in natsorted(os.listdir(path)) 
-              if '.pkl' not in frame and '.txt' not in frame] 
-    
-    return np.array(frames, dtype=np.uint8)
-
-"""Construct a video from a series of frames, output to output_path"""
-def reconstruct_video(video_frames: np.array, output_path: str):
-    # Define the information about the video to use for writing
-    fps = CAM_FPS  
-    height, width = video_frames[0].shape[:2]
-
-    # Initialize VideoWriter object to write frames to
-    out = cv2.VideoWriter(output_path, 0, fps, (width, height), 
-                          isColor=len(video_frames.shape) > 3)
-
-    # Write all of the frames to the video
-    for i in range(video_frames.shape[0]):
-        out.write(video_frames[i])
-
-    # Release the VideoWriter object
-    out.release()
 
 """Record live from the camera with no specified duration"""
 def record_live(duration: float, write_queue: queue.Queue, filename: str, 
                 initial_gain: float, initial_exposure: int,
                 stop_flag: threading.Event):
-    from picamera2 import Picamera2, Preview
 
     # Connect to and set up camera
     print(f"Initializing camera")
-    cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
+    cam: cv2.VideoCapture = initialize_camera()
     gain_change_interval: float = 0.250 # the time between AGC adjustments 
     
     # Begin Recording and capture initial metadata 
-    cam.start("video")  
-    initial_metadata: dict = cam.capture_metadata()
-    current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
-    
-    # Make absolutely certain Ae and AWB are off 
-    # (had to put this here at some point) for it to work 
-    cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
+    current_gain, current_exposure = 0, 0      
 
     # Initialize the last time we changed the gain as the current time
-    last_gain_change: time.time = time.time()  
+    last_gain_change = time.time()  
 
     # Capture indefinite frames
-    frame_num: int = 1 
+    frame_num = 1 
     while(not stop_flag.is_set()):
         # Capture the frame
-        frame: np.array = cam.capture_array("raw")
+        ret, frame = cam.read()
 
         # Append the frame and its relevant information 
         # to the storage containers
@@ -121,13 +108,9 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
         if((current_time - last_gain_change)  > gain_change_interval):
             # Take the mean intensity of the frame
             mean_intensity = np.mean(frame, axis=(0,1))
-            
-            # Feed the settings into the the AGC 
-            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95)
 
             # Retrieve and set the new gain and exposure from our custom AGC
-            new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
-            cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
+            new_gain, new_exposure = 0, 0 
             
             # Update the current_gain and current_exposure, 
             # wait for next gain change time
@@ -138,30 +121,23 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
         frame_num += 1 
 
     # Signal the end of the write queue
-    write_queue.put(None) 
+    write_queue.put(None)
 
     # Close the camera
-    cam.close()
+    cam.release() 
 
 """Record a viceo from the Raspberry Pi camera"""
 def record_video(duration: float, write_queue: queue.Queue, filename: str, 
                  initial_gain: float, initial_exposure: int,
                  stop_flag: threading.Event): 
-    from picamera2 import Picamera2, Preview
 
     # Connect to and set up camera
     print(f"Initializing camera")
-    cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
+    cam: cv2.VideoCapture = initialize_camera()
     gain_change_interval: float = 0.250 # the time between AGC adjustments 
     
-    # Begin Recording and capture initial metadata 
-    cam.start("video")  
-    initial_metadata: dict = cam.capture_metadata()
-    current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
-    
-    # Make absolutely certain Ae and AWB are off 
-    # (had to put this here at some point) for it to work 
-    cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
+    # Retrieve the initial gain and exposure values
+    current_gain, current_exposure = 0, 0   
     
     # Create containers to store the gain and exposure 
     # of every frame
@@ -175,7 +151,12 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     frame_num: int = 1 
     while(True):
         # Capture the frame
-        frame: np.array = cam.capture_array("raw")
+        ret, frame = cam.read()
+
+        # Ensure a frame was properly read 
+        if(not ret):
+            print(f"ERROR: Could not read frame")
+            break
 
         # Append the frame and its relevant information 
         # to the storage containers
@@ -190,13 +171,9 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
         if((current_time - last_gain_change)  > gain_change_interval):
             # Take the mean intensity of the frame
             mean_intensity = np.mean(frame, axis=(0,1))
-            
-            # Feed the settings into the the AGC 
-            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95)
 
             # Retrieve and set the new gain and exposure from our custom AGC
-            new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
-            cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
+            new_gain, new_exposure = 0, 0
             
             # Update the current_gain and current_exposure, 
             # wait for next gain change time
@@ -222,7 +199,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     print(f'I captured {frame_num} at {observed_fps} fps')
     
     # Stop recording and close the picam object 
-    cam.close() 
+    cam.release()
     
     print('Finishing recording')
     
@@ -231,35 +208,23 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
         pickle.dump({'gain_history': np.array(gain_history),
                      'exposure_history': np.array(exposure_history)},
                      f)
-    
-"""Connect to the camera and initialize a control object"""
-def initialize_camera(initial_gain: float, initial_exposure: int) -> object:
-    from picamera2 import Picamera2, Preview
 
-    # Initialize camera 
-    cam: Picamera2 = Picamera2()
+"""Iniitalize the pupil camera"""        
+def initialize_camera() -> cv2.VideoCapture:
+    # Open a connection to the camera at index 0
+    cam: cv2.VideoCapture = cv2.VideoCapture(0)
+
+    # Ensure the camera could be opened
+    if(not cam.isOpened()):
+        print("Error: Could not open camera.")
+        exit()
+
+    # Placeholders until we do more research into this
+    initial_exposure_value = cam.get(cv2.CAP_PROP_EXPOSURE)
+    initial_gain_value = cam.get(cv2.CAP_PROP_GAIN)
     
-    # Select the mode to put the sensor in
-    # (ie, mode for high fps/low res, more pixel HDR etc)
-    sensor_mode: dict = cam.sensor_modes[4]		
-    
-    # Set the mode
-    cam.configure(cam.create_video_configuration(sensor={'output_size':sensor_mode['size'], 'bit_depth':sensor_mode['bit_depth']}, main={'size':sensor_mode['size']}, raw=sensor_mode))
-    
-    # Ensure the frame rate; This is calculated by
-    # FPS = 1,000,000 / FrameDurationLimits 
-    # e.g. 206.65 = 1000000/FDL => FDL = 1000000/206.65
-    # 200 = 
-    frame_duration_limit = int(np.ceil(1000000/200)) #int(np.ceil(1000000/sensor_mode['fps']))
-    cam.video_configuration.controls['NoiseReductionMode'] = 0
-    cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # *2 for lower,upper bound equal
-    
-    # Set runtime camera information, such as auto-gain
-    # auto exposure, white point balance, etc
-    # Note, AeEnable changes both AEC and AGC		
-    cam.video_configuration.controls['AwbEnable'] = 0
-    cam.video_configuration.controls['AeEnable'] = 0  
-    cam.video_configuration.controls['AnalogueGain'] = initial_gain
-    cam.video_configuration.controls['ExposureTime'] = initial_exposure
-    
+    # Set the properties of the camera
+    cam.set(cv2.CAP_PROP_GAIN, initial_gain_value)
+    cam.set(cv2.CAP_PROP_EXPOSURE, initial_exposure_value)
+
     return cam

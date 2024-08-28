@@ -10,7 +10,7 @@ import asyncio
 
 async def main():
     # Test out the minispect live funcitonality
-    # await minispect_live()
+    await minispect_live()
 
 
 
