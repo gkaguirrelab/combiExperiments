@@ -3,7 +3,7 @@ import numpy as np
 import asyncio
 from utility.MS_util import read_MSBLE, parse_MSBLE, write_data
 
-async def minispect_live():
+async def main():
     # Initialize output directory and names 
     # of reading files
     output_directory: str = './readings/MS'
@@ -25,9 +25,5 @@ async def minispect_live():
     # Perform tasks
     await asyncio.gather(read_task, parse_task, write_task, return_exceptions=True)
 
-
-def main():
-    pass
-
 if(__name__ == '__main__'):
-    asyncio.run(minispect_live())
+    asyncio.run(main())
