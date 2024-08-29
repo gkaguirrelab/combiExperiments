@@ -5,6 +5,7 @@ import threading
 import queue
 import shutil
 import numpy as np
+import signal
 
 """Import utility functions from the pupil recorder"""
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'pupil')
@@ -25,6 +26,12 @@ def parse_args() -> tuple:
     args = parser.parse_args()
     
     return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames)
+
+"""If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
+def handle_sigterm(signum, frame):
+    print("Received SIGTERM. Raising KeyboardInterrupt...")
+    raise KeyboardInterrupt
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 def main():
     output_path, duration, initial_gain, initial_exposure, save_video, save_frames = parse_args()
