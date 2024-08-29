@@ -56,20 +56,19 @@ def write_frame(write_queue: queue.Queue, filename: str):
             print('BREAKING WRITING')
             break
         
-        # Extract frame and frame_num by name
-        frame, frame_num, current_gain, current_exposure = ret
+        # Extract frame and its metadata
+        frame, frame_num, current_time, current_gain, current_exposure = ret
 
         # Construct the path to save this frame to
         save_path: str = os.path.join(filename, f"{frame_num}.tiff")
         
         print(f'writing {save_path}')
-        print(f"There are {write_queue.qsize()} frames in queue")
 
         # Write the frame
         cv2.imwrite(save_path, frame)
 
         # Write the frame info 
-        settings_file.write(f'{frame_num} | {current_gain} | {current_exposure}\n')
+        settings_file.write(f'{current_time} | {frame_num} | {current_gain} | {current_exposure}\n')
 
     # Close the settings file
     settings_file.close()
@@ -97,12 +96,17 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
         # Capture the frame
         ret, frame = cam.read()
 
-        # Append the frame and its relevant information 
-        # to the storage containers
-        write_queue.put((frame, frame_num, current_exposure, current_gain))
+        # Ensure a frame was read properly
+        if(not ret):
+            print(f"ERROR: Could not read frame")
+            break
 
         # Capture the current time
         current_time: time.time = time.time()
+
+        # Append the frame and its relevant information 
+        # to the storage containers
+        write_queue.put((frame, frame_num, current_time, current_exposure, current_gain))
         
         # Change gain every N ms
         if((current_time - last_gain_change)  > gain_change_interval):
@@ -158,14 +162,14 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
             print(f"ERROR: Could not read frame")
             break
 
-        # Append the frame and its relevant information 
-        # to the storage containers
-        write_queue.put((frame, frame_num, current_gain, current_exposure))
-        gain_history.append(current_gain)
-        exposure_history.append(current_exposure)
-
         # Capture the current time
         current_time: time.time = time.time()
+
+        # Append the frame and its relevant information 
+        # to the storage containers
+        write_queue.put((frame, frame_num, current_time, current_gain, current_exposure))
+        gain_history.append(current_gain)
+        exposure_history.append(current_exposure)
         
         # Change gain every N ms
         if((current_time - last_gain_change)  > gain_change_interval):

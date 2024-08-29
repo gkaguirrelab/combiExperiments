@@ -36,7 +36,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
             print('BREAKING WRITING')
             break
         
-        # Extract frame and frame_num by name
+        # Extract frame and its metadata
         frame, frame_num, current_time, current_gain, current_exposure = ret
 
         # Construct the path to save this frame to
@@ -48,7 +48,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
         cv2.imwrite(save_path, frame)
 
         # Write the frame info 
-        settings_file.write(f'{current_time} | {frame_num} | {current_gain} | {current_exposure}')
+        settings_file.write(f'{current_time} | {frame_num} | {current_gain} | {current_exposure}\n')
 
     # Close the settings file
     settings_file.close()
