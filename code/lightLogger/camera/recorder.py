@@ -93,7 +93,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     
     # Begin Recording and capture initial metadata 
     cam.start("video")  
-    initial_metadata = cam.capture_metadata()
+    initial_metadata: dict = cam.capture_metadata()
     current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
     
     # Make absolutely certain Ae and AWB are off 
@@ -101,13 +101,13 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
 
     # Initialize the last time we changed the gain as the current time
-    last_gain_change = time.time()  
+    last_gain_change: time.time = time.time()  
 
     # Capture indefinite frames
-    frame_num = 1 
+    frame_num: int = 1 
     while(not stop_flag.is_set()):
         # Capture the frame
-        frame = cam.capture_array("raw")
+        frame: np.array = cam.capture_array("raw")
 
         # Capture the current time
         current_time = time.time()
@@ -115,7 +115,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
         # Append the frame and its relevant information 
         # to the storage containers
         write_queue.put((frame, frame_num, current_time, current_exposure, current_gain))
-        
+
         # Change gain every N ms
         if((current_time - last_gain_change)  > gain_change_interval):
             # Take the mean intensity of the frame
@@ -139,6 +139,9 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     # Signal the end of the write queue
     write_queue.put(None) 
 
+    # Close the camera
+    cam.close()
+
 """Record a viceo from the Raspberry Pi camera"""
 def record_video(duration: float, write_queue: queue.Queue, filename: str, 
                  initial_gain: float, initial_exposure: int,
@@ -152,7 +155,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     
     # Begin Recording and capture initial metadata 
     cam.start("video")  
-    initial_metadata = cam.capture_metadata()
+    initial_metadata: dict = cam.capture_metadata()
     current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
     
     # Make absolutely certain Ae and AWB are off 
@@ -164,14 +167,14 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     gain_history, exposure_history = [], [] 
 
     # Begin timing capture
-    start_capture_time = time.time()
-    last_gain_change = time.time()  
+    start_capture_time: time.time = time.time()
+    last_gain_change: time.time = time.time()  
     
     # Capture duration (seconds) of frames
-    frame_num = 1 
+    frame_num: int = 1 
     while(True):
         # Capture the frame
-        frame = cam.capture_array("raw")
+        frame: np.array = cam.capture_array("raw")
 
         # Capture the current time
         current_time = time.time()
@@ -181,7 +184,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
         write_queue.put((frame, frame_num, current_time, current_gain, current_exposure))
         gain_history.append(current_gain)
         exposure_history.append(current_exposure)
-        
+   
         # Change gain every N ms
         if((current_time - last_gain_change) > gain_change_interval):
             # Take the mean intensity of the frame
@@ -207,14 +210,14 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
         frame_num += 1 
             
     # Record timing of end of capture 
-    end_capture_time = time.time()
+    end_capture_time: time.time = time.time()
     
     # Signal the end of the write queue
     write_queue.put(None) 
     
     # Calculate the approximate FPS the frames were taken at 
     # (approximate due to time taken for other computation)
-    observed_fps = frame_num/(end_capture_time-start_capture_time)
+    observed_fps: float = frame_num/(end_capture_time-start_capture_time)
     print(f'I captured {frame_num} at {observed_fps} fps')
     
     # Stop recording and close the picam object 
