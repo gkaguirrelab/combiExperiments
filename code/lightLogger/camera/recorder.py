@@ -21,7 +21,7 @@ in the output_path directory and to the settings file"""
 def write_frame(write_queue: queue.Queue, filename: str):
     # Create output directory for frames   
     if(not os.path.exists(filename)):
-        os.mkdir(os.path.basename(filename))
+        os.mkdir(filename)
 
     # Initialize a settings file for per-frame settings to be written to.
     settings_file = open(f'{os.path.basename(filename)}_settingsHistory.csv', 'a')
@@ -43,6 +43,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
         save_path: str = os.path.join(filename, f"{frame_num}.tiff")
         
         print(f'writing {save_path}')
+        print(f"queue size: {write_queue.qsize()}")
 
         # Write the frame
         cv2.imwrite(save_path, frame)
