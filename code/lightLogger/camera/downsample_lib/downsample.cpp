@@ -4,8 +4,14 @@
 #include <numeric>
 #include <array>
 #include <iostream>
+#include <opencv2/opencv.hpp>
+#include <filesystem>
+#include <vector>
+#include <string>
+#include <chrono>
 
 using std::cout;
+namespace fs = std::filesystem;
 
 // Convert a pixel's 2D coordinates to index 
 // to an index in a 1D array
@@ -94,25 +100,46 @@ extern "C" uint8_t* downsample(uint8_t* flattened_img,
 }
 
 int main() {
-    /*
-    cv::Mat img = cv::imread('/Users/zacharykelly/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/downsample_lib/tests/blue_video/1.tiff', 
-                            cv::IMREAD_GRAYSCALE);
+    std::vector<uint8_t*> img_arr; 
+    std::string directory_path = "/Users/zacharykelly/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/downsample_lib/tests/blue_video";    
     
-    int rows = img.rows;
-    int cols = img.cols;
+    // Iterate over all files in the directory
+    for (const auto& entry : fs::directory_iterator(directory_path)) {
+        // Get the file path
+        std::string file_path = entry.path().string();
 
-    cout << "Rows " << rows << ' Cols ' << cols << '\n';
+        cout << file_path << '\n'; 
 
-    // Flatten the image into a 1D array
-    cv:Mat flattened_img = img.reshape(1, 1); 
+        // Read the image
+        cv::Mat img = cv::imread(file_path, cv::IMREAD_GRAYSCALE);
 
-    cout << 'Total in flattened ' << flattened_img.total() << '\n';
+        // Check if the image was loaded successfully
+        if (img.empty()) {
+            std::cerr << "Error: Could not open or find the image: " << file_path << std::endl;
+            continue;
+        }
 
-    downsample(flattened_img.ptr<uint8_t>(),
-              rows, 
-              cols);
-    """
-    */
+        // Append the image to the image vector
+        img_arr.push_back(img.reshape(1,1).data); 
+    }
 
+    cout << "Downsampling...\n";
+
+    int rows = 480; 
+    int cols = 640; 
+
+    auto start = std::chrono::high_resolution_clock::now();
+    // Iterate over the images and see how long it takes
+    for(size_t i = 0; i < img_arr.size(); i++) {
+        uint8_t* downsampled = downsample(img_arr[i], rows, cols);
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+
+     // Calculate the elapsed time in milliseconds
+    std::chrono::duration<double, std::milli> elapsed = end - start;
+
+    // Output the elapsed time
+    std::cout << "Elapsed time: " << elapsed.count() << " ms" << std::endl;
 
 }
