@@ -112,7 +112,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
 
     # Initialize the last time we changed the gain as the current time
-    last_gain_change: time.time = time.time()  
+    last_gain_change: float = time.time()  
 
     # Capture indefinite frames
     frame_num: int = 1 
@@ -121,7 +121,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
         frame: np.array = cam.capture_array("raw")
 
         # Capture the current time
-        current_time = time.time()
+        current_time: float = time.time()
 
         # Append the frame and its relevant information 
         # to the storage containers
@@ -178,8 +178,8 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     gain_history, exposure_history = [], [] 
 
     # Begin timing capture
-    start_capture_time: time.time = time.time()
-    last_gain_change: time.time = time.time()  
+    start_capture_time: float = time.time()
+    last_gain_change: float = time.time()  
     
     # Capture duration (seconds) of frames
     frame_num: int = 1 
@@ -188,7 +188,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
         frame: np.array = cam.capture_array("raw")
 
         # Capture the current time
-        current_time = time.time()
+        current_time: float = time.time()
 
         # Append the frame and its relevant information 
         # to the storage containers
@@ -221,7 +221,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
         frame_num += 1 
             
     # Record timing of end of capture 
-    end_capture_time: time.time = time.time()
+    end_capture_time: float = time.time()
     
     # Signal the end of the write queue
     write_queue.put(None) 

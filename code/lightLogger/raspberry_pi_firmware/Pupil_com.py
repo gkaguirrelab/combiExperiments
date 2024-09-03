@@ -14,7 +14,7 @@ from recorder import record_live, record_video, write_frame, vid_array_from_file
 
 """Parse arguments via the command line"""
 def parse_args() -> tuple:
-    parser = argparse.ArgumentParser(description='Record videos from the camera via the RP')
+    parser = argparse.ArgumentParser(description='Record videos from the pupil labs camera')
     
     parser.add_argument('output_path', type=str, help='Path to output the recorded video to (including .avi file extension)') 
     parser.add_argument('duration', type=float, help='Duration of the video')
