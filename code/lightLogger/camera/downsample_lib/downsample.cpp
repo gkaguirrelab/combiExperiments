@@ -101,7 +101,7 @@ extern "C" uint8_t* downsample(uint8_t* flattened_img,
 
 int main() {
     std::vector<uint8_t*> img_arr; 
-    std::string directory_path = "/Users/zacharykelly/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/downsample_lib/tests/blue_video";    
+    std::string directory_path = "/home/eds/combiExperiments/code/lightLogger/raspberry_pi_firmware/blue_video";    
     
     // Iterate over all files in the directory
     for (const auto& entry : fs::directory_iterator(directory_path)) {
