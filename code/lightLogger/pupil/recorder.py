@@ -207,12 +207,6 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     cam.release()
     
     print('Finishing recording')
-    
-    # Write the metadata information to a settings file
-    with open(f'{filename}_settingsHistory.pkl', 'wb') as f:
-        pickle.dump({'gain_history': np.array(gain_history),
-                     'exposure_history': np.array(exposure_history)},
-                     f)
 
 """Iniitalize the pupil camera"""        
 def initialize_camera() -> cv2.VideoCapture:

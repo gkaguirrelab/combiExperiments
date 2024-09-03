@@ -7,6 +7,7 @@ import numpy as np
 import sys
 import pickle
 import threading
+import pandas as pd
 
 """Import the custom AGC library"""
 agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
@@ -51,6 +52,10 @@ def write_frame(write_queue: queue.Queue, filename: str):
     settings_file.close()
 
     print('finishing writing')
+
+"""Parse the setting file for a video as a data frame"""
+def parse_settings_file(path: str) -> pd.DataFrame:
+    return pd.read_csv(path, header=None, names=['Frame', 'Gain', 'Exposure'])
 
 """Read in a video from a folder full of images saved as .np files as 8-bit unsigned np.array"""
 def vid_array_from_npy_folder(path: str) -> np.array:
@@ -230,12 +235,6 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     cam.close() 
     
     print('Finishing recording')
-    
-    # Write the metadata information to a settings file
-    with open(f'{filename}_settingsHistory.pkl', 'wb') as f:
-        pickle.dump({'gain_history': np.array(gain_history),
-                     'exposure_history': np.array(exposure_history)},
-                     f)
     
 """Connect to the camera and initialize a control object"""
 def initialize_camera(initial_gain: float, initial_exposure: int) -> object:
