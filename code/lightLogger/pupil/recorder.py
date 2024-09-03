@@ -57,18 +57,19 @@ def write_frame(write_queue: queue.Queue, filename: str):
             break
         
         # Extract frame and its metadata
-        frame, frame_num, current_time, current_gain, current_exposure = ret
+        frame, frame_num, current_gain, current_exposure = ret
 
         # Construct the path to save this frame to
         save_path: str = os.path.join(filename, f"{frame_num}.tiff")
         
         print(f'writing {save_path}')
+        print(f"Queue size: {write_queue.qsize()}")
 
         # Write the frame
         cv2.imwrite(save_path, frame)
 
         # Write the frame info 
-        settings_file.write(f'{current_time},{frame_num},{current_gain},{current_exposure}\n')
+        settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
 
     # Close the settings file
     settings_file.close()
@@ -106,7 +107,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
 
         # Append the frame and its relevant information 
         # to the storage containers
-        write_queue.put((frame, frame_num, current_time, current_exposure, current_gain))
+        write_queue.put((frame, frame_num, current_exposure, current_gain))
         
         # Change gain every N ms
         if((current_time - last_gain_change)  > gain_change_interval):
@@ -167,7 +168,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
         # Append the frame and its relevant information 
         # to the storage containers
-        write_queue.put((frame, frame_num, current_time, current_gain, current_exposure))
+        write_queue.put((frame, frame_num, current_gain, current_exposure))
         gain_history.append(current_gain)
         exposure_history.append(current_exposure)
         
@@ -224,10 +225,17 @@ def initialize_camera() -> cv2.VideoCapture:
         exit()
 
     # Placeholders until we do more research into this
+    width: int = 1920
+    height: int = 1920
     initial_exposure_value = cam.get(cv2.CAP_PROP_EXPOSURE)
     initial_gain_value = cam.get(cv2.CAP_PROP_GAIN)
     
+    # Set the properties of the camera image
+    cam.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+
     # Set the properties of the camera
+    cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
     cam.set(cv2.CAP_PROP_GAIN, initial_gain_value)
     cam.set(cv2.CAP_PROP_EXPOSURE, initial_exposure_value)
 

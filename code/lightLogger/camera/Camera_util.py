@@ -614,9 +614,6 @@ def generate_row_phase_plot(video: np.array, frequency: float) -> float:
 
     return slope
 
-
-
-
 def main():    
     #recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
 
