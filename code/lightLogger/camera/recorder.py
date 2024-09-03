@@ -25,9 +25,6 @@ def write_frame(write_queue: queue.Queue, filename: str):
 
     # Initialize a settings file for per-frame settings to be written to.
     settings_file = open(f'{os.path.basename(filename)}_settingsHistory.csv', 'a')
-    
-    # Initialize a text file where flattened frames will be written to per line. 
-    video_file = open(f'{os.path.basename(filename)}_frames.txt', 'a')
 
     while(True):  
         # Retrieve a tuple of (frame, frame_num) from the queue
@@ -41,24 +38,20 @@ def write_frame(write_queue: queue.Queue, filename: str):
         
         # Extract frame and its metadata
         frame, frame_num, current_time, current_gain, current_exposure = ret
-
-        # Construct the path to save this frame to
-        save_path: str = os.path.join(filename, f"{frame_num}.tiff")
         
-        print(f'writing {save_path}')
+        print(f'writing {frame_num}')
         print(f"queue size: {write_queue.qsize()}")
 
+        # Downsample the frame 
+
+        
         # Write the frame
-        np.savetxt(video_file, frame.flatten(), delimiter=',')
 
         # Write the frame info 
         settings_file.write(f'{current_time},{frame_num},{current_gain},{current_exposure}\n')
 
     # Close the settings file
     settings_file.close()
-
-    # Close the video file
-    video_file.close()
 
     print('finishing writing')
 
