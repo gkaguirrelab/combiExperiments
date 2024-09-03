@@ -12,6 +12,7 @@ from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 
+"""Generate plots of the readings from the different sensors"""
 def plot_readings():
     # Gather and parse the reading files
     AS_df = reading_to_df('./readings/MS/AS_channels.csv', np.uint16)
@@ -55,7 +56,8 @@ def plot_readings():
     # Display the plot 
     plt.show() 
 
-
+"""Reformat the accelerometer DF to be one reading per row of X,Y,Z values
+instead of each line having a buffer of values"""
 def unpack_accel_df(df) -> pd.DataFrame:
     # Define the columns and their types for the new dataframe 
     # with accel buffer unpacked
@@ -108,12 +110,11 @@ def unpack_accel_df(df) -> pd.DataFrame:
 
     return new_df
 
-# Plot a channel from a df with a given label
+"""Plot a channel from a df with a given label"""
 def plot_channel(x: pd.Series, channel : pd.Series, label: str, ax: plt.Axes):
     ax.plot(x, channel, marker='o', markersize=2, label=label)
 
-# Parse a reading csv and return the resulting dataframe 
-# with labeled cols
+"""Parse a reading csv and return the resulting dataframe with labeled cols"""
 def reading_to_df(reading_path: str, channel_type : type) -> pd.DataFrame:
     # Read in the csv from the given path
     df: pd.DataFrame = pd.read_csv(reading_path,sep=',',header=None)
@@ -133,15 +134,14 @@ def reading_to_df(reading_path: str, channel_type : type) -> pd.DataFrame:
     # Return the DataFrame
     return df
 
-# Parse a reading csv and return the resulting dataframe 
-# as a np.array
+"""Parse a reading csv and return the resulting dataframe  as a np.array"""
 def reading_to_np(reading_path: str, channel_type: type) -> np.array:
     
     # Parse as DataFrame and convert to numpy array
     return reading_to_df(reading_path, channel_type).to_numpy()
 
-# Convert the numpy array of a chip's reading 
-# to a storable string
+"""Convert the numpy array of a chip's reading 
+to a storable string"""
 def reading_to_string(read_time: datetime, reading: np.array) -> str:
     
     # Intersperse , between all channel values as str
@@ -177,8 +177,7 @@ async def write_data(write_queue: asyncio.Queue, reading_names: list[str], outpu
     except Exception as e:
         print(e)
 
-# Parse the bytes read over bluetooth 
-# from the MiniSpect
+"""Parse the bytes read over bluetooth from the MS"""
 async def parse_MSBLE(read_queue: asyncio.Queue, write_queue: asyncio.Queue): 
     try:
         while True:
@@ -199,7 +198,6 @@ async def parse_MSBLE(read_queue: asyncio.Queue, write_queue: asyncio.Queue):
     except Exception as e:
         print(e)
 
-# TIP: you can get this function and more from the ``more-itertools`` package.
 def sliced(data: bytes, n: int) -> Iterator[bytes]:
     """
     Slices *data* into chunks of size *n*. The last slice may be smaller than
@@ -207,9 +205,9 @@ def sliced(data: bytes, n: int) -> Iterator[bytes]:
     """
     return takewhile(len, (data[i : i + n] for i in count(0, n)))
 
-# Read bytes from the MiniSpect 
-# over bluetooth via the UART
-# example from the bleak librray
+
+"""Read bytes from the MiniSpect over bluetooth via the UART
+example from the bleak librray"""
 async def read_MSBLE(queue: asyncio.Queue):
 
     UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -274,8 +272,6 @@ async def read_MSBLE(queue: asyncio.Queue):
 
             print("sent:", data)
     
-
-
 async def main():
     output_directory: str = './readings/MS'
     reading_names: list = ['AS_channels','TS_channels',
