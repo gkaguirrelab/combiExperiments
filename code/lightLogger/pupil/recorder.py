@@ -5,9 +5,15 @@ import numpy as np
 import pickle
 import queue
 import threading
+import pandas as pd
 from natsort import natsorted
 
 CAM_FPS = 30
+
+
+"""Parse the setting file for a video as a data frame"""
+def parse_settings_file(path: str) -> pd.DataFrame:
+    return pd.read_csv(path, header=None, names=['Frame', 'Gain', 'Exposure'])
 
 """Read in a video from a file to an 8-bit unsigned np.array"""
 def vid_array_from_file(path: str) -> np.array:
