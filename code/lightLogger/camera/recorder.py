@@ -37,26 +37,32 @@ def write_frame(write_queue: queue.Queue, filename: str):
             break
         
         # Extract frame and its metadata
-        frame, frame_num, current_time, current_gain, current_exposure = ret
+        frame, frame_num, current_gain, current_exposure = ret
         
         print(f'writing {frame_num}')
-        print(f"queue size: {write_queue.qsize()}")
-
-        # Downsample the frame 
-
         
         # Write the frame
+        np.save(os.path.join(os.path.basename(filename), f'{frame_num}.npy'), frame)
 
         # Write the frame info 
-        settings_file.write(f'{current_time},{frame_num},{current_gain},{current_exposure}\n')
+        settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
 
     # Close the settings file
     settings_file.close()
 
     print('finishing writing')
 
-"""Read in a video from a file to an 8-bit unsigned np.array"""
-def vid_array_from_file(path: str) -> np.array:
+"""Read in a video from a folder full of images saved as .np files as 8-bit unsigned np.array"""
+def vid_array_from_npy_folder(path: str) -> np.array:
+    frames = [np.load(os.path.join(path, frame))
+              for frame in natsorted(os.listdir(path))
+              if('.pkl' not in frame and '.txt' not in frame)]
+    
+    return np.array(frames, dtype=np.uint8)
+
+
+"""Read in a video from a image frames folder to an 8-bit unsigned np.array"""
+def vid_array_from_img_folder(path: str) -> np.array:
     frames = [cv2.imread(os.path.join(path, frame)) 
               for frame in natsorted(os.listdir(path)) 
               if '.pkl' not in frame and '.txt' not in frame] 
@@ -114,7 +120,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
 
         # Append the frame and its relevant information 
         # to the storage containers
-        write_queue.put((frame, frame_num, current_time, current_exposure, current_gain))
+        write_queue.put((frame, frame_num, current_exposure, current_gain))
 
         # Change gain every N ms
         if((current_time - last_gain_change)  > gain_change_interval):
@@ -181,7 +187,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
         # Append the frame and its relevant information 
         # to the storage containers
-        write_queue.put((frame, frame_num, current_time, current_gain, current_exposure))
+        write_queue.put((frame, frame_num, current_gain, current_exposure))
         gain_history.append(current_gain)
         exposure_history.append(current_exposure)
    

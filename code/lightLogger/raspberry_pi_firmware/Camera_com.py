@@ -11,7 +11,7 @@ import signal
 """Import utility functions from the RPI recorder"""
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'camera')
 sys.path.append(os.path.abspath(recorder_lib_path))
-from recorder import record_live, record_video, write_frame, vid_array_from_file, reconstruct_video
+from recorder import record_live, record_video, write_frame, vid_array_from_npy_folder, reconstruct_video
 
 """Parse arguments via the command line"""
 def parse_args() -> tuple:
@@ -86,7 +86,7 @@ def main():
     # if desired
     if(save_video is True):
         print('Generating video...')
-        frames: np.array = vid_array_from_file(filename)
+        frames: np.array = vid_array_from_npy_folder(filename)
         reconstruct_video(frames, output_path)
     
     # Remove the directory of frames if desired
