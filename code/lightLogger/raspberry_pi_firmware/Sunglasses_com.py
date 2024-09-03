@@ -1,11 +1,19 @@
 import argparse
 import os
 import sys
+import signal
 
 """Import utility functions from the device recorder"""
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'sunglasses')
 sys.path.append(os.path.abspath(recorder_lib_path))
 from recorder import record_live, record
+
+"""If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
+def handle_sigterm(signum, frame):
+    print("Received SIGTERM. Raising KeyboardInterrupt...")
+    raise KeyboardInterrupt
+signal.signal(signal.SIGTERM, handle_sigterm)
+
 
 """Parse arguments via the command line"""
 def parse_args() -> tuple:
