@@ -85,7 +85,6 @@ def write_frame(write_queue: queue.Queue, filename: str):
 def record_live(duration: float, write_queue: queue.Queue, filename: str, 
                 initial_gain: float, initial_exposure: int,
                 stop_flag: threading.Event):
-
     # Connect to and set up camera
     print(f"Initializing camera")
     cam: cv2.VideoCapture = initialize_camera()
