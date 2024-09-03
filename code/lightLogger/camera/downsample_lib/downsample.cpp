@@ -72,10 +72,10 @@ extern "C" uint8_t* downsample(uint8_t* flattened_img,
             uint32_t gr_sum = std::accumulate(std::begin(gr_pixels), std::end(gr_pixels), 0u);
 
             // Calculate the average of this color of pixels and cast back to unsigned 8 bit
-            uint8_t b_average = static_cast<uint8_t>(b_sum / chunk_size);
-            uint8_t gb_average = static_cast<uint8_t>(gb_sum / chunk_size);
-            uint8_t r_average = static_cast<uint8_t>(r_sum / chunk_size);
-            uint8_t gr_average = static_cast<uint8_t>(gr_sum / chunk_size);
+            uint8_t b_average = static_cast<uint8_t>(b_sum >> 2);
+            uint8_t gb_average = static_cast<uint8_t>(gb_sum >> 2);
+            uint8_t r_average = static_cast<uint8_t>(r_sum >> 2);
+            uint8_t gr_average = static_cast<uint8_t>(gr_sum >> 2);
 
             // Set the downsampled image to have their values
             downsampled_img[ pixel_to_index(downsampled_r, downsampled_c, new_cols) ] = b_average; 
