@@ -15,8 +15,8 @@ def parse_settings_file(path: str) -> pd.DataFrame:
     return pd.read_csv(path, header=None, names=['Frame', 'Gain', 'Exposure'])
 
 """Read in a video from a file to an 8-bit unsigned np.array"""
-def vid_array_from_file(path: str) -> np.array:
-    frames = [cv2.imread(os.path.join(path, frame)) 
+def vid_array_from_npy_folder(path: str) -> np.array:
+    frames = [np.load(os.path.join(path, frame)) 
               for frame in natsorted(os.listdir(path)) 
               if '.pkl' not in frame and '.txt' not in frame] 
     
@@ -220,8 +220,8 @@ def initialize_camera() -> cv2.VideoCapture:
         exit()
 
     # Placeholders until we do more research into this
-    width: int = 1920
-    height: int = 1080
+    width: int = 640
+    height: int = 480
     fps: int = 30
     initial_exposure_value = cam.get(cv2.CAP_PROP_EXPOSURE)
     initial_gain_value = cam.get(cv2.CAP_PROP_GAIN)
