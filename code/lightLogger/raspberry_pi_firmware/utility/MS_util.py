@@ -210,8 +210,8 @@ def sliced(data: bytes, n: int) -> Iterator[bytes]:
 example from the bleak librray"""
 async def read_MSBLE(queue: asyncio.Queue, device_name: str):
     UART_SERVICE_UUID: str = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-    UART_RX_CHAR_UUID: str = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-    UART_TX_CHAR_UUID: str = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+    UART_RX_CHAR_UUID: str = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+    UART_TX_CHAR_UUID: str = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
     def match_nus_uuid(device: BLEDevice, adv: AdvertisementData):
         # This assumes that the device includes the UART service UUID in the

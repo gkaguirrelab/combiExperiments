@@ -7,7 +7,7 @@ import argparse
 def parse_args() -> str:
     parser = argparse.ArgumentParser(description='Communicate to the MS and read/write its data')
 
-    parser.add_argument('device_id', type=str, help='UUID available via finding the device on NRF connect.\nExample:  UUID: str = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"')
+    parser.add_argument('device_id', type=str, help='Name of the device, assigned to it in the Arduino code, to connect to')
 
     args = parser.parse_args()
 
