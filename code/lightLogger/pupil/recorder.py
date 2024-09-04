@@ -8,8 +8,7 @@ import threading
 import pandas as pd
 from natsort import natsorted
 
-CAM_FPS = 30
-
+CAM_FPS: int = 30
 
 """Parse the setting file for a video as a data frame"""
 def parse_settings_file(path: str) -> pd.DataFrame:
@@ -62,17 +61,14 @@ def write_frame(write_queue: queue.Queue, filename: str):
             print('BREAKING WRITING')
             break
         
-        # Extract frame and its metadata
-        frame, frame_num, current_gain, current_exposure = ret
-
-        # Construct the path to save this frame to
-        save_path: str = os.path.join(filename, f"{frame_num}.tiff")
+        # Retrieve the information out of the ret tuple
+        frame, frame_num, current_exposure, current_gain = ret
         
-        print(f'writing {save_path}')
+        print(f'writing {frame_num}')
         print(f"Queue size: {write_queue.qsize()}")
 
         # Write the frame
-        cv2.imwrite(save_path, frame)
+        np.save(os.path.join(filename, f'{frame_num}.npy'), frame)
 
         # Write the frame info 
         settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
@@ -106,7 +102,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
         if(not ret):
             print(f"ERROR: Could not read frame")
             break
-
+        
         # Capture the current time
         current_time: float = time.time()
 
@@ -225,7 +221,7 @@ def initialize_camera() -> cv2.VideoCapture:
 
     # Placeholders until we do more research into this
     width: int = 1920
-    height: int = 1920
+    height: int = 1080
     fps: int = 30
     initial_exposure_value = cam.get(cv2.CAP_PROP_EXPOSURE)
     initial_gain_value = cam.get(cv2.CAP_PROP_GAIN)

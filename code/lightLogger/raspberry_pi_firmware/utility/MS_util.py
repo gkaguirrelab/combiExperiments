@@ -208,7 +208,7 @@ def sliced(data: bytes, n: int) -> Iterator[bytes]:
 
 """Read bytes from the MiniSpect over bluetooth via the UART
 example from the bleak librray"""
-async def read_MSBLE(queue: asyncio.Queue):
+async def read_MSBLE(queue: asyncio.Queue=None):
 
     UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
     UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -238,7 +238,7 @@ async def read_MSBLE(queue: asyncio.Queue):
     async def handle_rx(_: BleakGATTCharacteristic, data: bytearray):
         current_time = datetime.now()
         print(f"received [{len(data)}]:", data)
-        await queue.put([current_time, data])
+        #await queue.put([current_time, data])
 
     async with BleakClient(device, disconnected_callback=handle_disconnect) as client:
         # Start notifications for receiving data
@@ -282,15 +282,15 @@ async def main():
     if(not os.path.exists(output_directory)):
         os.mkdir(output_directory)
     
-    read_queue = asyncio.Queue()
-    write_queue = asyncio.Queue()
+    #read_queue = asyncio.Queue()
+    #write_queue = asyncio.Queue()
 
-    read_task = asyncio.create_task(read_MSBLE(read_queue))
-    parse_task = asyncio.create_task(parse_MSBLE(read_queue, write_queue))
-    write_task = asyncio.create_task(write_data(write_queue, reading_names, output_directory))
+    read_task = asyncio.create_task(read_MSBLE())
+    #parse_task = asyncio.create_task(parse_MSBLE(read_queue, write_queue))
+    #write_task = asyncio.create_task(write_data(write_queue, reading_names, output_directory))
 
-    #await asyncio.gather(read_task,return_exceptions=True)
-    await asyncio.gather(read_task, parse_task, write_task, return_exceptions=True)
+    await asyncio.gather(read_task,return_exceptions=True)
+   # await asyncio.gather(read_task, parse_task, write_task, return_exceptions=True)
 
 if(__name__ == '__main__'):
     asyncio.run(main())
