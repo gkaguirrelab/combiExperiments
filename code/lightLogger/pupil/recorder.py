@@ -117,7 +117,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
         # Change gain every N ms
         if((current_time - last_gain_change)  > gain_change_interval):
             # Take the mean intensity of the frame
-            mean_intensity = np.mean(frame, axis=(0,1))
+            #mean_intensity = np.mean(frame, axis=(0,1))
 
             # Retrieve and set the new gain and exposure from our custom AGC
             new_gain, new_exposure = 0, 0 
@@ -226,6 +226,7 @@ def initialize_camera() -> cv2.VideoCapture:
     # Placeholders until we do more research into this
     width: int = 1920
     height: int = 1920
+    fps: int = 30
     initial_exposure_value = cam.get(cv2.CAP_PROP_EXPOSURE)
     initial_gain_value = cam.get(cv2.CAP_PROP_GAIN)
     
@@ -235,6 +236,7 @@ def initialize_camera() -> cv2.VideoCapture:
 
     # Set the properties of the camera
     cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
+    cam.set(cv2.CAP_PROP_FPS, fps)
     cam.set(cv2.CAP_PROP_GAIN, initial_gain_value)
     cam.set(cv2.CAP_PROP_EXPOSURE, initial_exposure_value)
 
