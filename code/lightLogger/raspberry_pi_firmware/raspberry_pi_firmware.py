@@ -4,7 +4,7 @@ import time
 def main():
     print('Building controllers')
     # List of scripts to run and their associated arguments
-    component_controllers = {#'MS_com.py': [],
+    component_controllers = {'MS_com.py': ['White MS'],
                              'Sunglasses_com.py': ['/home/eds/combiExperiments/code/lightLogger/raspberry_pi_firmware/readings/sunglasses.csv', 'INF'],
                              'Camera_com.py': ['all_together_now_camera.avi', 'INF', '--save_frames', '1'], 
                              'Pupil_com.py': ['all_together_now_pupil.mp4', 'INF', '--save_frames', '1']}
@@ -22,12 +22,13 @@ def main():
 
     # Retrieve the processes by name
     #minispect_process, pupil_process = processes 
-    sunglasses_process, camera_process, pupil_process = processes #camera_process = processes 
+    minispect_process, sunglasses_process, camera_process, pupil_process = processes #camera_process = processes 
     #minispect_process, = processes
 
     print(f'Executing')
     try:    
-        time.sleep(30)
+        time.sleep(60)
+        minispect_process.terminate()
         pupil_process.terminate()
        
         
@@ -44,9 +45,10 @@ def main():
         sunglasses_process.wait()
         pupil_process.wait()
         camera_process.wait()
-        #minispect_process.wait()
+        minispect_process.wait()
     
     except:
+        minispect_process.terminate()
         camera_process.terminate()
         sunglasses_process.terminate()
         pupil_process.wait()
@@ -58,7 +60,7 @@ def main():
         sunglasses_process.wait()
         camera_process.wait()
         pupil_process.wait()
-        #minispect_process.wait()
+        minispect_process.wait()
 
 
 if(__name__ == '__main__'):

@@ -238,7 +238,7 @@ async def read_MSBLE(queue: asyncio.Queue, device_name: str):
     async def handle_rx(_: BleakGATTCharacteristic, data: bytearray):
         current_time = datetime.now()
         print(f"received [{len(data)}]:", data)
-        #await queue.put([current_time, data])
+        await queue.put([current_time, data])
 
     async with BleakClient(device, disconnected_callback=handle_disconnect) as client:
         # Start notifications for receiving data
@@ -261,7 +261,7 @@ async def read_MSBLE(queue: asyncio.Queue, device_name: str):
 
             # some devices, like devices running MicroPython, expect Windows
             # line endings (uncomment line below if needed)
-            # data = data.replace(b"\n", b"\r\n")
+            data = data.replace(b"\n", b"\r\n")
 
             # Writing without response requires that the data can fit in a
             # single BLE packet. We can use the max_write_without_response_size
