@@ -84,7 +84,7 @@ void setup() {
   analogReadResolution(12);         // wireing_analog_nRF52.c:39
 
 
-  if (!bleSerial.beginAndSetupBLE("LightSense1")) {
+  if (!bleSerial.beginAndSetupBLE("White MS")) {
     while (true) {
       Serial.println("failed to initialize HardwareBLESerial!");
       delay(1000);

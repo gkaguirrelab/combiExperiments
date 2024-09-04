@@ -148,7 +148,7 @@ def reading_to_string(read_time: datetime, reading: np.array) -> str:
     # and add new line
     return ",".join([str(read_time)] + [str(x) for x in reading]) + '\n'
 
-
+"""Write data from the MS to the respective data files"""
 async def write_data(write_queue: asyncio.Queue, reading_names: list[str], output_directory: str):
     try:
         while True:
@@ -208,11 +208,11 @@ def sliced(data: bytes, n: int) -> Iterator[bytes]:
 
 """Read bytes from the MiniSpect over bluetooth via the UART
 example from the bleak librray"""
-async def read_MSBLE(queue: asyncio.Queue):
+async def read_MSBLE(queue: asyncio.Queue, device_name: str):
 
-    UART_SERVICE_UUID = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
-    UART_RX_CHAR_UUID = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-    UART_TX_CHAR_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+    UART_SERVICE_UUID: str = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+    UART_RX_CHAR_UUID: str = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+    UART_TX_CHAR_UUID: str = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 
     def match_nus_uuid(device: BLEDevice, adv: AdvertisementData):
         # This assumes that the device includes the UART service UUID in the
@@ -223,7 +223,8 @@ async def read_MSBLE(queue: asyncio.Queue):
 
         return False
 
-    device = await BleakScanner.find_device_by_name("White MS",timeout=30) # find_device_by_filter(match_nus_uuid,timeout=30)
+    # Find the device by its nam 
+    device = await BleakScanner.find_device_by_name(device_name, timeout=30) #.find_device_by_filter(match_nus_uuid,timeout=30) #find_device_by_name("White MS",timeout=30) # find_device_by_filter(match_nus_uuid,timeout=30)
 
     if device is None:
         print("no matching device found, you may need to edit match_nus_uuid().")
@@ -281,11 +282,12 @@ async def main():
         # make it
     if(not os.path.exists(output_directory)):
         os.mkdir(output_directory)
-    
+
+    id: str = 'White MS'
     read_queue = asyncio.Queue()
     write_queue = asyncio.Queue()
 
-    read_task = asyncio.create_task(read_MSBLE(read_queue))
+    read_task = asyncio.create_task(read_MSBLE(read_queue, id))
     parse_task = asyncio.create_task(parse_MSBLE(read_queue, write_queue))
     write_task = asyncio.create_task(write_data(write_queue, reading_names, output_directory))
 
