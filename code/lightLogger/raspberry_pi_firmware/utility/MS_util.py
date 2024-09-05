@@ -152,7 +152,7 @@ def reading_to_string(read_time: datetime, reading: np.array) -> str:
 """Write MS readings taken from the serial connection"""
 def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory: str):
     while(True):
-        print(f'Queue size {write_queue.qsize()}')
+        print(f'MS Queue size {write_queue.qsize()}')
 
         # Retrieve an item from the write queue
         ret = write_queue.get()
@@ -210,15 +210,13 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
         token: bytes = ms.read(1)
 
         #Check if the token is equal to the starting delimeter
-        if(token == b'<'):
-            print('Received a message from MS')
-            
+        if(token == b'<'):            
             # Read the buffer over the serial port
             reading_buffer: bytes = ms.read(msg_length - 1)
-            read_time: datetime.datetime = datetime.now()
+            #read_time: datetime.datetime = datetime.now()
 
             # Append it to the write queue
-            write_queue.put([read_time, token + reading_buffer])
+            write_queue.put(['NA', token + reading_buffer])
             
             # Flush the reading buffer 
             reading_buffer = None

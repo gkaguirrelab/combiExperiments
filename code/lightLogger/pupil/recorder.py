@@ -64,8 +64,8 @@ def write_frame(write_queue: queue.Queue, filename: str):
         # Retrieve the information out of the ret tuple
         frame, frame_num, current_exposure, current_gain = ret
         
-        print(f'writing {frame_num}')
-        print(f"Queue size: {write_queue.qsize()}")
+        #print(f'writing {frame_num}')
+        print(f"Pupil Queue size: {write_queue.qsize()}")
 
         # Write the frame
         np.save(os.path.join(filename, f'{frame_num}.npy'), frame)

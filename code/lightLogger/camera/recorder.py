@@ -40,10 +40,10 @@ def write_frame(write_queue: queue.Queue, filename: str):
         # Extract frame and its metadata
         frame, frame_num, current_gain, current_exposure = ret
         
-        print(f'writing {frame_num}')
+        print(f'Camera Queue size {write_queue.qsize()}')
         
         # Write the frame
-        np.save(os.path.join(os.path.basename(filename), f'{frame_num}.npy'), frame)
+        np.save(os.path.join(os.path.basename(filename), f'{frame_num}.npy'), cv2.resize(frame, (320, 240)))
 
         # Write the frame info 
         settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
