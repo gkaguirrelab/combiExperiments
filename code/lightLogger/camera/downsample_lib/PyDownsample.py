@@ -47,9 +47,6 @@ def downsample_pure_python(img: np.array, factor: int) -> np.array:
     # Initialize the size of chunks
     chunk_rows = chunk_cols = 2 << factor
 
-    print(f'Downsampled shape: {downsampled_img.shape}')
-    print(f'Chunk size: ({chunk_rows,chunk_cols})')
-
     # Iterate over the original image
     for r in range(0, img.shape[0], chunk_rows):
         # Set the downsampled col back to 0 for this block
