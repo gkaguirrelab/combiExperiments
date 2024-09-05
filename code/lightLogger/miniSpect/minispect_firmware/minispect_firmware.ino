@@ -23,7 +23,6 @@ Adafruit_AS7341 as7341;
 LIS2DUXS12Sensor LIS2DUXS12(&Wire);
 int batSensPin = PIN_VBAT;         //PIN_VBAT
 int readbatPin = PIN_VBAT_ENABLE;  //p14; //P0_14;//VBAT_ENABLE; //P0_14;// PIN_VBAT;   //PIN_VBAT
-
 int32_t accel[3];
 int16_t accel16[3];
 uint16_t TSL2591_full;
@@ -36,30 +35,10 @@ uint16_t VBat100x = 0;
 int16_t accel_buffer[3*20];
 int accel_buffer_pos = 0; 
 
-// data array to BLE
-// bytes 0-1 :D
-// bytes 2-3 accel_x
-// bytes 4-5 accel_y
-// bytes 6-7 accel_z
-// bytes 8-9 temp
-// TSL2591
-// bytes 10-11 FULL
-// bytes 12-13 IR
-// bytes 14-17 LUX
-// AS7341
-// bytes 18-19 ADC0/F1 415nm
-// bytes 20-21 ADC1/F2 445nm
-// bytes 22-23 ADC2/F3 480nm
-// bytes 24-25 ADC3/F4 515nm
-// bytes 26-27 ADC0/F5 555nm
-// bytes 28-29 ADC1/F6 590nm
-// bytes 30-31 ADC2/F7 630nm
-// bytes 32-33 ADC3/F8 680nm
-// bytes 34-35 ADC4/Clear
 // bytes 36-37 ADC5/NIR
 String serial_input = "";
-
-String ble_input = "SS";
+char device_mode = 'S';
+String ble_input = "";
 
 
 String commandfz = "";
@@ -79,6 +58,7 @@ void setup() {
   pinMode(batSensPin, INPUT);
   pinMode(readbatPin, OUTPUT);
   digitalWrite(readbatPin, LOW);
+  
   // initialise ADC wireing_analog_nRF52.c:73
   analogReference(AR_INTERNAL2V4);  // default 0.6V*6=3.6V  wireing_analog_nRF52.c:73
   analogReadResolution(12);         // wireing_analog_nRF52.c:39
@@ -92,10 +72,6 @@ void setup() {
   }
 
   Serial.println("HardwareBLESerial initialized!");
-
-  // wait for a central device to connect
-  //   while (!bleSerial);
-  //   Serial.println("HardwareBLESerial central device connected!");
   TSL2591_init();
   AS7341_Reinit();
   LIS2DUXS12_init();
@@ -114,6 +90,25 @@ void loop() {
     accel_buffer[accel_buffer_pos+i] = (int16_t)LI_channels[i]; 
   }
 
+  // Science mode entails gathering all of the sensor information 
+  // and the acceleration buffer, then writing it over the serial port
+  if(device_mode == 'S') {
+      // Retrieve all 11 AS channels
+      std::vector<uint16_t> AS_channels = AS_read('C',&as7341);
+      std::vector<uint16_t> AS_flicker = AS_read('F', &as7341); 
+      AS_channels.push_back(AS_flicker[0]);
+  
+      // Retrieve 2 TS channels 
+      std::vector<uint16_t> TS_channels = TS_read('C',&tsl);
+
+      float_t LI_temp = LI_read('T', &LIS2DUXS12)[0];
+
+      Serial.print("LI TEMP: "); Serial.println(LI_temp);
+
+      Serial.println("Sending data");
+      write_serial(&AS_channels, &TS_channels, &accel_buffer[0], LI_temp);  
+  }
+
   // Get the command from the controller
   read_command(&serial_input); 
   read_BLE_command(&ble_input, &bleSerial);
@@ -126,7 +121,7 @@ void loop() {
     String mode_and_chip = serial_input.substring(0,2); 
 
     // Read from the AS chip using given specific data to read
-   if(mode_and_chip == "RA") {
+    if(mode_and_chip == "RA") {
       Serial.println("Read AS mode"); 
 
       //std::vector<Adafruit_BusIO_RegisterBits> flicker_info = as7341.setFDGain(5);

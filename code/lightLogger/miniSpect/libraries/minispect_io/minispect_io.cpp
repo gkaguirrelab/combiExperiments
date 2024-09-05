@@ -57,13 +57,62 @@ void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
 
 }
 
+void write_serial(std::vector<uint16_t>* AS_channels,
+                  std::vector<uint16_t>* TS_channels,
+                  int16_t* accel_buffer,
+                  float_t LI_temp) 
+{
+    // Initialize buffer to send and byte to insert data
+    uint8_t data[175];
+    int pos = 2;  
+
+    // 2 bytes at the start for beginning flag
+    memset(data, '\0', 175);
+    data[0] = '<';
+    data[1] = '\0';
+
+    // One byte at the end for ending flag
+    data[174] = '>';
+
+    // Copy over AS_channel bytes
+    //11 * 2 bytes from AS channels -> 22 
+    for(int i = 0; i < AS_channels->size(); i++) {
+      std::memcpy(&data[pos], &AS_channels->at(i), sizeof(uint16_t));
+      pos += 2; 
+    }
+
+    //Copy over the TS channel bytes
+    //2 x 2 bytes from TS channels -> 4
+    for(int i = 0; i < TS_channels->size(); i++) {
+      std::memcpy(&data[pos], &TS_channels->at(i), sizeof(uint16_t));
+      pos += 2; 
+    }
+
+    //Copy over the LI channel bytes
+    //20 x 3 * 2 bytes from LI channels - > 120 
+    int buffer_size = 60; //sizeof(accel_buffer) / sizeof(int16_t);
+    std::memcpy(&data[pos], accel_buffer, buffer_size * sizeof(int16_t));
+
+    Serial.print("ACCEL BUFFER SIZE: ");Serial.println(buffer_size);
+    pos += (buffer_size * 2); 
+
+    //Copy over the LI temperature
+    //1 x 4 bytes from LI_temp - > 4 OR 8, not sure of float_t 
+    std::memcpy(&data[pos], &LI_temp, sizeof(float_t));
+
+    // Write it throught the serial port
+    Serial.write(data, 175);
+
+}
+
+
 void write_ble(HardwareBLESerial* bleSerial, 
                std::vector<uint16_t>* AS_channels,
                std::vector<uint16_t>* TS_channels,
                int16_t* accel_buffer,
                float_t LI_temp) 
 {
-    //Can transfer 52 bytes total
+    //Can transfer 175 bytes total
     uint8_t dataBLE[175];
     int pos = 2;  
     
@@ -71,6 +120,8 @@ void write_ble(HardwareBLESerial* bleSerial,
     memset(dataBLE, '\0', 175);
     dataBLE[0] = ':';
     dataBLE[1] = 'D';
+
+    // One byte at the end for ending flag
     dataBLE[174] = '\n';
 
     // Copy over AS_channel bytes
