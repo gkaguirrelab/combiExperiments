@@ -11,6 +11,9 @@ import os
 from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+import queue
+import serial
+import threading
 
 """Generate plots of the readings from the different sensors"""
 def plot_readings():
@@ -136,20 +139,95 @@ def reading_to_df(reading_path: str, channel_type : type) -> pd.DataFrame:
 
 """Parse a reading csv and return the resulting dataframe  as a np.array"""
 def reading_to_np(reading_path: str, channel_type: type) -> np.array:
-    
     # Parse as DataFrame and convert to numpy array
     return reading_to_df(reading_path, channel_type).to_numpy()
 
 """Convert the numpy array of a chip's reading 
 to a storable string"""
 def reading_to_string(read_time: datetime, reading: np.array) -> str:
-    
     # Intersperse , between all channel values as str
     # and add new line
     return ",".join([str(read_time)] + [str(x) for x in reading]) + '\n'
 
+"""Write MS readings taken from the serial connection"""
+def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory: str):
+    while(True):
+        print(f'Queue size {write_queue.qsize()}')
+
+        # Retrieve an item from the write queue
+        ret = write_queue.get()
+
+        # Break from writing if we have finished a recording
+        if(ret is None):
+            break
+        
+        # Otherwise, extract the information from the item
+        read_time, bluetooth_bytes = ret
+
+        # Parse the the readings into np.arrays 
+        readings: tuple = parse_SERIAL(bluetooth_bytes)
+
+        # Create mapping between filenames and readings 
+        # from the Minispect
+        results_mapping: dict = {reading_name:reading for reading_name, 
+                                reading in zip(reading_names, readings)}
+
+        # Iterate over the reading names/readings
+        for reading_name, reading in results_mapping.items():
+        # Display how much information is in each reading
+        #print(f"Reading: {reading_name} | Shape: {reading.shape}")
+
+            # Path for this reading's data file
+            save_path: str = os.path.join(output_directory, reading_name + '.csv')
+
+            # Open file, append new reading to the end
+            with open(save_path,'a') as f:
+                f.write(reading_to_string(read_time, reading))
+
+"""Parse a MS reading from the serial connection (or broadly), e.g., no async operations necessary"""
+def parse_SERIAL(bluetooth_bytes: bytes) -> tuple:
+    # Splice and convert the channels to their respective types 
+    AS_channels: np.array = np.frombuffer(bluetooth_bytes[2:24],dtype=np.uint16)
+    TS_channels: np.array = np.frombuffer(bluetooth_bytes[24:28],dtype=np.uint16)
+    LI_channels: np.array = np.frombuffer(bluetooth_bytes[28:148],dtype=np.int16)
+    LI_temp = np.array = np.frombuffer(bluetooth_bytes[148:152],dtype=np.float32)
+
+    return AS_channels, TS_channels, LI_channels, LI_temp 
+
+"""Read packets of data from the MS over Serial Connection"""
+def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
+    # Hard Code the port the MS connects to
+    # its baudrate, and the length of a message in bytes
+    com_port: str = '/dev/ttyACM0'
+    baudrate: int = 115200
+    msg_length: int = 175 
+
+    # Connect to the MS device
+    ms: serial.Serial = serial.Serial(com_port, baudrate, timeout=1)
+
+    # Read until we hit the start delimeter of the MS message 
+    while(not stop_flag.is_set()):
+        token: bytes = ms.read(1)
+
+        #Check if the token is equal to the starting delimeter
+        if(token == b'<'):
+            print('Received a message from MS')
+            
+            # Read the buffer over the serial port
+            reading_buffer: bytes = ms.read(msg_length - 1)
+            read_time: datetime.datetime = datetime.now()
+
+            # Append it to the write queue
+            write_queue.put([read_time, token + reading_buffer])
+            
+            # Flush the reading buffer 
+            reading_buffer = None
+    
+    # Signal the end of the write queue
+    write_queue.put(None)
+
 """Write data from the MS to the respective data files"""
-async def write_data(write_queue: asyncio.Queue, reading_names: list[str], output_directory: str):
+async def write_MSBLE(write_queue: asyncio.Queue, reading_names: list, output_directory: str):
     try:
         while True:
             readings = await write_queue.get()
@@ -288,7 +366,7 @@ async def main():
 
     read_task = asyncio.create_task(read_MSBLE(read_queue, id))
     parse_task = asyncio.create_task(parse_MSBLE(read_queue, write_queue))
-    write_task = asyncio.create_task(write_data(write_queue, reading_names, output_directory))
+    write_task = asyncio.create_task(write_MSBLE(write_queue, reading_names, output_directory))
 
     #await asyncio.gather(read_task,return_exceptions=True)
     await asyncio.gather(read_task, parse_task, write_task, return_exceptions=True)

@@ -1,21 +1,20 @@
 import os
 import numpy as np
-import asyncio
-from utility.MS_util import read_MSBLE, parse_MSBLE, write_data
+from utility.MS_util import read_SERIAL, write_SERIAL
 import argparse
+import queue
+import threading
+import signal
 
-def parse_args() -> str:
-    parser = argparse.ArgumentParser(description='Communicate to the MS and read/write its data')
+"""If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
+def handle_sigterm(signum, frame):
+    print("Received SIGTERM. Raising KeyboardInterrupt...")
+    raise KeyboardInterrupt
+signal.signal(signal.SIGTERM, handle_sigterm)
 
-    parser.add_argument('device_id', type=str, help='Name of the device, assigned to it in the Arduino code, to connect to')
-
-    args = parser.parse_args()
-
-    return args.device_id
-
-async def main():
+def main():
     # Retrieve the name of the device to connect with
-    id: str = parse_args()
+    #id: str = parse_args()
 
     # Initialize output directory and names 
     # of reading files
@@ -26,17 +25,41 @@ async def main():
     # If the output directory does not exist, make it
     if(not os.path.exists(output_directory)): os.mkdir(output_directory)
 
-    # Initialize asynchronous read/write queues 
-    read_queue = asyncio.Queue()
-    write_queue = asyncio.Queue()
+    # Initialize write_queue for data to write
+    write_queue = queue.Queue()
 
-    # Create reading, parsing, and writing asynchronous tasks 
-    read_task = asyncio.create_task(read_MSBLE(read_queue, id))
-    parse_task = asyncio.create_task(parse_MSBLE(read_queue, write_queue))
-    write_task = asyncio.create_task(write_data(write_queue, reading_names, output_directory))
+    # Create a threading flag to declare when to stop indefinite recordings
+    stop_flag: threading.Event = threading.Event()
 
-    # Perform tasks
-    await asyncio.gather(read_task, parse_task, write_task, return_exceptions=True)
+    # Build thread processes for both capturing frames and writing frames 
+
+    capture_thread: threading.Thread = threading.Thread(target=read_SERIAL, args=(write_queue, stop_flag))
+    write_thread: threading.Thread = threading.Thread(target=write_SERIAL, args=(write_queue, reading_names, output_directory))
+    
+    # Begin the threads
+    for thread in (capture_thread, write_thread):
+        thread.start()
+
+    # Try capturing
+    try:
+        capture_thread.join()
+
+    # If the capture was canceled via Ctrl + C
+    except KeyboardInterrupt:
+        # Set the stop flag to tell a live capture to stop
+        stop_flag.set()
+
+        # the capture_thread is entirely finished for recording videos
+        capture_thread.join()
+
+        # Wait for the write thread to complete
+        write_thread.join()
+
+    # Join threads regardless of interrupt or not. Ensure they are joined
+    finally:
+        for thread in (capture_thread, write_thread):
+            thread.join()
+  
 
 if(__name__ == '__main__'):
-    asyncio.run(main())
+    main()
