@@ -45,14 +45,17 @@ def downsample_pure_python(img: np.array, factor: int) -> np.array:
     downsampled_r = downsampled_c = 0 
 
     # Initialize the size of chunks
-    chunk_rows = chunk_cols = factor << 2
+    chunk_rows = chunk_cols = 2 << factor
+
+    print(f'Downsampled shape: {downsampled_img.shape}')
+    print(f'Chunk size: ({chunk_rows,chunk_cols})')
 
     # Iterate over the original image
     for r in range(0, img.shape[0], chunk_rows):
         # Set the downsampled col back to 0 for this block
         downsampled_c = 0 
 
-        # Iterate over the horizontal blocks
+        # Iterate over the horizontal chunks
         for c in range(0, img.shape[1], chunk_cols):
             # Find the pixels of each color
             r_pixels: np.array = img[r+1:r+chunk_rows:2, c+1:c+chunk_cols:2] 
@@ -74,9 +77,6 @@ def downsample_pure_python(img: np.array, factor: int) -> np.array:
 
     # Return the downsampled image
     return downsampled_img
-
-
-
 
 """Downsample a bayers image by a factor of 2 along each dimension"""
 def downsample(img: np.array) -> np.array:
