@@ -75,7 +75,9 @@ def downsample_pure_python(img: np.array, factor: int) -> np.array:
     # Return the downsampled image
     return downsampled_img
 
-"""Downsample a bayers image by a factor of 2 along each dimension"""
+"""A generalized bayer downsample algorithm written in CPP called by Python
+   Note: factor is a power of two. So factor=1 downscales by 2 along
+   dimension"""
 def downsample(img: np.array, factor: int) -> np.array:
     import ctypes
 
@@ -92,7 +94,7 @@ def downsample(img: np.array, factor: int) -> np.array:
     downsample_lib.downsample.restype = ctypes.POINTER(ctypes.c_uint8)
 
     # Retrieve the downsampled image
-    new_shape: np.array = np.array(img.shape)//2
+    new_shape: np.array = np.array(img.shape) >> factor
     downsampled_ptr = downsample_lib.downsample(img.flatten().ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)), 
                                                                                                img.shape[0], img.shape[1]); 
     # Copy to np.array

@@ -4,14 +4,9 @@
 #include <numeric>
 #include <array>
 #include <iostream>
-#include <opencv2/opencv.hpp>
-#include <filesystem>
 #include <vector>
-#include <string>
-#include <chrono>
 
 using std::cout;
-namespace fs = std::filesystem;
 
 // Convert a pixel's 2D coordinates to index 
 // to an index in a 1D array
@@ -21,23 +16,28 @@ size_t pixel_to_index(int r, int c, int cols) {
 
 extern "C" uint8_t* downsample(uint8_t* flattened_img, 
                                uint16_t rows, 
-                               uint16_t cols) 
+                               uint16_t cols,
+                               uint8_t factor) 
 {       
-    // Downscale the width and the height by 2, so each chunk is 2x2 big
-    unsigned int chunk_size = 2 * 2; 
+    // Find the shape of the new image by dividing by 2 x factor 
+    // along each dimension
+    size_t new_rows = rows >> factor; 
+    size_t new_cols = cols >> factor; 
 
-    // Allocate space for the new downsampled image that is 
-    // 1/4 the size the original (divide by 2 along each dimension)
-    size_t new_rows = rows / 2; 
-    size_t new_cols = cols / 2; 
+    // Allocate the new image 
     uint8_t* downsampled_img = new uint8_t[new_rows * new_cols]; 
 
     // Keep track of where where to put the new pixels
     size_t downsampled_r = 0; 
     size_t downsampled_c = 0; 
 
+    // Find the size of the chunk in the original image to modify
+    size_t chunk_size = 2 << factor; 
+
     // Iterate over the chunks of the new image
     for(size_t r = 0; r < rows; r += chunk_size) {
+        // Reset the horizontal insertion chunk equal to 0 for this row
+        downsampled_c = 0; 
         for(size_t c = 0; c < cols; c += chunk_size) {
             // Find the locations and values of each of the blue pixels in this chunk
             std::array<uint8_t, 4> b_pixels = { flattened_img[ pixel_to_index(r,c,cols) ], 
@@ -84,14 +84,13 @@ extern "C" uint8_t* downsample(uint8_t* flattened_img,
             downsampled_img[ pixel_to_index(downsampled_r+1, downsampled_c, new_cols) ] = gr_average; 
 
             // After each column block is finished in the downsampled image,
-            // move to the next block, and reset to 0 when moving to new row block 
-            downsampled_c = (downsampled_c + (chunk_size)/2) % new_cols; 
+            // move to the next block 
+            downsampled_c += 2; 
         }
 
         // After each row block is finished in the downsampled image,
-        // move to the next block, do not have to reset to 0 since when rows are finished, 
-        // the downsampling is finished
-        downsampled_r = (downsampled_r + (chunk_size)/2);
+        // move to the next block 
+        downsampled_r += 2; 
     }
 
 
@@ -100,46 +99,5 @@ extern "C" uint8_t* downsample(uint8_t* flattened_img,
 }
 
 int main() {
-    std::vector<uint8_t*> img_arr; 
-    std::string directory_path = "/Users/zacharykelly/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/downsample_lib/tests/blue_video";    
-    
-    // Iterate over all files in the directory
-    for (const auto& entry : fs::directory_iterator(directory_path)) {
-        // Get the file path
-        std::string file_path = entry.path().string();
-
-        cout << file_path << '\n'; 
-
-        // Read the image
-        cv::Mat img = cv::imread(file_path, cv::IMREAD_GRAYSCALE);
-
-        // Check if the image was loaded successfully
-        if (img.empty()) {
-            std::cerr << "Error: Could not open or find the image: " << file_path << std::endl;
-            continue;
-        }
-
-        // Append the image to the image vector
-        img_arr.push_back(img.reshape(1,1).data); 
-    }
-
-    cout << "Downsampling...\n";
-
-    int rows = 480; 
-    int cols = 640; 
-
-    auto start = std::chrono::high_resolution_clock::now();
-    // Iterate over the images and see how long it takes
-    for(size_t i = 0; i < img_arr.size(); i++) {
-        uint8_t* downsampled = downsample(img_arr[i], rows, cols);
-    }
-
-    auto end = std::chrono::high_resolution_clock::now();
-
-     // Calculate the elapsed time in milliseconds
-    std::chrono::duration<double, std::milli> elapsed = end - start;
-
-    // Output the elapsed time
-    std::cout << "Elapsed time: " << elapsed.count() << " ms" << std::endl;
-
+   return 0; 
 }
