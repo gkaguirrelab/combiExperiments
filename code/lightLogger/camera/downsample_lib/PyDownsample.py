@@ -76,7 +76,7 @@ def downsample_pure_python(img: np.array, factor: int) -> np.array:
     return downsampled_img
 
 """Downsample a bayers image by a factor of 2 along each dimension"""
-def downsample(img: np.array) -> np.array:
+def downsample(img: np.array, factor: int) -> np.array:
     import ctypes
 
     # Find the compiled shared cpp library 

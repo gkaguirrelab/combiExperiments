@@ -48,7 +48,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
         print(f'Camera Queue size {write_queue.qsize()}')
         
         # Write the frame
-        np.save(os.path.join(os.path.basename(filename), f'{frame_num}.npy'), downsample_pure_python(frame, 2))
+        np.save(os.path.join(os.path.basename(filename), f'{frame_num}.npy'), downsample_pure_python(frame, 4))
 
         # Write the frame info 
         settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
