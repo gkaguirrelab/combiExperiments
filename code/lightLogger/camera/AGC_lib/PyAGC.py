@@ -1,7 +1,13 @@
 import pickle 
 import argparse
-import numpy as np
+import numpy as n
+import ctypes
 import os
+
+"""Define the return type of the CPP AGC lib"""
+class RetVal(ctypes.Structure):
+        _fields_ = [("adjusted_gain", ctypes.c_double),
+                    ("adjusted_exposure", ctypes.c_double)]
 
 """Parse arguments from the command line"""
 def parse_args() -> tuple:
@@ -16,27 +22,35 @@ def parse_args() -> tuple:
 
     return args.signal, args.gain, args.exposure, args.speed_settings
 
-"""Calculate the adjusted gain and exposure for a current state"""
-def AGC(signal: float, gain: float, exposure: float, speed_setting: float) -> dict:
-    import ctypes
-
-    # Define the same structure as that returned by the CPP AGC
-    class RetVal(ctypes.Structure):
-        _fields_ = [("adjusted_gain", ctypes.c_double),
-                    ("adjusted_exposure", ctypes.c_double)]
-
+"""Import the necessary libraries to use the CPP AGC library.
+    This is time consuming, so don't do if we don't have to."""
+def import_AGC_lib() -> ctypes.CDLL:
     # Find the compiled shared cpp library 
     cwd, filename = os.path.split(os.path.abspath(__file__))
-    AGC_cpp_path = os.path.join(cwd, 'AGC.so')
+    agc_cpp_path = os.path.join(cwd, 'AGC.so')
+
+    # Read in the cpp downsampling library and define its
+    # arguments' types and return type 
+    agc_lib = ctypes.CDLL(agc_cpp_path) 
     
     # Read in the cpp AGC library and define its
     # arguments' types and return type 
-    agc_lib = ctypes.CDLL(AGC_cpp_path) 
+    agc_lib = ctypes.CDLL(agc_cpp_path) 
     agc_lib.AGC.argtypes = [ctypes.c_double]*4
     agc_lib.AGC.restype = RetVal
 
+    return agc_lib
+
+
+"""Calculate the adjusted gain and exposure for a current state"""
+def AGC(signal: float, gain: float, exposure: float, speed_setting: float, 
+        lib: ctypes.CDLL=None) -> dict:
+    
+    # Import the lib if needed. Note, this is relatively very time consuming
+    if(lib is None): lib = import_AGC_lib()
+
     # Call the cpp AGC 
-    ret_val = agc_lib.AGC(signal, gain, exposure, speed_setting)
+    ret_val = lib.AGC(signal, gain, exposure, speed_setting)
 
     return {"adjusted_gain": ret_val.adjusted_gain,
             "adjusted_exposure": ret_val.adjusted_exposure}
