@@ -14,6 +14,11 @@ agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
 sys.path.append(os.path.abspath(agc_lib_path))
 from PyAGC import AGC
 
+"""Import the custom Downsampling library"""
+downsample_lib_path = os.path.join(os.path.dirname(__file__), 'downsample_lib')
+sys.path.append(os.path.abspath(downsample_lib_path))
+from PyDownsample import downsample_pure_python
+
 # The FPS we have locked the camera to
 CAM_FPS: float = 200
 
@@ -43,7 +48,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
         print(f'Camera Queue size {write_queue.qsize()}')
         
         # Write the frame
-        np.save(os.path.join(os.path.basename(filename), f'{frame_num}.npy'), cv2.resize(frame, (320, 240)))
+        np.save(os.path.join(os.path.basename(filename), f'{frame_num}.npy'), downsample_pure_python(frame, 2))
 
         # Write the frame info 
         settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')

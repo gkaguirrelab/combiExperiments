@@ -31,6 +31,53 @@ def find_active_pixels(path_to_vid: str):
     # Show the heatmap
     plt.show()
 
+
+"""A generalized bayer downsample algorithm written in pure Python
+   Note: factor is a power of two. So factor=1 downscales by 2 along
+   dimension"""
+def downsample_pure_python(img: np.array, factor: int) -> np.array:
+    # Initialize downscaled img full of unsigned 8 bit ints of shape 
+    # img.shape divided by 2 * factor
+    downsampled_shape: np.array = np.array(img.shape) >> factor
+    downsampled_img: np.array = np.zeros(downsampled_shape, dtype=np.uint8)
+
+    # Initialize the indices to insert the new pixels into
+    downsampled_r = downsampled_c = 0 
+
+    # Initialize the size of chunks
+    chunk_rows = chunk_cols = factor << 2
+
+    # Iterate over the original image
+    for r in range(0, img.shape[0], chunk_rows):
+        # Set the downsampled col back to 0 for this block
+        downsampled_c = 0 
+
+        # Iterate over the horizontal blocks
+        for c in range(0, img.shape[1], chunk_cols):
+            # Find the pixels of each color
+            r_pixels: np.array = img[r+1:r+chunk_rows:2, c+1:c+chunk_cols:2] 
+            b_pixels: np.array = img[r:r+chunk_rows:2, c:c+chunk_cols:2] 
+            gr_pixels: np.array = img[r+1:r+chunk_rows:2, c:c+chunk_cols:2] 
+            gb_pixels: np.array = img[r:r+chunk_rows:2, c+1:c+chunk_cols:2] 
+
+            # Take the mean of those pixels and assign it to the insertion location
+            downsampled_img[downsampled_r+1,downsampled_c+1] = np.mean(r_pixels)
+            downsampled_img[downsampled_r, downsampled_c] = np.mean(b_pixels)
+            downsampled_img[downsampled_r+1, downsampled_c] = np.mean(gr_pixels)
+            downsampled_img[downsampled_r, downsampled_c+1] = np.mean(gb_pixels)
+
+            # Incrememnt the horizontal chunk to insert in the downsampled img
+            downsampled_c += 2
+        
+        # Increment the vertical chunk to insert in the downsampled img
+        downsampled_r += 2
+
+    # Return the downsampled image
+    return downsampled_img
+
+
+
+
 """Downsample a bayers image by a factor of 2 along each dimension"""
 def downsample(img: np.array) -> np.array:
     import ctypes
