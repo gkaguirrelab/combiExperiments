@@ -8,6 +8,7 @@
 #include <set>
 #include <vector>
 #include <HardwareBLESerial.h>
+#include <cstddef> 
 
 float calculate_integration_time(uint8_t atime, uint8_t astep) {
     return (atime + 1) * (astep + 1) * 2.78;
@@ -59,49 +60,56 @@ void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
 
 void write_serial(std::vector<uint16_t>* AS_channels,
                   std::vector<uint16_t>* TS_channels,
-                  int16_t* accel_buffer,
-                  float_t LI_temp) 
+                  std::vector<float_t>* LI_channels) 
 {
     // Initialize buffer to send and byte to insert data
-    uint8_t data[175];
-    int pos = 2;  
+    uint8_t data[50];
+    int pos = 1;  
 
-    // 2 bytes at the start for beginning flag
-    memset(data, '\0', 175);
+    // Set the first character to be the start message delimeter 
     data[0] = '<';
-    data[1] = '\0';
 
-    // One byte at the end for ending flag
-    data[174] = '>';
+    // Set the last character to be the end message delimeter
+    data[49] = '>';
 
     // Copy over AS_channel bytes
     //11 * 2 bytes from AS channels -> 22 
-    for(int i = 0; i < AS_channels->size(); i++) {
+    //1 + 22 = 23 is pos after this
+    for(size_t i = 0; i < AS_channels->size(); i++) {
       std::memcpy(&data[pos], &AS_channels->at(i), sizeof(uint16_t));
       pos += 2; 
     }
 
     //Copy over the TS channel bytes
     //2 x 2 bytes from TS channels -> 4
-    for(int i = 0; i < TS_channels->size(); i++) {
+    //23 + 4 = 27 after this 
+    for(size_t i = 0; i < TS_channels->size(); i++) {
       std::memcpy(&data[pos], &TS_channels->at(i), sizeof(uint16_t));
       pos += 2; 
     }
 
-    //Copy over the LI channel bytes
-    //20 x 3 * 2 bytes from LI channels - > 120 
-    int buffer_size = 60; //sizeof(accel_buffer) / sizeof(int16_t);
-    std::memcpy(&data[pos], accel_buffer, buffer_size * sizeof(int16_t));
+    // Copy over the LI channel bytes. Note, the first 3 
+    // are treated as uint16_t and the last one is treated as float
+    // 3 * 2 + 1 * 4 = 10
+    // Should be 47 after this
+    for(size_t i = 0; i < LI_channels->size(); i++) {
+      if(i == 3){
+        // Copy the temperature channel to the buffer
+        std::memcpy(&data[pos], &LI_channels->at(i), sizeof(float_t));
+        pos += 4; 
+        continue; 
+      }
 
-    Serial.print("ACCEL BUFFER SIZE: ");Serial.println(buffer_size);
-    pos += (buffer_size * 2); 
-
-    //Copy over the LI temperature
-    //1 x 4 bytes from LI_temp - > 4 OR 8, not sure of float_t 
-    std::memcpy(&data[pos], &LI_temp, sizeof(float_t));
-
+      // Convert the channel value to 16 bit signed integer 
+      int16_t channel_value = (int16_t)LI_channels->at(i); 
+      
+      //Copy acceleration channels to buffer 
+      std::memcpy(&data[pos], &channel_value, sizeof(int16_t));
+      pos += 2; 
+    }
+    
     // Write it throught the serial port
-    Serial.write(data, 175);
+    Serial.write(data, 50);
 
 }
 
@@ -162,7 +170,9 @@ void write_ble(HardwareBLESerial* bleSerial,
 }
 
 
-std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341) {
+std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341,
+                              char device_mode) 
+{
   uint16_t readings[12];
   uint16_t flicker_freq; 
   std::vector<uint16_t> result; 
@@ -196,9 +206,7 @@ std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341) {
       Serial.println("!");
       break;
     // Read the channels
-    case 'C':
-        Serial.println("Read AS Channels");
-        
+    case 'C':   
         // If unable to read channels, report error
         if (!as7341->readAllChannels(readings)) {
           Serial.println("-1");
@@ -206,7 +214,21 @@ std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341) {
           break;
         }
 
+        // If we are in science mode, simply 
+        // append to vector and return
+        if(device_mode == 'S') {
+        // Append readings to result vector
+          for(int i = 0; i < 12; i++) {
+            if(i == 4 || i == 5){
+              continue;
+            }
+            result.push_back(readings[i]);
+          }
+          break; 
+        }
+
         // Print out the channel readings
+        Serial.println("Read AS Channels");
         Serial.print("ADC0/F1 415nm : ");
         Serial.println(readings[0]);
         Serial.print("ADC1/F2 445nm : ");
@@ -227,14 +249,6 @@ std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341) {
         Serial.println(readings[10]);
         Serial.print("ADC5/NIR      : ");
         Serial.println(readings[11]);
-        
-        // Append readings to result vector
-        for(int i = 0; i < 12; i++) {
-          if(i == 4 || i == 5){
-            continue;
-          }
-          result.push_back(readings[i]);
-        }
 
         // Append End of Message terminator
         Serial.println("!"); 
@@ -244,10 +258,14 @@ std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341) {
     case 'F':
       flicker_freq = as7341->detectFlickerHz();
 
-      Serial.println(flicker_freq);
+      // If we are in science mode simply return
+      if(device_mode == 'S') {
+        // Append flicker to result vector
+        result.push_back(flicker_freq);
+        break; 
+      }
 
-      // Append flicker to result vector
-      result.push_back(flicker_freq);
+      Serial.println(flicker_freq);
 
       // Append End of Message terminator
       Serial.println("!");
@@ -263,7 +281,9 @@ std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341) {
   return result;
 }
 
-std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591) {
+std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591,
+                              char device_mode) 
+{
   uint32_t lum;
   uint16_t ir, full;
   uint16_t TSL2591_full, TSL2591_ir; 
@@ -283,7 +303,6 @@ std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591) {
     
     // Read all channels
     case 'C':
-        Serial.println("Read TS channels");
         lum = tsl2591->getFullLuminosity();
         
         ir = lum >> 16;
@@ -291,12 +310,21 @@ std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591) {
         TSL2591_full = full;
         TSL2591_ir = ir;
 
+        // If we are in science mode, simply append 
+        // results and break 
+        if(device_mode == 'S') {
+          // Append channel readings to result
+          result.push_back(full);
+          result.push_back(ir);
+
+          break; 
+        }
+
+        Serial.println("Read TS channels");
+ 
         Serial.print("Channel 0 : "); Serial.println(full);
         Serial.print("Channel 1 : "); Serial.println(ir);
         
-        // Append channel readings to result
-        result.push_back(full);
-        result.push_back(ir);
 
         // Append End of Message terminator
         Serial.println("!");
@@ -340,7 +368,9 @@ std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591) {
 
 }
 
-std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
+std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12,
+                            char device_mode) 
+{
   int32_t accel[3];
   float_t temperature; 
   std::vector<float_t> result; 
@@ -350,19 +380,21 @@ std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
     // Read the acceleration information
     case 'A':
       lis2duxs12->Get_X_Axes(accel);
+
+      // If we are in science mode, simply append results and breka 
+      if(device_mode == 'S') {
+        // Append acceleration information to the result vector
+        for(int i = 0; i < 3; i++) {
+          result.push_back((float_t)accel[i]); 
+        }
+        break; 
+      }
+
+
     
       Serial.print("X : ");Serial.println(accel[0]);
       Serial.print("Y : ");Serial.println(accel[1]);
       Serial.print("Z : ");Serial.println(accel[2]);
-
-      //idRET = 0xFE;
-      //lis2duxs12->ReadID(&idRET);
-      //Serial.print("IDRet : 0x");Serial.println(idRET, HEX);
-
-      // Append acceleration information to the result vector
-      for(int i = 0; i < 3; i++) {
-        result.push_back((float_t)accel[i]); 
-      }
 
       // Append End of Message terminator
       Serial.println("!");
@@ -376,11 +408,16 @@ std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12) {
         break; 
       }
 
+      // If we are in science mode, simply append results 
+      // and break
+      if(device_mode == 'S') {
+        // Append the temperature to the result vector 
+        result.push_back(temperature);
+        break; 
+      }
+
       // Print out the temperature reading (C)
       Serial.println(temperature);
-      
-      // Append the temperature to the result vector 
-      result.push_back(temperature);
 
       // Append End of Message terminator
       Serial.println("!");

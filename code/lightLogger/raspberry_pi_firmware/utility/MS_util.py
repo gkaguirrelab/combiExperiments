@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import queue
 import serial
 import threading
+import time
 
 """Generate plots of the readings from the different sensors"""
 def plot_readings():
@@ -187,20 +188,20 @@ def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory
 """Parse a MS reading from the serial connection (or broadly), e.g., no async operations necessary"""
 def parse_SERIAL(bluetooth_bytes: bytes) -> tuple:
     # Splice and convert the channels to their respective types 
-    AS_channels: np.array = np.frombuffer(bluetooth_bytes[2:24],dtype=np.uint16)
-    TS_channels: np.array = np.frombuffer(bluetooth_bytes[24:28],dtype=np.uint16)
-    LI_channels: np.array = np.frombuffer(bluetooth_bytes[28:148],dtype=np.int16)
-    LI_temp = np.array = np.frombuffer(bluetooth_bytes[148:152],dtype=np.float32)
+    AS_channels: np.array = np.frombuffer(bluetooth_bytes[0:20],dtype=np.uint16)
+    TS_channels: np.array = np.frombuffer(bluetooth_bytes[20:24],dtype=np.uint16)
+    LI_temp: np.array = np.frombuffer(bluetooth_bytes[24:28],dtype=np.float32)
+    LI_channels = np.array = np.frombuffer(bluetooth_bytes[28:148],dtype=np.int16)
 
     return AS_channels, TS_channels, LI_channels, LI_temp 
 
 """Read packets of data from the MS over Serial Connection"""
 def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
-    # Hard Code the port the MS connects to
+    # Hard Code the port the MS connects to for Linux and MAC
     # its baudrate, and the length of a message in bytes
-    com_port: str = '/dev/ttyACM0'
+    com_port: str = '/dev/ttyACM0' if sys.platform.startswith('linux') else '/dev/tty.usbmodem14101'
     baudrate: int = 115200
-    msg_length: int = 175 
+    msg_length: int = 150
 
     # Connect to the MS device
     ms: serial.Serial = serial.Serial(com_port, baudrate, timeout=1)
@@ -210,19 +211,30 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
         token: bytes = ms.read(1)
 
         #Check if the token is equal to the starting delimeter
-        if(token == b'<'):            
+        if(token == b'<'):     
+            print(f'Received {time.time()}')       
+            
             # Read the buffer over the serial port
             reading_buffer: bytes = ms.read(msg_length - 1)
-            #read_time: datetime.datetime = datetime.now()
+
+            AS, TS, LI, temp = parse_SERIAL(reading_buffer)
+
+            print(f'AS CHANNELS: {AS}')
+            print(f'TS CHANNELS: {TS}')
+            print(f'LI CHANNELS: {LI}')
+            print(f'TEMP: {temp}')
 
             # Append it to the write queue
-            write_queue.put(['NA', token + reading_buffer])
+            write_queue.put(['NA',  reading_buffer])
             
             # Flush the reading buffer 
             reading_buffer = None
     
     # Signal the end of the write queue
     write_queue.put(None)
+    
+    # Close the serial connection
+    ms.Close()
 
 """Write data from the MS to the respective data files"""
 async def write_MSBLE(write_queue: asyncio.Queue, reading_names: list, output_directory: str):

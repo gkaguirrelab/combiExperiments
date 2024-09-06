@@ -17,34 +17,29 @@
 #include <vector>
 #include <bitset>
 
+// Initialize hardware connections
 HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
 Adafruit_TSL2591 tsl = Adafruit_TSL2591(2591);  // pass in a number for the sensor identifier (for your use later)
 Adafruit_AS7341 as7341;
 LIS2DUXS12Sensor LIS2DUXS12(&Wire);
+
+
+
 int batSensPin = PIN_VBAT;         //PIN_VBAT
 int readbatPin = PIN_VBAT_ENABLE;  //p14; //P0_14;//VBAT_ENABLE; //P0_14;// PIN_VBAT;   //PIN_VBAT
-int32_t accel[3];
-int16_t accel16[3];
-uint16_t TSL2591_full;
-uint16_t TSL2591_ir;
-float TSL2591_lux;
-uint16_t AS7341Data[10];
-#define INTERVAL 2000  //ms
-unsigned long lastRead = 0;
+
 uint16_t VBat100x = 0;
-int16_t accel_buffer[3*20];
-int accel_buffer_pos = 0; 
 
 // bytes 36-37 ADC5/NIR
 String serial_input = "";
 char device_mode = 'S';
-String ble_input = "";
-
 
 String commandfz = "";
 int astep = 259; //599 //399; //599;//999;
 int atime = 249;   // 24; //29;   //49;
 int gain = 5;     //4 //8;  //
+int16_t accel_buffer[3 * 20];
+int accel_buffer_pos = 0; 
 
 void setup() {
   Serial.begin(115200);
@@ -76,42 +71,63 @@ void setup() {
   AS7341_Reinit();
   LIS2DUXS12_init();
   Wire.setClock(400000);
-  lastRead = millis();
   delay(1000);
 }
 
 void loop() {
+
   // Getting accelerometer data is highest priority, so
   // first perform read 
-  std::vector<float_t> LI_channels = LI_read('A', &LIS2DUXS12); 
+  std::vector<float_t> LI_channels = LI_read('A', &LIS2DUXS12, device_mode); 
   
   // Then save the readings to the buffer
-  for(int i = 0; i < LI_channels.size(); i++) {
+  for(size_t i = 0; i < LI_channels.size(); i++) {
     accel_buffer[accel_buffer_pos+i] = (int16_t)LI_channels[i]; 
   }
 
-  // Science mode entails gathering all of the sensor information 
-  // and the acceleration buffer, then writing it over the serial port
-  if(device_mode == 'S') {
+  // If we are in fast science mode and the buffer is not full
+  // simply incremement acceleration buffer and move to the next loop iteration
+  if(device_mode == 'S' && accel_buffer_pos != 57) {
+    
+    // Increment buffer position, reset if necessary
+    accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
+
+    return ; 
+  }
+
+  // If we are in science mode, focus only on building and sending the data buffer
+  // when the accel buffer is full
+  else if(device_mode == 'S' && accel_buffer_pos == 57) {
       // Retrieve all 11 AS channels
-      std::vector<uint16_t> AS_channels = AS_read('C',&as7341);
-      std::vector<uint16_t> AS_flicker = AS_read('F', &as7341); 
-      AS_channels.push_back(AS_flicker[0]);
+      std::vector<uint16_t> AS_channels = AS_read('C',&as7341, device_mode);
+
+      // Flicker is a very slow operation, discard
+      //std::vector<uint16_t> AS_flicker = AS_read('F', &as7341, device_mode); 
+      //AS_channels.push_back(AS_flicker[0]);
   
       // Retrieve 2 TS channels 
-      std::vector<uint16_t> TS_channels = TS_read('C',&tsl);
+      std::vector<uint16_t> TS_channels = TS_read('C',&tsl, device_mode);
 
-      float_t LI_temp = LI_read('T', &LIS2DUXS12)[0];
+      // Retrieve the temp channel of the LI chip
+      std::vector<float_t> LI_temp = LI_read('T', &LIS2DUXS12, device_mode); 
 
-      Serial.print("LI TEMP: "); Serial.println(LI_temp);
+      // Write the data through the serial port 
+      write_serial(&AS_channels, &TS_channels, LI_temp[0], accel_buffer, 60);  
 
-      Serial.println("Sending data");
-      write_serial(&AS_channels, &TS_channels, &accel_buffer[0], LI_temp);  
+      // Increment buffer position, reset if necessary
+      accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
+
+      // Go to the next loop iteration
+      return; 
   }
+
+  // Increment buffer position, reset if necessary
+  accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
+
+  // Otherwise, we are in calibration mode, so we can read/send commands
 
   // Get the command from the controller
   read_command(&serial_input); 
-  read_BLE_command(&ble_input, &bleSerial);
 
   // If we received a well formed command, execute it
   if(serial_input.length() > 2) {
@@ -124,16 +140,14 @@ void loop() {
     if(mode_and_chip == "RA") {
       Serial.println("Read AS mode"); 
 
-      //std::vector<Adafruit_BusIO_RegisterBits> flicker_info = as7341.setFDGain(5);
-
-      AS_read(serial_input[2], &as7341);
+      AS_read(serial_input[2], &as7341, device_mode);
     
     }
     // Read from the TSL chip using specific data to read
     else if(mode_and_chip == "RT") {
       Serial.println("Read TS mode");
 
-      TS_read(serial_input[2], &tsl);
+      TS_read(serial_input[2], &tsl, device_mode);
     }
 
     // Read from the SEEED chip using specific data to read
@@ -145,7 +159,7 @@ void loop() {
 
     // Read from the LI chip using specific data to read
     else if(mode_and_chip == "RL") {
-      LI_read(serial_input[2],&LIS2DUXS12);
+      LI_read(serial_input[2],&LIS2DUXS12, device_mode);
     }
 
     // Write to the AS chip using given data
@@ -169,44 +183,9 @@ void loop() {
       Serial.println("!");
     }
   }
-
-  // If we received a well formed command, execute it
-  if(ble_input.length() > 1) {
-
-    // Get the action to execute
-    String mode = ble_input.substring(0,2); 
-
-    Serial.print("BLE MODE: "); Serial.println(mode);
-
-    // Science Science mode and accel buffer is full
-    if(mode == "SS" && accel_buffer_pos == 57) {
-      Serial.println("Gathering data");
-
-      // Retrieve all 11 AS channels
-      std::vector<uint16_t> AS_channels = AS_read('C',&as7341);
-      std::vector<uint16_t> AS_flicker = AS_read('F', &as7341); 
-      AS_channels.push_back(AS_flicker[0]);
-  
-      // Retrieve 2 TS channels 
-      std::vector<uint16_t> TS_channels = TS_read('C',&tsl);
-
-      float_t LI_temp = LI_read('T', &LIS2DUXS12)[0];
-
-      Serial.print("LI TEMP: "); Serial.println(LI_temp);
-
-      Serial.println("Sending data");
-
-      //Send the data back to the ble caller
-      write_ble(&bleSerial, &AS_channels, &TS_channels, &accel_buffer[0], LI_temp);  
-    }
-  }
-
-
   // Reset command to empty after execution. 
   serial_input = "";
 
-  // Increment buffer position, reset if necessary
-  accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
 }
 
 
@@ -237,37 +216,8 @@ void BLESerial_func() {
 }
 
 
-// Code for TSL2591
 
-/**************************************************************************/
-/*
-    Displays some basic information on this sensor from the unified
-    sensor API sensor_t type (see Adafruit_Sensor for more information)
-*/
-/**************************************************************************/
-void displaySensorDetails(void) {
-  sensor_t sensor;
-  tsl.getSensor(&sensor);
-  Serial.println(F("------------------------------------"));
-  Serial.print(F("Sensor:       "));
-  Serial.println(sensor.name);
-  Serial.print(F("Driver Ver:   "));
-  Serial.println(sensor.version);
-  Serial.print(F("Unique ID:    "));
-  Serial.println(sensor.sensor_id);
-  Serial.print(F("Max Value:    "));
-  Serial.print(sensor.max_value);
-  Serial.println(F(" lux"));
-  Serial.print(F("Min Value:    "));
-  Serial.print(sensor.min_value);
-  Serial.println(F(" lux"));
-  Serial.print(F("Resolution:   "));
-  Serial.print(sensor.resolution, 4);
-  Serial.println(F(" lux"));
-  Serial.println(F("------------------------------------"));
-  Serial.println(F(""));
-  delay(500);
-}
+
 
 /**************************************************************************/
 /*
@@ -329,90 +279,8 @@ void TSL2591_init() {
       ;
   }
 
-  /* Display some basic information on this sensor */
-  displaySensorDetails();
-
   /* Configure the sensor */
   configureSensor();
-}
-
-
-/**************************************************************************/
-/*
-    Shows how to perform a basic read on visible, full spectrum or
-    infrared light (returns raw 16-bit ADC values)
-*/
-/**************************************************************************/
-void simpleRead(void) {
-  // Simple data read example. Just read the infrared, fullspecrtrum diode
-  // or 'visible' (difference between the two) channels.
-  // This can take 100-600 milliseconds! Uncomment whichever of the following you want to read
-  uint16_t x = tsl.getLuminosity(TSL2591_VISIBLE);
-  //uint16_t x = tsl.getLuminosity(TSL2591_FULLSPECTRUM);
-  //uint16_t x = tsl.getLuminosity(TSL2591_INFRARED);
-
-  Serial.print(F("[ "));
-  Serial.print(millis());
-  Serial.print(F(" ms ] "));
-  Serial.print(F("Luminosity: "));
-  Serial.println(x, DEC);
-}
-
-/**************************************************************************/
-/*
-    Show how to read IR and Full Spectrum at once and convert to lux
-*/
-/**************************************************************************/
-void advancedRead(void) {
-  // More advanced data read example. Read 32 bits with top 16 bits IR, bottom 16 bits full spectrum
-  // That way you can do whatever math and comparisons you want!
-  uint32_t lum = tsl.getFullLuminosity();
-  uint16_t ir, full;
-  ir = lum >> 16;
-  full = lum & 0xFFFF;
-  TSL2591_full = full;
-  TSL2591_ir = ir;
-  TSL2591_lux = tsl.calculateLux(full, ir);
-  Serial.print(F("[ "));
-  Serial.print(millis());
-  Serial.print(F(" ms ] "));
-  Serial.print(F("IR: "));
-  Serial.print(ir);
-  Serial.print(F("  "));
-  Serial.print(F("Full: "));
-  Serial.print(full);
-  Serial.print(F("  "));
-  Serial.print(F("Visible: "));
-  Serial.print(full - ir);
-  Serial.print(F("  "));
-  //   Serial.print(F("Lux: ")); Serial.println(tsl.calculateLux(full, ir), 6);
-  Serial.print(F("Lux: "));
-  Serial.println(TSL2591_lux);
-}
-
-/**************************************************************************/
-/*
-    Performs a read using the Adafruit Unified Sensor API.
-*/
-/**************************************************************************/
-void unifiedSensorAPIRead(void) {
-  /* Get a new sensor event */
-  sensors_event_t event;
-  tsl.getEvent(&event);
-
-  /* Display the results (light is measured in lux) */
-  Serial.print(F("[ "));
-  Serial.print(event.timestamp);
-  Serial.print(F(" ms ] "));
-  if ((event.light == 0) | (event.light > 4294966000.0) | (event.light < -4294966000.0)) {
-    /* If event.light = 0 lux the sensor is probably saturated */
-    /* and no reliable data could be generated! */
-    /* if event.light is +/- 4294967040 there was a float over/underflow */
-    Serial.println(F("Invalid data (adjust gain or timing)"));
-  } else {
-    Serial.print(event.light);
-    Serial.println(F(" lux"));
-  }
 }
 
 // Code for AS7341
@@ -437,56 +305,6 @@ void AS7341_Reinit() {
   as7341.setASTEP(uint16_t(astep));
   as7341.setGain(as7341_gain_t(gain));  //AS7341_GAIN_256X
 
-}
-
-void AS7341_read() {
-  uint16_t readings[12];
-
-  if (!as7341.readAllChannels(readings)) {
-    Serial.println("Error reading all channels!");
-    return;
-  }
-  //   memcpy(&AS7341Data[0],&readings[0],2);
-  //   memcpy(&AS7341Data[1],&readings[1],2);
-  //   memcpy(&AS7341Data[2],&readings[2],2);
-  //   memcpy(&AS7341Data[3],&readings[3],2);
-  memcpy(&AS7341Data[0], &readings[0], 8);
-  memcpy(&AS7341Data[4], &readings[6], 12);
-  Serial.print("ADC0/F1 415nm : ");
-  Serial.println(readings[0]);
-  Serial.print("ADC1/F2 445nm : ");
-  Serial.println(readings[1]);
-  Serial.print("ADC2/F3 480nm : ");
-  Serial.println(readings[2]);
-  Serial.print("ADC3/F4 515nm : ");
-  Serial.println(readings[3]);
-  Serial.print("ADC0/F5 555nm : ");
-
-  /* 
-  // we skip the first set of duplicate clear/NIR readings
-  Serial.print("ADC4/Clear-");
-  Serial.println(readings[4]);
-  Serial.print("ADC5/NIR-");
-  Serial.println(readings[5]);
-  */
-
-  Serial.println(readings[6]);
-  Serial.print("ADC1/F6 590nm : ");
-  Serial.println(readings[7]);
-  Serial.print("ADC2/F7 630nm : ");
-  Serial.println(readings[8]);
-  Serial.print("ADC3/F8 680nm : ");
-  Serial.println(readings[9]);
-  Serial.print("ADC4/Clear    : ");
-  Serial.println(readings[10]);
-  Serial.print("ADC5/NIR      : ");
-  Serial.println(readings[11]);
-
-  Serial.print("Integration Time (ms): ");
-  //Serial.println(integration_time);
-
-  Serial.print("GAIN: ");
-  Serial.println(as7341.getGain());
 }
 
 //Code for LIS2DUXS12
