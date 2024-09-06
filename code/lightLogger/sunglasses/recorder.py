@@ -1,11 +1,14 @@
 import smbus
 import time
 
+# Interval in seconds that readings will be apart
+READ_INTERVAL: float = 1.5
+
 """Record from the device live with no duration"""
 def record_live(duration: float, filename: str):
     # Initialize the readings file variable
     readings_file: object = None
-    
+
     # Record live
     try:
         # Initialize a connection to the device
@@ -15,7 +18,15 @@ def record_live(duration: float, filename: str):
         readings_file: object = open(filename, 'a')
 
         # Begin recording
+        start_time: float = time.time()
         while(True):
+            # Capture the current time
+            current_time: float = time.time()
+            
+            # If not at a read time, skip 
+            if((current_time - start_time)) < READ_INTERVAL:
+                continue
+
             # Read data from the device
             data = device.read_i2c_block_data(0x6b, 0x00, 2)
 
@@ -41,6 +52,13 @@ def record(duration: float, filename: str):
     # Begin recording
     start_time: float = time.time()
     while(True):
+        # Capture the current time
+        current_time: float = time.time()
+        
+        # If not at a read time, skip 
+        if((current_time - start_time)) < 1.5:
+            continue
+
         # Read data from the device
         data = device.read_i2c_block_data(0x6b, 0x00, 2)
 
