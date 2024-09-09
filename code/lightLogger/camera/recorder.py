@@ -45,6 +45,8 @@ def write_frame(write_queue: queue.Queue, filename: str):
         # Extract frame and its metadata
         frame, frame_num, current_gain, current_exposure = ret
 
+        print(f'Queue size: {write_queue.qsize()}')
+
         # Write the frame
         save_path: str = os.path.join(filename, f'{frame_num}.npy')
         np.save(save_path, frame)
