@@ -30,7 +30,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
         os.mkdir(filename)
 
     # Initialize a settings file for per-frame settings to be written to.
-    settings_file = open(f'{os.path.basename(filename)}_settingsHistory.csv', 'a')
+    settings_file = open(f'{filename}_settingsHistory.csv', 'a')
 
     while(True):  
         # Retrieve a tuple of (frame, frame_num) from the queue
@@ -44,11 +44,10 @@ def write_frame(write_queue: queue.Queue, filename: str):
         
         # Extract frame and its metadata
         frame, frame_num, current_gain, current_exposure = ret
-        
-        print(f'Camera Queue size {write_queue.qsize()}')
-        
+
         # Write the frame
-        np.save(os.path.join(os.path.basename(filename), f'{frame_num}.npy'), downsample_pure_python(frame, 4))
+        save_path: str = os.path.join(filename, f'{frame_num}.npy')
+        np.save(save_path, frame)
 
         # Write the frame info 
         settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
