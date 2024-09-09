@@ -6,6 +6,16 @@ import queue
 import threading
 import signal
 
+def parse_args() -> str:
+    parser = argparse.ArgumentParser(description='Communicate serially with the MS and save its readings to a desired location.')
+
+    parser.add_argument('output_path', type=str, help='The folder in which to output the MS readings.')
+
+    args = parser.parse_args()
+
+    return args.output_path
+
+
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
     print("Received SIGTERM. Raising KeyboardInterrupt...")
@@ -13,12 +23,9 @@ def handle_sigterm(signum, frame):
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 def main():
-    # Retrieve the name of the device to connect with
-    #id: str = parse_args()
-
     # Initialize output directory and names 
     # of reading files
-    output_directory: str = './readings/MS'
+    output_directory: str = parse_args()
     reading_names: list = ['AS_channels','TS_channels',
                          'LI_channels','LI_temp']
 
