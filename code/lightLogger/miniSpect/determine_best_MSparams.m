@@ -1,8 +1,8 @@
-function determine_bestMSparams(cal_path,chip_name)
+function determine_best_MSparams(cal_path,chip_name)
 % Serves as both a guide and documentation for finding best params for MS chips
 %
 % Syntax:
-%   determine_bestMSparams(cal_path,chip_name)
+%   determine_best_MSparams(cal_path,chip_name)
 %
 % Description:
 %  Tests sets of parameters for a given light-sensing chip in the MiniSpect
@@ -25,7 +25,7 @@ function determine_bestMSparams(cal_path,chip_name)
 %{
    chip_name = 'AMS7341';
    cal_path = './cal';
-   determine_bestMSparams(cal_path,chip_name);
+   determine_best_MSparams(cal_path,chip_name);
 %}
     
     % Step 1: Connect MiniSpect and CombiLED
