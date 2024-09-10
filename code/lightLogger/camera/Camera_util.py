@@ -9,6 +9,7 @@ from natsort import natsorted
 from collections.abc import Iterable
 import pickle
 import scipy.io
+from mpl_toolkits.mplot3d import Axes3D
 
 """Import the FPS of the camera"""
 agc_lib_path = os.path.join(os.path.dirname(__file__))
@@ -27,6 +28,66 @@ def parse_args() -> tuple:
     args = parser.parse_args()
 
     return args.recordings_dir, args.experiment_filename, args.low_bound_ndf, args.high_bound_ndf, args.save_path
+
+"""Given row/col, return the index this coord would be in a flattend img array"""
+def pixel_to_index(r: int, c: int, cols: int) -> int:
+    return r * cols + c
+
+"""Generate a 3D plot of the field of the camera"""
+def generate_surface_plot(path_to_video: str):
+    # Parse the video into its frames
+    frames: np.array = parse_video(path_to_video)
+
+    # Take the mean frame and extract its dimensions
+    mean_frame: np.array = np.mean(frames, axis=0)
+
+    # Construct the indices of the various colors 
+    r_pixels: np.array = np.array([(r,c)
+                                   for r in range(mean_frame.shape[0]) 
+                                   for c in range(mean_frame.shape[1]) 
+                                   if (r % 2 != 0 and c % 2 != 0)])
+    
+    g_pixels: np.array = np.array([(r,c)
+                                   for r in range(mean_frame.shape[0])
+                                   for c in range(mean_frame.shape[1])
+                                   if ((r % 2 == 0 and c % 2 != 0) or (r % 2 != 0 and c % 2 == 0))])
+    b_pixels: np.array = np.array([(r,c)
+                                   for r in range(mean_frame.shape[0]) 
+                                   for c in range(mean_frame.shape[1])
+                                   if (r % 2 == 0 and c % 2 == 0)])
+
+    # Construct a figure to display these plots
+    fig = plt.figure()
+
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Build the x and y axis of the 3d plot representing each pixel location
+    x, y = np.arange(0, mean_frame.shape[0]+1), np.arange(0, mean_frame.shape[1]+1)
+
+    # Construct the z vector by flattening the entire image
+    z: np.array = mean_frame.flatten()
+
+    # Plot the surface
+    ax.plot_surface(x, y, z)
+
+    # Show the figure
+    plt.show()
+
+
+    """"
+    # Iterate over the 4 subimages: The full mean frame, only the r pixels, 
+    # only the g pixels, and so on
+    for i, (title, data) in enumerate(zip(['All Pixels', 'R pixels', 'G pixels', 'B pixels'], 
+                                          [mean_frame, 
+                                           mean_frame[r_pixels[:,0], r_pixels[:,1]], 
+                                           mean_frame[g_pixels[:,0], g_pixels[:,1]],
+                                           mean_frame[b_pixels[:,0], b_pixels[:,1]]
+                                           ])):
+        axes[i].imshow()
+                            
+    """
+        
+
 
 """Parse video file starting as start_frame as mean of certain pixels of np.array"""
 def parse_mean_video(path_to_video: str, start_frame: int=0, pixel_indices: np.array=None) -> np.array:
@@ -68,7 +129,7 @@ def parse_mean_video(path_to_video: str, start_frame: int=0, pixel_indices: np.a
 """Parse video file starting as start_frame of certain pixels of np.array"""
 def parse_video(path_to_video: str, start_frame: int=0, pixel_indices: np.array=None) -> np.array:
     # Initialize a video capture object
-    video_capture = cv2.VideoCapture(path_to_video)
+    video_capture: cv2.VideoCapture = cv2.VideoCapture(path_to_video)
 
     # Create a container to store the frames as they are read in
     frames = []
@@ -90,7 +151,7 @@ def parse_video(path_to_video: str, start_frame: int=0, pixel_indices: np.array=
     
     # Convert frames to standardized np.array
     frames = np.array(frames, dtype=np.uint8)
-    
+
     # Select only one channel as pixel intensity value, since 
     # the grayscale images are read in as RGB, all channels are equal, 
     # just choose the first one
