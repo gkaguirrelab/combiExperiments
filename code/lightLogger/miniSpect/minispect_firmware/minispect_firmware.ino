@@ -1,10 +1,4 @@
 #include <Arduino_BuiltIn.h>
-
-/* TSL2591 Digital Light Sensor */
-/* Dynamic Range: 600M:1 */
-/* Maximum Lux: 88K */
-
-
 #include <HardwareBLESerial.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
@@ -22,43 +16,41 @@ HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
 Adafruit_TSL2591 tsl = Adafruit_TSL2591(2591);  // pass in a number for the sensor identifier (for your use later)
 Adafruit_AS7341 as7341;
 LIS2DUXS12Sensor LIS2DUXS12(&Wire);
-
-
-
 int batSensPin = PIN_VBAT;         //PIN_VBAT
 int readbatPin = PIN_VBAT_ENABLE;  //p14; //P0_14;//VBAT_ENABLE; //P0_14;// PIN_VBAT;   //PIN_VBAT
-
 uint16_t VBat100x = 0;
 
-// bytes 36-37 ADC5/NIR
+// Initialize input buffer
 String serial_input = "";
+
+// Set device mode
 char device_mode = 'S';
 
-String commandfz = "";
-int astep = 259; //599 //399; //599;//999;
-int atime = 249;   // 24; //29;   //49;
-int gain = 5;     //4 //8;  //
+// Initialize parameters for AS7341 chip
+int as_astep = 259;
+int as_atime = 249;
+int as_gain = 5;
+
+// Initial parameters for TSL2591 chip 
+auto tsl_gain = TSL2591_GAIN_HIGH;
+auto tsl_integration_time = TSL2591_INTEGRATIONTIME_500MS; 
+
+// Initialize the accelerometer value buffer 
+// and the next open index in it
 int16_t accel_buffer[3 * 20];
 int accel_buffer_pos = 0; 
 
+// Initial setup 
 void setup() {
+  // Begin communication at 115200 baudrate
   Serial.begin(115200);
 
-
-  //while (!Serial);
-  pinMode(LED_GREEN, OUTPUT);
-  digitalWrite(LED_GREEN, HIGH);
-  pinMode(LED_BLUE, OUTPUT);
-  digitalWrite(LED_BLUE, HIGH);
-  pinMode(batSensPin, INPUT);
-  pinMode(readbatPin, OUTPUT);
-  digitalWrite(readbatPin, LOW);
   
   // initialise ADC wireing_analog_nRF52.c:73
   analogReference(AR_INTERNAL2V4);  // default 0.6V*6=3.6V  wireing_analog_nRF52.c:73
   analogReadResolution(12);         // wireing_analog_nRF52.c:39
 
-
+  // Setup bluetooth emission
   if (!bleSerial.beginAndSetupBLE("White MS")) {
     while (true) {
       Serial.println("failed to initialize HardwareBLESerial!");
@@ -66,16 +58,17 @@ void setup() {
     }
   }
 
-  Serial.println("HardwareBLESerial initialized!");
+  // Initialize sensors
   TSL2591_init();
-  AS7341_Reinit();
+  AS7341_init();
   LIS2DUXS12_init();
   Wire.setClock(400000);
+
+  // Allow time for everything to set up
   delay(1000);
 }
 
 void loop() {
-
   // Getting accelerometer data is highest priority, so
   // first perform read 
   std::vector<float_t> LI_channels = LI_read('A', &LIS2DUXS12, device_mode); 
@@ -188,7 +181,6 @@ void loop() {
 
 }
 
-
 void BatteryRead() {
   int vbatt = analogRead(batSensPin);
   VBat100x = int((240 * vbatt / 4096) * 3.06849);
@@ -200,114 +192,35 @@ void BatteryRead() {
   Serial.println("V    ");
   //  Serial.println(digitalRead(PIN_CHG));
 }
-void BLESerial_func() {
-  // this must be called regularly to perform BLE updates
-  bleSerial.poll();
-
-  // whatever is written to BLE UART appears in the Serial Monitor
-  while (bleSerial.available() > 0) {
-    Serial.write(bleSerial.read());
-  }
-
-  // whatever is written in Serial Monitor appears in BLE UART
-  while (Serial.available() > 0) {
-    bleSerial.write(Serial.read());
-  }
-}
-
-
-
-
-
-/**************************************************************************/
-/*
-    Configures the gain and integration time for the TSL2591
-*/
-/**************************************************************************/
-void configureSensor(void) {
-  // You can change the gain on the fly, to adapt to brighter/dimmer light situations
-  tsl.setGain(TSL2591_GAIN_HIGH);  // 1x gain (bright light)
-                                  //tsl.setGain(TSL2591_GAIN_MED);      // 25x gain
-                                  //tsl.setGain(TSL2591_GAIN_HIGH);   // 428x gain
-
-  // Changing the integration time gives you a longer time over which to sense light
-  // longer timelines are slower, but are good in very low light situtations!
-  //tsl.setTiming(TSL2591_INTEGRATIONTIME_100MS);  // shortest integration time (bright light)
-  //tsl.setTiming(TSL2591_INTEGRATIONTIME_200MS);
-  //tsl.setTiming(TSL2591_INTEGRATIONTIME_300MS);
-  //tsl.setTiming(TSL2591_INTEGRATIONTIME_400MS);
-  tsl.setTiming(TSL2591_INTEGRATIONTIME_500MS);
-  //tsl.setTiming(TSL2591_INTEGRATIONTIME_600MS);  // longest integration time (dim light)
-
-  /* Display the gain and integration time for reference sake */
-  Serial.println(F("------------------------------------"));
-  Serial.print(F("Gain:         "));
-  tsl2591Gain_t gain = tsl.getGain();
-  switch (gain) {
-    case TSL2591_GAIN_LOW:
-      Serial.println(F("1x (Low)"));
-      break;
-    case TSL2591_GAIN_MED:
-      Serial.println(F("25x (Medium)"));
-      break;
-    case TSL2591_GAIN_HIGH:
-      Serial.println(F("428x (High)"));
-      break;
-    case TSL2591_GAIN_MAX:
-      Serial.println(F("9876x (Max)"));
-      break;
-  }
-  Serial.print(F("Timing:       "));
-  Serial.print((tsl.getTiming() + 1) * 100, DEC);
-  Serial.println(F(" ms"));
-  Serial.println(F("------------------------------------"));
-  Serial.println(F(""));
-}
 
 void TSL2591_init() {
-  if (tsl.begin()) {
-    Serial.println(F("Found a TSL2591 sensor"));
-    digitalWrite(LED_GREEN, LOW);
-    Serial.flush();
-    delay(500);
-  } else {
-    Serial.println(F("No sensor found ... check your wiring?"));
-    // digitalWrite(LED_RED, LOW);
-    Serial.flush();
-    delay(500);
-    while (1)
-      ;
+  // Ensure the sensr can be found
+  if(!tsl.begin()) {
+    Serial.println("Could not find TSL2591"); 
+    while (1) { delay(10); }
   }
 
-  /* Configure the sensor */
-  configureSensor();
+  // Set the initial parameters
+  tsl.setGain(TSL2591_GAIN_HIGH);
+  tsl.setTiming(TSL2591_INTEGRATIONTIME_500MS);
 }
 
-// Code for AS7341
+// Initialize the AS7341 Sensor
 void AS7341_init() {
+  // Ensure the sensor can be found
   if (!as7341.begin()) {
     Serial.println("Could not find AS7341");
     while (1) { delay(10); }
   }
-  //(ATIME + 1) * (ASTEP + 1) * 2.78µS
-  as7341.setATIME(49);
-  as7341.setASTEP(999);
-  as7341.setGain(AS7341_GAIN_128X);  //AS7341_GAIN_256X
-}
 
-void AS7341_Reinit() {
-  if (!as7341.begin()) {
-    Serial.println("Could not find AS7341");
-    while (1) { delay(10); }
-  }
-  //(ATIME + 1) * (ASTEP + 1) * 2.78µS
-  as7341.setATIME(uint8_t(atime));
-  as7341.setASTEP(uint16_t(astep));
-  as7341.setGain(as7341_gain_t(gain));  //AS7341_GAIN_256X
+  //Set the initial parameters
+  as7341.setATIME(uint8_t(as_atime));
+  as7341.setASTEP(uint16_t(as_astep));
+  as7341.setGain(as7341_gain_t(as_gain));
 
 }
 
-//Code for LIS2DUXS12
+// Initialize the LIS2DUXS12 sensor
 void LIS2DUXS12_init() {
   Wire.begin();
   LIS2DUXS12.begin();
