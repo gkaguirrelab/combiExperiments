@@ -43,53 +43,72 @@ def generate_surface_plot(path_to_video: str):
 
     # Construct the indices of the various colors 
     r_pixels: np.array = np.array([(r,c)
-                                   for r in range(mean_frame.shape[0]) 
-                                   for c in range(mean_frame.shape[1]) 
-                                   if (r % 2 != 0 and c % 2 != 0)])
-    
+                                    for r in range(mean_frame.shape[0]) 
+                                    for c in range(mean_frame.shape[1]) 
+                                    if (r % 2 != 0 and c % 2 != 0)])
+
     g_pixels: np.array = np.array([(r,c)
-                                   for r in range(mean_frame.shape[0])
-                                   for c in range(mean_frame.shape[1])
-                                   if ((r % 2 == 0 and c % 2 != 0) or (r % 2 != 0 and c % 2 == 0))])
+                                    for r in range(mean_frame.shape[0])
+                                    for c in range(mean_frame.shape[1])
+                                    if ((r % 2 == 0 and c % 2 != 0) or (r % 2 != 0 and c % 2 == 0))])
     b_pixels: np.array = np.array([(r,c)
-                                   for r in range(mean_frame.shape[0]) 
-                                   for c in range(mean_frame.shape[1])
-                                   if (r % 2 == 0 and c % 2 == 0)])
+                                    for r in range(mean_frame.shape[0]) 
+                                    for c in range(mean_frame.shape[1])
+                                    if (r % 2 == 0 and c % 2 == 0)])
 
-    # Construct a figure to display these plots
-    fig = plt.figure()
+    # Build a matrix of points and their respective values
+    points: np.array = np.array([(r, c, mean_frame[r,c]) for r in range(mean_frame.shape[0]) for c in range(mean_frame.shape[1])])
 
-    ax = fig.add_subplot(111, projection='3d')
+    # Build the x, y meshgrid for the surface plot of the camera frame
+    x: np.array = np.arange(0,mean_frame.shape[1])
+    y: np.array = np.arange(0, mean_frame.shape[0])
+    x, y = np.meshgrid(x,y)
 
-    # Build the x and y axis of the 3d plot representing each pixel location
-    x, y = np.arange(0, mean_frame.shape[0]+1), np.arange(0, mean_frame.shape[1]+1)
+    # z is the signal of the pixels
+    z: np.arary = mean_frame
 
-    # Convert X, y to meshgrid, as 3D plotting requires meshgrid
+    print(f'Z shape: {mean_frame.shape}')
+
+
+   # Construct a figure to display the plot
+    fig: plt.figure = plt.figure()
+    ax: plt.Axes = fig.add_subplot(111, projection='3d')
+    ax.set_zlim([np.min(z), np.max(z)])
+
+    # Generate the surface plot
+    surface = ax.plot_surface(x, y, z, cmap='plasma')
+    fig.colorbar(surface, shrink=0.7)
     
-
-    # Construct the z vector by flattening the entire image
-    z: np.array = mean_frame.flatten()
-
-    # Plot the surface
-    ax.plot_surface(x, y, z)
-
-    # Show the figure
+    # Show the plot
     plt.show()
 
+    """Code for doing by color filter below
+    red_only_img = np.zeros(mean_frame.shape)
+    red_only_img[r_pixels[:,0], r_pixels[:,1]] = mean_frame[r_pixels[:,0], r_pixels[:,1]]
+    
+    blue_only_img = np.zeros(mean_frame.shape)
+    blue_only_img[b_pixels[:,0], b_pixels[:,1]] = mean_frame[b_pixels[:,0], b_pixels[:,1]]
 
-    """"
-    # Iterate over the 4 subimages: The full mean frame, only the r pixels, 
-    # only the g pixels, and so on
-    for i, (title, data) in enumerate(zip(['All Pixels', 'R pixels', 'G pixels', 'B pixels'], 
-                                          [mean_frame, 
-                                           mean_frame[r_pixels[:,0], r_pixels[:,1]], 
-                                           mean_frame[g_pixels[:,0], g_pixels[:,1]],
-                                           mean_frame[b_pixels[:,0], b_pixels[:,1]]
-                                           ])):
-        axes[i].imshow()
-                            
+    green_only_img = np.zeros(mean_frame.shape)
+    green_only_img[g_pixels[:,0], g_pixels[:,1]] = mean_frame[g_pixels[:,0], g_pixels[:,1]]
+
+
+    for color_filter in (red_only_img, blue_only_img, green_only_img):
+        # Construct a figure to display these plots
+        fig = plt.figure()
+
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Plot the surface
+        ax.plot_surface(x, y, color_filter, cmap='plasma')
+
+        ax.set_zlim([0, np.max(mean_frame)])
+
+        # Show the figure
+        plt.show()
+
     """
-        
+    
 
 
 """Parse video file starting as start_frame as mean of certain pixels of np.array"""
