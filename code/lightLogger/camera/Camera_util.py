@@ -64,6 +64,9 @@ def generate_surface_plot(path_to_video: str):
     # Build the x and y axis of the 3d plot representing each pixel location
     x, y = np.arange(0, mean_frame.shape[0]+1), np.arange(0, mean_frame.shape[1]+1)
 
+    # Convert X, y to meshgrid, as 3D plotting requires meshgrid
+    
+
     # Construct the z vector by flattening the entire image
     z: np.array = mean_frame.flatten()
 
