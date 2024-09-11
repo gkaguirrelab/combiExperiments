@@ -6,19 +6,35 @@ clc
 rng(cputime); % Get some random going in case we need it
 
 % Simulation flags
-simulateCombiAir = false;
-simulatePupilVideo = false;
+simulateCombiAir = true;
+simulatePupilVideo = true;
 
 % Define some acquisition properties
-nTrials = 129;
 trialDurSecs = 4.5;
-totalAcqDurSecs = nTrials * trialDurSecs;
 experimentStartKey = {'t'};
-trDurSecs = 2.040;
+trDurSecs = 2.866;
+nEPINoiseScans = 2;
 
 % Video recording properties
 pupilVidStartDelaySec = 20;
 pupilVidStopDelaySec = 4;
+
+% Define a sequence of pressure levels. This is a concatenated set of 3,
+% deBruijn sequences each with first-order counter-balance. An additional
+% blank trial has been added to the start and end of the sequence.
+stimIdxSeq = [0,0,3,3,4,0,2,0,4,4,2,1,4,3,1,0,1,3,2,4,1,1,2,2,3,0,0,2,2,3,4,3,0,1,4,2,0,4,1,2,1,3,3,2,4,4,0,3,1,1,0,0,2,0,4,2,4,4,1,3,3,4,0,3,0,1,1,4,3,1,2,3,2,2,1,0,0];
+
+% Define the duration of the air puffs
+stimDursMs = [100, 100, 100, 100, 100];
+
+% Define three sets of log-spaced pressure levels in PSI units
+stimPressuresPSI{1} = [0, 0.25, 1, 4, 16];
+stimPressuresPSI{2} = [0, 0.354, 1.414, 5.657, 22.627];
+stimPressuresPSI{3} = [0, 0.5, 2, 8, 32];
+
+% Calculate the scan duration properties
+nTrials = length(stimIdxSeq);
+totalAcqDurSecs = (nTrials+nEPINoiseScans) * trialDurSecs;
 
 % Calculate the length of pupil recording needed.
 pupilRecordingTime = ...
@@ -29,10 +45,10 @@ pupilRecordingTime = ...
 fMRIDur = seconds(ceil(totalAcqDurSecs/trDurSecs)*trDurSecs);
 fMRIDur.Format = 'mm:ss';
 
-textString = ['Assuming a TR of %2.3f ms, the acqusition should have %d real reps, and a total duration of ' char(fMRIDur) ' (not including dummy scans)\n'];
-fprintf('\n************************************\n\n');
-fprintf(textString,trDurSecs,ceil(totalAcqDurSecs/trDurSecs))
-fprintf('\n************************************\n');
+textString = ['\tAssuming a TR of %2.3f ms, and %d EPI noise scans,\n\tthe acqusition should have %d real reps,\n\tand a total duration of ' char(fMRIDur) ' (not including dummy scans)\n'];
+fprintf('\n************************************************************************\n\n');
+fprintf(textString,trDurSecs,nEPINoiseScans,ceil(totalAcqDurSecs/trDurSecs))
+fprintf('\n************************************************************************\n');
 
 % Get observer properties
 observerID = GetWithDefault('Subject ID','xxxx');
@@ -42,14 +58,20 @@ dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 sessionID = string(datetime('now','Format','yyyy-MM-dd'));
 
 % Create the directory in which to save the data
-resultDir = fullfile(dropboxBaseDir,'MELA_data','combiAir','trigemFiveLevel',observerID,sessionID);
+resultDir = fullfile(dropboxBaseDir,'BLNK_data','combiAir','trigemFiveLevel',observerID,sessionID);
 if ~isfolder(resultDir)
     mkdir(resultDir)
 end
 
 % Set up the combiAir
 if ~simulateCombiAir
+    % Create the object
     airObj = CombiAirControl();
+
+    % Send the sequence properties to the combiAir
+    airObj.sendSequence(stimIdxSeq);
+    airObj.sendDurations(stimDursMs);
+    airObj.sendPressures(stimPressuresPSI{1});
 end
 
 % Set up the pupil recording
@@ -77,6 +99,19 @@ while notDone
     % Create an empty variable that will store information about this
     % acquisition
     results = [];
+
+    % Identify which set of sequences we will use
+    thisSet = mod(acqIdx-1,length(stimPressuresPSI))+1;
+
+    if ~simulateCombiAir
+        % Send this set of pressure levels to the combiAir
+        airObj.sendPressures(stimPressuresPSI{thisSet});
+
+        % Put the combiAir in run mode. This ensures that the pending stimulus
+        % pressure is set to the first trial of the sequence, so we are ready
+        % to start.
+        airObj.setRunMode();
+    end
 
     % Start the pupil recording
     if ~simulatePupilVideo
@@ -127,6 +162,12 @@ while notDone
     results.observerID = observerID;
     results.acqStartTime = acqStartTime;
     results.totalAcqDurSecs = totalAcqDurSecs;
+    results.stimIdxSeq = stimIdxSeq;
+    results.stimDursMs = stimDursMs;
+    results.stimPressuresPSI = stimPressuresPSI{thisSet};
+    results.trialDurSecs = trialDurSecs;
+    results.trDurSecs = trDurSecs;
+    results.nEPINoiseScans = nEPINoiseScans;
 
     % Save the results file to disk
     filename = strrep(strrep([observerID sprintf('_%s.mat', datetime())],' ','_'),':','.');
