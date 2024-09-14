@@ -6,7 +6,7 @@ clc
 rng(cputime); % Get some random going in case we need it
 
 % Simulation flags
-simulateCombiAir = true;
+simulateCombiAir = false;
 simulatePupilVideo = true;
 
 % Define some acquisition properties
@@ -25,12 +25,12 @@ pupilVidStopDelaySec = 4;
 stimIdxSeq = [0,0,3,3,4,0,2,0,4,4,2,1,4,3,1,0,1,3,2,4,1,1,2,2,3,0,0,2,2,3,4,3,0,1,4,2,0,4,1,2,1,3,3,2,4,4,0,3,1,1,0,0,2,0,4,2,4,4,1,3,3,4,0,3,0,1,1,4,3,1,2,3,2,2,1,0,0];
 
 % Define the duration of the air puffs
-stimDursMs = [100, 100, 100, 100, 100];
+stimDursMs = [500, 500, 500, 500, 500];
 
 % Define three sets of log-spaced pressure levels in PSI units
-stimPressuresPSI{1} = [0, 0.25, 1, 4, 16];
-stimPressuresPSI{2} = [0, 0.354, 1.414, 5.657, 22.627];
-stimPressuresPSI{3} = [0, 0.5, 2, 8, 32];
+stimPressuresPSI{1} = [0, 1.000, 2.573,  6.622, 17.041];
+stimPressuresPSI{2} = [0, 1.370, 3.526,  9.075, 23.352];
+stimPressuresPSI{3} = [0, 1.878, 4.832, 12.435, 32.000];
 
 % Calculate the scan duration properties
 nTrials = length(stimIdxSeq);
@@ -72,6 +72,7 @@ if ~simulateCombiAir
     airObj.sendSequence(stimIdxSeq);
     airObj.sendDurations(stimDursMs);
     airObj.sendPressures(stimPressuresPSI{1});
+    airObj.sendTrialDur(trialDurSecs);
 end
 
 % Set up the pupil recording
@@ -132,7 +133,7 @@ while notDone
 
     % Tell the combiAir to start the sequence
     if ~simulateCombiAir
-        airObj.startModulation;
+        airObj.startSequence;
     end
 
     % Announce we are starting
@@ -146,7 +147,7 @@ while notDone
     % Announce we are cleaning up
     fprintf('cleaning up...')
     if ~simulateCombiAir
-        airObj.stopModulation;
+        airObj.stopSequence;
     end
     pause(pupilVidStopDelaySec)
 
