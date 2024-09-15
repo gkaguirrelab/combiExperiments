@@ -6,23 +6,27 @@ clc
 rng(cputime); % Get some random going in case we need it
 
 % Simulation flags
-simulateCombiAir = false;
+simulateCombiAir = true;
 simulatePupilVideo = true;
 
 % Define some acquisition properties
 trialDurSecs = 4.5;
 experimentStartKey = {'t'};
 trDurSecs = 2.866;
-nEPINoiseScans = 2;
+nEPINoiseVolumes = 2;
 
 % Video recording properties
 pupilVidStartDelaySec = 20;
 pupilVidStopDelaySec = 4;
 
-% Define a sequence of pressure levels. This is a concatenated set of 3,
-% deBruijn sequences each with first-order counter-balance. An additional
-% blank trial has been added to the start and end of the sequence.
-stimIdxSeq = [0,0,3,3,4,0,2,0,4,4,2,1,4,3,1,0,1,3,2,4,1,1,2,2,3,0,0,2,2,3,4,3,0,1,4,2,0,4,1,2,1,3,3,2,4,4,0,3,1,1,0,0,2,0,4,2,4,4,1,3,3,4,0,3,0,1,1,4,3,1,2,3,2,2,1,0,0];
+% Define a sequence of pressure levels. This is a concatenated set of 4,
+% deBruijn sequences each with first-order counter-balance. The labels have
+% been arranged such that the sequence always starts with a blank (index 0)
+% trial. An additional blank trial has been added to the start and end of
+% each sequence. The second two sequences are a temporal reversal of the
+% first two sequences. This structure supports unique identification of the
+% HRF delay in model fitting.
+stimIdxSeq = [0,0,3,3,4,0,2,0,4,4,2,1,4,3,1,0,1,3,2,4,1,1,2,2,3,0,0,2,2,3,4,3,0,1,4,2,0,4,1,2,1,3,3,2,4,4,0,3,1,1,0,0,1,1,3,0,4,4,2,3,3,1,2,1,4,0,2,4,1,0,3,4,3,2,2,0,0,3,2,2,1,1,4,2,3,1,0,1,3,4,1,2,4,4,0,2,0,4,3,3,0,0];
 
 % Define the duration of the air puffs
 stimDursMs = [500, 500, 500, 500, 500];
@@ -34,7 +38,8 @@ stimPressuresPSI{3} = [0, 1.878, 4.832, 12.435, 32.000];
 
 % Calculate the scan duration properties
 nTrials = length(stimIdxSeq);
-totalAcqDurSecs = (nTrials+nEPINoiseScans) * trialDurSecs;
+nTRs = ceil((nTrials * trialDurSecs)/trDurSecs) + nEPINoiseVolumes;
+totalAcqDurSecs = nTRs * trDurSecs;
 
 % Calculate the length of pupil recording needed.
 pupilRecordingTime = ...
@@ -42,12 +47,12 @@ pupilRecordingTime = ...
     totalAcqDurSecs;
 
 % Report the expected real reps:
-fMRIDur = seconds(ceil(totalAcqDurSecs/trDurSecs)*trDurSecs);
+fMRIDur = seconds(totalAcqDurSecs);
 fMRIDur.Format = 'mm:ss';
 
-textString = ['\tAssuming a TR of %2.3f ms, and %d EPI noise scans,\n\tthe acqusition should have %d real reps,\n\tand a total duration of ' char(fMRIDur) ' (not including dummy scans)\n'];
+textString = ['\tAssuming a TR of %2.3f ms, and %d EPI noise volumes,\n\tthe acqusition should have %d real reps,\n\tand a total duration of ' char(fMRIDur) ' (not including dummy scans)\n'];
 fprintf('\n************************************************************************\n\n');
-fprintf(textString,trDurSecs,nEPINoiseScans,ceil(totalAcqDurSecs/trDurSecs))
+fprintf(textString,trDurSecs,nEPINoiseVolumes,nTRs)
 fprintf('\n************************************************************************\n');
 
 % Get observer properties
@@ -168,7 +173,7 @@ while notDone
     results.stimPressuresPSI = stimPressuresPSI{thisSet};
     results.trialDurSecs = trialDurSecs;
     results.trDurSecs = trDurSecs;
-    results.nEPINoiseScans = nEPINoiseScans;
+    results.nEPINoiseScans = nEPINoiseVolumes;
 
     % Save the results file to disk
     filename = strrep(strrep([observerID sprintf('_%s.mat', datetime())],' ','_'),':','.');
