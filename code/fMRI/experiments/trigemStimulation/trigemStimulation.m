@@ -32,9 +32,9 @@ stimIdxSeq = [0,0,3,3,4,0,2,0,4,4,2,1,4,3,1,0,1,3,2,4,1,1,2,2,3,0,0,2,2,3,4,3,0,
 stimDursMs = [500, 500, 500, 500, 500];
 
 % Define three sets of log-spaced pressure levels in PSI units
-stimPressuresPSI{1} = [0, 1.000, 2.573,  6.622, 17.041];
-stimPressuresPSI{2} = [0, 1.370, 3.526,  9.075, 23.352];
-stimPressuresPSI{3} = [0, 1.878, 4.832, 12.435, 32.000];
+stimPressuresPSI{1} = [0, 1.370, 3.526,  9.075, 23.352];
+stimPressuresPSI{2} = [0, 1.878, 4.832, 12.435, 32.000];
+stimPressuresPSI{3} = [0, 1.000, 2.573,  6.622, 17.041];
 
 % Calculate the scan duration properties
 nTrials = length(stimIdxSeq);
