@@ -1,16 +1,18 @@
-function fit_minispect_counts(MSCalDataFiles)
+function fit_minispect_counts(MSCalDataFiles, calFiles)
 % Fits measured counts from the minispect to predicted counts
 %
 % Syntax:
-%   fit_minispect_counts(MSCalDataFiles)
+%   fit_minispect_counts(MSCalDataFiles, calFiles)
 %
 % Description:
 %   Given a cell array of paths to MSCalData files over different NDF
 %   levels, load them in and fit the measured counts to predicted counts in
-%   those conditions. Graphs the results.
+%   those conditions (and with equivalent source calibration files). Graphs the results.
 %
 % Inputs:
 %   MSCalDataFiles        - Cell Array. Array of paths to MSCalData files
+%
+%   calFiles              - Cell Array. Array of paths to light source cal files
 %
 % Outputs:
 %   NONE
@@ -21,25 +23,34 @@ function fit_minispect_counts(MSCalDataFiles)
     calDir = fullfile(dropboxBaseDir,'FLIC_admin','Equipment','MiniSpect','calibration','FBF0EF4C301382EA');
     d = dir(fullfile(calDir,'*mat'));
     MSCalDataFiles = cellfun(@(x) fullfile(calDir, x), {d.name}, 'UniformOutput', false);
-    fit_calibration(MSCalDataFiles);
+
+    lightSourceCalDir = '~/Documents/MATLAB/projects/combiExperiments/cal'
+    d_l = dir(fullfile(calDir,'*maxSpectrum*'));
+    MSCalDataFiles = cellfun(@(x) fullfile(calDir, x), {d.name}, 'UniformOutput', false);
+
+    fit_minispect_counts(MSCalDataFiles);
 %}
 
-% Example call
-%{
-MSCalDataFiles = {...
-'calibration4.mat',...
-'calibration3.mat',...
-'calibration2.mat',...
-'calibration1.mat',...
-'calibration0x2.mat'};
+% Parse the arguments
+parser = inputParser; 
 
-fit_calibration(MSCalDataFiles)
-%}
+% Validate the arguments' type and size > 0 
+parser.addRequired('MSCalDataFiles', @(x) iscell(x) && numel(x) ~= 0);
+parser.addRequired('calFiles', @(x) iscell(x) && numel(x) ~= 0); 
 
+% Parse the arguments
+parser.parse(MSCalDataFiles, calFiles); 
+
+% Retrieve the validated arguments
+MSCalDataFiles = parser.Results.MSCalDataFiles;  
+calFiles = parser.Results.calFiles;  
+
+% Assert there is a source cal file for every MSCalDataFile
+assert(numel(MSCalDataFiles) == numel(calFiles))
 
 % This is a kludge. Eventually we will pass in a set of cal files
 % corresponding to the CombiLEDSphere calibrations at each NDF level.
-referenceNDF = 0.2;
+%referenceNDF = 0.2;
 
 % Load the first MSCalDataFile, get the S, as we need this to resample the
 % detector spectral sensitivity functions
@@ -83,10 +94,13 @@ predicted_map = containers.Map({'AMS7341','TSL2591'},...
 
 % For each MSCalDataFile calibration
 for ii = 1:numel(MSCalDataFiles)
-    disp('CAL FILE')
-    disp(MSCalDataFiles{ii})
     % Load this MSCalFile
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
+
+    % Load its associated NDF calibration
+    cals = load(calFiles{ii}, 'cals');
+    cal = cals{end};
+
     chip_struct_map = containers.Map({'AMS7341','TSL2591'},...
         {MSCalData.ASChip,MSCalData.TSChip});
 
@@ -157,7 +171,7 @@ for ii = 1:numel(MSCalDataFiles)
 
                 %% KLUDGE HERE TO HANDLE THE NDF EFFECT UNTIL WE START PRODUCING
                 %% separate sphere calibration files for each NDF level
-                predictedCounts(kk,:) = predictedCounts(kk,:) * (1/10^(NDF-referenceNDF));
+                predictedCounts(kk,:) = predictedCounts(kk,:) % What operation do we do here with cals again?*   %(1/10^(NDF-referenceNDF));
 
             end % nPrimarySteps
 

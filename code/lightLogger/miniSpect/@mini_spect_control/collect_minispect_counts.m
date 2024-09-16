@@ -56,18 +56,18 @@ function collect_minispect_counts(obj,NDF,calPath,nPrimarySteps,settingScalarRan
     parser = inputParser; 
 
     % Add required arguments with type validation
-    addRequired(parser, 'NDF', @(x) isnumeric(x) && isscalar(x)); % Ensure the NDF is a numeric, scalar value
-    addRequired(parser, 'calPath', @(x) ischar(x) || isstring(x)); % Ensure the calPath is a string type
-    addRequired(parser, 'nPrimarySteps', @(x) isnumeric(x) && isscalar(x)); % Ensure nPrimarySteps is a numeric, scalar value
-    addRequired(parser, 'settingScalarRange', @(x) isnumeric(x) && isrow(x)); % Ensures settingScalarRange is a row vector of scalar values
-    addRequired(parser, 'nSamplesPerStep', @(x) isnumeric(x) && isscalar(x)); % Ensures nSamplesPerStep is a numeric, scalar value
-    addRequired(parser, 'nReps', @(x) isnumeric(x) && isscalar(x)); % Ensures nReps is a numeric, scalar value
-    addRequired(parser, 'randomizeOrder', @(x) islogical(x)); % Ensures randomize order is a boolean value
-    addRequired(parser, 'savePath', @(x) ischar(x) || isstring(x)); % Ensures the savePath is of string type
-    addRequired(parser, 'notificationAddress', @(x) ischar(x) || isstring(x)); % Ensures the email notification address
+    parser.addRequired('NDF', @(x) isnumeric(x) && isscalar(x)); % Ensure the NDF is a numeric, scalar value
+    parser.addRequired('calPath', @(x) ischar(x) || isstring(x)); % Ensure the calPath is a string type
+    parser.addRequired('nPrimarySteps', @(x) isnumeric(x) && isscalar(x)); % Ensure nPrimarySteps is a numeric, scalar value
+    parser.addRequired('settingScalarRange', @(x) isnumeric(x) && isrow(x)); % Ensures settingScalarRange is a row vector of scalar values
+    parser.addRequired('nSamplesPerStep', @(x) isnumeric(x) && isscalar(x)); % Ensures nSamplesPerStep is a numeric, scalar value
+    parser.addRequired('nReps', @(x) isnumeric(x) && isscalar(x)); % Ensures nReps is a numeric, scalar value
+    parser.addRequired('randomizeOrder', @(x) islogical(x)); % Ensures randomize order is a boolean value
+    parser.addRequired('savePath', @(x) ischar(x) || isstring(x)); % Ensures the savePath is of string type
+    parser.addRequired('notificationAddress', @(x) ischar(x) || isstring(x)); % Ensures the email notification address
 
     % Parse the arguments
-    parse(parser, NDF, calPath, nPrimarySteps, settingScalarRange, nSamplesPerStep, nReps, randomizeOrder, savePath, notificationAddress);
+    parser.parse(NDF, calPath, nPrimarySteps, settingScalarRange, nSamplesPerStep, nReps, randomizeOrder, savePath, notificationAddress);
 
     % Retrieve the arguments from the parser
     NDF = parser.Results.NDF; 
