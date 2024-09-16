@@ -69,9 +69,32 @@ void setup() {
 }
 
 void loop() {
-  // Getting accelerometer data is highest priority, so
-  // first perform read 
-  std::vector<float_t> LI_channels = LI_read('A', &LIS2DUXS12, device_mode); 
+  // Get the command from the controller
+  read_command(&serial_input); 
+  
+  // Quickly check to see if we are changing modes (needs to be >= 3 instead of == 3 to conform with 
+  // the MATLAB write_minispect interface, as it adds an extra character even if passed '')
+  if(serial_input.length() >= 3) {
+    // Get the mode to perform and the chip to do it on
+    String mode_and_chip = serial_input.substring(0,2); 
+
+    // Change the device mode (e.g, from science to calibration)
+    if(mode_and_chip == "WM") {
+      Serial.println("Change device mode");
+      device_mode = serial_input[2]; 
+      
+      Serial.println(device_mode); 
+      Serial.println("!"); 
+
+      serial_input = "";
+      return ; 
+    }
+  }
+
+
+  // Getting accelerometer data is highest priority, so 
+  // read regardless of mode/command
+  std::vector<float_t> LI_channels = LI_read('A', &LIS2DUXS12, device_mode, false); 
   
   // Then save the readings to the buffer
   for(size_t i = 0; i < LI_channels.size(); i++) {
@@ -102,7 +125,7 @@ void loop() {
       std::vector<uint16_t> TS_channels = TS_read('C',&tsl, device_mode);
 
       // Retrieve the temp channel of the LI chip
-      std::vector<float_t> LI_temp = LI_read('T', &LIS2DUXS12, device_mode); 
+      std::vector<float_t> LI_temp = LI_read('T', &LIS2DUXS12, device_mode, false); 
 
       // Write the data through the serial port 
       write_serial(&AS_channels, &TS_channels, LI_temp[0], accel_buffer, 60);  
@@ -117,15 +140,12 @@ void loop() {
   // Increment buffer position, reset if necessary
   accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
 
-  // Otherwise, we are in calibration mode, so we can read/send commands
-
-  // Get the command from the controller
-  read_command(&serial_input); 
+  // Otherwise, we are in calibration mode, so we can read/write to specific chips
 
   // If we received a well formed command, execute it
   if(serial_input.length() > 2) {
     Serial.println(serial_input);
-
+    
     // Get the mode to perform and the chip to do it on
     String mode_and_chip = serial_input.substring(0,2); 
 
@@ -152,7 +172,7 @@ void loop() {
 
     // Read from the LI chip using specific data to read
     else if(mode_and_chip == "RL") {
-      LI_read(serial_input[2],&LIS2DUXS12, device_mode);
+      LI_read(serial_input[2],&LIS2DUXS12, device_mode, true);
     }
 
     // Write to the AS chip using given data

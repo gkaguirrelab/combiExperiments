@@ -36,6 +36,9 @@ MSCalDataFiles = {...
 fit_calibration(MSCalDataFiles)
 %}
 
+
+% Turn this into fit_minispect_counts
+
 % This is a kludge. Eventually we will pass in a set of cal files
 % corresponding to the CombiLEDSphere calibrations at each NDF level.
 referenceNDF = 0.2;

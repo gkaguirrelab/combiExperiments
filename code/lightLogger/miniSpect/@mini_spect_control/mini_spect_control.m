@@ -15,13 +15,16 @@ classdef mini_spect_control < handle
         chip_functions_map = containers.Map({'A', 'T', 'L','S'}, {  containers.Map({'Gain','Integration','Channels','Flicker','Power','ATIME','ASTEP'}, {'G', 'I','C','F','P','a','A'}), containers.Map({'Gain','Channels','Lux','Power','ATIME'}, {'G', 'C','L','P','A'}), containers.Map({'Accel','Power','Temperature'}, {'A','P','T'}), containers.Map({'SerialNumber'}, {'S'}) })
         
         % Map the different chips to their different amount of available channels
-        chip_nChannels_map = containers.Map({'A','T','L'},{10,2,3});
+        chip_nChannels_map = containers.Map({'A', 'T', 'L'}, {10, 2, 3});
+
+        % Map the different MS device modes to their underlying representations
+        device_mode_map = containers.Map({'Calibration', 'Science'}, {'C', 'S'}); 
 
         % End of Message marker to mark end of Serial responses
         END_MARKER = '!'
         
-        serial_number 
-        serialObj
+        serial_number;
+        serialObj;
 
     end
 
@@ -57,7 +60,8 @@ classdef mini_spect_control < handle
 
             % Store operation mode 
             obj.simulate = p.Results.simulate; 
-
+            
+            % If simulating the object, simply return now
             if obj.simulate
                 return 
             end
@@ -65,13 +69,17 @@ classdef mini_spect_control < handle
             % Open the serial port
             obj.serialOpen_minispect();
 
-            serial_number_output = obj.read_minispect('S','S');
+            % Set to calibration mode for MATLAB interaction
+            obj.switch_mode('Calibration');
             
-            obj.serial_number = serial_number_output(end);
+            % Read the serial number and assign it to the object
+            serial_number = obj.read_minispect('S','S');
+            
+            obj.serial_number = serial_number(end);
 
         end
 
-        % Required methds
+        % Required methods
         
         % Connection related
         serialOpen_minispect(obj)
@@ -85,10 +93,13 @@ classdef mini_spect_control < handle
         channel_values = parse_channel_reading(obj, reading, chip)
 
         % Calibration related 
-        calibrate_minispect(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,nSamplesPerStep,reps,randomizeOrder,save_path)
+        collect_minispect_counts(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,nSamplesPerStep,reps,randomizeOrder,save_path)
 
         % Home MS back to desired settings
         reset_settings(obj);
+        
+        % Change device mode (e.g. from calibration to science or vice versa)
+        result = switch_mode(obj, mode)
 
     end
 end

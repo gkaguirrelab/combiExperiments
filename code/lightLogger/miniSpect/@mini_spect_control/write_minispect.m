@@ -62,7 +62,7 @@ function result = write_minispect(obj, chip, mode, write_val)
     end 
     
     % Throw an error if the minispect reported an error
-    if strcmp(result{1}, "-1")
+    if strcmp(result{end}, "-1")
         error('minispect write failed.');
     end 
     

@@ -34,7 +34,7 @@ def pixel_to_index(r: int, c: int, cols: int) -> int:
     return r * cols + c
 
 """Generate a 3D plot of the field of the camera"""
-def generate_surface_plot(path_to_video: str):
+def generate_fielding_function(path_to_video: str) -> np.array:
     # Parse the video into its frames
     frames: np.array = parse_video(path_to_video)
 
@@ -56,8 +56,17 @@ def generate_surface_plot(path_to_video: str):
                                     for c in range(mean_frame.shape[1])
                                     if (r % 2 == 0 and c % 2 == 0)])
 
-    # Build a matrix of points and their respective values
-    points: np.array = np.array([(r, c, mean_frame[r,c]) for r in range(mean_frame.shape[0]) for c in range(mean_frame.shape[1])])
+    # Initialize the fielding function image
+    fielding_function: np.array = mean_frame.copy()
+
+    # Normalize the red pixels 
+    fielding_function[r_pixels[:,0], r_pixels[:,1]] /= np.max(fielding_function[r_pixels[:,0], r_pixels[:,1]])
+
+    # Normalize the green pixels
+    fielding_function[g_pixels[:,0], g_pixels[:,1]] /= np.max(fielding_function[g_pixels[:,0], g_pixels[:,1]])
+
+    # Normalize the blue pixels
+    fielding_function[b_pixels[:,0], b_pixels[:,1]] /= np.max(fielding_function[b_pixels[:,0], b_pixels[:,1]])
 
     # Build the x, y meshgrid for the surface plot of the camera frame
     x: np.array = np.arange(0,mean_frame.shape[1])
@@ -67,12 +76,12 @@ def generate_surface_plot(path_to_video: str):
     # z is the signal of the pixels
     z: np.arary = mean_frame
 
-    print(f'Z shape: {mean_frame.shape}')
-
-
    # Construct a figure to display the plot
     fig: plt.figure = plt.figure()
     ax: plt.Axes = fig.add_subplot(111, projection='3d')
+    ax.set_xlabel('Column')
+    ax.set_ylabel('Row')
+    ax.set_zlabel('Pixel Intensity')
     ax.set_zlim([np.min(z), np.max(z)])
 
     # Generate the surface plot
@@ -81,6 +90,8 @@ def generate_surface_plot(path_to_video: str):
     
     # Show the plot
     plt.show()
+
+    return fielding_function
 
     """Code for doing by color filter below
     red_only_img = np.zeros(mean_frame.shape)

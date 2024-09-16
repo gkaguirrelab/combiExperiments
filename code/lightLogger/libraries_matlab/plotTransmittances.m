@@ -5,7 +5,7 @@ hold on
 
 smoothParam = 0.02;
 
-for ii = 0:4
+for ii = 0:5
     calFileName = sprintf('CombiLED_shortLLG_sphere_ND%d_maxSpectrum.mat',ii);
     load(fullfile(calLocalData,calFileName),'cals');
     calSet{ii+1} = cals{end};
@@ -15,14 +15,12 @@ for ii = 0:4
     wls = SToWls(calSet{1}.rawData.S);
     y = log10(transmittance(ii+1,:));
     goodIdx = isfinite(y);
-    plot(wls(goodIdx),y(goodIdx));
+    plot(wls(goodIdx),y(goodIdx),'.');
     % label
-    yPos = y(1)-0.3;
-    text(min(wls),yPos,sprintf('ND%d',ii));
     % add a spline fit
     yFit = csaps(wls(goodIdx),y(goodIdx),smoothParam,wls(goodIdx));
-    plot(wls(goodIdx),yFit,'-k')
-    ylim([yPos,0])
+    plot(wls(goodIdx),yFit,'-k','LineWidth',1)
+    text(355,min(yFit),sprintf('ND%d',ii));
 end
 
 ylabel('log transmittance');

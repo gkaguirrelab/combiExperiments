@@ -60,21 +60,23 @@ void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
 
 void write_serial(std::vector<uint16_t>* AS_channels,
                   std::vector<uint16_t>* TS_channels,
-                  std::vector<float_t>* LI_channels) 
+                  float_t LI_temp, 
+                  int16_t* accel_buffer,
+                  size_t buff_size) 
 {
     // Initialize buffer to send and byte to insert data
-    uint8_t data[50];
-    int pos = 1;  
+    uint8_t data[150];
+    size_t pos = 1;  
 
     // Set the first character to be the start message delimeter 
     data[0] = '<';
 
     // Set the last character to be the end message delimeter
-    data[49] = '>';
+    data[149] = '>';
 
     // Copy over AS_channel bytes
-    //11 * 2 bytes from AS channels -> 22 
-    //1 + 22 = 23 is pos after this
+    //10 * 2 bytes from AS channels -> 20
+    //1 + 20 = 21 is pos after this
     for(size_t i = 0; i < AS_channels->size(); i++) {
       std::memcpy(&data[pos], &AS_channels->at(i), sizeof(uint16_t));
       pos += 2; 
@@ -82,34 +84,23 @@ void write_serial(std::vector<uint16_t>* AS_channels,
 
     //Copy over the TS channel bytes
     //2 x 2 bytes from TS channels -> 4
-    //23 + 4 = 27 after this 
+    //21 + 4 = 25 after this 
     for(size_t i = 0; i < TS_channels->size(); i++) {
       std::memcpy(&data[pos], &TS_channels->at(i), sizeof(uint16_t));
       pos += 2; 
     }
 
-    // Copy over the LI channel bytes. Note, the first 3 
-    // are treated as uint16_t and the last one is treated as float
-    // 3 * 2 + 1 * 4 = 10
-    // Should be 47 after this
-    for(size_t i = 0; i < LI_channels->size(); i++) {
-      if(i == 3){
-        // Copy the temperature channel to the buffer
-        std::memcpy(&data[pos], &LI_channels->at(i), sizeof(float_t));
-        pos += 4; 
-        continue; 
-      }
+    // Copy over the LI temp value
+    // 1 x 4 + 25 = 29 after this
+    std::memcpy(&data[pos], &LI_temp, sizeof(float_t));
+    pos += 4; 
 
-      // Convert the channel value to 16 bit signed integer 
-      int16_t channel_value = (int16_t)LI_channels->at(i); 
-      
-      //Copy acceleration channels to buffer 
-      std::memcpy(&data[pos], &channel_value, sizeof(int16_t));
-      pos += 2; 
-    }
+    // Copy over the acceleration buffer, 
+    // 60 x 2  + 29 = 149 after this
+    std::memcpy(&data[pos], accel_buffer, buff_size*sizeof(int16_t));
     
     // Write it throught the serial port
-    Serial.write(data, 50);
+    Serial.write(data, 150);
 
 }
 
@@ -369,12 +360,11 @@ std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591,
 }
 
 std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12,
-                            char device_mode) 
+                             char device_mode, bool verbose) 
 {
   int32_t accel[3];
   float_t temperature; 
   std::vector<float_t> result; 
-  uint8_t idRET; 
 
   switch(mode) {
     // Read the acceleration information
@@ -390,8 +380,11 @@ std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12,
         break; 
       }
 
+      // If we do not want to output values, simply break
+      if(!verbose) {
+        break; 
+      }
 
-    
       Serial.print("X : ");Serial.println(accel[0]);
       Serial.print("Y : ");Serial.println(accel[1]);
       Serial.print("Z : ");Serial.println(accel[2]);
@@ -407,7 +400,6 @@ std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12,
         sig_error();
         break; 
       }
-
       // If we are in science mode, simply append results 
       // and break
       if(device_mode == 'S') {
