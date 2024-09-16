@@ -6,7 +6,7 @@ clc
 rng(cputime); % Get some random going in case we need it
 
 % Simulation flags
-simulateCombiAir = true;
+simulateCombiAir = false;
 simulatePupilVideo = true;
 
 % Define some acquisition properties
@@ -88,6 +88,40 @@ if ~simulatePupilVideo
         'backgroundRecording',true);
 end
 
+% Confirm with the subject that the piston is moving and air puffs are
+% being delivered
+fprintf('\nPress return to start puff test...');
+input(': ','s');
+fprintf('\n');
+notDone = true;
+while notDone
+    fprintf('Clearing the piston\n');
+    if ~simulateCombiAir
+        airObj.clearPistonDirect();
+    end
+    fprintf('Press return to deliver a test puff...');
+    input(': ','s');
+    fprintf('\n');
+    if ~simulateCombiAir
+        airObj.setPressureDirect(5);
+        pause(1);
+        airObj.setDurationDirect(500);
+        pause(0.25)
+        airObj.triggerPuffDirect();
+    end
+    fprintf('Return q if done testing, return to try again...');
+    keyPress = input(': ','s');
+    fprintf('\n');
+    switch keyPress
+        case 'q'
+            notDone = false;
+            if ~simulateCombiAir
+                airObj.setPressureDirect(0);
+            end
+    end
+end
+
+
 % Wait during the preliminary acquisitions and soak up any stray keystrokes
 % (e.g., testing the button box; TRs produced by the field map acquisition)
 fprintf('******************************************************\n')
@@ -118,6 +152,9 @@ while notDone
         % to start.
         airObj.setRunMode();
     end
+
+
+
 
     % Start the pupil recording
     if ~simulatePupilVideo
