@@ -31,10 +31,10 @@ classdef mini_spect_control < handle
     % These may be modified after object creation
     properties (SetAccess=public)
         % Allow user to access names of all chips on device 
-        all_chip_names = ['AMS7341','TSL2591','LIS2DUXS12','SEEED'];
+        all_chip_names = {'AMS7341','TSL2591','LIS2DUXS12','SEEED'};
 
         % Allow users to access names of light-sensing chips only
-        light_sensing_chips = ['AMS7341','TSL2591'];
+        light_sensing_chips = {'AMS7341','TSL2591'};
         
         % Verbosity
         verbose = false;
@@ -93,7 +93,7 @@ classdef mini_spect_control < handle
         channel_values = parse_channel_reading(obj, reading, chip)
 
         % Calibration related 
-        collect_minispect_counts(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,nSamplesPerStep,reps,randomizeOrder,save_path)
+        collect_minispect_counts(obj,NDF,cal_path,nPrimarySteps,settingScalarRange,nSamplesPerStep,reps,randomizeOrder,save_path,notificationAddress)
 
         % Home MS back to desired settings
         reset_settings(obj);
