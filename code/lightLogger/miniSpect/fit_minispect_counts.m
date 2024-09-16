@@ -1,8 +1,8 @@
-function fit_calibration(MSCalDataFiles)
+function fit_minispect_counts(MSCalDataFiles)
 % Fits measured counts from the minispect to predicted counts
 %
 % Syntax:
-%   fit_calibration(MSCalDataFiles)
+%   fit_minispect_counts(MSCalDataFiles)
 %
 % Description:
 %   Given a cell array of paths to MSCalData files over different NDF
@@ -36,8 +36,6 @@ MSCalDataFiles = {...
 fit_calibration(MSCalDataFiles)
 %}
 
-
-% Turn this into fit_minispect_counts
 
 % This is a kludge. Eventually we will pass in a set of cal files
 % corresponding to the CombiLEDSphere calibrations at each NDF level.
