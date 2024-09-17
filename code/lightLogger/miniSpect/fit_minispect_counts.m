@@ -171,7 +171,7 @@ for ii = 1:numel(MSCalDataFiles)
 
                 %% KLUDGE HERE TO HANDLE THE NDF EFFECT UNTIL WE START PRODUCING
                 %% separate sphere calibration files for each NDF level
-                predictedCounts(kk,:) = predictedCounts(kk,:) % What operation do we do here with cals again?*   %(1/10^(NDF-referenceNDF));
+                predictedCounts(kk,:) = predictedCounts(kk,:) * 1/10^(NDF-referenceNDF);
 
             end % nPrimarySteps
 
