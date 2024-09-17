@@ -205,10 +205,35 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     observed_fps: float = frame_num/(end_capture_time-start_capture_time)
     print(f'I captured {frame_num} at {observed_fps} fps')
     
-    # Stop recording and close the picam object 
+    # Stop recording and close the camera object 
     cam.release()
     
     print('Finishing recording')
+
+"""View the output of the camera feed, useful for testing how captured images look"""
+def view_feed():
+    # Open a connection to the camera
+    cam: cv2.VideoCapture = initialize_camera()
+
+    while(True):
+        # Capture the frame
+        ret, frame = cam.read()
+
+        # Ensure a frame was properly read 
+        if not ret:
+            print("ERROR: Could not read frame")
+            break
+        
+        # Display the frame
+        cv2.imshow('Camera Feed', frame)
+
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # Release the camera and close all windows
+    cam.release()
+    cv2.destroyAllWindows()
 
 """Iniitalize the pupil camera"""        
 def initialize_camera() -> cv2.VideoCapture:
@@ -217,8 +242,7 @@ def initialize_camera() -> cv2.VideoCapture:
 
     # Ensure the camera could be opened
     if(not cam.isOpened()):
-        print("Error: Could not open camera.")
-        exit()
+        raise Exception("Error: Could not open camera.")
 
     # Placeholders until we do more research into this
     width: int = 640
