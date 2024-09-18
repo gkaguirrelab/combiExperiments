@@ -70,6 +70,7 @@ function plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriod
     CL = CombiLEDcontrol();
 
     % Update the combiLED's gamma table
+    CL.setDirectModeGamma(true);
     CL.setGamma(cal.processedData.gammaTable);
 
     % Initialize the combiLED to dark 

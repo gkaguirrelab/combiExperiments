@@ -100,6 +100,7 @@ function collect_minispect_counts(obj,NDF,calPath,nPrimarySteps,settingScalarRan
     CL = CombiLEDcontrol();
 
     % Update the combiLED's gamma table
+    CL.setDirectModeGamma(true);
     CL.setGamma(cal.processedData.gammaTable);
 
     % Extract some information regarding the light source that is being used to
