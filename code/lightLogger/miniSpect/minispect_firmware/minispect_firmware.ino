@@ -238,6 +238,9 @@ void AS7341_init() {
   as7341.setASTEP(uint16_t(as_astep));
   as7341.setGain(as7341_gain_t(as_gain));
 
+  // Disable the Spectral AGC
+  as7341.toggleAGC(false); 
+
 }
 
 // Initialize the LIS2DUXS12 sensor

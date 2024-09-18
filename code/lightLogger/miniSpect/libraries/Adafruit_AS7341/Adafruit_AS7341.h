@@ -267,6 +267,7 @@ public:
   bool setASTEP(uint16_t astep_value);
   bool setATIME(uint8_t atime_value);
   bool setGain(as7341_gain_t gain_value);
+  bool toggleAGC(bool status);
 
   uint16_t getASTEP();
   uint8_t getATIME();

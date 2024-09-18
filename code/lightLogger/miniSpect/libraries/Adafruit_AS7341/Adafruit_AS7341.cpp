@@ -913,6 +913,22 @@ bool Adafruit_AS7341::setGain(as7341_gain_t gain_value) {
 }
 
 /**
+ * @brief Switch the Spectral AGC on/off 
+ * 
+ * @param status The status to switch the AGC to (0 -> off, 1 -> on)
+ * @return true: success false: failure
+
+*/
+bool Adafruit_AS7341::toggleAGC(bool status) {
+  Adafruit_BusIO_Register cfg8_reg =
+      Adafruit_BusIO_Register(i2c_dev, AS7341_CFG8);
+  Adafruit_BusIO_RegisterBits sp_agc_bit =
+      Adafruit_BusIO_RegisterBits(&cfg8_reg, 1, 2);
+
+      return sp_agc_bit.write(status);
+}
+
+/**
  * @brief Returns the ADC gain multiplier
  *
  * @return as7341_gain_t The current ADC gain multiplier
