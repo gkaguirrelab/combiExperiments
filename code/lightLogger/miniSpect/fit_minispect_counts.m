@@ -31,16 +31,16 @@ function fit_minispect_counts(MSCalDataFiles)
 format long g;
 
 % Parse the arguments
-parser = inputParser; 
+parser = inputParser;
 
-% Validate the arguments' type and size > 0 
+% Validate the arguments' type and size > 0
 parser.addRequired('MSCalDataFiles', @(x) iscell(x) && numel(x) ~= 0);
 
 % Parse the arguments
-parser.parse(MSCalDataFiles); 
+parser.parse(MSCalDataFiles);
 
 % Retrieve the validated arguments
-MSCalDataFiles = parser.Results.MSCalDataFiles;  
+MSCalDataFiles = parser.Results.MSCalDataFiles;
 
 % Load the first MSCalDataFile, get the S, as we need this to resample the
 % detector spectral sensitivity functions
@@ -48,7 +48,7 @@ MSCalData = load(MSCalDataFiles{1}).MSCalData;
 sourceS = MSCalData.meta.source_cal.rawData.S;
 
 % Retrieve the wavelengths
-wls = SToWls(sourceS); 
+wls = SToWls(sourceS);
 
 % Determine the number of settings examined for each ND level
 nSettingsLevels = size(MSCalData.raw.background_scalars{1},2);
@@ -64,25 +64,29 @@ source_max_spectrum_path = strrep(MSCalData.meta.source_calpath, '.mat', '_maxSp
 %}
 
 % Find the NDF used for the source max spectrum
-source_max_spectrum_ndf = regexp(source_max_spectrum_path, 'ND\d', 'match');  
+source_max_spectrum_ndf = regexp(source_max_spectrum_path, 'ND\d', 'match');
 source_max_spectrum_ndf = source_max_spectrum_ndf{1};
 
 % Smoothing parameter for transmittance function, found by hand by Geoff via manual testing
 smoothParam = 0.0025;
 
+% The predicted and measured counts can vary by a scale factor. We plug in
+% a value here to get these in register to start on the plots
+scaleFactor = 10^1.2;
+
 % How many of the minispect cal data files to plot (we do not have a calibration for 6 NDF, so just 0-5)
 nMeasToPlot = numel(MSCalDataFiles)-1;
 
 % Load the source spectrum
-load(source_max_spectrum_path, 'cals'); 
-source_max_spectrum = cals{end}.rawData.gammaCurveMeanMeasurements; 
+load(source_max_spectrum_path, 'cals');
+source_max_spectrum = cals{end}.rawData.gammaCurveMeanMeasurements;
 
 clear MSCalData;
 
 % Load the minispect SPDs
 spectral_sensitivity_map = containers.Map({'AMS7341'},...%'TSL2591'},...%"TSL2591"},...
     {fullfile(tbLocateProjectSilent('combiExperiments'),'data','ASM7341_spectralSensitivity.mat')});
-    %fullfile(tbLocateProjectSilent('combiExperiments'),'data','TSL2591_spectralSensitivity.mat')});
+%fullfile(tbLocateProjectSilent('combiExperiments'),'data','TSL2591_spectralSensitivity.mat')});
 
 % For each chip, reformat the minispect SPDs to be in the space of the
 % sourceSPDs
@@ -104,8 +108,8 @@ for ii = 1:numel(chips)
 
 end
 
-% Establish containers to hold the measurements 
-% and predicted values for the chips across 
+% Establish containers to hold the measurements
+% and predicted values for the chips across
 % the different calibrations
 measured_map = containers.Map({'AMS7341','TSL2591'},...
     {   {}    ,   {}    });
@@ -132,27 +136,27 @@ for ii = 1:nMeasToPlot
     assert(all(source_cal.rawData.S == sourceS));
 
     % Find the path to the max spectrum file for this NDF
-    local_max_spectrum_path = strrep(source_max_spectrum_path, source_max_spectrum_ndf, sprintf('ND%d', NDF)); 
+    local_max_spectrum_path = strrep(source_max_spectrum_path, source_max_spectrum_ndf, sprintf('ND%d', NDF));
 
     % Load the source spectrum
-    load(local_max_spectrum_path, 'cals'); 
-    local_max_spectrum = cals{end}.rawData.gammaCurveMeanMeasurements; 
+    load(local_max_spectrum_path, 'cals');
+    local_max_spectrum = cals{end}.rawData.gammaCurveMeanMeasurements;
 
     % Calculate the transmittance function
     transmittance_function_raw = local_max_spectrum ./ source_max_spectrum;
-    
+
     % Find non-inf values in the transmittance function (as local spectrum could have 0 when dividing)
     goodIdx = isfinite(transmittance_function_raw);
-    badIdx = ~isfinite(transmittance_function_raw); 
+    badIdx = ~isfinite(transmittance_function_raw);
 
     % Calculate the transmittance function. Smooth the function using csaps
     % if this function is available
-    transmittance_function = transmittance_function_raw; 
+    transmittance_function = transmittance_function_raw;
     if exist('csaps','file')
         transmittance_function(goodIdx) = csaps(wls(goodIdx), transmittance_function_raw(goodIdx), smoothParam, wls(goodIdx));
     end
-    transmittance_function(badIdx) = 0; 
-    transmittance_function(transmittance_function<0) = 0; 
+    transmittance_function(badIdx) = 0;
+    transmittance_function(transmittance_function<0) = 0;
 
     % Plot this transmittance function
     plot(wls,log10(transmittance_function_raw),'.');
@@ -169,15 +173,15 @@ for ii = 1:nMeasToPlot
     nReps = MSCalData.meta.params.nReps;
     randomizeOrder = MSCalData.meta.params.randomizeOrder;
 
-    % For each chip 
+    % For each chip
     for cc = 1:numel(chips)
         % Initialize a summation variable for the detector counts
         % as we are going to average them over the reps
-        sum_detector_counts = 0; 
+        sum_detector_counts = 0;
 
-        % Initialize the predictedCounts variable to some value. 
-        % this is to have it in scope for use later. 
-        predictedCounts = 0; 
+        % Initialize the predictedCounts variable to some value.
+        % this is to have it in scope for use later.
+        predictedCounts = 0;
 
         % Iterate over repetitions
         for jj = 1:nReps
@@ -221,31 +225,29 @@ for ii = 1:nMeasToPlot
                 % opposed to (e.g.) per 2 nm.
                 sphereSPDs(kk,:) = ( (sourceP_abs*source_settings')/sourceS(2) ) .* transmittance_function;
 
-                % Apply the transmittance function
-
                 % Derive the prediction of the relative counts based upon the sphereSPD
                 % and the minispectP_rel.
                 predictedCounts(kk,:) = sphereSPDs(kk,:)*detectorP_rel;
 
             end % nPrimarySteps
-         
+
             % Sum the counts from this repetition
             sum_detector_counts = sum_detector_counts + detectorCounts;
 
         end
 
-       % Retrieve the containers holding the results per measure
+        % Retrieve the containers holding the results per measure
         measured = measured_map(chips(cc));
         predicted = predicted_map(chips(cc));
 
         % Append the newest measurement results
-        measured{ii} = sum_detector_counts / nReps; 
-        predicted{ii} = predictedCounts; 
+        measured{ii} = sum_detector_counts / nReps;
+        predicted{ii} = predictedCounts;
 
         % Resave the containers
         measured_map(chips(cc)) = measured;
         predicted_map(chips(cc)) = predicted;
-        
+
     end % nReps
 
 end % nCalibrations
@@ -268,7 +270,7 @@ for kk = 1:numel(chips)
     tiledlayout(2,5);
     for cc = 1:nDetectorChannels
         nexttile
-        x = log10(predicted(:,cc));
+        x = log10(predicted(:,cc)*scaleFactor);
         y = log10(measured(:,cc));
         for mm = 1:nMeasToPlot
             thisIdx = (mm-1)*nSettingsLevels+1:mm*nSettingsLevels;
@@ -281,7 +283,11 @@ for kk = 1:numel(chips)
         fitY = polyval(p,x);
         plot(x,fitY,'-k')
         refline(1,0)
-        ylim([-3 5]); xlim([-3 5]);
+        if cc == nDetectorChannels
+            ylim([-2 5]); xlim([-2 5]);
+        else
+            ylim([-1 5]); xlim([-1 5]);
+        end
         axis square
         xlabel(sprintf('%s predicted counts [log]', chips(kk)));
         ylabel(sprintf('%s measured counts [log]', chips(kk)));
