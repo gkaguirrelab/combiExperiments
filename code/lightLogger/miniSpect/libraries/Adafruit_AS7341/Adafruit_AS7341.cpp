@@ -925,7 +925,7 @@ bool Adafruit_AS7341::toggleAGC(bool status) {
   Adafruit_BusIO_RegisterBits sp_agc_bit =
       Adafruit_BusIO_RegisterBits(&cfg8_reg, 1, 2);
 
-      return sp_agc_bit.write(status);
+  return sp_agc_bit.write(status);
 }
 
 /**
