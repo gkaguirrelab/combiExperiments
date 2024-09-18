@@ -1,4 +1,4 @@
-function fit_minispect_counts(MSCalDataFiles, calFiles)
+function fit_minispect_counts(MSCalDataFiles)
 % Fits measured counts from the minispect to predicted counts
 %
 % Syntax:
@@ -24,10 +24,6 @@ function fit_minispect_counts(MSCalDataFiles, calFiles)
     d = dir(fullfile(calDir,'*mat'));
     MSCalDataFiles = cellfun(@(x) fullfile(calDir, x), {d.name}, 'UniformOutput', false);
 
-    lightSourceCalDir = '~/Documents/MATLAB/projects/combiExperiments/cal'
-    d_l = dir(fullfile(calDir,'*maxSpectrum*'));
-    MSCalDataFiles = cellfun(@(x) fullfile(calDir, x), {d.name}, 'UniformOutput', false);
-
     fit_minispect_counts(MSCalDataFiles);
 %}
 
@@ -36,28 +32,38 @@ parser = inputParser;
 
 % Validate the arguments' type and size > 0 
 parser.addRequired('MSCalDataFiles', @(x) iscell(x) && numel(x) ~= 0);
-parser.addRequired('calFiles', @(x) iscell(x) && numel(x) ~= 0); 
 
 % Parse the arguments
-parser.parse(MSCalDataFiles, calFiles); 
+parser.parse(MSCalDataFiles); 
 
 % Retrieve the validated arguments
 MSCalDataFiles = parser.Results.MSCalDataFiles;  
-calFiles = parser.Results.calFiles;  
-
-% Assert there is a source cal file for every MSCalDataFile
-assert(numel(MSCalDataFiles) == numel(calFiles))
-
-% This is a kludge. Eventually we will pass in a set of cal files
-% corresponding to the CombiLEDSphere calibrations at each NDF level.
-%referenceNDF = 0.2;
 
 % Load the first MSCalDataFile, get the S, as we need this to resample the
 % detector spectral sensitivity functions
 MSCalData = load(MSCalDataFiles{1}).MSCalData;
-
 sourceS = MSCalData.meta.source_cal.rawData.S;
-clear MSCalData
+
+% Retrieve the wavelengths
+wls = SToWls(sourceS); 
+
+% Determine the number of settings examined for each ND level
+nSettingsLevels = size(MSCalData.raw.background_scalars{1},2);
+
+% Assume there is a max spectrum file with the same name as the source_cal file with max spectrum appended
+source_max_spectrum_path = strrep(MSCalData.meta.source_calpath, '.mat', '_maxSpectrum.mat');
+
+% Smoothing parameter for transmittance function, found by hand by Geoff via manual testing
+smoothParam = 0.02;
+
+% How many of the minispect cal data files to plot
+nMeasToPlot = numel(MSCalDataFiles)-1;
+
+% Load the source spectrum
+load(source_max_spectrum_path, 'cals'); 
+source_max_spectrum = cals{end}.rawData.gammaCurveMeanMeasurements; 
+
+clear MSCalData;
 
 % Load the minispect SPDs
 spectral_sensitivity_map = containers.Map({'AMS7341'},...%'TSL2591'},...%"TSL2591"},...
@@ -93,13 +99,9 @@ predicted_map = containers.Map({'AMS7341','TSL2591'},...
     {   {}    ,   {}    });
 
 % For each MSCalDataFile calibration
-for ii = 1:numel(MSCalDataFiles)
+for ii = 1:nMeasToPlot
     % Load this MSCalFile
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
-
-    % Load its associated NDF calibration
-    cals = load(calFiles{ii}, 'cals');
-    cal = cals{end};
 
     chip_struct_map = containers.Map({'AMS7341','TSL2591'},...
         {MSCalData.ASChip,MSCalData.TSChip});
@@ -111,6 +113,26 @@ for ii = 1:numel(MSCalDataFiles)
     % Check that the sourceS associated with the current MSCalDataFile
     % matches that we extracted at the top of the routine
     assert(all(source_cal.rawData.S == sourceS));
+
+    % Assume the source_max_spectrum_path is always NDF0. This is ugly and we will replace it 
+    % with a regex approach in case the first one is not nd0 
+    local_max_spectrum_path = strrep(source_max_spectrum_path, 'ND0', sprintf('ND%d', NDF)); 
+
+    % Load the source spectrum
+    load(local_max_spectrum_path, 'cals'); 
+    local_max_spectrum = cals{end}.rawData.gammaCurveMeanMeasurements; 
+
+    % Calculate the transmittance function
+    transmittance_function_raw = local_max_spectrum ./ source_max_spectrum;
+    
+    % Find non-inf values in the transmittance function (as local spectrum could have 0 when dividing)
+    goodIdx = isfinite(transmittance_function_raw);
+    badIdx = ~isfinite(transmittance_function_raw); 
+
+    % Calculate the transmittance function
+    transmittance_function = transmittance_function_raw; 
+    %transmittance_function(goodIdx) = csaps(wls(goodIdx), transmittance_function_raw(goodIdx), smoothParam, wls(goodIdx));
+    transmittance_function(badIdx) = 0; 
 
     % Extract information regarding the light source that was used to
     % calibrate the minispect
@@ -155,7 +177,6 @@ for ii = 1:numel(MSCalDataFiles)
 
             % Iterate over the source primary setting values
             for kk = 1:nPrimarySteps
-
                 % Get the source settings by multiplying background
                 % by the scalar value at primaryStep kk
                 source_settings = background * background_scalars_sorted(kk);
@@ -163,15 +184,13 @@ for ii = 1:numel(MSCalDataFiles)
                 % Derive the sphereSPD for this step in units of W/m2/sr/nm. We divide
                 % by the nanometer sampling given in S to cast the units as nm, as
                 % opposed to (e.g.) per 2 nm.
-                sphereSPDs(kk,:) = (sourceP_abs*source_settings')/sourceS(2);
+                sphereSPDs(kk,:) = ( (sourceP_abs*source_settings')/sourceS(2) ) .* transmittance_function;
+
+                % Apply the transmittance function
 
                 % Derive the prediction of the relative counts based upon the sphereSPD
                 % and the minispectP_rel.
                 predictedCounts(kk,:) = sphereSPDs(kk,:)*detectorP_rel;
-
-                %% KLUDGE HERE TO HANDLE THE NDF EFFECT UNTIL WE START PRODUCING
-                %% separate sphere calibration files for each NDF level
-                predictedCounts(kk,:) = predictedCounts(kk,:) * 1/10^(NDF-referenceNDF);
 
             end % nPrimarySteps
 
@@ -180,11 +199,12 @@ for ii = 1:numel(MSCalDataFiles)
                 continue ; 
             end
 
+            % Average the measured over the 3 reps and plot that with the predicted
+
             measured = measured_map(chips(cc));
             predicted = predicted_map(chips(cc));
 
             measured{ii} = detectorCounts;
-
             predicted{ii} = predictedCounts;
 
             disp(measured{1})
@@ -217,15 +237,18 @@ for kk = 1:numel(chips)
         nexttile
         x = log10(predicted(:,cc));
         y = log10(measured(:,cc));
+        for mm = 1:nMeasToPlot
+            thisIdx = (mm-1)*nSettingsLevels+1:mm*nSettingsLevels;
+            plot(x(thisIdx),y(thisIdx),'o');
+            hold on
+        end
         goodIdx = and(~isinf(y),~isinf(x));
         x = x(goodIdx); y = y(goodIdx);
-        plot(x,y,'o');
-        hold on
         p = polyfit(x,y,1);
         fitY = polyval(p,x);
         plot(x,fitY,'-k')
         refline(1,0)
-        ylim([-2 5]); xlim([-2 5]);
+        ylim([-3 5]); xlim([-3 5]);
         axis square
         xlabel(sprintf('%s predicted counts [log]', chips(kk)));
         ylabel(sprintf('%s measured counts [log]', chips(kk)));
