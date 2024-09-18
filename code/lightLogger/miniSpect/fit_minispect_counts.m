@@ -56,12 +56,19 @@ nSettingsLevels = size(MSCalData.raw.background_scalars{1},2);
 % Assume there is a max spectrum file with the same name as the source_cal file with max spectrum appended
 source_max_spectrum_path = strrep(MSCalData.meta.source_calpath, '.mat', '_maxSpectrum.mat');
 
+% Currently, the code is using a hard-coded path to these cal files,
+% instead of building the relative path for this user. This step is needed
+% for Geoff to run the routine
+%{
+    source_max_spectrum_path = strrep(source_max_spectrum_path,'zacharykelly','aguirre');
+%}
+
 % Find the NDF used for the source max spectrum
 source_max_spectrum_ndf = regexp(source_max_spectrum_path, 'ND\d', 'match');  
 source_max_spectrum_ndf = source_max_spectrum_ndf{1};
 
 % Smoothing parameter for transmittance function, found by hand by Geoff via manual testing
-smoothParam = 0.02;
+smoothParam = 0.0025;
 
 % How many of the minispect cal data files to plot (we do not have a calibration for 6 NDF, so just 0-5)
 nMeasToPlot = numel(MSCalDataFiles)-1;
@@ -105,6 +112,9 @@ measured_map = containers.Map({'AMS7341','TSL2591'},...
 predicted_map = containers.Map({'AMS7341','TSL2591'},...
     {   {}    ,   {}    });
 
+% Prepare a figure to show the transmittance functions
+figure
+
 % For each MSCalDataFile calibration
 for ii = 1:nMeasToPlot
     % Load this MSCalFile
@@ -135,10 +145,19 @@ for ii = 1:nMeasToPlot
     goodIdx = isfinite(transmittance_function_raw);
     badIdx = ~isfinite(transmittance_function_raw); 
 
-    % Calculate the transmittance function
+    % Calculate the transmittance function. Smooth the function using csaps
+    % if this function is available
     transmittance_function = transmittance_function_raw; 
-    %transmittance_function(goodIdx) = csaps(wls(goodIdx), transmittance_function_raw(goodIdx), smoothParam, wls(goodIdx));
+    if exist('csaps','file')
+        transmittance_function(goodIdx) = csaps(wls(goodIdx), transmittance_function_raw(goodIdx), smoothParam, wls(goodIdx));
+    end
     transmittance_function(badIdx) = 0; 
+    transmittance_function(transmittance_function<0) = 0; 
+
+    % Plot this transmittance function
+    plot(wls,log10(transmittance_function_raw),'.');
+    hold on
+    plot(wls,log10(transmittance_function),'-k');
 
     % Extract information regarding the light source that was used to
     % calibrate the minispect
@@ -209,15 +228,9 @@ for ii = 1:nMeasToPlot
                 predictedCounts(kk,:) = sphereSPDs(kk,:)*detectorP_rel;
 
             end % nPrimarySteps
-            
-            fprintf('Detector Counts for Measure: %d Rep: %d\n', ii, jj);
-            detectorCounts
-
+         
             % Sum the counts from this repetition
             sum_detector_counts = sum_detector_counts + detectorCounts;
-
-            fprintf('Sum of detector counts thus far\n');
-            sum_detector_counts
 
         end
 
@@ -228,9 +241,6 @@ for ii = 1:nMeasToPlot
         % Append the newest measurement results
         measured{ii} = sum_detector_counts / nReps; 
         predicted{ii} = predictedCounts; 
-
-        fprintf('Average Counts for Measure: %d \n', ii);
-        measured{ii}
 
         % Resave the containers
         measured_map(chips(cc)) = measured;
