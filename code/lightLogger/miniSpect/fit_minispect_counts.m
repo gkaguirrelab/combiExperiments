@@ -53,10 +53,14 @@ nSettingsLevels = size(MSCalData.raw.background_scalars{1},2);
 % Assume there is a max spectrum file with the same name as the source_cal file with max spectrum appended
 source_max_spectrum_path = strrep(MSCalData.meta.source_calpath, '.mat', '_maxSpectrum.mat');
 
+% Find the NDF used for the source max spectrum
+source_max_spectrum_ndf = regexp(source_max_spectrum_path, 'ND\d', 'match');  
+source_max_spectrum_ndf = source_max_spectrum_ndf{1};
+
 % Smoothing parameter for transmittance function, found by hand by Geoff via manual testing
 smoothParam = 0.02;
 
-% How many of the minispect cal data files to plot
+% How many of the minispect cal data files to plot (we do not have a calibration for 6 NDF, so just 0-5)
 nMeasToPlot = numel(MSCalDataFiles)-1;
 
 % Load the source spectrum
@@ -114,9 +118,8 @@ for ii = 1:nMeasToPlot
     % matches that we extracted at the top of the routine
     assert(all(source_cal.rawData.S == sourceS));
 
-    % Assume the source_max_spectrum_path is always NDF0. This is ugly and we will replace it 
-    % with a regex approach in case the first one is not nd0 
-    local_max_spectrum_path = strrep(source_max_spectrum_path, 'ND0', sprintf('ND%d', NDF)); 
+    % Find the path to the max spectrum file for this NDF
+    local_max_spectrum_path = strrep(source_max_spectrum_path, source_max_spectrum_ndf, sprintf('ND%d', NDF)); 
 
     % Load the source spectrum
     load(local_max_spectrum_path, 'cals'); 
@@ -144,11 +147,18 @@ for ii = 1:nMeasToPlot
     nReps = MSCalData.meta.params.nReps;
     randomizeOrder = MSCalData.meta.params.randomizeOrder;
 
-    % Iterate over repetitions
-    for jj = 1:nReps
-        % For each chip on this repetition
-        for cc = 1:numel(chips)
+    % For each chip 
+    for cc = 1:numel(chips)
+        % Initialize a summation variable for the detector counts
+        % as we are going to average them over the reps
+        sum_detector_counts = 0; 
 
+        % Initialize the predictedCounts variable to some value. 
+        % this is to have it in scope for use later. 
+        predictedCounts = 0; 
+
+        % Iterate over repetitions
+        for jj = 1:nReps
             % Find the corresponding MSCalData info
             % and detectorP_rel for this chip
             chip_struct = chip_struct_map(chips(cc));
@@ -193,26 +203,24 @@ for ii = 1:nMeasToPlot
                 predictedCounts(kk,:) = sphereSPDs(kk,:)*detectorP_rel;
 
             end % nPrimarySteps
+            
+            % Sum the counts from this repetition
+            sum_detector_counts = sum_detector_counts + detectorCounts;
 
-            % For now, let's just save the data from the first rep
-            if jj > 1
-                continue ; 
-            end
-
-            % Average the measured over the 3 reps and plot that with the predicted
-
-            measured = measured_map(chips(cc));
-            predicted = predicted_map(chips(cc));
-
-            measured{ii} = detectorCounts;
-            predicted{ii} = predictedCounts;
-
-            disp(measured{1})
-
-            measured_map(chips(cc)) = measured;
-            predicted_map(chips(cc)) = predicted;
         end
 
+       % Retrieve the containers holding the results per measure
+        measured = measured_map(chips(cc));
+        predicted = predicted_map(chips(cc));
+
+        % Append the newest measurement results
+        measured{ii} = sum_detector_counts / nReps; 
+        predicted{ii} = predictedCounts; 
+
+        % Resave the containers
+        measured_map(chips(cc)) = measured;
+        predicted_map(chips(cc)) = predicted;
+        
     end % nReps
 
 end % nCalibrations
