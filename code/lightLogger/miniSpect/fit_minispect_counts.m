@@ -27,6 +27,9 @@ function fit_minispect_counts(MSCalDataFiles)
     fit_minispect_counts(MSCalDataFiles);
 %}
 
+% Change printing format to be able to see long counts
+format long g;
+
 % Parse the arguments
 parser = inputParser; 
 
@@ -170,6 +173,9 @@ for ii = 1:nMeasToPlot
             % Grab the minispect counts from this rep
             detectorCounts = chip_struct.raw.counts{jj};
 
+            % Ensure we did not get any weird floating point numbers (as counts should be entirely integers)
+            assert(all(mod(detectorCounts(:), 1) == 0));
+
             % Take the mean across the nSamplesPerStep made at each
             % setting. We may later be interested in the variability across
             % the set of measures
@@ -204,8 +210,14 @@ for ii = 1:nMeasToPlot
 
             end % nPrimarySteps
             
+            fprintf('Detector Counts for Measure: %d Rep: %d\n', ii, jj);
+            detectorCounts
+
             % Sum the counts from this repetition
             sum_detector_counts = sum_detector_counts + detectorCounts;
+
+            fprintf('Sum of detector counts thus far\n');
+            sum_detector_counts
 
         end
 
@@ -216,6 +228,9 @@ for ii = 1:nMeasToPlot
         % Append the newest measurement results
         measured{ii} = sum_detector_counts / nReps; 
         predicted{ii} = predictedCounts; 
+
+        fprintf('Average Counts for Measure: %d \n', ii);
+        measured{ii}
 
         % Resave the containers
         measured_map(chips(cc)) = measured;
