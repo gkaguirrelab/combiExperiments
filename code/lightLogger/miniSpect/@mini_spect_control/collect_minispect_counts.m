@@ -40,7 +40,7 @@ function collect_minispect_counts(obj,NDF,calPath,nPrimarySteps,settingScalarRan
 % Examples:
 %{
    calDir = fullfile(tbLocateProjectSilent('combiExperiments'),'cal');
-   calFileName = 'CombiLED_shortLLG_testSphere_ND0.mat';
+   calFileName = 'CombiLED_shortLLG_sphere_ND0.mat';
    calPath = fullfile(calDir,calFileName);
    email = 'Zachary.Kelly@pennmedicine.upenn.edu'; 
    MS = mini_spect_control();
