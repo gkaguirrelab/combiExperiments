@@ -1,4 +1,4 @@
-function plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriodSeconds)
+function plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriodSeconds, NDF, email)
 % Plot the counts of a given chip over time as it observes the combiLED light source
 %
 % Syntax:
@@ -34,11 +34,17 @@ function plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriod
     parser.addRequired('calPath', @(x) isstring(x) || ischar(x)); % Ensure the calPath is a string type
     parser.addRequired('darkPeriodSeconds', @(x) isnumeric(x) && isscalar(x)); % Ensure the dark period length is a valid numeric value
     parser.addRequired('lightPeriodSeconds', @(x) isnumeric(x) && isscalar(x)); % Ensure the light period length is a valid numeric value
-    parser.parse(chipName, calPath, darkPeriodSeconds, lightPeriodSeconds);
+    parser.addRequired('NDF', @(x) isnumeric(x) && isscalar(x)); % Ensure the NDF is a valid numeric value
+    parser.addRequired('email', @(x) isstring(x) || ischar(x)); % Ensure the email is a string
+    parser.parse(chipName, calPath, darkPeriodSeconds, lightPeriodSeconds, NDF, email);
 
     % Retrieve the validated arguments 
     chipName = parser.Results.chipName;
     calPath = parser.Results.calPath; 
+    darkPeriodSeconds = parser.Results.darkPeriodSeconds;
+    lightPeriodSeconds = parser.Results.lightPeriodSeconds; 
+    NDF = parser.Results.NDF; 
+    email = parser.Results.email; 
 
     % Open a connection to the Minispect 
     disp('Opening connection to MiniSpect...');
@@ -56,8 +62,8 @@ function plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriod
     load(calPath,'cals');
     cal = cals{end};
 
-    % Set the settings to be the maximum brightness
-    background = [1,1,1,1,1,1,1,1]; 
+    % Set the settings to be half of the max brightness for a given NDF level
+    background = [1,1,1,1,1,1,1,1] * 0.5; 
     
     % Initialize combiLED light source object
     disp('Opening connection to CombiLED');
@@ -71,6 +77,10 @@ function plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriod
 
     % Set up results container to save count measurements
     results = {}; 
+
+    % Pause to allow for user to leave the room 
+    disp('You know have 30 seconds to leave the room before measurement begins');
+    pause(30);
 
     % Record for 1 minute without turning on the combiLED
     disp('Beginning recording dark period...');
@@ -115,6 +125,11 @@ function plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriod
     title(sprintf('%s Counts over Time', chipName)); 
     xlabel('Measurement');
     ylabel('Count');
+
+    save(sprintf('%dNDF_counts_over_time.mat', NDF), 'results');
+
+    sendmail(email, 'Done recording counts over time!');
+
 
 
 
