@@ -20,7 +20,7 @@ function fit_minispect_counts(MSCalDataFiles)
 % Examples:
 %{
     dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
-    calDir = fullfile(dropboxBaseDir,'FLIC_admin','Equipment','MiniSpect','calibration','FBF0EF4C301382EA');
+    calDir = fullfile(dropboxBaseDir,'FLIC_admin','Equipment','MiniSpect','calibration','5FA5D4668ADCF1FB');
     d = dir(fullfile(calDir,'*mat'));
     MSCalDataFiles = cellfun(@(x) fullfile(calDir, x), {d.name}, 'UniformOutput', false);
 
@@ -265,6 +265,8 @@ for kk = 1:numel(chips)
     predicted=cat(1,predicted{:});
 
 
+    % when fitting discard any points wher the measured points are 0
+
     % Loop across the channels and show the predicted vs.
     figure
     tiledlayout(2,5);
@@ -277,7 +279,7 @@ for kk = 1:numel(chips)
             plot(x(thisIdx),y(thisIdx),'o');
             hold on
         end
-        goodIdx = and(~isinf(y),~isinf(x));
+        goodIdx = and(and(~isinf(y),~isinf(x)),x>=0.25);
         x = x(goodIdx); y = y(goodIdx);
         p = polyfit(x,y,1);
         fitY = polyval(p,x);

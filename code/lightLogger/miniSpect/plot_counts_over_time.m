@@ -2,30 +2,41 @@ function plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriod
 % Plot the counts of a given chip over time as it observes the combiLED light source
 %
 % Syntax:
-%   backgroundSettings = calcSettingsForD65(cal)
+%   plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriodSeconds, NDF, email)
 %
 % Description:
-%   Given a calibration file for a light source, this routine finds primary
-%   settings that produce a source spectral power distribution that best
-%   matches (in a least squares sense) the D65 illuminant reference.
+%   Record from a given MS chip for a given amount of time dark, 
+%   then a given amount of time light at a given NDF level. Plot 
+%   the resulting counts. 
 %
 % Inputs:
-%   cal                   - Struct. A calibration structure. If a cell
-%                           array is passed, then the last element of the
-%                           array will be used.
-%   plotResultsFlag       - Logical. If set to true, a plot of the best fit
-%                           spd will be shown. Set to false if not defined.
+%
+%   chipName               - String. Represents the name of the chip
+%                           to use for recording. 
+%
+%
+%   calPath                - String. Represents the path to the light 
+%                           source calibration file. 
+%
+%   darkPeriodSeconds      - Int. The number of seconds to record 
+%                           in complete darkness. 
+%
+%   lightPeriodSeconds     - Int. The number of seconds to record 
+%                           at half the maximum light level.       
 %
 % Outputs:
-%   backgroundSettings    - 1xn float vector. The settings values [0-1] for
-%                           each of the n primaries in the light source.
+%   
+%   None
 %
 % Examples:
 %{
-    calPath = fullfile(tbLocateProjectSilent('combiExperiments'),'cal','CombiLED_shortLLG_testSphere_ND0x2.mat');
-    load(calPath,'cals');
-    cal = cals{end};
-    backgroundSettings = calcSettingsForD65(cal,true);
+    chipName = "ASM7341"; 
+    calPath = fullfile(tbLocateProjectSilent('combiExperiments'),'cal','CombiLED_shortLLG_sphere_ND0.mat');
+    darkPeriodSeconds = 5; 
+    lightPeriodSeconds = 5; 
+    NDF = 0; 
+    email = "Zachary.Kelly@pennmedicine.upenn.edu";
+    plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriodSeconds, NDF, email); 
 %}
 
     % Set up a parser to parse and validate inputs
@@ -70,8 +81,8 @@ function plot_counts_over_time(chipName, calPath, darkPeriodSeconds, lightPeriod
     CL = CombiLEDcontrol();
 
     % Update the combiLED's gamma table
-    CL.setDirectModeGamma(true);
     CL.setGamma(cal.processedData.gammaTable);
+    CL.setDirectModeGamma(true);
 
     % Initialize the combiLED to dark 
     CL.goDark();
