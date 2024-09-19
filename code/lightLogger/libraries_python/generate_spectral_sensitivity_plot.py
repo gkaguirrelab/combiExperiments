@@ -42,7 +42,7 @@ def generate_spectral_sensitivity_plot(channel_points_paths: list, rescale_range
     # Plot the resulting curves
     plt.title('Generated Spectral Sensitivty Plot')
     plt.ylabel('Responsivity')
-    plt.xlabel('Wavelength [mm]')
+    plt.xlabel('Wavelength [nm]')
     plt.legend()
     plt.show()
 
