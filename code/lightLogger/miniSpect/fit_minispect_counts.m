@@ -72,8 +72,20 @@ smoothParam = 0.0025;
 
 % The predicted and measured counts can vary by a scale factor. We plug in
 % a value here to get these in register to start on the plots
-scaleFactor = 10^1.2;
+scaleFactorMap = containers.Map({'AMS7341', 'TSL2591'}, {10^1.2, 1e6}); % adjust scale factor depending on chip
 
+% Create a map for the filters used to select good indices from the resulting curves for each chip
+as_chip_point_filter = @(x, y) and(and(~isinf(y), ~isinf(x)), y >= 0.25); % AS chip we want to exclude points in the mud
+ts_chip_point_filter= @(x, y) and(and(~isinf(y), ~isinf(x)), y < max(y)); % TS chip we want to exclude points that are saturated
+goodIdxFilterMap = containers.Map({'AMS7341', 'TSL2591'},...
+                                  {as_chip_point_filter, ts_chip_point_filter});
+
+% Create a map for the limits for the chips' associated curves 
+lim_map = containers.Map({'AMS7341', 'TSL2591'},...
+                          {[-1, 5], [-1, 6]});
+
+
+                        
 % How many of the minispect cal data files to plot (we do not have a calibration for 6 NDF, so just 0-5)
 nMeasToPlot = numel(MSCalDataFiles)-1;
 
@@ -254,6 +266,15 @@ end % nCalibrations
 
 % Plot each chip's measured vs predicted counts
 for kk = 1:numel(chips)
+    % Retrieve the scale factor for this chip
+    scaleFactor = scaleFactorMap(chips(kk));
+
+    % Retrieve the limits for this chip's graph 
+    limits = lim_map(chips(kk)); 
+
+    % Retrieve the filter function used to exclude points
+    % from fitting LBF
+    goodIdxFilter = goodIdxFilterMap(chips(kk));
 
     % Retrieve the measured/predicted counts for this chip
     measured = measured_map(chips(kk));
@@ -263,9 +284,6 @@ for kk = 1:numel(chips)
     % calibrations
     measured=cat(1,measured{:});
     predicted=cat(1,predicted{:});
-
-
-    % when fitting discard any points wher the measured points are 0
 
     % Loop across the channels and show the predicted vs.
     figure
@@ -279,19 +297,20 @@ for kk = 1:numel(chips)
             plot(x(thisIdx),y(thisIdx),'o');
             hold on
         end
-        goodIdx = and(and(~isinf(y),~isinf(x)),x>=0.25);
+        
+        goodIdx = goodIdxFilter(x, y);
         x = x(goodIdx); y = y(goodIdx);
+
         p = polyfit(x,y,1);
         fitY = polyval(p,x);
         plot(x,fitY,'-k')
         refline(1,0)
-        if cc == nDetectorChannels
-            ylim([-2 5]); xlim([-2 5]);
-        else
-            ylim([-1 5]); xlim([-1 5]);
-        end
+        
+        ylim(limits);
+        xlim(limits);
+
         axis square
-        xlabel(sprintf('%s predicted counts [log]', chips(kk)));
+        xlabel(sprintf('%s predicted counts - %d [log]', chips(kk), log10(scaleFactor)));
         ylabel(sprintf('%s measured counts [log]', chips(kk)));
         title(sprintf('channel %d, [slope intercept] = %2.2f, %2.2f',cc,p));
     end
