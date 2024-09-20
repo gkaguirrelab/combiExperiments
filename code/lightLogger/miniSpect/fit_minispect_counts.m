@@ -87,7 +87,7 @@ lim_map = containers.Map({'AMS7341', 'TSL2591'},...
 
                         
 % How many of the minispect cal data files to plot (we do not have a calibration for 6 NDF, so just 0-5)
-nMeasToPlot = numel(MSCalDataFiles)-1;
+nMeasToPlot = numel(MSCalDataFiles);
 
 % Load the source spectrum
 load(source_max_spectrum_path, 'cals');
