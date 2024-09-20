@@ -33,8 +33,8 @@ def parse_args() -> tuple:
 def pixel_to_index(r: int, c: int, cols: int) -> int:
     return r * cols + c
 
-"""Generate a 3D plot of the field of the camera"""
-def generate_fielding_function(path_to_video: str) -> np.array:
+"""Generate the flat fielding function for the camera and a matrix of color-classified pixels"""
+def generate_fielding_function(path_to_video: str) -> tuple:
     # Parse the video into its frames
     frames: np.array = parse_video(path_to_video)
 
@@ -55,6 +55,14 @@ def generate_fielding_function(path_to_video: str) -> np.array:
                                     for r in range(mean_frame.shape[0]) 
                                     for c in range(mean_frame.shape[1])
                                     if (r % 2 == 0 and c % 2 == 0)])
+
+    # Initialize a pixel matrix to show where in the image each pixel is
+    pixel_matrix: np.array = mean_frame.copy()
+
+    # Assign pixel identities
+    pixel_matrix[r_pixels[:,0], r_pixels[:,1]] = 0 # Assign R to 0
+    pixel_matrix[g_pixels[:,0], g_pixels[:,1]] = 1 # Assign G to 1
+    pixel_matrix[b_pixels[:,0], b_pixels[:,1]] = 2 # Assign B to 2
 
     # Initialize the fielding function image
     fielding_function: np.array = mean_frame.copy()
@@ -91,37 +99,8 @@ def generate_fielding_function(path_to_video: str) -> np.array:
     # Show the plot
     plt.show()
 
-    return fielding_function
-
-    """Code for doing by color filter below
-    red_only_img = np.zeros(mean_frame.shape)
-    red_only_img[r_pixels[:,0], r_pixels[:,1]] = mean_frame[r_pixels[:,0], r_pixels[:,1]]
+    return fielding_function, pixel_matrix
     
-    blue_only_img = np.zeros(mean_frame.shape)
-    blue_only_img[b_pixels[:,0], b_pixels[:,1]] = mean_frame[b_pixels[:,0], b_pixels[:,1]]
-
-    green_only_img = np.zeros(mean_frame.shape)
-    green_only_img[g_pixels[:,0], g_pixels[:,1]] = mean_frame[g_pixels[:,0], g_pixels[:,1]]
-
-
-    for color_filter in (red_only_img, blue_only_img, green_only_img):
-        # Construct a figure to display these plots
-        fig = plt.figure()
-
-        ax = fig.add_subplot(111, projection='3d')
-
-        # Plot the surface
-        ax.plot_surface(x, y, color_filter, cmap='plasma')
-
-        ax.set_zlim([0, np.max(mean_frame)])
-
-        # Show the figure
-        plt.show()
-
-    """
-    
-
-
 """Parse video file starting as start_frame as mean of certain pixels of np.array"""
 def parse_mean_video(path_to_video: str, start_frame: int=0, pixel_indices: np.array=None) -> np.array:
     # Initialize a video capture object
