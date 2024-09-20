@@ -324,8 +324,6 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
 def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_level: str) -> tuple:
     print(f"Generating TTF : {light_level}NDF")
 
-    # Make another document for just the warmup values per NDF
-
     # Read in the videos at different frequencies 
     (frequencies, mean_videos, warmup_settings, video_settings) = read_light_level_videos(recordings_dir, experiment_filename, light_level, parse_mean_video)
 
@@ -487,6 +485,7 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
 
 """Generate a TTF plot for several light levels"""
 def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple): 
+    # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
     eng.addpath('/Users/zacharykelly/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
 
@@ -502,7 +501,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
 
 
     # Create a TTF plot to measure data
-    ttf_fig, (ttf_ax0, ttf_ax1, ttf_ax2) = plt.subplots(1, 3, figsize=(14,12))
+    ttf_fig, (ttf_ax0, ttf_ax1, ttf_ax2) = plt.subplots(3, 1, figsize=(14,12))
 
     # Create a plot to measure warmup times per light-level
     warmup_fig, warmup_axes = plt.subplots(len(light_level_ts_map), 1, figsize=(10,8))
@@ -672,17 +671,21 @@ def generate_row_phase_plot(video: np.array, frequency: float) -> float:
     # Convert the list of phases to standardized np.array
     phases = np.unwrap(np.array(phases), period=np.pi/4)
 
+    # Build the x and y of the figure to plot
     x, y = range(video.shape[1]), phases
+
+    # Assert there are the same number of phases as rows
+    assert len(x) == phases.shape[0]
 
     # Fit a linear polynomial (degree 1)
     coefficients: list = np.polyfit(x, y, 1)
     slope: float = coefficients[0]
 
     # Plot the phases by row
-    plt.plot(x, y)
+    plt.scatter(x, y, marker='.')
     plt.title('Phase by Row Number')
     plt.xlabel('Row Number')
-    plt.ylabel('Phase')
+    plt.ylabel('Phase [radians]')
     plt.show()
 
     return slope

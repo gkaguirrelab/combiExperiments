@@ -102,7 +102,7 @@ spectral_sensitivity_map = containers.Map({'AMS7341', 'TSL2591'},...
 
 % For each chip, reformat the minispect SPDs to be in the space of the
 % sourceSPDs
-chips = ["TSL2591"];
+chips = ["AMS7341", "TSL2591"];%"TSL2591"];
 minipspectP_rels_map = containers.Map();
 
 for ii = 1:numel(chips)
@@ -187,6 +187,9 @@ for ii = 1:nMeasToPlot
 
     % For each chip
     for cc = 1:numel(chips)
+        % Retrieve the chip to use
+        chip = chips(cc);
+
         % Initialize a summation variable for the detector counts
         % as we are going to average them over the reps
         sum_detector_counts = 0;
@@ -199,8 +202,8 @@ for ii = 1:nMeasToPlot
         for jj = 1:nReps
             % Find the corresponding MSCalData info
             % and detectorP_rel for this chip
-            chip_struct = chip_struct_map(chips(cc));
-            detectorP_rel = minipspectP_rels_map(chips(cc));
+            chip_struct = chip_struct_map(chip);
+            detectorP_rel = minipspectP_rels_map(chip);
 
             % Grab the channels of the chip we are fitting
             nDetectorChannels = chip_struct.meta.nDetectorChannels;
@@ -249,8 +252,8 @@ for ii = 1:nMeasToPlot
         end
 
         % Retrieve the containers holding the results per measure
-        measured = measured_map(chips(cc));
-        predicted = predicted_map(chips(cc));
+        measured = measured_map(chip);
+        predicted = predicted_map(chip);
 
         % Append the newest measurement results
         measured{ii} = sum_detector_counts / nReps;
@@ -266,19 +269,28 @@ end % nCalibrations
 
 % Plot each chip's measured vs predicted counts
 for kk = 1:numel(chips)
+    % Retrieve the chip whose results we will plot
+    chip = chips(kk);
+
+    % Retrieve the number of channels for this chip
+    chip_struct = chip_struct_map(chip);
+    nDetectorChannels = chip_struct.meta.nDetectorChannels;
+
+    fprintf('Plotting chip: %s\n', chip);
+
     % Retrieve the scale factor for this chip
-    scaleFactor = scaleFactorMap(chips(kk));
+    scaleFactor = scaleFactorMap(chip);
 
     % Retrieve the limits for this chip's graph 
-    limits = lim_map(chips(kk)); 
+    limits = lim_map(chip); 
 
     % Retrieve the filter function used to exclude points
     % from fitting LBF
-    goodIdxFilter = goodIdxFilterMap(chips(kk));
+    goodIdxFilter = goodIdxFilterMap(chip);
 
     % Retrieve the measured/predicted counts for this chip
-    measured = measured_map(chips(kk));
-    predicted = predicted_map(chips(kk));
+    measured = measured_map(chip);
+    predicted = predicted_map(chip);
 
     % Concatenate the measured and predicted matrices across the multiple
     % calibrations
@@ -286,7 +298,7 @@ for kk = 1:numel(chips)
     predicted=cat(1,predicted{:});
 
     % Loop across the channels and show the predicted vs.
-    figure
+    figure;
     tiledlayout(2,5);
     for cc = 1:nDetectorChannels
         nexttile
@@ -295,7 +307,7 @@ for kk = 1:numel(chips)
         for mm = 1:nMeasToPlot
             thisIdx = (mm-1)*nSettingsLevels+1:mm*nSettingsLevels;
             plot(x(thisIdx),y(thisIdx),'o');
-            hold on
+            hold on ; 
         end
         
         goodIdx = goodIdxFilter(x, y);
@@ -310,10 +322,12 @@ for kk = 1:numel(chips)
         xlim(limits);
 
         axis square
-        xlabel(sprintf('%s predicted counts - %d [log]', chips(kk), log10(scaleFactor)));
-        ylabel(sprintf('%s measured counts [log]', chips(kk)));
+        xlabel(sprintf('%s predicted counts - %d [log]', chip, log10(scaleFactor)));
+        ylabel(sprintf('%s measured counts [log]', chip));
         title(sprintf('channel %d, [slope intercept] = %2.2f, %2.2f',cc,p));
     end
+
+    hold off; 
 end
 
 end % function
