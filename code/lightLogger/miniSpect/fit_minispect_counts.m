@@ -27,6 +27,10 @@ function fit_minispect_counts(MSCalDataFiles)
     fit_minispect_counts(MSCalDataFiles);
 %}
 
+% Define where we should save the plots
+dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+figSavePath = fullfile(dropboxBaseDir,'FLIC_admin','Equipment','MiniSpect','calibration','graphs');
+
 % Change printing format to be able to see long counts
 format long g;
 
@@ -70,10 +74,6 @@ source_max_spectrum_ndf = source_max_spectrum_ndf{1};
 % Smoothing parameter for transmittance function, found by hand by Geoff via manual testing
 smoothParam = 0.0025;
 
-% The predicted and measured counts can vary by a scale factor. We plug in
-% a value here to get these in register to start on the plots
-scaleFactorMap = containers.Map({'AMS7341', 'TSL2591'}, {10^1.2, 1e6}); % adjust scale factor depending on chip
-
 % Create a map for the filters used to select good indices from the resulting curves for each chip
 as_chip_point_filter = @(x, y) and(and(~isinf(y), ~isinf(x)), y >= 0.25); % AS chip we want to exclude points in the mud
 ts_chip_point_filter= @(x, y) and(and(~isinf(y), ~isinf(x)), y < max(y)); % TS chip we want to exclude points that are saturated
@@ -83,11 +83,13 @@ goodIdxFilterMap = containers.Map({'AMS7341', 'TSL2591'},...
 % Create a map for the limits for the chips' associated curves 
 lim_map = containers.Map({'AMS7341', 'TSL2591'},...
                           {[-1, 5], [-1, 6]});
-
-
-                        
-% How many of the minispect cal data files to plot (we do not have a calibration for 6 NDF, so just 0-5)
+                       
+% The number of minispect cal data files to plot, which is the number of
+% different ND filter levels that were measured
 nMeasToPlot = numel(MSCalDataFiles);
+
+% Create some distinct colors to be used to plot each of these levels
+plotColors = distinguishable_colors(nMeasToPlot);
 
 % Load the source spectrum
 load(source_max_spectrum_path, 'cals');
@@ -129,10 +131,11 @@ predicted_map = containers.Map({'AMS7341','TSL2591'},...
     {   {}    ,   {}    });
 
 % Prepare a figure to show the transmittance functions
-figure
+figHandle = figure;
 
 % For each MSCalDataFile calibration
 for ii = 1:nMeasToPlot
+
     % Load this MSCalFile
     MSCalData = load(MSCalDataFiles{ii}).MSCalData;
 
@@ -142,6 +145,9 @@ for ii = 1:nMeasToPlot
     % Extract NDF and the source calibration struct
     NDF = MSCalData.meta.params.NDF;
     source_cal = MSCalData.meta.source_cal;
+
+    % Save the NDF identities for later plotting
+    ndfUsedForEachMeasure(ii) = NDF;
 
     % Check that the sourceS associated with the current MSCalDataFile
     % matches that we extracted at the top of the routine
@@ -171,7 +177,7 @@ for ii = 1:nMeasToPlot
     transmittance_function(transmittance_function<0) = 0;
 
     % Plot this transmittance function
-    plot(wls,log10(transmittance_function_raw),'.');
+    plot(wls,log10(transmittance_function_raw),'.','Color',plotColors(ii,:));
     hold on
     plot(wls,log10(transmittance_function),'-k');
 
@@ -267,6 +273,11 @@ for ii = 1:nMeasToPlot
 
 end % nCalibrations
 
+% Save the transmittance plot
+ylabel('Transmittance'); xlabel('wavelength [nm]');
+figName = fullfile(figSavePath,'ndfTransmittanceFunctions.pdf');
+saveas(figHandle,figName);
+
 % Plot each chip's measured vs predicted counts
 for kk = 1:numel(chips)
     % Retrieve the chip whose results we will plot
@@ -277,9 +288,6 @@ for kk = 1:numel(chips)
     nDetectorChannels = chip_struct.meta.nDetectorChannels;
 
     fprintf('Plotting chip: %s\n', chip);
-
-    % Retrieve the scale factor for this chip
-    scaleFactor = scaleFactorMap(chip);
 
     % Retrieve the limits for this chip's graph 
     limits = lim_map(chip); 
@@ -298,33 +306,56 @@ for kk = 1:numel(chips)
     predicted=cat(1,predicted{:});
 
     % Loop across the channels and show the predicted vs.
-    figure;
-    tiledlayout(2,5);
+    figure
+    tg = uitabgroup();
     for cc = 1:nDetectorChannels
-        nexttile
-        x = log10(predicted(:,cc)*scaleFactor);
-        y = log10(measured(:,cc));
+        tabSet{cc} = uitab(tg);
+        ax1 = axes('Parent', tabSet{cc});
+
+        % Draw a reference line
+        plot([limits(1),limits(2)],[limits(1),limits(2)],':k');
+        hold on
+
+        % Log transform the measured and predicted counts
+        vec = predicted(:,cc);
+        x = log10(vec);
+        vec = measured(:,cc); vec(vec<0.25) = 0.24;
+        y = log10(vec);
+
+        % Fit a linear model, but only to the "good" points (i.e., those
+        % that are finite and not at the ceiling or floor. We also exclude
+        % the points measured using the ND6 filter, as we do not have an
+        % independent measure of the spectral transmittance of these.
+        thisIdx = 1:(nMeasToPlot-1)*nSettingsLevels;
+        goodIdx = goodIdxFilter(x(thisIdx), y(thisIdx));
+        p = polyfit(x(goodIdx),y(goodIdx),1);
+        fitY = polyval(p,x(goodIdx));
+
+        % Plot the fit line
+        plot(x(goodIdx)+p(2),fitY,'-k','LineWidth',1.5)
+
+        % Now plot the data from each ND filter in a different color
         for mm = 1:nMeasToPlot
             thisIdx = (mm-1)*nSettingsLevels+1:mm*nSettingsLevels;
-            plot(x(thisIdx),y(thisIdx),'o');
-            hold on ; 
+            scatHand(mm) = scatter(x(thisIdx)+p(2),y(thisIdx),100,'o',...
+                'MarkerEdgeColor','none','MarkerFaceColor',plotColors(mm,:),...
+                'MarkerFaceAlpha',.2);
         end
-        
-        goodIdx = goodIdxFilter(x, y);
-        x = x(goodIdx); y = y(goodIdx);
 
-        p = polyfit(x,y,1);
-        fitY = polyval(p,x);
-        plot(x,fitY,'-k')
-        refline(1,0)
-        
+        % Clean up
         ylim(limits);
         xlim(limits);
-
         axis square
-        xlabel(sprintf('%s predicted counts - %d [log]', chip, log10(scaleFactor)));
+        xlabel(sprintf('%s predicted counts [log]', chip));
         ylabel(sprintf('%s measured counts [log]', chip));
         title(sprintf('channel %d, [slope intercept] = %2.2f, %2.2f',cc,p));
+        legendLabels = arrayfun(@(x) sprintf('ND%d',x),ndfUsedForEachMeasure,'UniformOutput',false);
+        legend(scatHand,legendLabels,'Location','northwest')
+
+        % Save this tab to a file
+        figName = fullfile(figSavePath,sprintf(strcat(chip,"_channel-%d_measuredVsPredicted.pdf"),cc));
+        exportgraphics(tabSet{cc},figName);
+
     end
 
     hold off; 
