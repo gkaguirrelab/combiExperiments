@@ -275,6 +275,10 @@ end % nCalibrations
 
 % Save the transmittance plot
 ylabel('Transmittance'); xlabel('wavelength [nm]');
+box off
+a = gca();
+a.TickDir = 'out';
+a.FontSize = 20;
 figName = fullfile(figSavePath,'ndfTransmittanceFunctions.pdf');
 saveas(figHandle,figName);
 
