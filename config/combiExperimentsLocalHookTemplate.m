@@ -43,15 +43,43 @@ setpref(projectName,'dropboxBaseDir',dropboxBaseDir); % main directory path
 calLocalData = fullfile(tbLocateProjectSilent(projectName),'cal');
 setpref('combiLEDToolbox','CalDataFolder',calLocalData);
 
+%% Check for required Matlab toolboxes and add-ons
+% The set of Matlab add-on toolboxes being used can be determined by
+% running various functions, followed by the license function.
+%{
+    license('inuse')
+%}
+% This provides a list of toolbox license names. In the following
+% assignment, the license name is given in the comment string after the
+% matching version name for each toolbox.
+requiredAddOns = {...
+    'SSH/SFTP/SCP For Matlab (v2)',...                  % optimization_toolbox
+    };
+% Given this hard-coded list of add-on toolboxes, we then check for the
+% presence of each and issue a warning if absent.
+addons = matlab.addons.installedAddons;
+VName = addons{:,1};
+warnState = warning();
+warning off backtrace
+for ii=1:length(requiredAddOns)
+    if ~any(strcmp(VName, requiredAddOns{ii}))
+        warnString = ['The Matlab ' requiredAddOns{ii} ' is missing. ' projectName ' may not function properly.'];
+        warning('localHook:requiredMatlabToolboxCheck',warnString);
+    end
+end
+warning(warnState);
+
 % Configure the python environment. Note that we need to have installed:
-% opencv-python, numpy, matplotlib, regex, scipy. To do so, in the console
-% we went to the location of the python executable and used pip install
-% commands such as: "./python pip3 install opencv-python"
+%
+%   opencv-python, numpy, matplotlib, regex, scipy, paramiko
+%
+% To do so, in the console we went to the location of the python executable
+% and used pip install commands such as: "./python pip3 install
+% opencv-python"
 %
 % We also ran into an issue that numpy errored when we first attempted to
 % call our python module. The solution to this was to install the openblas
 % C libraries using "brew install openblas".
-%pyversion('/Library/Frameworks/Python.framework/Versions/3.10/bin/python3');
 pyenv(Version='/usr/local/bin/python3.10');
 
 end
