@@ -309,7 +309,7 @@ for kk = 1:numel(chips)
     measured=cat(1,measured{:});
     predicted=cat(1,predicted{:});
 
-    % Loop across the channels and show the predicted vs.
+    % Loop across the channels and show the predicted vs. measured
     figure
     tg = uitabgroup();
     for cc = 1:nDetectorChannels
