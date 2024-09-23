@@ -1,14 +1,13 @@
-function analyze_camera_temporal_sensitivity(cal_path, output_filename)
-% Analyzes the temporal sensitivity of the spectacle camera
+function collect_camera_temporal_sensitivity_measurements(cal_path, output_filename, email)
+% Collect recordings from the world camera used for generating the TTF plot
 %
 % Syntax:
-%   analyze_camera_temporal_sensitivty(cal_path, output_filename)
+%   collect_camera_temporal_sensitivty_measurements(cal_path, output_filename)
 %
 % Description:
-%  Generates temporal sensitivity plot containg low/high light levels
-%  as well as ideal device.Also displays source modulation, observed, 
-%  with observed counts and fitted counts layered ontop during runtime. Does 
-%  not save these.  
+%   Remotely communicates with the RPI to record a series of videos at different
+%   NDF levels and frequencies, saved to dropbox. Notifies the given email 
+%   when to change the NDF level as well as when collection as finished. 
 %
 % Inputs:
 %   cal_path              - String. Represents the path to the light source
@@ -16,6 +15,8 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
 %
 %   output_filename       - String. Represents the name of the output video
 %                           and graph files      
+%   email                 - String. Email to notify when user needs to exchange
+%                           NDF levels, as well as when experiment is finished
 %
 % Outputs:
 %    experiment_results    - Struct. Contains the amplitudes per frequency 
@@ -28,7 +29,7 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
 %{
     [~, calFileName, calDir] = selectCal();
     output_filename = 'myTest';
-    analyze_camera_temporal_sensitivity(fullfile(calDir,calFileName), output_filename);
+    collect_camera_temporal_sensitivity_measurements(fullfile(calDir,calFileName), output_filename);
 %}
     % Step 1: Add paths to and retrieve libraries
     addpath('~/Library/Application Support/MathWorks/MATLAB Add-Ons/Collections/SSH_SFTP_SCP For Matlab (v2)/ssh2_v2_m1_r7') % add path to ssh_command library
@@ -41,13 +42,12 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     Camera_util = py.importlib.import_module('Camera_util');
     cd(current_dir);
     pickle = py.importlib.import_module('pickle');
-
-
-    % Record for 13 seconds, 3 seconds where the camera is just recording background 
-    % then 10 seconds of recording modulation
+    ndf2str_path = '~/Documents/MATLAB/projects/combiExperiments/code/minispect';
+    addpath(ndf2str_path); 
 
     % Step 2: Define remote connection to raspberry pi
-    
+    % NOTE: Sometimes the IP will change, double check this with hostname -I on the RPI
+
     host = '10.102.183.211'; % IP/Hostname
     username = 'eds'; % Username to log into
     password = '1234'; % Password for this user
@@ -163,6 +163,10 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
             ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm %s', output_file));
 
         end
+
+        % Notify the user it is time to change the NDF level 
+        sendmail(email, 'Change the NDF filter for camera temporal sensitivity measurement')
+
     end
 
     % Step 12: Close the remote connection to the raspberry pi
@@ -172,20 +176,17 @@ function analyze_camera_temporal_sensitivity(cal_path, output_filename)
     % Step 13: Close the connection to the CombiLED
     CL.serialClose(); 
 
-    return ; 
-    % Step 14: Plot and the temporal sensitivity with the help of
-    % Python to parse the video, generate source/measured curves 
-    % over the course of the frequencies
-    ndf2str_path = '~/Documents/MATLAB/projects/combiExperiments/code/minispect';
-    drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
-    addpath(ndf2str_path); 
-    
-    Camera_util.generate_TTF(py.str(char(recordings_dir)), py.str(char(output_filename)), py.list(arrayfun(@ndf2str, ndf_range, "UniformOutput", false)));
+    % Parse the resulting videos and save the information to plot the TTF in MATLAB
+    TTF_info = struct(Camera_util.generate_TTF(py.str(recordings_dir), py.str(experiment_filename), py.list(arrayfun(@ndf2str, ndf_range, "UniformOutput", false))));
 
     % Step 16: Save the results and flicker information
-    save(sprintf('%s%s_TemporalSensitivityFlicker.mat', drop_box_dir, 'camera'), 'modResult');
+    drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
+    save(sprintf('%sTTF_info.mat', drop_box_dir), 'TTF_info');
+    save(sprintf('%s_TemporalSensitivityFlicker.mat', drop_box_dir), 'modResult');
 
-    return ;
+    % Notify the user the collection as finished 
+    sendmail(email, 'Finished collecting camera temporal sensitivity measurment')
+
 end
 
 %{

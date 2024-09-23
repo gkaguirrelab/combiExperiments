@@ -1,13 +1,14 @@
-function collect_temporal_sensitivty_measurements(cal_path, chip_name, email)
+function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name, email)
 % Collect measurements for use of measuring the temporal sensitivity of the MS
 %
 % Syntax:
-%   collect_temporal_sensitivty(cal_path, chip_name, email)
+%   collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name, email)
 %
 % Description:
 %  Collect measurements using the MS and the combiLED to be used 
-%  for analyzing the temporal sensitivity of the given chip. When finished,
-%  sends an email to the given email.   
+%  for analyzing the temporal sensitivity of the given chip. When NDF levels 
+%  need to be exchanged, sends an alert email to the given email. When finished,
+%  also sends an email to the given email.   
 %
 % Inputs:
 %   cal_path              - String. Represents the path to the light source
@@ -19,8 +20,9 @@ function collect_temporal_sensitivty_measurements(cal_path, chip_name, email)
 %                           when measurement collection is finished.        
 %
 % Outputs:
-%   experiment_results    - Array. Contains the amplitudes per channel 
-%                           per frequency, for the low and high light levels
+%   results               - Struct. Contains the measured amplitudes and per-frequency 
+%                           fits, as well as other information (NDF range, secsPerMeasure)
+%                           about the experiment. 
 %
 %   modResult             - Struct. Contains the information used to compose
 %                           the flicker profile. 
@@ -30,7 +32,7 @@ function collect_temporal_sensitivty_measurements(cal_path, chip_name, email)
    chip_name = 'TSL2591';
    cal_path = '/Users/zacharykelly/Documents/MATLAB/projects/combiExperiments/cal/CombiLED_shortLLG_sphere_ND0.mat';
    email = 'Zachary.Kelly@pennmedicine.upenn.edu';
-   collect_temporal_sensitivity_measurements(cal_path, chip_name, email)
+   collect_minispect_temporal_sensitivity_measurements(cal_path, chip_name, email)
 %}
 
     % Utility Functions
@@ -57,6 +59,20 @@ function collect_temporal_sensitivty_measurements(cal_path, chip_name, email)
             filterProfile(ii)  = norm(b);
         end
     end
+
+
+    % Parse and validate the input arguments
+    parser = inputParser; 
+
+    parser.addRequired('cal_path', @(x) ischar(x) || isstring(x)) % Ensure cal_path is a string
+    parser.addRequired('chip_name', @(x) ischar(x) || isstring(x)) % Ensure chip_name is a string 
+    parser.addRequired('email', @(x) ischar(x) || isstring(x)); % Ensure email is a string
+
+    parser.parse(cal_path, chip_name, email);
+
+    cal_path = parser.Results.cal_path;
+    chip_name = parser.Results.chip_name;
+    email = parser.Results.email; 
 
     % Step 1: Connect MiniSpect and CombiLED
     MS = mini_spect_control(); % Initialize MiniSpect Object
@@ -93,10 +109,10 @@ function collect_temporal_sensitivty_measurements(cal_path, chip_name, email)
     
     photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
 
-    low_bound_freq = 1;  % The lowest frequency with which the CombiLED will flicker    
-    high_bound_freq = 3;   % The highest frequency with which the CombiLED will flicker
+    low_bound_freq = 0.1;  % The lowest frequency with which the CombiLED will flicker    
+    high_bound_freq = 8;   % The highest frequency with which the CombiLED will flicker
     num_points = 2;       % The number of points between the low and high frequency to measure
-    nMeasures = 2;       % The number of measurements at a given frequency
+    nMeasures = 5;       % The number of measurements at a given frequency
 
     frequencies = logspace(log10(low_bound_freq), log10(high_bound_freq), num_points); % create num_points equally log spaced
                                                                                        % points between the low and high bounds
@@ -122,7 +138,7 @@ function collect_temporal_sensitivty_measurements(cal_path, chip_name, email)
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
         fprintf('You now have 30 seconds to leave the room if desired.\n');
-        %pause(30)
+        pause(30)
         
         % Step 8: Iterate over frequencies 
         for ff = 1:size(frequencies,2)
@@ -228,6 +244,10 @@ function collect_temporal_sensitivty_measurements(cal_path, chip_name, email)
             ndf_freq_amplitudes(bb,ff,:) = channel_amplitudes;
 
         end
+
+        % Alert the user that the NDF filter needs to be exchanged 
+        sendmail(email, 'Change the NDF filter for MS temporal sensitivity measurement');
+
     end 
 
     % Close serial connections 
