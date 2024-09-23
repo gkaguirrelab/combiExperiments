@@ -43,7 +43,7 @@ function plot_temporal_sensitivity(results_path)
     ndf_range = measurements.ndf_range; 
     secsPerMeasure = measurements.secsPerMeasure; 
     chip_name = measurements.chip_name; 
-    channel_to_plot = 1; 
+    channel_to_plot = 4; 
 
     % Open a new figure
     figure; 
@@ -79,7 +79,7 @@ function plot_temporal_sensitivity(results_path)
 
             % Format the observed data into x and y 
             x = log10(frequencies);
-            y = ndf_freq_amplitudes(nn,:,channel_to_plot) / max(ndf_freq_amplitudes(1,:,channel_to_plot)); 
+            y = ndf_freq_amplitudes(nn,:,channel_to_plot) / max(ndf_freq_amplitudes(nn,:,channel_to_plot)); 
 
             % Generate the legend label for this tab
             label = sprintf('ND%.2f', NDF);
@@ -92,7 +92,7 @@ function plot_temporal_sensitivity(results_path)
             'MarkerFaceAlpha', .2);
         
         axis square; 
-        title(sprintf('Temporal Sensitivity for Clear/FS Channel %s NDF', NDF))
+        title(sprintf('Temporal Sensitivity for Clear/FS Channel %s', label))
         xlabel('Source Frequency [log]');
         ylabel('Relative Amplitude of Response');  
         

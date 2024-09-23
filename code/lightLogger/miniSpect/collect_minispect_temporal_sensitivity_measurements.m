@@ -111,8 +111,8 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
 
     low_bound_freq = 0.1;  % The lowest frequency with which the CombiLED will flicker    
     high_bound_freq = 8;   % The highest frequency with which the CombiLED will flicker
-    num_points = 2;       % The number of points between the low and high frequency to measure
-    nMeasures = 5;       % The number of measurements at a given frequency
+    num_points = 20;       % The number of points between the low and high frequency to measure
+    nMeasures = 100;       % The number of measurements at a given frequency
 
     frequencies = logspace(log10(low_bound_freq), log10(high_bound_freq), num_points); % create num_points equally log spaced
                                                                                        % points between the low and high bounds
@@ -127,9 +127,6 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
 
     % container for amplitudes for each freq at each ndf
     ndf_freq_amplitudes = nan(size(ndf_range,2),size(frequencies,2),nDetectorChannels);
-
-    % Initialize variable to track how long each measurement takes
-    secsPerMeasure = 0; 
 
     % Step 7: Begin experiment, go over the low and high NDF ranges
     for bb = 1:size(ndf_range,2)
@@ -217,13 +214,9 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
                 frequency_fit_map = fits(NDF);
                 
                 % Assert the fit information are in col vector format before saving
-                assert(iscolumn(signalT'));
-                assert(iscolumn(signal));
-                assert(iscolumn(modelT'));
-                assert(iscolumn(fit)); 
 
                 % Save the fit information for this frequency in a matrix
-                frequency_fit_map(f0) = {signalT', (signal+sig_mean), modelT', (fit+sig_mean)}; 
+                frequency_fit_map(f0) = {signalT, (signal+sig_mean), modelT, (fit+sig_mean)}; 
                 
                 % Resave the map with the now added fit
                 fits(NDF) = frequency_fit_map;
@@ -232,7 +225,7 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
                 hold on; 
                 plot(modelT,fit+sig_mean);
 
-                title(sprintf('Signal and Fit: Channel %d  %.1f NDF %fhz', NDF, cc, f0));
+                title(sprintf('Signal and Fit: Channel %d  %.2f NDF %fhz', cc, NDF, f0));
                 xlabel('Time (seconds)');
                 ylabel('Counts');
                 legend('Signal','Fit');
