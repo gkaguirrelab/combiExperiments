@@ -17,48 +17,52 @@ function plot_temporal_sensitivity(results_path)
 %
 % Examples:
 %{
-    results_path = '';
+    results_path = '/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/MiniSpect/calibration/graphs/TSL2591_TemporalSensitivtyMeasurements.mat';
     plot_temporal_sensitivity(results_path);
 %}
 
     % Load in the results of collect_temporal_sensitivity_measurements
-    measurements = load(results_path); 
+    measurements = load(results_path).results; 
 
     % Retrieve the information used for plotting the TTF
     % This is a matrix with dimensions (NDF, FREQ, AMPLITUDES)
     ndf_freq_amplitudes = measurements.ndf_freq_amplitudes;
     frequencies = measurements.frequencies; 
     ndf_range = measurements.ndf_range; 
+    secsPerMeasure = measurements.secsPerMeasure; 
+    chip_name = measurements.chip_name; 
+    channel_to_plot = 1; 
 
-    % Create the figure used for plotting
     figure ; 
-    tg = uitabgroup();
+    hold on ; 
 
-    tabSet{cc} = uitab(tg);
-    ax1 = axes('Parent', tabSet{cc});
-
-
-    x = frequencies; % First, plot the low bound results' amplitude (normalized)
+    % First, plot the low bound results' amplitude (normalized)
+    x = frequencies;
     y = ndf_freq_amplitudes(1,:,channel_to_plot) / max(ndf_freq_amplitudes(1,:,channel_to_plot)); 
     plot(log10(x),y,'*-');
 
-    x = frequencies; % Then, plot the high bound results' amplitude (normalized)
+    % Then, plot the high bound results' amplitude (normalized)
+    x = frequencies;
     y = ndf_freq_amplitudes(2,:,channel_to_plot) / max(ndf_freq_amplitudes(2,:,channel_to_plot)); 
     plot(log10(x),y,'*-');
 
-    sourceFreqsHz = frequencies; % Then, plot the "ideal device"
+    % Then, plot the "ideal device"
+    sourceFreqsHz = frequencies; 
     dTsignal = secsPerMeasure; 
     
     x = frequencies;
     y = idealDiscreteSampleFilter(sourceFreqsHz,dTsignal);
     plot(log10(x),y,'-');
 
+    % Label the graph
     xlabel('Source Frequency [log]');   
     ylabel('Relative amplitude of response');
     title('Temporal Sensitivity for Clear/FS Channel');
-    legend(sprintf('%.1f NDF', lower_bound_ndf), sprintf('%.1f NDF', upper_bound_ndf), 'Ideal Device');
-    hold off; 
+    legend(sprintf('%.1f NDF', ndf_range(1)), sprintf('%.1f NDF', ndf_range(2)), 'Ideal Device');
 
+    % Save the graph in dropbox
+    drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/MiniSpect/calibration/graphs/'];
+    saveas(gcf, sprintf('%s%s_TemporalSensitivity.pdf', drop_box_dir, chip_name));
 
 
 end
