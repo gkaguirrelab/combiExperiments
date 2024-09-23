@@ -43,7 +43,7 @@ function plot_temporal_sensitivity(results_path)
     ndf_range = measurements.ndf_range; 
     secsPerMeasure = measurements.secsPerMeasure; 
     chip_name = measurements.chip_name; 
-    channel_to_plot = 4; 
+    channel_to_plot = 9; 
 
     % Open a new figure
     figure; 
