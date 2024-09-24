@@ -10,10 +10,11 @@ from collections.abc import Iterable
 import pickle
 import scipy.io
 from mpl_toolkits.mplot3d import Axes3D
+import pandas as pd
 
 """Import the FPS of the camera"""
 agc_lib_path = os.path.join(os.path.dirname(__file__))
-from recorder import CAM_FPS
+from recorder import CAM_FPS, parse_settings_file 
 
 """Parse command line arguments when script is called via command line"""
 def parse_args() -> tuple:
@@ -227,14 +228,22 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
             continue 
         
         # Find the path to the warmup (0hz) file itself 
-        tokens: list = os.path.splitext(file)[0].split('_') # Split based on meaningful _ character 
+        tokens: list = os.path.splitext(file)[0].split('_') # Split based on meaningful _ character
 
-        tokens[1] = '0hz' # set frequency part equal to 0hz 
-        warmup_settings_filename: str = '_'.join(tokens) + '_warmup_settingsHistory.pkl' # construct the warmup_settings filename
+        # Default extension for settings files is .pkl. This is to be compatible with legacy videos
+        settings_extension: str = '.pkl'
+
+        tokens[1] = '0hz' # set frequency part equal to 0hz to find the warmup video 
+        warmup_settings_filename: str = '_'.join(tokens) + '_warmup_settingsHistory' + settings_extension # construct the warmup_settings filename
         warmup_settings_filepath: str = os.path.join(metadata_dir, warmup_settings_filename) # append it to the metadata dir path 
         
+        # If the .pkl path didn't exist, change the path to a csv file
+        if(not os.path.exists(warmup_settings_filepath)):
+            settings_extension = '.csv'
+            warmup_settings_filepath = warmup_settings_filepath.replace('.pkl', settings_extension)
+
         # Find the path to the settings file for the video
-        video_settings_filepath: str = os.path.join(metadata_dir, os.path.splitext(file)[0] + '_settingsHistory.pkl')
+        video_settings_filepath: str = os.path.join(metadata_dir, os.path.splitext(file)[0] + '_settingsHistory' + settings_extension)
         
         # Parse the video and pair it with its frequency 
         print(f"Reading {light_level}NDF {experiment_info['frequency']}hz from {file}")
@@ -245,11 +254,20 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
         warmup_settings: dict = None 
         video_settings : dict = None 
 
-        with open(warmup_settings_filepath, 'rb') as f:
-            warmup_settings = pickle.load(f)
+        # If we are working with a .pkl file, need to read them 
+        # in as follows
+        if(settings_extension == '.pkl'):
+            with open(warmup_settings_filepath, 'rb') as f:
+                warmup_settings = pickle.load(f)
+            
+            with open(video_settings_filepath, 'rb') as f:
+                video_settings = pickle.load(f)
         
-        with open(video_settings_filepath, 'rb') as f:
-            video_settings = pickle.load(f)
+        # Otherwise, we are working with a .csv file and can 
+        # read them in as dataframes
+        else:
+            warmup_settings = (parse_settings_file(warmup_settings_filepath)[['gain_history', 'exposure_history']]).to_dict(orient='list')
+            video_settings = (parse_settings_file(video_settings_filepath)[['gain_history', 'exposure_history']]).to_dict(orient='list')
 
         # Associate the frequency to this tuple of (video, warmup_settings, settings)
         frequencies_and_videos[experiment_info["frequency"]] = (parser(filepath), warmup_settings, video_settings)
@@ -352,7 +370,6 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
         observed_amplitude, observed_phase, observed_fps, fit = fit_source_modulation(mean_video, light_level, frequency, moduation_axis)
 
         # Build the temporal support of the settings values by converting frame num to second
-        #warmup_t: np.array = np.arange(0, warmup_settings_history['gain_history'].shape[0]/observed_fps, 1/observed_fps)
         settings_t: np.array = np.arange(0, mean_video.shape[0]/observed_fps, 1/observed_fps)
         
         # Because we are counting by float, sometimes the shapes are off by a frame, so just 
@@ -483,7 +500,6 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
     plt.title('Klein TTF Plot (0 NDF)')
     plt.legend()
     plt.show()
-
 
 """Generate a TTF plot for several light levels, return values used to generate the plot"""
 def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple) -> dict: 

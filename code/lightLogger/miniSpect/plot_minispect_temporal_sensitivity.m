@@ -45,7 +45,7 @@ function plot_temporal_sensitivity(results_path)
     chip_name = measurements.chip_name; 
 
     % Retrieve the channel to plot from the given chip
-    channel_to_plot_map = containers.Map({"AMS7341", "TSL2591"}, {9, 1});
+    channel_to_plot_map = containers.Map({'AMS7341', 'TSL2591'}, {9, 1});
     channel_to_plot = channel_to_plot_map(chip_name);
 
     % Open a new figure
