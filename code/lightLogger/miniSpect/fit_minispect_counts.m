@@ -31,6 +31,15 @@ function fit_minispect_counts(MSCalDataFiles)
 dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 figSavePath = fullfile(dropboxBaseDir,'FLIC_admin','Equipment','MiniSpect','calibration','graphs');
 
+% Do we want to use the source calibration file stored with each minispect
+% record, or the most recent version of that cal file?
+useMostRecentSourceCal = true;
+
+% The minispect contains a hard-coded path to the source calibration file.
+% Here we swap out the user name to fix this
+calPathOrigName = 'zacharykelly';
+calPathUserName = char(java.lang.System.getProperty('user.name'));
+
 % Change printing format to be able to see long counts
 format long g;
 
@@ -63,9 +72,7 @@ source_max_spectrum_path = strrep(MSCalData.meta.source_calpath, '.mat', '_maxSp
 % Currently, the code is using a hard-coded path to these cal files,
 % instead of building the relative path for this user. This step is needed
 % for Geoff to run the routine
-%{
-    source_max_spectrum_path = strrep(source_max_spectrum_path,'zacharykelly','aguirre');
-%}
+source_max_spectrum_path = strrep(source_max_spectrum_path,calPathOrigName,calPathUserName);
 
 % Find the NDF used for the source max spectrum
 source_max_spectrum_ndf = regexp(source_max_spectrum_path, 'ND\d', 'match');
@@ -78,12 +85,12 @@ smoothParam = 0.0025;
 as_chip_point_filter = @(x, y) and(and(~isinf(y), ~isinf(x)), y >= 0.25); % AS chip we want to exclude points in the mud
 ts_chip_point_filter= @(x, y) and(and(~isinf(y), ~isinf(x)), y < max(y)); % TS chip we want to exclude points that are saturated
 goodIdxFilterMap = containers.Map({'AMS7341', 'TSL2591'},...
-                                  {as_chip_point_filter, ts_chip_point_filter});
+    {as_chip_point_filter, ts_chip_point_filter});
 
-% Create a map for the limits for the chips' associated curves 
+% Create a map for the limits for the chips' associated curves
 lim_map = containers.Map({'AMS7341', 'TSL2591'},...
-                          {[-1, 5], [-1, 6]});
-                       
+    {[-1, 5], [-1, 6]});
+
 % The number of minispect cal data files to plot, which is the number of
 % different ND filter levels that were measured
 nMeasToPlot = numel(MSCalDataFiles);
@@ -99,8 +106,8 @@ clear MSCalData;
 
 % Load the minispect SPDs
 spectral_sensitivity_map = containers.Map({'AMS7341', 'TSL2591'},...
-                                          {fullfile(tbLocateProjectSilent('combiExperiments'),'data','ASM7341_spectralSensitivity.mat');
-                                          fullfile(tbLocateProjectSilent('combiExperiments'),'data','TSL2591_spectralSensitivity.mat')});
+    {fullfile(tbLocateProjectSilent('combiExperiments'),'data','ASM7341_spectralSensitivity.mat');
+    fullfile(tbLocateProjectSilent('combiExperiments'),'data','TSL2591_spectralSensitivity.mat')});
 
 % For each chip, reformat the minispect SPDs to be in the space of the
 % sourceSPDs
@@ -144,7 +151,12 @@ for ii = 1:nMeasToPlot
 
     % Extract NDF and the source calibration struct
     NDF = MSCalData.meta.params.NDF;
-    source_cal = MSCalData.meta.source_cal;
+    if useMostRecentSourceCal
+        tempLoad = load(strrep(MSCalData.meta.source_calpath,calPathOrigName,calPathUserName));
+        source_cal = tempLoad.cals{end};
+    else
+        source_cal = MSCalData.meta.source_cal;
+    end
 
     % Save the NDF identities for later plotting
     ndfUsedForEachMeasure(ii) = NDF;
@@ -293,8 +305,8 @@ for kk = 1:numel(chips)
 
     fprintf('Plotting chip: %s\n', chip);
 
-    % Retrieve the limits for this chip's graph 
-    limits = lim_map(chip); 
+    % Retrieve the limits for this chip's graph
+    limits = lim_map(chip);
 
     % Retrieve the filter function used to exclude points
     % from fitting LBF
@@ -362,7 +374,7 @@ for kk = 1:numel(chips)
 
     end
 
-    hold off; 
+    hold off;
 end
 
 end % function
