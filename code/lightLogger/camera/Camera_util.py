@@ -29,6 +29,10 @@ def parse_args() -> tuple:
 
     return args.recordings_dir, args.experiment_filename, args.ndf_range, args.save_path
 
+"""Close all currently open matplotlib figures"""
+def close_all_figures():
+    plt.close('all')
+
 """Given row/col, return the index this coord would be in a flattend img array"""
 def pixel_to_index(r: int, c: int, cols: int) -> int:
     return r * cols + c
@@ -512,7 +516,7 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
     plt.show()
 
 """Generate a TTF plot for several light levels, return values used to generate the plot"""
-def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_path: str) -> dict: 
+def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_path: str, hold_figures_on: bool=False) -> dict: 
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
     eng.addpath('~/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
@@ -629,14 +633,15 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     #warmup_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/warmupSettings.pdf')
 
     # Display the figure
-    plt.show()
+    if(hold_figures_on is True):
+        plt.show()
 
     # If we do not want to save the results, simply return 
     if(save_path is None):
         return results
 
     # Otherwise, save the results of generating the TTF plot
-    with open('TTF_info.pkl', 'wb') as f:
+    with open(os.path.join(save_path,'TTF_info.pkl'), 'wb') as f:
         pickle.dump(results, f)
 
 """Generate a plot of mean microseconds per line by categorical exposure time"""

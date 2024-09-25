@@ -29,7 +29,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
 %{
     [~, calFileName, calDir] = selectCal();
     output_filename = 'myTest';
-    collect_camera_temporal_sensitivity_measurements(fullfile(calDir,calFileName), output_filename);
+    collect_camera_temporal_sensitivity_measurements(fullfile(calDir,calFileName), output_filename, email);
 %}
 
     % Parse and validate input arguments 
@@ -80,8 +80,8 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
 
     % Step 4: Define parameters for the recording and command to execute 
     % 30 seconds for warmup, 10 seconds for real recording
-    warmup = 30 ; 
-    duration = 10;
+    warmup = 30 ;  % 30 
+    duration = 10; % 10 
     
     % Step 5: Load in the calibration file for the CombiLED
     load(cal_path,'cals'); % Load the cal file
@@ -115,7 +115,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
         fprintf('You now have 30 seconds to leave the room if desired.\n');
-        pause(30)
+        %pause(30)
 
         fprintf('Taking %.1f NDF warm up video...\n', NDF); 
         warmup_file = sprintf('%s%s_0hz_%sNDF_warmup.avi', external_ssd_path, output_filename, ndf2str(NDF)); 
@@ -179,8 +179,11 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
             ssh2_conn = scp_get(ssh2_conn, [baseName, ext], recordings_dir, external_ssd_path); 
 
             % Step 12: Delete the file from the raspberry pi
-            disp('Deleting the file over of raspberry pi...')
+            disp('Deleting the video file over of raspberry pi...')
             ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm %s', output_file));
+
+            disp('Deleting the settings file over of raspberry pi...')
+            ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm %s', metadata_file));
 
         end
 
@@ -194,11 +197,13 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     ssh2_conn = ssh2_close(ssh2_conn);
 
     % Step 13: Close the connection to the CombiLED
+    disp('Closing connection to CombiLED');
     CL.serialClose(); 
 
     % Parse the resulting videos to save their information for generating the TTF
+    disp('Parsing videos...');
     tff_info_generator = '~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/Camera_util.py';
-    command = sprintf('python3 %s "%s" %s %s --save_path "%s"', tff_info_generator, recordings_dir, experiment_filename, strjoin(arrayfun(@ndf2str, ndf_range, "UniformOutput", false), ' '), './');
+    command = sprintf('python3 %s "%s" %s %s --save_path "%s"', tff_info_generator, recordings_dir, output_filename, strjoin(arrayfun(@ndf2str, ndf_range, "UniformOutput", false), ' '), './');
     
     system(command);
 
@@ -212,9 +217,10 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     TTF_info = pyDictToStruct(TTF_pkl_object);
 
     % Step 16: Save the results and flicker information
+    disp('Saving results...');
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
     save(sprintf('%sTTF_info.mat', drop_box_dir), 'TTF_info');
-    save(sprintf('%s_TemporalSensitivityFlicker.mat', drop_box_dir), 'modResult');
+    save(sprintf('%s%sTemporalSensitivityFlicker.mat', drop_box_dir, output_filename), 'modResult');
 
     % Delete the pkl file now that it is unneeded
     delete('./TTF_info.pkl');
