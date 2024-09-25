@@ -549,14 +549,6 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
                                                     for freq, amp 
                                                     in zip(frequencies, amplitudes)])
 
-        # Record these results in the results dictionary
-        results['ND'+str(light_level).replace('.', 'x')] = {'amplitudes': amplitudes,
-                                                            'corrected_amplitudes': corrected_amplitudes,
-                                                            'videos_fps': videos_fps,
-                                                            'warmup_settings': warmup_settings,
-                                                            'fits': {'F'+str(freq).replace('.', 'x'): fit 
-                                                            for freq, fit in zip(frequencies, fits)}}
-
         # Plot the amplitude and FPS
         ttf_ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
         ttf_ax1.plot(np.log10(frequencies), corrected_amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
@@ -581,6 +573,16 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
         exposure_axis.plot(warmup_t, exposure_history, color='orange', label='Exposure Time')
         exposure_axis.set_ylabel('Exposure', color='orange')
         exposure_axis.set_ylim([35,5000])
+
+
+                # Record these results in the results dictionary
+        results['ND'+str(light_level).replace('.', 'x')] = {'amplitudes': amplitudes,
+                                                            'corrected_amplitudes': corrected_amplitudes,
+                                                            'videos_fps': videos_fps,
+                                                            'warmup_t': warmup_t,
+                                                            'warmup_settings': warmup_settings,
+                                                            'fits': {'F'+str(freq).replace('.', 'x'): fit 
+                                                            for freq, fit in zip(frequencies, fits)}}
 
     # Retrieve the ideal device curve from MATLAB
     sourceFreqsHz = matlab.double(np.logspace(0,2))

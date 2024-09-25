@@ -39,6 +39,7 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
     % Initialize containers to hold the amplitudes 
     % by frequency and NDF level
     ndf_freq_amplitudes = containers.Map();
+    ndf_warmup_settings = containers.Map();
 
     % First, we are going to plot the TTF and the obsevred FPS 
     % per NDF per frequency
@@ -59,8 +60,8 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         nd_struct = TTF_info.(field_name);
 
         % Retrieve the frequencies shown to the camera 
-        local_frequencies_as_str = cellfun(@(x) x(2:end), fieldnames(nd_struct.fits), 'UniformOutput', false); % Splice out the first initial F character from frequency
-        local_frequencies = cellfun(@str2ndf, local_frequencies_as_str); % Convert the string frequencies to their numeric representations
+        frequencies_as_str = cellfun(@(x) x(2:end), fieldnames(nd_struct.fits), 'UniformOutput', false); % Splice out the first initial F character from frequency
+        frequencies = cellfun(@str2ndf, frequencies_as_str); % Convert the string frequencies to their numeric representations
 
         % Retrieve the corrected amplitudes for this ND level
         corrected_amplitudes = nd_struct.corrected_amplitudes;
@@ -68,9 +69,15 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         % Retrieve the fit FPS values for each frequency for this ND level
         fit_fps = nd_struct.videos_fps; 
 
-        % Save this NDF value and its associated amplitudes 
-        ndf_freq_amplitudes(field_name) = {NDF_level, local_frequencies, corrected_amplitudes, fit_fps};
+        % Retrieve the warmup settings for this NDF level (just choose the first frequency for this)
+        warmup_t = nd_struct.warmup_t;
+        warmup_settings = nd_struct.warmup_settings{1}
 
+        % Save this NDF value and its associated amplitudes 
+        ndf_freq_amplitudes(field_name) = {NDF_level, frequencies, corrected_amplitudes, fit_fps};
+
+        % Save this NDF value and its associated warmup settings
+        ndf_warmup_settings(field_name) = {NDF_level, warmup_t, warmup_settings};
     end 
 
     % Plot the temporal transfer function
@@ -92,6 +99,7 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
 
         % Retrieve the info for this ND level
         nd_info = ndf_freq_amplitudes(nd_key);
+        nd_warmup_info = ndf_warmup_settings(nd_key);
 
         % Retrieve the NDF level, frequencies, and corrected amplitudes
         NDF_level = nd_info{1};
@@ -99,7 +107,11 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         amplitudes = nd_info{3};
         fit_fps = nd_info{4};
 
-        fprintf('Plotting %f NDF onto the TTF\n', NDF_level);
+        % Retrieve the warmup temporal support and values 
+        warmup_t = nd_warmup_info{2};
+        warmup_settings = nd_warmup_info{3};
+        
+        fprintf('Plotting %f NDF\n', NDF_level);
         
         % Plot the amplitudes by log frequencies
         plot(log10(frequencies), amplitudes);
@@ -123,8 +135,26 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         ylabel('Fit FPS');  
         legend(nd_key,'Location','northwest');
  
+
+        % Now plot the warmup settings for this NDF level
+        % Plot the warmup settings (should be dual axis plot)
+        tabSet{tabIndex+2} = uitab(tg);
+        ax = axes('Parent', tabSet{tabIndex+2});
+
+        yyaxis left  % Activate the left y-axis
+        plot(warmup_t, warmup_settings.gain_history) % Plot the gain history 
+        ylabel('Gain');  
+
+        yyaxis right  % Activate the right y-axis
+        plot(warmup_t, warmup_settings.exposure_history) % Plot the exposure history
+        ylabel('Exposure time [μs]');  
+
+        % Label the graph
+        title(sprintf('Warmup Settings %s', nd_key))
+        xlabel('Time [seconds]');
+
         % Increment the next set of plots
-        tabIndex = tabIndex + 2; 
+        tabIndex = tabIndex + 3; 
 
     end 
 
@@ -143,6 +173,33 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
     ylabel('Relative Amplitude of Response');  
     
     legend('Ideal Device','Location','northwest');
+
+    hold off ; 
+
+    % Now, we are going to plot the warm up settings
+    figure ; 
+    tg = uitabgroup();
+
+    % Iterate over the NDF levels
+    for kk = 1:numel(NDF_levels_as_str)
+        % Set the tab for this NDF level
+        tabSet{kk} = uitab(tg);
+        ax = axes('Parent', tabSet{kk});
+
+        % Retrieve the key value for this ND's info
+        nd_key = NDF_levels_as_str{kk};
+
+        % Retrieve the info for this ND level
+        nd_info = ndf_freq_amplitudes(nd_key);
+
+        % Retrieve the NDF level, frequencies, and corrected amplitudes
+        NDF_level = nd_info{1};
+
+
+
+    end
+
+
 
 
 end
