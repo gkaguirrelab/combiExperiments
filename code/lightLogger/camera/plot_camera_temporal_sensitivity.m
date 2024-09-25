@@ -65,8 +65,11 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         % Retrieve the corrected amplitudes for this ND level
         corrected_amplitudes = nd_struct.corrected_amplitudes;
 
+        % Retrieve the fit FPS values for each frequency for this ND level
+        fit_fps = nd_struct.videos_fps; 
+
         % Save this NDF value and its associated amplitudes 
-        ndf_freq_amplitudes(field_name) = {NDF_level, local_frequencies, corrected_amplitudes};
+        ndf_freq_amplitudes(field_name) = {NDF_level, local_frequencies, corrected_amplitudes, fit_fps};
 
     end 
 
@@ -76,12 +79,13 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
 
     % First retrieve the keys of the mapping between ND level and values
     NDF_levels_as_str = keys(ndf_freq_amplitudes);
+    tabIndex = 1;
 
     % Iterate over them 
     for kk = 1:numel(NDF_levels_as_str)
         % Set the tab for this NDF level
-        tabSet{kk} = uitab(tg);
-        ax = axes('Parent', tabSet{kk});
+        tabSet{tabIndex} = uitab(tg);
+        ax = axes('Parent', tabSet{tabIndex});
 
         % Retrieve the key value for this ND's info
         nd_key = NDF_levels_as_str{kk};
@@ -93,6 +97,7 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         NDF_level = nd_info{1};
         frequencies = nd_info{2};
         amplitudes = nd_info{3};
+        fit_fps = nd_info{4};
 
         fprintf('Plotting %f NDF onto the TTF\n', NDF_level);
         
@@ -100,34 +105,44 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         plot(log10(frequencies), amplitudes);
 
         % Label the graph
-        title(sprintf('Temporal Sensitivity %s', nd_key))
+        title(sprintf('Temporal Sensitivity: %s', nd_key))
         xlabel('Source Frequency [log]');
         ylabel('Relative Amplitude of Response');  
-        
         legend(nd_key,'Location','northwest');
+
+        % Now plot this ND's associated FPS
+        tabSet{tabIndex+1} = uitab(tg);
+        ax = axes('Parent', tabSet{tabIndex+1});
+
+        % Plot the amplitudes by log frequencies
+        plot(log10(frequencies), fit_fps);
+
+        % Label the graph
+        title(sprintf('Fit FPS by Frequency %s', nd_key))
+        xlabel('Source Frequency [log]');
+        ylabel('Fit FPS');  
+        legend(nd_key,'Location','northwest');
+ 
+        % Increment the next set of plots
+        tabIndex = tabIndex + 2; 
 
     end 
 
     % Now plot the ideal device curve
-    tabSet{kk} = uitab(tg);
-    ax = axes('Parent', tabSet{kk});
+    tabSet{tabIndex} = uitab(tg);
+    ax = axes('Parent', tabSet{tabIndex});
 
     fprintf('Plotting ideal device onto the TTF\n', NDF_level);
 
+    % Plot the ideal device curve 
     plot(log10(ideal_device_curve_xy{1}), ideal_device_curve_xy{2});
 
-    title(sprintf('Temporal Sensitivity %s', nd_key))
+    % Label the graph
+    title(sprintf('Temporal Sensitivity: Ideal Device'))
     xlabel('Source Frequency [log]');
     ylabel('Relative Amplitude of Response');  
     
     legend('Ideal Device','Location','northwest');
-
-
-
-
-    hold on ; 
-
-    % Then, we will plot the warmup settings for each NDF level
 
 
 end
