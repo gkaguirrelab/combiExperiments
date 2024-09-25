@@ -21,17 +21,113 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
 %}
     % Parse and validate the inputs 
     parser = inputParser;
-
     parser.addRequired("TTF_info_path", @(x) ischar(x) || isstring(x)); % Ensure the TTF_info_path is a string type 
-
     parser.parse(TTF_info_path);
 
     TTF_info_path = parser.Results.TTF_info_path; 
 
-    % Read in the TTF info path
+    % Read in the TTF info 
     TTF_info = load(TTF_info_path).TTF_info; 
 
-    disp(TTF_info)
+    % Retrieve some basic information first 
+    CAM_FPS = TTF_info.fixed_FPS; 
+    ideal_device_curve_xy = TTF_info.ideal_device; 
+
+    % Retrieve the fieldnames
+    field_names = fieldnames(TTF_info);
+
+    % Initialize containers to hold the amplitudes 
+    % by frequency and NDF level
+    ndf_freq_amplitudes = containers.Map();
+
+    % First, we are going to plot the TTF and the obsevred FPS 
+    % per NDF per frequency
+
+    % Iterate across the NDF levels
+    for fn = 1:numel(field_names)
+        field_name = field_names{fn};
+
+        % If the field is not an NDF field, simply skip
+        if(~contains(field_name, 'ND'))
+            continue; 
+        end 
+
+        % Retrieve the numeric NDF level representation
+        NDF_level = str2ndf(field_name(3:end));
+
+        % Otherwise, explore this NDF level's information 
+        nd_struct = TTF_info.(field_name);
+
+        % Retrieve the frequencies shown to the camera 
+        local_frequencies_as_str = cellfun(@(x) x(2:end), fieldnames(nd_struct.fits), 'UniformOutput', false); % Splice out the first initial F character from frequency
+        local_frequencies = cellfun(@str2ndf, local_frequencies_as_str); % Convert the string frequencies to their numeric representations
+
+        % Retrieve the corrected amplitudes for this ND level
+        corrected_amplitudes = nd_struct.corrected_amplitudes;
+
+        % Save this NDF value and its associated amplitudes 
+        ndf_freq_amplitudes(field_name) = {NDF_level, local_frequencies, corrected_amplitudes};
+
+    end 
+
+    % Plot the temporal transfer function
+    figure ; 
+    tg = uitabgroup();
+
+    % First retrieve the keys of the mapping between ND level and values
+    NDF_levels_as_str = keys(ndf_freq_amplitudes);
+
+    % Iterate over them 
+    for kk = 1:numel(NDF_levels_as_str)
+        % Set the tab for this NDF level
+        tabSet{kk} = uitab(tg);
+        ax = axes('Parent', tabSet{kk});
+
+        % Retrieve the key value for this ND's info
+        nd_key = NDF_levels_as_str{kk};
+
+        % Retrieve the info for this ND level
+        nd_info = ndf_freq_amplitudes(nd_key);
+
+        % Retrieve the NDF level, frequencies, and corrected amplitudes
+        NDF_level = nd_info{1};
+        frequencies = nd_info{2};
+        amplitudes = nd_info{3};
+
+        fprintf('Plotting %f NDF onto the TTF\n', NDF_level);
+        
+        % Plot the amplitudes by log frequencies
+        plot(log10(frequencies), amplitudes);
+
+        % Label the graph
+        title(sprintf('Temporal Sensitivity %s', nd_key))
+        xlabel('Source Frequency [log]');
+        ylabel('Relative Amplitude of Response');  
+        
+        legend(nd_key,'Location','northwest');
+
+    end 
+
+    % Now plot the ideal device curve
+    tabSet{kk} = uitab(tg);
+    ax = axes('Parent', tabSet{kk});
+
+    fprintf('Plotting ideal device onto the TTF\n', NDF_level);
+
+    plot(log10(ideal_device_curve_xy{1}), ideal_device_curve_xy{2});
+
+    title(sprintf('Temporal Sensitivity %s', nd_key))
+    xlabel('Source Frequency [log]');
+    ylabel('Relative Amplitude of Response');  
+    
+    legend('Ideal Device','Location','northwest');
+
+
+
+
+    hold on ; 
+
+    % Then, we will plot the warmup settings for each NDF level
 
 
 end

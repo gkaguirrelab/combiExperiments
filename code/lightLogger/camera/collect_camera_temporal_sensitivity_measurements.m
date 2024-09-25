@@ -34,11 +34,9 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
 
     % Parse and validate input arguments 
     parser = inputParser; 
-
     parser.addRequired('cal_path', @(x) ischar(x) || isstring(x)); % Ensure the cal path is a string
     parser.addRequired('output_filename', @(x) ischar(x) || isstring(X)); % Ensure the output filename is a string 
     parser.addRequired('email', @(x) ischar(x) || isstring(x)); % Ensure the email is a string
-
     parser.parse(cal_path, output_filename, email);
 
     cal_path = parser.Results.cal_path;

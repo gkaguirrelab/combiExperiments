@@ -550,11 +550,12 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
                                                     in zip(frequencies, amplitudes)])
 
         # Record these results in the results dictionary
-        results['F'+str(light_level).replace('.', 'x')] = {'amplitudes': amplitudes,
-                                'corrected_amplitudes': corrected_amplitudes,
-                                'videos_fps': videos_fps,
-                                'warmup_settings': warmup_settings,
-                                'fits': {'F'+str(freq).replace('.', 'x'): fit for freq, fit in zip(frequencies, fits)}}
+        results['ND'+str(light_level).replace('.', 'x')] = {'amplitudes': amplitudes,
+                                                            'corrected_amplitudes': corrected_amplitudes,
+                                                            'videos_fps': videos_fps,
+                                                            'warmup_settings': warmup_settings,
+                                                            'fits': {'F'+str(freq).replace('.', 'x'): fit 
+                                                            for freq, fit in zip(frequencies, fits)}}
 
         # Plot the amplitude and FPS
         ttf_ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
@@ -584,10 +585,10 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     # Retrieve the ideal device curve from MATLAB
     sourceFreqsHz = matlab.double(np.logspace(0,2))
     dTsignal = 1/CAM_FPS
-    ideal_device_curve = np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten() * 0.5
+    ideal_device_curve = (np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten() * 0.5).astype(np.float64)
     
     # Record the ideal_device_curve in the results dictionary
-    results['ideal_device'] = ideal_device_curve
+    results['ideal_device'] = [np.array(sourceFreqsHz, dtype=np.float64), ideal_device_curve]
 
     # Add the ideal device to the plot
     ttf_ax0.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")

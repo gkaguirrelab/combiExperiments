@@ -53,18 +53,20 @@ function convertedStruct = pyDictToStruct(pyDict)
         else 
             fprintf('Field Name: %s | Class: %s\n', fieldName, class(fieldValue));
             error_message = sprintf('ERROR: %s is of unsupported conversion type of class: %s.', fieldName, class(fieldValue)); 
+            error(error_message);
         end
 
     end
-
 
     % Utility functions 
     
     % Check if the given element is an easily convertible type
     function is_basic = is_basic_type(object)
-        if(isa(object, 'py.int') || isa(object, 'py.float') || isa(object, 'py.numpy.ndarray'))
+        easily_convertible_types = {'py.int', 'py.float', 'py.numpy.ndarray'};
+
+        if(ismember(class(object), easily_convertible_types))
             is_basic = true; 
-            return 
+            return ;
         end 
 
         is_basic = false; 
@@ -72,13 +74,15 @@ function convertedStruct = pyDictToStruct(pyDict)
     end
 
     % Check if the given element is a more complex iterable type
-    function bool = is_complex_type(object)
-        if(isa(object, 'py.list') || isa(object, 'py.tuple'))
-            bool = true;
+    function is_complex = is_complex_type(object)
+        more_complex_types = {'py.list', 'py.tuple'};
+
+        if(ismember(class(object), more_complex_types))
+            is_complex = true;
             return ; 
         end 
 
-        bool = false; 
+        is_complex = false; 
         return; 
     end
 
@@ -98,7 +102,7 @@ function convertedStruct = pyDictToStruct(pyDict)
                 converted_list{ii} = double(element);
             
             % If it is another list, we need to recurse
-            elseif(isa(element, 'py.list'))
+            elseif(is_complex_type(element))
                 converted_list{ii} = pyListToCell(element);
             
             % If it's another dictionary, call the dictionary parser again
@@ -109,6 +113,7 @@ function convertedStruct = pyDictToStruct(pyDict)
             else
                 disp(element)
                 error_message = sprintf('ERROR: Unsupported conversion type of class: %s.', class(element)); 
+                error(error_message);
             end 
         end
     end 
