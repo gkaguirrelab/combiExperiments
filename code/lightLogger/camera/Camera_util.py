@@ -629,8 +629,8 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     warmup_fig.subplots_adjust(hspace=1)
 
     # Save the figure
-    #ttf_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.pdf')
-    #warmup_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/warmupSettings.pdf')
+    ttf_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.pdf')
+    warmup_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/warmupSettings.pdf')
 
     # Display the figure
     if(hold_figures_on is True):

@@ -29,7 +29,8 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
 %{
     [~, calFileName, calDir] = selectCal();
     output_filename = 'myTest';
-    collect_camera_temporal_sensitivity_measurements(fullfile(calDir,calFileName), output_filename, email);
+    cal_path = fullfile(calDir,calFileName);
+    collect_camera_temporal_sensitivity_measurements(cal_path, output_filename, email);
 %}
 
     % Parse and validate input arguments 
@@ -220,7 +221,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     disp('Saving results...');
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
     save(sprintf('%sTTF_info.mat', drop_box_dir), 'TTF_info');
-    save(sprintf('%s%sTemporalSensitivityFlicker.mat', drop_box_dir, output_filename), 'modResult');
+    save(sprintf('%s%s_TemporalSensitivityFlicker.mat', drop_box_dir, output_filename), 'modResult');
 
     % Delete the pkl file now that it is unneeded
     delete('./TTF_info.pkl');
