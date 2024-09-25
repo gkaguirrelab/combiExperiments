@@ -23,6 +23,6 @@ function NDF = str2ndf(string)
     NDF = str2ndf(string);
 %}
         
-        NDF = str2double(strrep(string, 'x','.'));
+    NDF = str2double(strrep(string, 'x','.'));
     
-    end
+end

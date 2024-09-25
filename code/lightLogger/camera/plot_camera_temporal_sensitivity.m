@@ -29,6 +29,9 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
     % Read in the TTF info 
     TTF_info = load(TTF_info_path).TTF_info; 
 
+    % Define where the figures will be output too 
+    drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
+
     % Retrieve some basic information first 
     CAM_FPS = TTF_info.fixed_FPS; 
     ideal_device_curve_xy = TTF_info.ideal_device; 
@@ -125,6 +128,10 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         ylabel('Relative Amplitude of Response');  
         legend(nd_key,'Location','northwest');
 
+        % Save this tab to a file
+        figName = fullfile(drop_box_dir, sprintf('%s_TemporalSensitivity.pdf', nd_key));
+        exportgraphics(tabSet{tabIndex},figName);
+
         % Now plot this ND's associated FPS
         tabSet{tabIndex+1} = uitab(tg);
         ax = axes('Parent', tabSet{tabIndex+1});
@@ -137,6 +144,10 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         xlabel('Source Frequency [log]');
         ylabel('Fit FPS');  
         legend(nd_key,'Location','northwest');
+
+        % Save this tab to a file
+        figName = fullfile(drop_box_dir, sprintf('%s_FitFPS.pdf', nd_key));
+        exportgraphics(tabSet{tabIndex+1},figName);
  
         % Now plot the warmup settings for this NDF level
         % Plot the warmup settings onto a dual axis plot
@@ -154,6 +165,10 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
         % Label the graph
         title(sprintf('Warmup Settings %s', nd_key))
         xlabel('Time [seconds]');
+
+        % Save this tab to a file
+        figName = fullfile(drop_box_dir, sprintf('%s_WarmupSettings.pdf', nd_key));
+        exportgraphics(tabSet{tabIndex+2},figName);
 
         % Now let's plot all of the fits for this NDF level 
         % at all of the frequencies
@@ -177,7 +192,7 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
             % Plot the observed signal
             plot(signal_t, signal);
 
-            hold on ; 
+            hold on; 
 
             % Plot the fitted source modulation 
             plot(model_t, fit);
@@ -188,7 +203,10 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
             ylabel('Amplitude');  
             legend('Signal', 'Fit', 'Location','northwest');
 
-
+            % Save this tab to a file
+            f_as_str = ndf2str(f);
+            figName = fullfile(drop_box_dir, sprintf('%s_%shz_ObservedVsFit.pdf', nd_key, f_as_str));
+            exportgraphics(tabSet{tabIndex+2+ff},figName);
         end
 
         hold off ; 
@@ -213,6 +231,10 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
     xlabel('Source Frequency [log]');
     ylabel('Relative Amplitude of Response');  
     legend('Ideal Device','Location','northwest');
+
+    % Save this tab to a file
+    figName = fullfile(drop_box_dir, 'IdealDevice_TemporalSensitivity.pdf');
+    exportgraphics(tabSet{tabIndex},figName);
 
 
 end
