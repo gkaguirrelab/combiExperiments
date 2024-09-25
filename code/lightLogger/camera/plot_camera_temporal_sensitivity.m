@@ -176,30 +176,4 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
 
     hold off ; 
 
-    % Now, we are going to plot the warm up settings
-    figure ; 
-    tg = uitabgroup();
-
-    % Iterate over the NDF levels
-    for kk = 1:numel(NDF_levels_as_str)
-        % Set the tab for this NDF level
-        tabSet{kk} = uitab(tg);
-        ax = axes('Parent', tabSet{kk});
-
-        % Retrieve the key value for this ND's info
-        nd_key = NDF_levels_as_str{kk};
-
-        % Retrieve the info for this ND level
-        nd_info = ndf_freq_amplitudes(nd_key);
-
-        % Retrieve the NDF level, frequencies, and corrected amplitudes
-        NDF_level = nd_info{1};
-
-
-
-    end
-
-
-
-
 end
