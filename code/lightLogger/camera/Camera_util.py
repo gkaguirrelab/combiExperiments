@@ -22,13 +22,12 @@ def parse_args() -> tuple:
     
     parser.add_argument('recordings_dir', type=str, help="Path to where the camera recordings are stored")
     parser.add_argument('experiment_filename', type=str, help="Name of the experiment to analyze Temporal Sensitivity for")
-    parser.add_argument('low_bound_ndf', type=str, help="The lower bound of the light levels/NDF range")
-    parser.add_argument('high_bound_ndf', type=str, help="The high bound of the light levels/NDF range")
-    parser.add_argument('save_path', type=str, help="The path to where to output the graph and experiment results")
+    parser.add_argument('ndf_range', nargs='+', type=str, help='The ndf2str values to use when generating the TTF')
+    parser.add_argument('--save_path', type=str, default=None, help="The path to where the pickle results of the TTF function will be saved. Optional.")
 
     args = parser.parse_args()
 
-    return args.recordings_dir, args.experiment_filename, args.low_bound_ndf, args.high_bound_ndf, args.save_path
+    return args.recordings_dir, args.experiment_filename, args.ndf_range, args.save_path
 
 """Given row/col, return the index this coord would be in a flattend img array"""
 def pixel_to_index(r: int, c: int, cols: int) -> int:
@@ -292,6 +291,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
 def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes=None, fps_guess: float=CAM_FPS, fps_guess_increment: tuple=(0,0.25)) -> tuple:     
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
+    eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera')
 
     # Ensure MATLAB started properly
     assert eng is not None
@@ -502,10 +502,11 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
     plt.show()
 
 """Generate a TTF plot for several light levels, return values used to generate the plot"""
-def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple) -> dict: 
+def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_path: str) -> dict: 
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
-    eng.addpath('/Users/zacharykelly/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
+    eng.addpath('~/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
+    eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera')
 
     # Create a mapping between light levels and their (frequencies, amplitudes)
     light_level_ts_map: dict = {str2ndf(light_level) : analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
@@ -528,7 +529,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     warmup_axes = warmup_axes if isinstance(warmup_axes, Iterable) else [warmup_axes]
     
     # Initialize a results container to store values used to generate the plot
-    results: dict = {'Fixed FPS': CAM_FPS} 
+    results: dict = {'fixed_FPS': CAM_FPS} 
 
     # Plot the light levels' amplitudes by frequencies
     for ind, (light_level, (frequencies, amplitudes, videos_fps, warmup_settings, fits)) in enumerate(light_level_ts_map.items()):  
@@ -539,7 +540,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
                                                     in zip(frequencies, amplitudes)])
 
         # Record these results in the results dictionary
-        results[light_level] = {'amplitudes': amplitudes,
+        results['F'+str(light_level).replace('.', 'x')] = {'amplitudes': amplitudes,
                                 'corrected_amplitudes': corrected_amplitudes,
                                 'videos_fps': videos_fps,
                                 'warmup_settings': warmup_settings,
@@ -571,7 +572,6 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
         exposure_axis.set_ylim([35,5000])
 
     # Retrieve the ideal device curve from MATLAB
-    eng = matlab.engine.start_matlab() 
     sourceFreqsHz = matlab.double(np.logspace(0,2))
     dTsignal = 1/CAM_FPS
     ideal_device_curve = np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten() * 0.5
@@ -618,7 +618,13 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     # Display the figure
     plt.show()
 
-    return results 
+    # If we do not want to save the results, simply return 
+    if(save_path is None):
+        return results
+
+    # Otherwise, save the results of generating the TTF plot
+    with open('TTF_info.pkl', 'wb') as f:
+        pickle.dump(results, f)
 
 """Generate a plot of mean microseconds per line by categorical exposure time"""
 def generate_ms_by_exposure_plot(recordings_dir: str, experiment_filename: str, light_levels: list):
@@ -724,14 +730,9 @@ def generate_row_phase_plot(video: np.array, frequency: float) -> float:
     return slope
 
 def main():    
-    #recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
+    recordings_dir, experiment_filename, ndf_range, save_path = parse_args()
 
-    #analyze_temporal_sensitivity(recordings_dir, experiment_filename, high_bound_ndf)
-    recordings_dir = '/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_data/recordings'
-    experiment_filename = '200FPS'
-    save_path = './test'
-
-    generate_TTF(recordings_dir, experiment_filename, ['0','1','2','3'])
+    generate_TTF(recordings_dir, experiment_filename, ndf_range, save_path)
 
 if(__name__ == '__main__'):
     main()

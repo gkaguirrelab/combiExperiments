@@ -48,8 +48,10 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     % Step 1: Add paths to and retrieve libraries
     disp('Adding library paths...')
 
-    addpath('~/Library/Application Support/MathWorks/MATLAB Add-Ons/Collections/SSH_SFTP_SCP For Matlab (v2)/ssh2_v2_m1_r7') % add path to ssh_command library
-    addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/libraries_matlab/')
+    addpath('~/Library/Application Support/MathWorks/MATLAB Add-Ons/Collections/SSH_SFTP_SCP For Matlab (v2)/ssh2_v2_m1_r7'); % add path to ssh_command library
+    addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/libraries_matlab/');
+    addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera');
+    addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/libraries_matlab');
 
     current_dir = pwd; 
     cd('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/libraries_python/')
@@ -59,8 +61,6 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     Camera_util = py.importlib.import_module('Camera_util');
     cd(current_dir);
     pickle = py.importlib.import_module('pickle');
-    ndf2str_path = '~/Documents/MATLAB/projects/combiExperiments/code/libaries_matlab';
-    addpath(ndf2str_path); 
     
 
     % Step 2: Define remote connection to raspberry pi
@@ -197,13 +197,50 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     % Step 13: Close the connection to the CombiLED
     CL.serialClose(); 
 
-    % Parse the resulting videos and save the information to plot the TTF in MATLAB
-    TTF_info = struct(Camera_util.generate_TTF(py.str(recordings_dir), py.str(experiment_filename), py.list(arrayfun(@ndf2str, ndf_range, "UniformOutput", false))));
+    % Parse the resulting videos to save their information for generating the TTF
+    tff_info_generator = '~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/Camera_util.py';
+    command = sprintf('python3 %s "%s" %s %s --save_path "%s"', tff_info_generator, recordings_dir, experiment_filename, strjoin(arrayfun(@ndf2str, ndf_range, "UniformOutput", false), ' '), './');
+    
+    system(command);
+
+    % Parse the results back into MATLAB format
+    TTF_pkl_path = './TTF_info.pkl';
+    TTF_pkl_file = py.open(TTF_pkl_path, 'rb');
+    TTF_pkl_object = py.pickle.load(TTF_pkl_file);
+    TTF_pkl_file.close();
+
+    % Make the initial conversion of pyDict to struct
+    TTF_info = struct(TTF_pkl_object);
+
+    % Go over all of the fields and convert them as necessary too
+    fields_of_struct = fieldnames(TTF_info);
+
+    for ff = 1:numel(fields_of_struct)
+        % Retrieve the field name
+        fieldName = fields_of_struct{ff};
+        fieldValue = TTF_info.(fieldName);
+        
+        % Check if the field is a py.int, py.float, or numpy array (convert to double or double array)
+        if(isa(fieldValue, 'py.int') || isa(fieldValue, 'py.float') || isa(fieldValue, 'py.numpy.ndarray') )
+            TTF_info.(fieldName) = double(fieldValue);
+        
+        % Check if the field is a py.dict (convert to MATLAB struct)
+        elseif isa(fieldValue, 'py.dict')
+            TTF_info.(fieldName) = struct(TTF_info.(fieldName));
+        
+        else 
+            error("ERROR: Invalid type in the TTF_info struct. I don't know what to do with this");
+        end
+
+    end
 
     % Step 16: Save the results and flicker information
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
     save(sprintf('%sTTF_info.mat', drop_box_dir), 'TTF_info');
     save(sprintf('%s_TemporalSensitivityFlicker.mat', drop_box_dir), 'modResult');
+
+    % Delete the pkl file now that it is unneeded
+    delete('./TTF_info.pkl');
 
     % Notify the user the collection as finished 
     sendmail(email, 'Finished collecting camera temporal sensitivity measurment')
