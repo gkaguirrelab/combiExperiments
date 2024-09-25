@@ -265,8 +265,18 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
         # Otherwise, we are working with a .csv file and can 
         # read them in as dataframes
         else:
-            warmup_settings = (parse_settings_file(warmup_settings_filepath)[['gain_history', 'exposure_history']]).to_dict(orient='list')
-            video_settings = (parse_settings_file(video_settings_filepath)[['gain_history', 'exposure_history']]).to_dict(orient='list')
+            # Retrieve the settings histories as dictionaries of lists of gain_history and exposure history
+            warmup_settings_dict_of_lists = (parse_settings_file(warmup_settings_filepath)[['gain_history', 'exposure_history']]).to_dict(orient='list')
+            video_settings_dict_of_lists = (parse_settings_file(video_settings_filepath)[['gain_history', 'exposure_history']]).to_dict(orient='list')
+
+            # Convert the lists in the dictionaries to np.arrays
+            warmup_settings = {key: np.array(val)
+                              for key, val 
+                              in warmup_settings_dict_of_lists.items()}
+
+            video_settings = {key: np.array(val)
+                              for key, val 
+                              in video_settings_dict_of_lists.items()}
 
         # Associate the frequency to this tuple of (video, warmup_settings, settings)
         frequencies_and_videos[experiment_info["frequency"]] = (parser(filepath), warmup_settings, video_settings)
@@ -544,7 +554,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
                                 'corrected_amplitudes': corrected_amplitudes,
                                 'videos_fps': videos_fps,
                                 'warmup_settings': warmup_settings,
-                                'fits': {freq: fit for freq, fit in zip(frequencies, fits)}}
+                                'fits': {'F'+str(freq).replace('.', 'x'): fit for freq, fit in zip(frequencies, fits)}}
 
         # Plot the amplitude and FPS
         ttf_ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")

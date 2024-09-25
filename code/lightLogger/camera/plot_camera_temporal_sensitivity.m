@@ -6,22 +6,18 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
 %
 % Description:
 %   Generates a temporal sensitivity plot of the camera using data 
-%   from a given experiment_filename located in recordings_dir. 
+%   from a given TTF_info struct. 
 %
 % Inputs:
-%   recordings_dir        - String. Represents the path to the directory
-%                           where camera recordings are stored     
-%
-%   experiment_filename   - String. Represents the name of the experiment
-%                           whose videos we will use to generate the TTF  
+%   TTF_info_path        - String. Represents the path to a TTF_info struct  
 %
 % Outputs:
 %   NONE
 %
 % Examples:
 %{
-    
-    plot_camera_temporal_sensitivity_measurements(fullfile(calDir,calFileName), output_filename);
+    TTF_info_path = '/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/TTF_info.mat'; 
+    plot_camera_temporal_sensitivity(TTF_info_path);
 %}
     % Parse and validate the inputs 
     parser = inputParser;
@@ -31,5 +27,11 @@ function plot_camera_temporal_sensitivity(TTF_info_path)
     parser.parse(TTF_info_path);
 
     TTF_info_path = parser.Results.TTF_info_path; 
+
+    % Read in the TTF info path
+    TTF_info = load(TTF_info_path).TTF_info; 
+
+    disp(TTF_info)
+
 
 end

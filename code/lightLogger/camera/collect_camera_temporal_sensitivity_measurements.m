@@ -69,7 +69,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     host = '10.102.141.235'; % IP/Hostname
     username = 'rpiControl'; % Username to log into
     password = '1234'; % Password for this user
-    recordings_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_data/recordings/'];
+    recordings_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_data/recordings'];
     metadata_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_data/recordings_metadata/'];
     virtual_environment_path = 'source /home/rpiControl/.python_environment/bin/activate';
     external_ssd_path = '/media/rpiControl/EXTERNAL1/'; 
@@ -82,7 +82,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
 
     % Step 4: Define parameters for the recording and command to execute 
     % 30 seconds for warmup, 10 seconds for real recording
-    warmup = 5; %30  
+    warmup = 30 ; 
     duration = 10;
     
     % Step 5: Load in the calibration file for the CombiLED
@@ -111,12 +111,13 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     frequencies = [25];  % Frequencies we have been doing + also 0.5hz
 
     for bb = 1:numel(ndf_range) % Iterate over the NDF bounds
+        % Retrieve the current NDF level
         NDF = ndf_range(bb);
 
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
         fprintf('You now have 30 seconds to leave the room if desired.\n');
-        %pause(30)
+        pause(30)
 
         fprintf('Taking %.1f NDF warm up video...\n', NDF); 
         warmup_file = sprintf('%s%s_0hz_%sNDF_warmup.avi', external_ssd_path, output_filename, ndf2str(NDF)); 
@@ -209,30 +210,8 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     TTF_pkl_object = py.pickle.load(TTF_pkl_file);
     TTF_pkl_file.close();
 
-    % Make the initial conversion of pyDict to struct
-    TTF_info = struct(TTF_pkl_object);
-
-    % Go over all of the fields and convert them as necessary too
-    fields_of_struct = fieldnames(TTF_info);
-
-    for ff = 1:numel(fields_of_struct)
-        % Retrieve the field name
-        fieldName = fields_of_struct{ff};
-        fieldValue = TTF_info.(fieldName);
-        
-        % Check if the field is a py.int, py.float, or numpy array (convert to double or double array)
-        if(isa(fieldValue, 'py.int') || isa(fieldValue, 'py.float') || isa(fieldValue, 'py.numpy.ndarray') )
-            TTF_info.(fieldName) = double(fieldValue);
-        
-        % Check if the field is a py.dict (convert to MATLAB struct)
-        elseif isa(fieldValue, 'py.dict')
-            TTF_info.(fieldName) = struct(TTF_info.(fieldName));
-        
-        else 
-            error("ERROR: Invalid type in the TTF_info struct. I don't know what to do with this");
-        end
-
-    end
+    % Recursively converted struct fields to MATLAB types
+    TTF_info = pyDictToStruct(TTF_pkl_object);
 
     % Step 16: Save the results and flicker information
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
