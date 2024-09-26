@@ -17,7 +17,10 @@ from PyAGC import AGC
 """Import the custom Downsampling library"""
 downsample_lib_path = os.path.join(os.path.dirname(__file__), 'downsample_lib')
 sys.path.append(os.path.abspath(downsample_lib_path))
-from PyDownsample import downsample_pure_python
+from PyDownsample import import_downsample_lib, downsample
+
+# Import the CPP downsample lib (with types, etc)
+downsample_cpp_lib = import_downsample_lib()
 
 # The FPS we have locked the camera to
 CAM_FPS: float = 200
@@ -242,8 +245,28 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     
     print('Finishing recording')
     
+"""View a preview view of what the camera currently sees"""
+def preview_capture():
+    from picamera2 import Picamera2, Preview
+    
+    # Initialize the camera with the settings we have prescribed
+    cam: Picamera2 = initialize_camera()
+
+    # Start a preview
+    cam.start_preview(Preview.QTGL)
+    cam.start()
+
+    # Pause while we are viewing the preview
+    print('Press q to cancel preview')
+    while(input().lower() != 'q'):
+        time.sleep(1)
+
+    # Stop the preview
+    cam.stop()
+    cam.stop_preview()
+
 """Connect to the camera and initialize a control object"""
-def initialize_camera(initial_gain: float, initial_exposure: int) -> object:
+def initialize_camera(initial_gain: float=1, initial_exposure: int=100) -> object:
     from picamera2 import Picamera2, Preview
 
     # Initialize camera 

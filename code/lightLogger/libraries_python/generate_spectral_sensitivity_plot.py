@@ -49,8 +49,6 @@ def generate_spectral_sensitivity_plot(channel_points_paths: list, rescale_range
     # Return the joined dataframe 
     return joined_df
 
-
-
 def main():
     generate_spectral_sensitivity_plot()
 
