@@ -33,8 +33,13 @@ def run_ssh_command(hostname: str, port: int, username: str, password: str, comm
         # Read the output of the program, used to stall any 
         # external programming calling this program to wait 
         # for it to finish
-        stdout.read()
-        stderr.read()
+        
+        stdout_output = stdout.read().decode('utf-8') 
+        stderr_output = stderr.read().decode('utf-8') 
+
+        print(stdout_output)
+        print(stderr_output)
+
 
     except paramiko.SSHException as e:
         print(f"SSH connection failed: {e}")
@@ -44,11 +49,12 @@ def run_ssh_command(hostname: str, port: int, username: str, password: str, comm
         ssh.close()
 
 def main():
-    host = '10.102.183.211' 
-    username = 'eds' 
-    port = '22'
-    password = '1234'
-    command = 'python3 /home/eds/combiExperiments/code/lightLogger/raspberry_pi_firmware/Camera_com.py test.avi 10'
+    host: str = '10.102.141.235'
+    username: str = 'rpiControl' 
+    port: int = 22
+    password: str = '1234'
+    virtual_environment_init = 'source /home/rpiControl/.python_environment/bin/activate'
+    command: str = f'{virtual_environment_init} && python3 /home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/Camera_com.py test.avi 10 --save_frames 1'
     #host, port, username, password, command = parseArgs()
     
     run_ssh_command(host, port, username, password, command)

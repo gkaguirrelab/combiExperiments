@@ -10,10 +10,11 @@ from collections.abc import Iterable
 import pickle
 import scipy.io
 from mpl_toolkits.mplot3d import Axes3D
+import pandas as pd
 
 """Import the FPS of the camera"""
 agc_lib_path = os.path.join(os.path.dirname(__file__))
-from recorder import CAM_FPS
+from recorder import CAM_FPS, parse_settings_file 
 
 """Parse command line arguments when script is called via command line"""
 def parse_args() -> tuple:
@@ -21,13 +22,16 @@ def parse_args() -> tuple:
     
     parser.add_argument('recordings_dir', type=str, help="Path to where the camera recordings are stored")
     parser.add_argument('experiment_filename', type=str, help="Name of the experiment to analyze Temporal Sensitivity for")
-    parser.add_argument('low_bound_ndf', type=str, help="The lower bound of the light levels/NDF range")
-    parser.add_argument('high_bound_ndf', type=str, help="The high bound of the light levels/NDF range")
-    parser.add_argument('save_path', type=str, help="The path to where to output the graph and experiment results")
+    parser.add_argument('ndf_range', nargs='+', type=str, help='The ndf2str values to use when generating the TTF')
+    parser.add_argument('--save_path', type=str, default=None, help="The path to where the pickle results of the TTF function will be saved. Optional.")
 
     args = parser.parse_args()
 
-    return args.recordings_dir, args.experiment_filename, args.low_bound_ndf, args.high_bound_ndf, args.save_path
+    return args.recordings_dir, args.experiment_filename, args.ndf_range, args.save_path
+
+"""Close all currently open matplotlib figures"""
+def close_all_figures():
+    plt.close('all')
 
 """Given row/col, return the index this coord would be in a flattend img array"""
 def pixel_to_index(r: int, c: int, cols: int) -> int:
@@ -227,14 +231,22 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
             continue 
         
         # Find the path to the warmup (0hz) file itself 
-        tokens: list = os.path.splitext(file)[0].split('_') # Split based on meaningful _ character 
+        tokens: list = os.path.splitext(file)[0].split('_') # Split based on meaningful _ character
 
-        tokens[1] = '0hz' # set frequency part equal to 0hz 
-        warmup_settings_filename: str = '_'.join(tokens) + '_warmup_settingsHistory.pkl' # construct the warmup_settings filename
+        # Default extension for settings files is .pkl. This is to be compatible with legacy videos
+        settings_extension: str = '.pkl'
+
+        tokens[1] = '0hz' # set frequency part equal to 0hz to find the warmup video 
+        warmup_settings_filename: str = '_'.join(tokens) + '_warmup_settingsHistory' + settings_extension # construct the warmup_settings filename
         warmup_settings_filepath: str = os.path.join(metadata_dir, warmup_settings_filename) # append it to the metadata dir path 
         
+        # If the .pkl path didn't exist, change the path to a csv file
+        if(not os.path.exists(warmup_settings_filepath)):
+            settings_extension = '.csv'
+            warmup_settings_filepath = warmup_settings_filepath.replace('.pkl', settings_extension)
+
         # Find the path to the settings file for the video
-        video_settings_filepath: str = os.path.join(metadata_dir, os.path.splitext(file)[0] + '_settingsHistory.pkl')
+        video_settings_filepath: str = os.path.join(metadata_dir, os.path.splitext(file)[0] + '_settingsHistory' + settings_extension)
         
         # Parse the video and pair it with its frequency 
         print(f"Reading {light_level}NDF {experiment_info['frequency']}hz from {file}")
@@ -245,11 +257,30 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
         warmup_settings: dict = None 
         video_settings : dict = None 
 
-        with open(warmup_settings_filepath, 'rb') as f:
-            warmup_settings = pickle.load(f)
+        # If we are working with a .pkl file, need to read them 
+        # in as follows
+        if(settings_extension == '.pkl'):
+            with open(warmup_settings_filepath, 'rb') as f:
+                warmup_settings = pickle.load(f)
+            
+            with open(video_settings_filepath, 'rb') as f:
+                video_settings = pickle.load(f)
         
-        with open(video_settings_filepath, 'rb') as f:
-            video_settings = pickle.load(f)
+        # Otherwise, we are working with a .csv file and can 
+        # read them in as dataframes
+        else:
+            # Retrieve the settings histories as dictionaries of lists of gain_history and exposure history
+            warmup_settings_dict_of_lists = (parse_settings_file(warmup_settings_filepath)[['gain_history', 'exposure_history']]).to_dict(orient='list')
+            video_settings_dict_of_lists = (parse_settings_file(video_settings_filepath)[['gain_history', 'exposure_history']]).to_dict(orient='list')
+
+            # Convert the lists in the dictionaries to np.arrays
+            warmup_settings = {key: np.array(val)
+                              for key, val 
+                              in warmup_settings_dict_of_lists.items()}
+
+            video_settings = {key: np.array(val)
+                              for key, val 
+                              in video_settings_dict_of_lists.items()}
 
         # Associate the frequency to this tuple of (video, warmup_settings, settings)
         frequencies_and_videos[experiment_info["frequency"]] = (parser(filepath), warmup_settings, video_settings)
@@ -274,6 +305,7 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
 def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes=None, fps_guess: float=CAM_FPS, fps_guess_increment: tuple=(0,0.25)) -> tuple:     
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
+    eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera')
 
     # Ensure MATLAB started properly
     assert eng is not None
@@ -352,7 +384,6 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
         observed_amplitude, observed_phase, observed_fps, fit = fit_source_modulation(mean_video, light_level, frequency, moduation_axis)
 
         # Build the temporal support of the settings values by converting frame num to second
-        #warmup_t: np.array = np.arange(0, warmup_settings_history['gain_history'].shape[0]/observed_fps, 1/observed_fps)
         settings_t: np.array = np.arange(0, mean_video.shape[0]/observed_fps, 1/observed_fps)
         
         # Because we are counting by float, sometimes the shapes are off by a frame, so just 
@@ -484,12 +515,12 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
     plt.legend()
     plt.show()
 
-
 """Generate a TTF plot for several light levels, return values used to generate the plot"""
-def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple) -> dict: 
+def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_path: str, hold_figures_on: bool=False) -> dict: 
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
-    eng.addpath('/Users/zacharykelly/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
+    eng.addpath('~/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
+    eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera')
 
     # Create a mapping between light levels and their (frequencies, amplitudes)
     light_level_ts_map: dict = {str2ndf(light_level) : analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
@@ -512,7 +543,7 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     warmup_axes = warmup_axes if isinstance(warmup_axes, Iterable) else [warmup_axes]
     
     # Initialize a results container to store values used to generate the plot
-    results: dict = {'Fixed FPS': CAM_FPS} 
+    results: dict = {'fixed_FPS': CAM_FPS} 
 
     # Plot the light levels' amplitudes by frequencies
     for ind, (light_level, (frequencies, amplitudes, videos_fps, warmup_settings, fits)) in enumerate(light_level_ts_map.items()):  
@@ -521,13 +552,6 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
                                                     else amp / klein_frequencies_and_amplitudes[freq] 
                                                     for freq, amp 
                                                     in zip(frequencies, amplitudes)])
-
-        # Record these results in the results dictionary
-        results[light_level] = {'amplitudes': amplitudes,
-                                'corrected_amplitudes': corrected_amplitudes,
-                                'videos_fps': videos_fps,
-                                'warmup_settings': warmup_settings,
-                                'fits': {freq: fit for freq, fit in zip(frequencies, fits)}}
 
         # Plot the amplitude and FPS
         ttf_ax0.plot(np.log10(frequencies), amplitudes, linestyle='-', marker='o', label=f"{light_level}NDF")
@@ -554,14 +578,23 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
         exposure_axis.set_ylabel('Exposure', color='orange')
         exposure_axis.set_ylim([35,5000])
 
+
+                # Record these results in the results dictionary
+        results['ND'+str(light_level).replace('.', 'x')] = {'amplitudes': amplitudes,
+                                                            'corrected_amplitudes': corrected_amplitudes,
+                                                            'videos_fps': videos_fps,
+                                                            'warmup_t': warmup_t,
+                                                            'warmup_settings': warmup_settings,
+                                                            'fits': {'F'+str(freq).replace('.', 'x'): fit 
+                                                            for freq, fit in zip(frequencies, fits)}}
+
     # Retrieve the ideal device curve from MATLAB
-    eng = matlab.engine.start_matlab() 
     sourceFreqsHz = matlab.double(np.logspace(0,2))
     dTsignal = 1/CAM_FPS
-    ideal_device_curve = np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten() * 0.5
+    ideal_device_curve = (np.array(eng.idealDiscreteSampleFilter(sourceFreqsHz, dTsignal)).flatten() * 0.5).astype(np.float64)
     
     # Record the ideal_device_curve in the results dictionary
-    results['ideal_device'] = ideal_device_curve
+    results['ideal_device'] = [np.array(sourceFreqsHz, dtype=np.float64), ideal_device_curve]
 
     # Add the ideal device to the plot
     ttf_ax0.plot(np.log10(sourceFreqsHz).flatten(), ideal_device_curve, linestyle='-', marker='o', label=f"Ideal Device")
@@ -596,13 +629,20 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     warmup_fig.subplots_adjust(hspace=1)
 
     # Save the figure
-    #ttf_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.pdf')
-    #warmup_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/warmupSettings.pdf')
+    ttf_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.pdf')
+    warmup_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/warmupSettings.pdf')
 
     # Display the figure
-    plt.show()
+    if(hold_figures_on is True):
+        plt.show()
 
-    return results 
+    # If we do not want to save the results, simply return 
+    if(save_path is None):
+        return results
+
+    # Otherwise, save the results of generating the TTF plot
+    with open(os.path.join(save_path,'TTF_info.pkl'), 'wb') as f:
+        pickle.dump(results, f)
 
 """Generate a plot of mean microseconds per line by categorical exposure time"""
 def generate_ms_by_exposure_plot(recordings_dir: str, experiment_filename: str, light_levels: list):
@@ -708,14 +748,9 @@ def generate_row_phase_plot(video: np.array, frequency: float) -> float:
     return slope
 
 def main():    
-    #recordings_dir, experiment_filename, low_bound_ndf, high_bound_ndf, save_path = parse_args()
+    recordings_dir, experiment_filename, ndf_range, save_path = parse_args()
 
-    #analyze_temporal_sensitivity(recordings_dir, experiment_filename, high_bound_ndf)
-    recordings_dir = '/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_data/recordings'
-    experiment_filename = '200FPS'
-    save_path = './test'
-
-    generate_TTF(recordings_dir, experiment_filename, ['0','1','2','3'])
+    generate_TTF(recordings_dir, experiment_filename, ndf_range, save_path)
 
 if(__name__ == '__main__'):
     main()
