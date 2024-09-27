@@ -5,17 +5,17 @@ import numpy as np
 import os 
 import ctypes
 import cv2
+import sys 
+import Camera_util
+
 
 """Find the pixels activated by a given stimulus video"""
 def find_active_pixels(path_to_vid: str):
     # Read in the frame series as a np.array
-    vid_arr: np.array = np.array([cv2.imread(os.path.join(path_to_vid, frame)) 
-                                  for frame in natsorted(os.listdir(path_to_vid))])
+    vid_arr: np.array = Camera_util.parse_video(path_to_vid)
 
     # Find the avg pixel intensity of each pixel across the video
-    # just take the first element to be activity, as they should be 
-    # grayscale bayers images
-    avg_pixel_activity: np.array = np.mean(vid_arr, axis=0)[:,:,0]
+    avg_pixel_activity: np.array = np.mean(vid_arr, axis=0)
 
     # Splice out a section of the image to illustrate activity
     example_subset = avg_pixel_activity[:24, :24]
