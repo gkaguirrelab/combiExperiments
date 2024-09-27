@@ -33,7 +33,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     collect_camera_temporal_sensitivity_measurements(cal_path, output_filename, email);
 %}
 
-    % Parse and validate input arguments 
+    % Step 1: Parse and validate input arguments 
     parser = inputParser; 
     parser.addRequired('cal_path', @(x) ischar(x) || isstring(x)); % Ensure the cal path is a string
     parser.addRequired('output_filename', @(x) ischar(x) || isstring(X)); % Ensure the output filename is a string 
@@ -44,7 +44,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     output_filename = parser.Results.output_filename; 
     email = parser.Results.email; 
 
-    % Step 1: Add paths to and retrieve libraries
+    % Step 2: Add paths to and retrieve libraries
     disp('Adding library paths...')
 
     addpath('~/Library/Application Support/MathWorks/MATLAB Add-Ons/Collections/SSH_SFTP_SCP For Matlab (v2)/ssh2_v2_m1_r7'); % add path to ssh_command library
@@ -62,7 +62,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     pickle = py.importlib.import_module('pickle');
     
 
-    % Step 2: Define remote connection to raspberry pi
+    % Step 3: Define remote connection to raspberry pi
     % NOTE: Sometimes the IP will change, double check this with hostname -I on the RPI
 
     host = '10.102.141.235'; % IP/Hostname
@@ -76,35 +76,35 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     disp('Trying remote connection to RP...')
     ssh2_conn = ssh2_config(host, username, password); % attempt to open a connection
 
-    % Step 3: Define recording script to use
+    % Step 4: Define recording script to use
     recorder_path = '~/combiExperiments/code/lightLogger/raspberry_pi_firmware/Camera_com.py';
 
-    % Step 4: Define parameters for the recording and command to execute 
+    % Step 5: Define parameters for the recording and command to execute 
     % 30 seconds for warmup, 10 seconds for real recording
     warmup = 30 ;  % 30 
     duration = 10; % 10 
     
-    % Step 5: Load in the calibration file for the CombiLED
+    % Step 6: Load in the calibration file for the CombiLED
     load(cal_path,'cals'); % Load the cal file
     cal = cals{end};
     
-    % Step 6: Initialize the combiLED
+    % Step 7: Initialize the combiLED
     disp('Opening connection to CombiLED...')
     CL = CombiLEDcontrol(); % Initialize CombiLED Object
     CL.setGamma(cal.processedData.gammaTable);  % Update the combiLED's gamma table
 
-    % Step 7: Collect information to compose flicker profile
+    % Step 8: Collect information to compose flicker profile
     observerAgeInYears = 30;
     pupilDiameterMm = 3;
     photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
 
-    % Step 8: Compose flicker profile
+    % Step 9: Compose flicker profile
     modResult = designModulation('LightFlux',photoreceptors,cal);
     CL.setSettings(modResult);
     CL.setWaveformIndex(1);
     CL.setContrast(0.5);
     
-    % Step 9: Define the NDF range and frequencies
+    % Step 10: Define the NDF range and frequencies
     % for which to conduct the experiment 
     ndf_range = [0];    % NDFs to try: [0,1,2,3,4]
     frequencies = [25];  % Frequencies we have been doing + also 0.5hz
@@ -116,7 +116,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
         fprintf('Place %.1f filter onto light source. Press any key when ready\n', NDF);
         pause()
         fprintf('You now have 30 seconds to leave the room if desired.\n');
-        %pause(30)
+        pause(30)
 
         fprintf('Taking %.1f NDF warm up video...\n', NDF); 
         warmup_file = sprintf('%s%s_0hz_%sNDF_warmup.avi', external_ssd_path, output_filename, ndf2str(NDF)); 
@@ -156,20 +156,20 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
 
             CL.setFrequency(frequency); % Set the CL flicker to current frequency
 
-            % Step 8: Start flickering 
+            % Step 11: Start flickering 
             CL.startModulation();
             
-            % Step 9 : Begin recording to the desired output path for the desired duration
+            % Step 12: Begin recording to the desired output path for the desired duration
             disp('Begin recording...')
             remote_command = sprintf('%s && python3 %s %s %f --save_video 1 --initial_gain %f --initial_exposure %d', virtual_environment_path, recorder_path, output_file, duration, initial_gain, initial_exposure);
             fprintf('Sending command: %s\n', remote_command)
             remote_execute.run_ssh_command(char(host), py.int(22), char(username), char(password), char(remote_command))
             
-            % Step 10: Stop the flicker of this frequency
+            % Step 13: Stop the flicker of this frequency
             CL.goDark();
             CL.stopModulation(); 
             
-            % Step 11 : Retrieve the files from the raspberry pi and save it in the recordings 
+            % Step 14: Retrieve the files from the raspberry pi and save it in the recordings 
             % directory
             disp('Retrieving the settings file...')
             [~, baseName, ext] = fileparts(metadata_file);
@@ -179,7 +179,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
             [~, baseName, ext] = fileparts(output_file);
             ssh2_conn = scp_get(ssh2_conn, [baseName, ext], recordings_dir, external_ssd_path); 
 
-            % Step 12: Delete the file from the raspberry pi
+            % Step 15: Delete the file from the raspberry pi
             disp('Deleting the video file over of raspberry pi...')
             ssh2_conn = ssh2_command(ssh2_conn, sprintf('rm %s', output_file));
 
@@ -193,15 +193,15 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
 
     end
 
-    % Step 12: Close the remote connection to the raspberry pi
+    % Step 16: Close the remote connection to the raspberry pi
     disp('Closing connection to RP...')
     ssh2_conn = ssh2_close(ssh2_conn);
 
-    % Step 13: Close the connection to the CombiLED
+    % Step 17: Close the connection to the CombiLED
     disp('Closing connection to CombiLED');
     CL.serialClose(); 
 
-    % Parse the resulting videos to save their information for generating the TTF
+    % Step 18: Parse the resulting videos to save their information for generating the TTF
     disp('Parsing videos...');
     tff_info_generator = '~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/Camera_util.py';
     command = sprintf('python3 %s "%s" %s %s --save_path "%s"', tff_info_generator, recordings_dir, output_filename, strjoin(arrayfun(@ndf2str, ndf_range, "UniformOutput", false), ' '), './');
@@ -217,7 +217,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     % Recursively converted struct fields to MATLAB types
     TTF_info = pyDictToStruct(TTF_pkl_object);
 
-    % Step 16: Save the results and flicker information
+    % Step 19: Save the results and flicker information
     disp('Saving results...');
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/'];
     save(sprintf('%sTTF_info.mat', drop_box_dir), 'TTF_info');
@@ -226,7 +226,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
     % Delete the pkl file now that it is unneeded
     delete('./TTF_info.pkl');
 
-    % Notify the user the collection as finished 
+    % Step 20: Notify the user the collection as finished 
     sendmail(email, 'Finished collecting camera temporal sensitivity measurment')
 
 end

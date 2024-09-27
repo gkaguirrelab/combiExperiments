@@ -61,7 +61,7 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
     end
 
 
-    % Parse and validate the input arguments
+    % Step 1: Parse and validate the input arguments
     parser = inputParser; 
 
     parser.addRequired('cal_path', @(x) ischar(x) || isstring(x)) % Ensure cal_path is a string
@@ -74,7 +74,7 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
     chip_name = parser.Results.chip_name;
     email = parser.Results.email; 
 
-    % Step 1: Connect MiniSpect and CombiLED
+    % Step 2: Connect MiniSpect and CombiLED
     MS = mini_spect_control(); % Initialize MiniSpect Object
 
     load(cal_path,'cals'); % Load the cal file
@@ -83,14 +83,14 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
     CL = CombiLEDcontrol(); % Initialize CombiLED Object
     CL.setGamma(cal.processedData.gammaTable);  % Update the combiLED's gamma table
 
-    % Step 2: Ensure MS is at our desired settings
+    % Step 3: Ensure MS is at our desired settings
     MS.reset_settings();
 
-    % Step 3: Select chip of MS to analyze 
+    % Step 4: Select chip of MS to analyze 
     assert(any(ismember(chip_name, MS.light_sensing_chips) == true)); % assert chip choice is among light-sensing chips
     chip = MS.chip_name_map(chip_name); % the underlying representation of the chip 
     
-    % Step 4: Retrieve information about the chip
+    % Step 5: Retrieve information about the chip
     chip_functions = MS.chip_functions_map(chip); % Retrieve the available functions of the given chip
     upper_bound_ndf_map = containers.Map({'AMS7341','TSL2591'},{0,2}); % associate our desired upper bounds
     lower_bound_ndf_map = containers.Map({'AMS7341','TSL2591'},{4,6});   % associate our desired lower bounds
@@ -103,7 +103,7 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
     ndf_range = [lower_bound_ndf, upper_bound_ndf]; % build the range of the chip
     channel_to_plot = channel_to_plot_map(chip_name); % channel to use for our plotting
 
-    % Step 5: Setup information for setting CombiLED and the experiment 
+    % Step 6: Setup information for setting CombiLED and the experiment 
     observerAgeInYears = 30;
     pupilDiameterMm = 3;
     
@@ -121,14 +121,14 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
     CL.setWaveformIndex(1);
     CL.setContrast(1);
 
-    % Step 6: Set up containers to hold results over the experiment
+    % Step 7: Set up containers to hold results over the experiment
     % Container for how well the observed modulation fits the source modulation
     fits = containers.Map(ndf_range, {containers.Map(frequencies, cell(length(frequencies), 1)), containers.Map(frequencies, cell(length(frequencies), 1))});
 
     % container for amplitudes for each freq at each ndf
     ndf_freq_amplitudes = nan(size(ndf_range,2),size(frequencies,2),nDetectorChannels);
 
-    % Step 7: Begin experiment, go over the low and high NDF ranges
+    % Step 8: Begin experiment, go over the low and high NDF ranges
     for bb = 1:size(ndf_range,2)
         NDF = ndf_range(bb);
 
@@ -137,23 +137,23 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
         fprintf('You now have 30 seconds to leave the room if desired.\n');
         pause(30)
         
-        % Step 8: Iterate over frequencies 
+        % Step 9: Iterate over frequencies 
         for ff = 1:size(frequencies,2)
             fprintf('Frequency: %d / %d\n', ff, size(frequencies,2));
             f0 = frequencies(1,ff); % Get the current frequency
             
-            % Step 9: Prepare CombiLED for flickering at 
+            % Step 10: Prepare CombiLED for flickering at 
             % a given frequency 
             CL.setFrequency(f0);
             
-            % Step 10: Prepare minispect for reading, 
+            % Step 11: Prepare minispect for reading, 
             %         Define nMeasures and setup 
             %         storage for readings
             mode = chip_functions('Channels');
             counts = nan(nMeasures,nDetectorChannels);
             measurement_times = nan(nMeasures,1);
             
-            % Step 11: Begin flicker and
+            % Step 12: Begin flicker and
             %         take nMeasures from 
             %         the minispect chip 
             CL.startModulation();
@@ -168,7 +168,7 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
             end
             elapsed_seconds = toc; 
 
-            % Step 12: Derive amplitude of counts at the fundamental
+            % Step 13: Derive amplitude of counts at the fundamental
             %         frequency of CombiLED's flicker
             secsPerMeasure = elapsed_seconds/nMeasures;
             
@@ -201,7 +201,7 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
                 channel_amplitudes(1,cc) = amplitude;
                 fprintf('Channel %d | Amplitude %f | Phase %f\n', cc, amplitude, phase)
 
-                % Step 13: Plot the source modulation, the detected, and the fit
+                % Step 14: Plot the source modulation, the detected, and the fit
                 % counts to see how well they match for channel 1
 
                 if(cc > 1)
@@ -243,11 +243,11 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
 
     end 
 
-    % Close serial connections 
+    % Step 15: Close serial connections 
     CL.serialClose();
     MS.serialClose_minispect();
 
-    % Save the experiment results into the results struct 
+    % Step 16: Save the experiment results into the results struct 
     results.frequencies = frequencies; 
     results.ndf_range = ndf_range; 
     results.fits = fits; 
@@ -255,7 +255,7 @@ function collect_minispect_temporal_sensitivty_measurements(cal_path, chip_name,
     results.secsPerMeasure = secsPerMeasure; 
     results.chip_name = chip_name; 
 
-    % Save the measurements and the flicker profile used to generate them. 
+    % Step 17: Save the measurements and the flicker profile used to generate them. 
     drop_box_dir = [getpref('combiExperiments','dropboxBaseDir'), '/FLIC_admin/Equipment/MiniSpect/calibration/graphs/'];
     save(sprintf('%s%s_TemporalSensitivtyMeasurements.mat', drop_box_dir, chip_name), 'results');
     save(sprintf('%s%s_TemporalSensitivityFlicker.mat', drop_box_dir, chip_name), 'modResult');
