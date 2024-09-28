@@ -1,15 +1,19 @@
-function [data,templateImage,W] = parseDataFiles(rawDataPath,dataFileNames,smoothSD,gmMaskFile,wmMaskFile)
+function [data,templateImage,W] = parseDataFiles(dataFileNames,smoothSD,maskFiles)
 % Loads data files produced by fmriprep
 %
 
-voxelMeanThresh = 1000;
-
-% Load the maskVol
-gmMask = MRIread(gmMaskFile);
-gmMask = gmMask.vol;
-wmMask = MRIread(wmMaskFile);
-wmMask = wmMask.vol;
-W = gmMask+wmMask;
+% Load the maskVols
+for ii = 1:length(maskFiles)
+    thisMask = MRIread(maskFiles{ii});
+    thisVol = thisMask.vol;
+    if ii == 1
+        W = thisVol;
+    else
+        W = W + thisVol;
+    end
+end
+W(W>1)=1;
+W(W<0.5)=0;
 
 % Loop over datafiles and load them
 data = [];
@@ -18,8 +22,7 @@ for nn = 1:length(dataFileNames)
     fprintf(['preparing ' dataFileNames{nn} '...']);
 
     % Load the data
-    fileName = fullfile(rawDataPath,dataFileNames{nn});
-    fileName = escapeFileCharacters(fileName);
+    fileName = escapeFileCharacters(dataFileNames{nn});
     thisAcqData = MRIread(fileName);
 
     % Check if this is the first acquisition. If so, retain an
@@ -45,7 +48,7 @@ for nn = 1:length(dataFileNames)
     %}
 
     % Smooth the data in space. This is the fancy smoothing that does not
-    % blend in points that are not white or gray matter.
+    % blend in points that are not within the mask.
     if smoothSD > 0
         % Identify the voxels that at any point have an intensity value of
         % zero, and remove them from the mask

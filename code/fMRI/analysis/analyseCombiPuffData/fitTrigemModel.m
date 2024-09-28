@@ -1,17 +1,24 @@
-function results = fitTrigemModel(fwSessID,dirName,subID,sesID,runIdxSet,tr,vxs,smoothSD,averageVoxels)
+function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels)
 
 %{
-    fwSessID = '';
-    dirName = '65da51a06da124f01b739bf4';
+    fwSessID = '66f17c99d49fdd0e6e9268e1';
+    dataPath = fullfile(filesep,'Users','aguirre','Downloads','flywheel','gkaguirrelab','trigeminal');
+    dirName = 'fprep';
     subID = '001';
-    sesID = '20231114';
-    runIdxSet = [1 2 3 4 5];
-    tr = 2.040;
-    vxs = 978110;
-    results = fitTrigemModel(fwSessIDs,dirNames,subIDs,sesIDs,runIdxSet,tr,vxs);
+    sesID = '20240923';
+    acqSet = {...
+        '_task-trigemmed_acq-multiecho_run-01',...
+        '_task-trigemhi_acq-multiecho_run-01'};
+    tr = 2.87;
+    nNoiseEPIs = 2;
+    maskLabelSet = {'brainstem'};
+    smoothSD = 0.25;
+    averageVoxels = false;
+    results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels);
 %}
 
-if nargin < 9
+% Check if we are averaging voxels within the mask
+if nargin < 11
     averageVoxels = false;
 end
 
@@ -23,7 +30,7 @@ polyDeg = 4;
 typicalGain = 1;
 
 % Basic properties of the data
-nAcqs = length(runIdxSet);
+nAcqs = length(acqSet);
 
 % This is the set of "confound" covariates returned by fmriprep that we
 % will use to generate nuisance covaraites
@@ -32,52 +39,40 @@ covarSet = {'csf','csf_derivative1','framewise_displacement','trans_x',...
     'trans_z_derivative1','rot_x','rot_x_derivative1','rot_y',...
     'rot_y_derivative1','rot_z','rot_z_derivative1'};
 
-% Define the top-level data directory
-dataPath = fullfile(filesep,'Users','aguirre','Downloads');
+% Define the nameStem for this subject / session
+nameStem = ['sub-',subID,'_ses-',sesID];
+
+% Define the repo directories
+repoAnatDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'anat');
+repoFuncDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'func');
+repoMaskDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'mask');
 
 % Define a place to save the results
 saveDir = fullfile(dataPath,dirName,sprintf('forwardModel_smooth=%2.2f',smoothSD));
 mkdir(saveDir);
 
-% Define the location of the maskVol
-gmMaskFile = fullfile(dataPath,dirName,[subID '_space-T1_label-GM_2x2x2.nii.gz']);
-wmMaskFile = fullfile(dataPath,dirName,[subID '_space-T1_label-WM_2x2x2.nii.gz']);
+% Load the mask file and derive the vxs
+maskFiles = cellfun(@(x) fullfile(repoMaskDir,[nameStem '_space-MNI152NLin2009cAsym_label-' x '.nii.gz']),maskLabelSet,'UniformOutput',false);
 
-% Create the list of filenames and the vector of trs
+% Create the list of acquisition and covar filenames
 dataFileNames = {}; covarFileNames = {};
-for jj = 1:length(runIdxSet)
-    nameStemFunc = ['sub-',subID,'_ses-',sesID,'_task-trigem_acq-me_run-'];
-    dataFileNames{end+1} = fullfile(...
-        dirName,...
-        ['sub-',subID],['ses-',sesID],'tdna',...
-        sprintf('run-%d',runIdxSet(jj)),sprintf([nameStemFunc '%d_space-T1_desc-optcomDenoised_bold.nii.gz'],runIdxSet(jj)));
-    covarFileNames{end+1} = fullfile(...
-        dataPath,...
-        dirName,...
-        ['sub-',subID],['ses-',sesID],'func',...
-        sprintf([nameStemFunc '%d_desc-confounds_timeseries.tsv'],runIdxSet(jj)));
+for jj = 1:nAcqs
+    dataFileNames{end+1} = fullfile(repoFuncDir,[nameStem acqSet{jj} '_part-mag_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz' ]);
+    covarFileNames{end+1} = fullfile(repoFuncDir,[nameStem acqSet{jj} '_part-mag_desc-confounds_timeseries.tsv' ]);
 end
 
 % Create the stimulus description
-switch sesID
-    case '20231114'
-        [stimulus,stimTime,stimLabels] = makeStimMatrixPilot(nAcqs);
-    otherwise
-        [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs);
-end
+[stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs);
 
 % Obtain the nuisanceVars
-nuisanceVars = assembleNuisanceVars(fwSessID,runIdxSet,tr,covarFileNames,covarSet);
+nuisanceVars = assembleNuisanceVars(fwSessID,acqSet,tr,nNoiseEPIs,covarFileNames,covarSet);
 
 % Load the data
-[data,templateImage,maskVol] = parseDataFiles(dataPath,dataFileNames,smoothSD,gmMaskFile,wmMaskFile);
+[data,templateImage,maskVol] = parseDataFiles(dataFileNames,smoothSD,maskFiles);
 nTRs = size(data{1},2);
 
 % Pick the voxels to analyze
-if isempty(vxs)
-    vxs = find(reshape(maskVol>0, [numel(maskVol), 1]));
-    averageVoxels = false;
-end
+vxs = find(reshape(maskVol>0, [numel(maskVol), 1]));
 
 % Create the model opts, which includes stimLabels and typicalGain. The
 % paraSD key-value controls how varied the HRF solutions can be. A value of
@@ -114,7 +109,7 @@ if ~isempty(figFields)
     end
 end
 
-% Save some files if we processed the whole brain
+% Save some files if we processed more than a single voxel
 if numel(vxs)>1
 
     % Save the results
@@ -150,70 +145,6 @@ if numel(vxs)>1
         newImage.vol = r2MapThresh;
         fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d.nii'],r2Thresh(tt),clusterThresh(tt)));
         MRIwrite(newImage, fileName);
-    end
-
-    % Find some regions and plot the response
-    r2Thresh = [0.075,0.25,0.25,0.175];
-    clusterThresh = [20,200,200,100];
-    idxWithin = {[534969,681401],988858,948669,944074};
-    plotColor = {'r','k','k','g'};
-    figure
-    voxIdx = [];
-    for ii = 1:length(r2Thresh)
-        thisIdxSet = idxWithin{ii};
-        S = regionprops3(r2Map>r2Thresh(ii),'Volume','VoxelIdxList','VoxelList');
-        rawVoxIdx = [];
-        for bb = 1:length(thisIdxSet)
-            sIdx = find(cellfun(@(x) any(x==thisIdxSet(bb)),[S.VoxelIdxList]));
-            rawVoxIdx{bb} = S.VoxelIdxList{sIdx};
-        end
-        voxIdx{ii} = cell2mat(rawVoxIdx');
-        betas = mean(results.params(voxIdx{ii},1:35));
-        betas = reshape(betas,7,5)';
-        betas = betas(:,1:5);
-        betas = betas - betas(:,1);
-        betas = betas(:,2:5);
-        bm = mean(betas);
-        bs = std(betas)/sqrt(5);
-        patch([1:4,4:-1:1],[bm-bs, fliplr(bm+bs)],plotColor{ii},'FaceAlpha',0.2,'EdgeColor','none');
-        hold on
-        plot(1:4,bm,['o-' plotColor{ii}]);
-        hold on
-
-        % Save a map of this region
-        roiMap=zeros(size(r2Map));
-        roiMap(voxIdx{ii})=1;
-        newImage = templateImage;
-        newImage.vol = roiMap;
-        fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d_ROI_%d.nii'],r2Thresh(ii),clusterThresh(ii),ii));
-        MRIwrite(newImage, fileName);
-
-    end
-    a=gca();
-    a.XTick = 1:4;
-    a.XTickLabel = {'3.2','7.5','15','30'};
-    xlim([0.25,5.25]);
-    xlabel('Stimulus Pressure [PSI]')
-    ylabel('BOLD repsonse [%∆]')
-    fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d_betaPlots.pdf'],r2Thresh(ii),clusterThresh(ii)));
-    saveas(a,fileName);
-
-    % Plot the time-series data and fit for a selected region
-    roiToPlot = 2;
-    resultsROI = forwardModel(data,stimulus,tr,...
-        'stimTime',stimTime,...
-        'vxs',voxIdx{roiToPlot},...
-        'averageVoxels',true,...
-        'verbose',false,...
-        'modelClass',modelClass,...
-        'modelOpts',modelOpts,...
-        'verbose',true);
-    figFields = fieldnames(resultsROI.figures);
-    for ii = 1:length(figFields)
-        figHandle = struct2handle(resultsROI.figures.(figFields{ii}).hgS_070000,0,'convert');
-        figHandle.Visible = 'on';
-        fileName = fullfile(saveDir,sprintf([subID '_ROI_%d_modelFitFig_%d.pdf'],roiToPlot,ii));
-        saveas(figHandle,fileName);        
     end
 
 end
