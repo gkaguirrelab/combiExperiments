@@ -6,7 +6,7 @@ clc
 rng(cputime); % Get some random going in case we need it
 
 % Simulation flags
-simulateCombiAir = false;
+simulateCombiAir = true;
 simulatePupilVideo = true;
 
 % Define some acquisition properties
@@ -26,15 +26,16 @@ pupilVidStopDelaySec = 4;
 % each sequence. The second two sequences are a temporal reversal of the
 % first two sequences. This structure supports unique identification of the
 % HRF delay in model fitting.
-stimIdxSeq = [0,0,3,3,4,0,2,0,4,4,2,1,4,3,1,0,1,3,2,4,1,1,2,2,3,0,0,2,2,3,4,3,0,1,4,2,0,4,1,2,1,3,3,2,4,4,0,3,1,1,0,0,1,1,3,0,4,4,2,3,3,1,2,1,4,0,2,4,1,0,3,4,3,2,2,0,0,3,2,2,1,1,4,2,3,1,0,1,3,4,1,2,4,4,0,2,0,4,3,3,0,0];
+stimIdxSeq = [0,0,8,8,6,7,5,2,5,3,3,9,6,6,9,5,10,7,1,0,2,3,4,3,6,8,7,10,9,3,2,9,8,2,6,4,5,1,2,7,3,7,4,6,1,7,2,10,5,8,10,0,7,9,1,6,2,4,1,4,7,6,3,1,1,10,10,2,8,0,9,4,4,2,0,3,0,6,5,4,10,6,10,4,9,9,2,2,1,5,9,10,1,8,1,3,5,6,0,4,8,9,0,1,9,7,8,3,10,8,4,0,5,5,7,7,0,10,3,8,5,0,0];
+
+% Define the log-spaced pressure levels in PSI units
+stimPressuresPSI = [0, 0.5000, 0.7937, 1.2599, 2.0000, 3.1748, 5.0397, 8.0000, 12.6992, 20.1587, 32.0000];
 
 % Define the duration of the air puffs
-stimDursMs = [500, 500, 500, 500, 500];
+stimDursMs = repmat(250,size(stimPressuresPSI));
 
-% Define three sets of log-spaced pressure levels in PSI units
-stimPressuresPSI{1} = [0, 1.370, 3.526,  9.075, 23.352];
-stimPressuresPSI{2} = [0, 1.878, 4.832, 12.435, 32.000];
-stimPressuresPSI{3} = [0, 1.000, 2.573,  6.622, 17.041];
+% Set the test puff pressure to the middle of the pressure range
+testPressurePSI = 5;
 
 % Calculate the scan duration properties
 nTrials = length(stimIdxSeq);
@@ -76,8 +77,11 @@ if ~simulateCombiAir
     % Send the sequence properties to the combiAir
     airObj.sendSequence(stimIdxSeq);
     airObj.sendDurations(stimDursMs);
-    airObj.sendPressures(stimPressuresPSI{1});
+    airObj.sendPressures(stimPressuresPSI);
     airObj.sendTrialDur(trialDurSecs);
+
+    % Define the pressure we will use for initial puff testing
+    airObj.setPressureDirect(testPressurePSI)
 end
 
 % Set up the pupil recording
@@ -88,39 +92,32 @@ if ~simulatePupilVideo
         'backgroundRecording',true);
 end
 
-% Confirm with the subject that the piston is moving and air puffs are
-% being delivered
-fprintf('\nPress return to start puff test...');
-input(': ','s');
-fprintf('\n');
+% Enter test mode, during which we can deliver puffs and attempt to clear
+% the piston
 notDone = true;
+fprintf('\n');
 while notDone
-    fprintf('Clearing the piston\n');
-    if ~simulateCombiAir
-        airObj.clearPistonDirect();
-    end
-    fprintf('Press return to deliver a test puff...');
-    input(': ','s');
-    fprintf('\n');
-    if ~simulateCombiAir
-        airObj.setPressureDirect(5);
-        pause(1);
-        airObj.setDurationDirect(500);
-        pause(0.25)
-        airObj.triggerPuffDirect();
-    end
-    fprintf('Return q if done testing, return to try again...');
+    fprintf('\nTest mode: p = puff, c = clear piston, q = quit...');
     keyPress = input(': ','s');
-    fprintf('\n');
     switch keyPress
+        case 'c'
+            fprintf('Clearing the piston\n');
+            if ~simulateCombiAir
+                airObj.clearPistonDirect();
+                pause(4);
+            end
+        case 'p'
+            fprintf('Puff\n');
+            if ~simulateCombiAir
+                airObj.triggerPuffDirect();
+                pause(4);
+            end
         case 'q'
             notDone = false;
-            if ~simulateCombiAir
-                airObj.setPressureDirect(0);
-            end
+        otherwise
+            fprintf('Invalid choice\n');
     end
 end
-
 
 % Wait during the preliminary acquisitions and soak up any stray keystrokes
 % (e.g., testing the button box; TRs produced by the field map acquisition)
@@ -140,21 +137,23 @@ while notDone
     % acquisition
     results = [];
 
-    % Identify which set of sequences we will use
-    thisSet = mod(acqIdx-1,length(stimPressuresPSI))+1;
-
-    if ~simulateCombiAir
-        % Send this set of pressure levels to the combiAir
-        airObj.sendPressures(stimPressuresPSI{thisSet});
-
-        % Put the combiAir in run mode. This ensures that the pending stimulus
-        % pressure is set to the first trial of the sequence, so we are ready
-        % to start.
-        airObj.setRunMode();
+    % We alternate between playing the stimulus sequence forwards and
+    % backwards
+    if mod((acqIdx-1),2)
+        thisSequence = stimIdxSeq;
+    else
+        thisSequence = fliplr(stimIdxSeq);
     end
 
+    if ~simulateCombiAir
+        % Send this sequence to the combiAir
+        airObj.sendSequence(thisSequence);
 
-
+        % Put the combiAir in run mode. This ensures that the pending
+        % stimulus pressure is set to the first trial of the sequence, so
+        % we are ready to start.
+        airObj.setRunMode();
+    end
 
     % Start the pupil recording
     if ~simulatePupilVideo
@@ -205,9 +204,9 @@ while notDone
     results.observerID = observerID;
     results.acqStartTime = acqStartTime;
     results.totalAcqDurSecs = totalAcqDurSecs;
-    results.stimIdxSeq = stimIdxSeq;
+    results.stimIdxSeq = thisSequence;
     results.stimDursMs = stimDursMs;
-    results.stimPressuresPSI = stimPressuresPSI{thisSet};
+    results.stimPressuresPSI = stimPressuresPSI;
     results.trialDurSecs = trialDurSecs;
     results.trDurSecs = trDurSecs;
     results.nEPINoiseScans = nEPINoiseVolumes;

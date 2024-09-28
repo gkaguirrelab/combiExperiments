@@ -29,6 +29,9 @@ polyDeg = 4;
 % percentage change
 typicalGain = 1;
 
+% There is some delay while the airpuff travels down the tube
+fixedStimDelaySecs = 1;
+
 % Basic properties of the data
 nAcqs = length(acqSet);
 
@@ -61,7 +64,8 @@ for jj = 1:nAcqs
 end
 
 % Create the stimulus description
-[stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs);
+extendedModelFlag = true;
+[stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs,extendedModelFlag,fixedStimDelaySecs);
 
 % Obtain the nuisanceVars
 nuisanceVars = assembleNuisanceVars(fwSessID,acqSet,tr,nNoiseEPIs,covarFileNames,covarSet);
@@ -103,7 +107,7 @@ results = forwardModel(data,stimulus,tr,...
 figFields = fieldnames(results.figures);
 if ~isempty(figFields)
     for ii = 1:length(figFields)
-        fileName = fullfile(saveDir,[subID '_trigemResults_fig1.pdf']);
+        fileName = fullfile(saveDir,sprintf([subID '_trigemResults_fig%d.pdf'],ii));
         saveas(results.figures.(figFields{ii}),fileName);
     end
 end
