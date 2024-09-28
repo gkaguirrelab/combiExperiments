@@ -11,8 +11,8 @@ function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,t
         '_task-trigemhi_acq-multiecho_run-01'};
     tr = 2.87;
     nNoiseEPIs = 2;
-    maskLabelSet = {'brainstem'};
-    smoothSD = 0.25;
+    maskLabelSet = {'brainstem','GM'};
+    smoothSD = 1;
     averageVoxels = false;
     results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels);
 %}
@@ -43,7 +43,6 @@ covarSet = {'csf','csf_derivative1','framewise_displacement','trans_x',...
 nameStem = ['sub-',subID,'_ses-',sesID];
 
 % Define the repo directories
-repoAnatDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'anat');
 repoFuncDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'func');
 repoMaskDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'mask');
 
@@ -100,12 +99,12 @@ results = forwardModel(data,stimulus,tr,...
     'modelOpts',modelOpts,...
     'verbose',true);
 
-% Show the results figures
+% Save the results figures
 figFields = fieldnames(results.figures);
 if ~isempty(figFields)
     for ii = 1:length(figFields)
-        figHandle = struct2handle(results.figures.(figFields{ii}).hgS_070000,0,'convert');
-        figHandle.Visible = 'on';
+        fileName = fullfile(saveDir,[subID '_trigemResults_fig1.pdf']);
+        saveas(results.figures.(figFields{ii}),fileName);
     end
 end
 
