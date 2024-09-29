@@ -17,3 +17,4 @@ end
 
 % Check that ants is installed
 
+% Check that afni is installed
