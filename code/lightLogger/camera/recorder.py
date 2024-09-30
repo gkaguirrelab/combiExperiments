@@ -52,7 +52,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
 
         # Write the frame
         save_path: str = os.path.join(filename, f'{frame_num}.npy')
-        np.save(save_path, frame)
+        np.save(save_path, frame[:, 1::2])
 
         # Write the frame info 
         settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
@@ -73,7 +73,6 @@ def vid_array_from_npy_folder(path: str) -> np.array:
               if('.pkl' not in frame and '.txt' not in frame)]
     
     return np.array(frames, dtype=np.uint8)
-
 
 """Read in a video from a image frames folder to an 8-bit unsigned np.array"""
 def vid_array_from_img_folder(path: str) -> np.array:

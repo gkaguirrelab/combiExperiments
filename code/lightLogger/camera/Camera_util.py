@@ -2,6 +2,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import seaborn as sns
 import argparse 
 import sys 
 import matlab.engine
@@ -37,10 +38,41 @@ def close_all_figures():
 def pixel_to_index(r: int, c: int, cols: int) -> int:
     return r * cols + c
 
-"""Generate the flat fielding function for the camera and a matrix of color-classified pixels"""
-def generate_fielding_function(path_to_video: str) -> tuple:
-    # Parse the video into its frames
-    frames: np.array = parse_video(path_to_video)
+"""Find the pixels activated by a given stimulus video"""
+def find_active_pixels(path_to_vid: str):
+    # Read in the frame series as a np.array
+    vid_arr: np.array = parse_video(path_to_vid)
+
+    # Find the avg pixel intensity of each pixel across the video
+    avg_pixel_activity: np.array = np.mean(vid_arr, axis=0)
+
+    # Splice out a section of the image to illustrate activity
+    example_subset = avg_pixel_activity[:24, :24]
+
+    # Display the activity of each pixel
+    plt.title(f'Avg Pixel Activity: {os.path.basename(path_to_vid)}')
+    plt.ylabel('Row')
+    plt.xlabel('Col')
+    plt.xticks(fontsize=4)  # Change x-tick font size
+    plt.yticks(fontsize=4)  # Change y-tick font size
+   
+    sns.heatmap(example_subset, annot=True, cmap='viridis', cbar=True)
+
+    # Show the heatmap
+    plt.show()
+
+"""Generate the flat fielding function for the camera and a matrix of color-classified pixels
+   when video input is a string, it's a path to the video file. When it's an np.array,
+   its the frames preloaded"""
+def generate_fielding_function(video: str | np.ndarray) -> tuple:
+    # Initialize frame variale
+    frames: np.ndarray = None
+    # Parse the video into its frames if given the path
+    if(type(video) is str):
+        frames: np.array = parse_video(video)
+    # Otherwise, the input parameter is already the frame array
+    else:
+        frames = video
 
     # Take the mean frame and extract its dimensions
     mean_frame: np.array = np.mean(frames, axis=0)
