@@ -1,23 +1,23 @@
-function tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,maskFile)
+function tedanaPreProcess(dataPath,dirName,subID,sesID,echoTimesMs,icaRejectSet,maskFile)
 %
 %
 %
 %{
     dataPath = fullfile(filesep,'Users','aguirre','Downloads','flywheel','gkaguirrelab','trigeminal');
-    dirName = 'dset';
+    dirName = 'fprep';
     subID = '001';
     sesID = '20240923';
-    icaRejectSet = {};
-%    icaRejectSet = {[],[13,14],[16],[5,12,15],[7]};
-    createMaskFlag = false;
-    tedanaPreProcess(dataPath,dirName,subID,sesID,icaRejectSet,[]);
+    acqSet = {...
+        '_task-trigemlow_acq-multiecho_run-01',...
+        '_task-trigemmed_acq-multiecho_run-01',...
+        '_task-trigemhi_acq-multiecho_run-01'};
+    echoTimesMs = [19.4,51.06,82.72];
+    icaRejectSet = {[],[],[]};
+    tedanaPreProcess(dataPath,dirName,subID,sesID,echoTimesMs,icaRejectSet,[]);
 %}
 
-% Hardcode the number of echos
-nEchos = 3;
-
-% Hardcode the echo values (in units of ms)
-echoVals = '19.4 51.06 82.72';
+% How many echoes do we have?
+nEchoes = length(echoTimesMs);
 
 % Paths to the routines we will run. Need to make this a more formal
 % installation at some point

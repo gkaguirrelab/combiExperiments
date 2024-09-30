@@ -82,8 +82,8 @@ warning(warnState);
 %       /usr/bin/python3 --version 
 %   - Create a virtual environment in your home directory, using (e.g.)
 %     this terminal command:
-%       /usr/bin/python3 -m venv /Users/aguirreg/py39
-%   - Activate the environment in the terminal: source /home/username/py38/bin/activate
+%       /usr/bin/python3 -m venv /Users/username/py39
+%   - Activate the environment in the terminal: source /Users/username/py39/bin/activate
 %   - Use pip to install these packages:
 %       python -m pip install opencv-python
 %       python -m pip install numpy
