@@ -56,10 +56,10 @@ void setup() {
   BLE_init();
   
   Serial.println("Attempting to initialize TSL2591...");
-  TSL2591_init();
+  //TSL2591_init();
 
   Serial.println("Attempting to initialize AS7341...");
-  AS7341_init();
+  //AS7341_init();
 
   Serial.println("Attempting to initialize LSM6DSV16X...");
   LSM6DSV16X_init();
