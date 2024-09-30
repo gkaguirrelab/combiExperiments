@@ -6,7 +6,7 @@ clc
 rng(cputime); % Get some random going in case we need it
 
 % Simulation flags
-simulateCombiAir = true;
+simulateCombiAir = false;
 simulatePupilVideo = true;
 
 % Define some acquisition properties
@@ -29,10 +29,10 @@ pupilVidStopDelaySec = 4;
 stimIdxSeq = [0,0,8,8,6,7,5,2,5,3,3,9,6,6,9,5,10,7,1,0,2,3,4,3,6,8,7,10,9,3,2,9,8,2,6,4,5,1,2,7,3,7,4,6,1,7,2,10,5,8,10,0,7,9,1,6,2,4,1,4,7,6,3,1,1,10,10,2,8,0,9,4,4,2,0,3,0,6,5,4,10,6,10,4,9,9,2,2,1,5,9,10,1,8,1,3,5,6,0,4,8,9,0,1,9,7,8,3,10,8,4,0,5,5,7,7,0,10,3,8,5,0,0];
 
 % Define the log-spaced pressure levels in PSI units
-stimPressuresPSI = [0, 0.5000, 0.7937, 1.2599, 2.0000, 3.1748, 5.0397, 8.0000, 12.6992, 20.1587, 32.0000];
+stimPressuresPSI = [0.00, 1.00, 1.46, 2.13, 3.11, 4.53, 6.62, 9.65, 14.09, 20.56, 30.00];
 
 % Define the duration of the air puffs
-stimDursMs = repmat(250,size(stimPressuresPSI));
+stimDursMs = repmat(750,size(stimPressuresPSI));
 
 % Set the test puff pressure to the middle of the pressure range
 testPressurePSI = 5;
@@ -137,18 +137,7 @@ while notDone
     % acquisition
     results = [];
 
-    % We alternate between playing the stimulus sequence forwards and
-    % backwards
-    if mod((acqIdx-1),2)
-        thisSequence = stimIdxSeq;
-    else
-        thisSequence = fliplr(stimIdxSeq);
-    end
-
     if ~simulateCombiAir
-        % Send this sequence to the combiAir
-        airObj.sendSequence(thisSequence);
-
         % Put the combiAir in run mode. This ensures that the pending
         % stimulus pressure is set to the first trial of the sequence, so
         % we are ready to start.
@@ -204,7 +193,7 @@ while notDone
     results.observerID = observerID;
     results.acqStartTime = acqStartTime;
     results.totalAcqDurSecs = totalAcqDurSecs;
-    results.stimIdxSeq = thisSequence;
+    results.stimIdxSeq = stimIdxSeq;
     results.stimDursMs = stimDursMs;
     results.stimPressuresPSI = stimPressuresPSI;
     results.trialDurSecs = trialDurSecs;
