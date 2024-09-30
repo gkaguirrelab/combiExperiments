@@ -1,8 +1,8 @@
-function nuissanceVars = assembleNuisanceVars(fwSessID,runIdxSet,tr,covarFileNames,covarSet)
+function nuissanceVars = assembleNuisanceVars(fwSessID,acqSet,tr,nNoiseEPIs,covarFileNames,covarSet)
 
 % Obtain the physio matrices for these runs
 if ~isempty(fwSessID)
-    physioMatrix = returnPhysioMatrix(fwSessID,tr,runIdxSet);
+    physioMatrix = returnPhysioMatrix(fwSessID,acqSet,tr,nNoiseEPIs);
 else
     physioMatrix = repmat({[]},length(covarFileNames),1);
 end
