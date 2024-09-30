@@ -69,17 +69,42 @@ for ii=1:length(requiredAddOns)
 end
 warning(warnState);
 
-% Configure the python environment. Note that we need to have installed:
+%% Python environment
+% Routines which interact with the lightLogger system require python, as do
+% routines for the processing of fMRI data. It is necessary to create and
+% configure a virtual python environment for this purpose, using the
+% approach described here:
+%   https://www.mathworks.com/matlabcentral/answers/1750425-python-virtual-environments-with-matlab
 %
-%   opencv-python, numpy, matplotlib, regex, scipy, paramiko
+% In brief:
+%   - Locate your python binary (e.g., /usr/bin/python3)
+%   - Determine your python version using this terminal command:
+%       /usr/bin/python3 --version 
+%   - Create a virtual environment in your home directory, using (e.g.)
+%     this terminal command:
+%       /usr/bin/python3 -m venv /Users/username/py39
+%   - Activate the environment in the terminal: source /Users/username/py39/bin/activate
+%   - Use pip to install these packages:
+%       python -m pip install opencv-python
+%       python -m pip install numpy
+%       python -m pip install matplotlib
+%       python -m pip install regex
+%       python -m pip install scipy
+%       python -m pip install tedana
+%   - Find the location of the virtual python executable by entering the
+%     python environment in the terminal, and then issuing this command:
+%       python
+%       import sys
+%       sys.executable
+%       exit()
 %
-% To do so, in the console we went to the location of the python executable
-% and used pip install commands such as: "./python pip3 install
-% opencv-python"
-%
-% We also ran into an issue that numpy errored when we first attempted to
-% call our python module. The solution to this was to install the openblas
-% C libraries using "brew install openblas".
-pyenv(Version='/usr/local/bin/python3.10');
+% A typical path that results would be "/Users/aguirre/py39/bin/python".
+% Place this path string into the variable below:
+myPyenvPath = ''; % <--- UPDATE THIS
+if isempty(myPyenvPath)
+    warning('Edit combiExperimentsLocalHook to define your python virtual environment.')
+else
+    pyenv('Version',myPyenvPath,'ExecutionMode','OutOfProcess');
+end
 
 end
