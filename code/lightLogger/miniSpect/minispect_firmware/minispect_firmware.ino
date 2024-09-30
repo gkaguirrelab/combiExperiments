@@ -4,18 +4,18 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_TSL2591.h>
 #include <Adafruit_AS7341.h>
-#include <LIS2DUXS12Sensor.h>
 #include <Arduino.h>
 #include <minispect_io.h>
 #include <nrf.h>
 #include <vector>
 #include <bitset>
+#include <LSM6DSV16XSensor.h>
 
 // Initialize hardware connections
 HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
-Adafruit_TSL2591 tsl = Adafruit_TSL2591(2591);  // pass in a number for the sensor identifier (for your use later)
+Adafruit_TSL2591 tsl2591 = Adafruit_TSL2591(2591);  // pass in a number for the sensor identifier (for your use later)
 Adafruit_AS7341 as7341;
-LIS2DUXS12Sensor LIS2DUXS12(&Wire);
+LSM6DSV16XSensor LSM6DSV16X(&Wire);
 int batSensPin = PIN_VBAT;         //PIN_VBAT
 int readbatPin = PIN_VBAT_ENABLE;  //p14; //P0_14;//VBAT_ENABLE; //P0_14;// PIN_VBAT;   //PIN_VBAT
 uint16_t VBat100x = 0;
@@ -45,30 +45,32 @@ void setup() {
   // Begin communication at 115200 baudrate
   Serial.begin(115200);
 
+  Serial.println("Initializing sensors...");
   
   // initialise ADC wireing_analog_nRF52.c:73
   analogReference(AR_INTERNAL2V4);  // default 0.6V*6=3.6V  wireing_analog_nRF52.c:73
   analogReadResolution(12);         // wireing_analog_nRF52.c:39
 
-  // Setup bluetooth emission
-  if (!bleSerial.beginAndSetupBLE("White MS")) {
-    while (true) {
-      Serial.println("failed to initialize HardwareBLESerial!");
-      delay(1000);
-    }
-  }
-
   // Initialize sensors
+  Serial.println("Attempting to initialize bluetooth...");
+  BLE_init();
+  
+  Serial.println("Attempting to initialize TSL2591...");
   TSL2591_init();
+
+  Serial.println("Attempting to initialize AS7341...");
   AS7341_init();
-  LIS2DUXS12_init();
-  Wire.setClock(400000);
+
+  Serial.println("Attempting to initialize LSM6DSV16X...");
+  LSM6DSV16X_init();
 
   // Allow time for everything to set up
   delay(1000);
 }
 
 void loop() {
+  return ; 
+
   // Get the command from the controller
   read_command(&serial_input); 
   
@@ -94,11 +96,11 @@ void loop() {
 
   // Getting accelerometer data is highest priority, so 
   // read regardless of mode/command
-  std::vector<float_t> LI_channels = LI_read('A', &LIS2DUXS12, device_mode, false); 
+  std::vector<float_t> LS_channels = LS_read('A', &LSM6DSV16X, device_mode, false); 
   
   // Then save the readings to the buffer
-  for(size_t i = 0; i < LI_channels.size(); i++) {
-    accel_buffer[accel_buffer_pos+i] = (int16_t)LI_channels[i]; 
+  for(size_t i = 0; i < LS_channels.size(); i++) {
+    accel_buffer[accel_buffer_pos+i] = (int16_t) LS_channels[i]; 
   }
 
   // If we are in fast science mode and the buffer is not full
@@ -122,13 +124,13 @@ void loop() {
       //AS_channels.push_back(AS_flicker[0]);
   
       // Retrieve 2 TS channels 
-      std::vector<uint16_t> TS_channels = TS_read('C',&tsl, device_mode);
+      std::vector<uint16_t> TS_channels = TS_read('C',&tsl2591, device_mode);
 
       // Retrieve the temp channel of the LI chip
-      std::vector<float_t> LI_temp = LI_read('T', &LIS2DUXS12, device_mode, false); 
+      std::vector<float_t> LS_temp = LS_read('T', &LSM6DSV16X, device_mode, false); 
 
       // Write the data through the serial port 
-      write_serial(&AS_channels, &TS_channels, LI_temp[0], accel_buffer, 60);  
+      write_serial(&AS_channels, &TS_channels, LS_temp[0], accel_buffer, 60);  
 
       // Increment buffer position, reset if necessary
       accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
@@ -160,7 +162,7 @@ void loop() {
     else if(mode_and_chip == "RT") {
       Serial.println("Read TS mode");
 
-      TS_read(serial_input[2], &tsl, device_mode);
+      TS_read(serial_input[2], &tsl2591, device_mode);
     }
 
     // Read from the SEEED chip using specific data to read
@@ -172,7 +174,7 @@ void loop() {
 
     // Read from the LI chip using specific data to read
     else if(mode_and_chip == "RL") {
-      LI_read(serial_input[2],&LIS2DUXS12, device_mode, true);
+      LS_read(serial_input[2],&LSM6DSV16X, device_mode, true);
     }
 
     // Write to the AS chip using given data
@@ -187,7 +189,7 @@ void loop() {
     else if(mode_and_chip == "WT") {
       Serial.println("Write TS mode"); 
 
-      TS_write(serial_input[2], &tsl, &serial_input[3]);
+      TS_write(serial_input[2], &tsl2591, &serial_input[3]);
     }   
 
     // Invalid command
@@ -214,15 +216,16 @@ void BatteryRead() {
 }
 
 void TSL2591_init() {
-  // Ensure the sensr can be found
-  if(!tsl.begin()) {
-    Serial.println("Could not find TSL2591"); 
-    while (1) { delay(10); }
+  // Ensure the sensor can be found
+  if(!tsl2591.begin()) {
+    while(true) { Serial.println("Could not find TSL2591"); delay(1);}
   }
 
   // Set the initial parameters
-  tsl.setGain(TSL2591_GAIN_HIGH);
-  tsl.setTiming(TSL2591_INTEGRATIONTIME_500MS);
+  tsl2591.setGain(TSL2591_GAIN_HIGH);
+  tsl2591.setTiming(TSL2591_INTEGRATIONTIME_500MS);
+
+  Serial.println("TSL2591 Initialized!");
 }
 
 // Initialize the AS7341 Sensor
@@ -230,7 +233,7 @@ void AS7341_init() {
   // Ensure the sensor can be found
   if (!as7341.begin()) {
     Serial.println("Could not find AS7341");
-    while (1) { delay(10); }
+    while(true) { Serial.println("Could not find AS7341"); delay(1);}
   }
 
   //Set the initial parameters
@@ -241,11 +244,34 @@ void AS7341_init() {
   // Disable the Spectral AGC
   as7341.toggleAGC(false); 
 
+  Serial.println("AS7341 Initialized!");
 }
 
-// Initialize the LIS2DUXS12 sensor
-void LIS2DUXS12_init() {
-  Wire.begin();
-  LIS2DUXS12.begin();
-  LIS2DUXS12.Enable_X();
+// Initialize the LSM6DSV16X sensor
+void LSM6DSV16X_init() {
+  // Ensure the sensor can be found
+  if (LSM6DSV16X.begin()) {
+    while(true) { Serial.println("Could not find LSM6DSV16X"); delay(1);}
+  }
+
+  LSM6DSV16X.Enable_X();
+  LSM6DSV16X.Enable_G();
+
+  uint8_t id = 0xFF;
+  LSM6DSV16X.ReadID(&id);
+  Serial.print("id "); Serial.println(id);
+  Wire.setClock(400000);
+
+  Serial.println("LSM6DSV16X Initialized!");
+
+}
+
+void BLE_init() {
+    // Setup bluetooth emission
+  if (!bleSerial.beginAndSetupBLE("White MS")) {
+    while(true) {Serial.println("failed to initialize HardwareBLESerial!"); delay(1); }
+  }
+
+  Serial.println("BLE Initialized!");
+
 }

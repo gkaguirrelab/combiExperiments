@@ -3,23 +3,28 @@
 #include "Arduino_BuiltIn.h"
 #include <Adafruit_AS7341.h>
 #include <Adafruit_TSL2591.h>
-#include <LIS2DUXS12Sensor.h>
+#include <LSM6DSV16XSensor.h>
 #include <cstdint>
 #include <set>
 #include <vector>
 #include <HardwareBLESerial.h>
 #include <cstddef> 
 
+// Calculate the integration time for the AMS7341 chip
 float calculate_integration_time(uint8_t atime, uint8_t astep) {
     return (atime + 1) * (astep + 1) * 2.78;
 
 }
 
+// Signal an error over the serial port
 void sig_error() {
   Serial.println("-1");
   Serial.println("!");
 }
 
+// Read a command over the serial port
+// and populate the inpute string with 
+// the command
 void read_command(String* input) {
   while(Serial.available() > 0) {
     char incoming_char = Serial.read();
@@ -37,12 +42,16 @@ void read_command(String* input) {
       return ;
     }
 
+    // Append the character to the input string
     *input += incoming_char;
   }
 }
-
+// Read a command over bluetooth, populating the input string
 void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
+  // Initialize empty buffer to read command
   char ble_read_buffer[19] = "\0"; 
+
+  // Poll the BLE connection
   bleSerial->poll();
 
   // If there is an attempt to overload the buffer, throw 
@@ -52,15 +61,18 @@ void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
     bleSerial->readLine(ble_read_buffer, 19);
   }
 
+  // If the command is not null, append set input equal 
+  // to the command received
   if(ble_read_buffer[0] != '\0') {
     *input = String(ble_read_buffer);
   }
 
 }
 
+// Write data from all sensors over the serial port
 void write_serial(std::vector<uint16_t>* AS_channels,
                   std::vector<uint16_t>* TS_channels,
-                  float_t LI_temp, 
+                  float_t LS_temp, 
                   int16_t* accel_buffer,
                   size_t buff_size) 
 {
@@ -90,9 +102,9 @@ void write_serial(std::vector<uint16_t>* AS_channels,
       pos += 2; 
     }
 
-    // Copy over the LI temp value
+    // Copy over the LS temp value
     // 1 x 4 + 25 = 29 after this
-    std::memcpy(&data[pos], &LI_temp, sizeof(float_t));
+    std::memcpy(&data[pos], &LS_temp, sizeof(float_t));
     pos += 4; 
 
     // Copy over the acceleration buffer, 
@@ -104,12 +116,12 @@ void write_serial(std::vector<uint16_t>* AS_channels,
 
 }
 
-
+// Write data from all sensors over the BLE connection
 void write_ble(HardwareBLESerial* bleSerial, 
                std::vector<uint16_t>* AS_channels,
                std::vector<uint16_t>* TS_channels,
                int16_t* accel_buffer,
-               float_t LI_temp) 
+               float_t LS_temp) 
 {
     //Can transfer 175 bytes total
     uint8_t dataBLE[175];
@@ -145,9 +157,9 @@ void write_ble(HardwareBLESerial* bleSerial,
     Serial.print("ACCEL BUFFER SIZE: ");Serial.println(buffer_size);
     pos += (buffer_size * 2); 
 
-    //Copy over the LI temperature
-    //1 x 4 bytes from LI_temp - > 4 OR 8, not sure of float_t 
-    std::memcpy(&dataBLE[pos], &LI_temp, sizeof(float_t));
+    //Copy over the LS temperature
+    //1 x 4 bytes from LS_temp - > 4 OR 8, not sure of float_t 
+    std::memcpy(&dataBLE[pos], &LS_temp, sizeof(float_t));
   
     // Send data back to caller over BLE
     for (int i = 0; i < 175; i++) {
@@ -160,10 +172,12 @@ void write_ble(HardwareBLESerial* bleSerial,
     bleSerial->flush();
 }
 
-
+// Read from the AS chip with a given mode
 std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341,
                               char device_mode) 
 {
+  // Initialize channel readings buffer, potential variables, 
+  // and return vector
   uint16_t readings[12];
   uint16_t flicker_freq; 
   std::vector<uint16_t> result; 
@@ -272,9 +286,11 @@ std::vector<uint16_t> AS_read(char mode, Adafruit_AS7341* as7341,
   return result;
 }
 
+// Read from the TS chip with a given mode
 std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591,
                               char device_mode) 
 {
+  // Initialize variables to use later and return vector
   uint32_t lum;
   uint16_t ir, full;
   uint16_t TSL2591_full, TSL2591_ir; 
@@ -359,24 +375,32 @@ std::vector<uint16_t> TS_read(char mode, Adafruit_TSL2591* tsl2591,
 
 }
 
-std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12,
+// Read from the LS chip with a given mode
+std::vector<float_t> LS_read(char mode, LSM6DSV16XSensor* lsm6dsv16x,
                              char device_mode, bool verbose) 
 {
-  int32_t accel[3];
-  float_t temperature; 
+  // Initialize buffer for acceleration/angle rate values
+  // and variable for sensor temperature, as well
+  // as the return vector
+  int32_t accel[3], angrate[3];
+  int16_t temperature; 
   std::vector<float_t> result; 
 
   switch(mode) {
     // Read the acceleration information
     case 'A':
-      lis2duxs12->Get_X_Axes(accel);
+      // Retrieve the snrsor values
+      lsm6dsv16x->Get_X_Axes(accel);
+      lsm6dsv16x->Get_G_Axes(angrate);
 
-      // If we are in science mode, simply append results and breka 
+      // If we are in science mode, simply append results and break 
       if(device_mode == 'S') {
-        // Append acceleration information to the result vector
+        // Append acceleration and angle rate information to the result vector
         for(int i = 0; i < 3; i++) {
-          result.push_back((float_t)accel[i]); 
+          result.push_back((float_t) accel[i]); 
+          result.push_back((float_t) angrate[i]); 
         }
+
         break; 
       }
 
@@ -388,6 +412,9 @@ std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12,
       Serial.print("X : ");Serial.println(accel[0]);
       Serial.print("Y : ");Serial.println(accel[1]);
       Serial.print("Z : ");Serial.println(accel[2]);
+      Serial.print("AngRateX[mdps] : ");Serial.println(angrate[0]);
+      Serial.print("AngRateY[mdps] : ");Serial.println(angrate[1]);
+      Serial.print("AngRateZ[mdps] : ");Serial.println(angrate[2]);
 
       // Append End of Message terminator
       Serial.println("!");
@@ -396,7 +423,7 @@ std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12,
     // Read the temperature from the accelerometer
     case 'T':
       // If there was a problem with reading the temperature, throw an error 
-      if(lis2duxs12->Get_Temp(&temperature) != LIS2DUXS12_STATUS_OK) {
+      if(lsm6dsv16x->Get_Temp_Raw(&temperature) == LSM6DSV16X_ERROR) {
         sig_error();
         break; 
       }
@@ -404,7 +431,7 @@ std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12,
       // and break
       if(device_mode == 'S') {
         // Append the temperature to the result vector 
-        result.push_back(temperature);
+        result.push_back((float_t) temperature);
         break; 
       }
 
@@ -424,7 +451,9 @@ std::vector<float_t> LI_read(char mode, LIS2DUXS12Sensor* lis2duxs12,
   return result; 
 }
 
+// Read from the SEEED XIAO BLE Sense nrf board
 void SE_read(char mode, NRF_FICR_Type* board_info_reg) {
+  // Initialie buffer for device id
   uint32_t device_id[2];
 
   switch(mode) {
@@ -449,8 +478,9 @@ void SE_read(char mode, NRF_FICR_Type* board_info_reg) {
   }
 }
 
-
+// Write to the AS chip with a given mode and value to write
 void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
+  // Initialize integer representation of write_val
   uint16_t write_val_converted; 
  
  switch(mode) {
@@ -546,9 +576,12 @@ void AS_write(char mode, Adafruit_AS7341* as7341, char* write_val) {
   }
 }
 
+// Write to the TS chip in a given mode and with a given value to write
 void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
+  // Initialize integer representation of write val
   uint16_t write_val_converted; 
 
+  // Initialize set of valid gain choices
   std::vector<int> valid_gain_valvec = {0,16,32,48};
   std::set<int> valid_gain_settings(valid_gain_valvec.begin(),valid_gain_valvec.end());
 
@@ -630,33 +663,5 @@ void TS_write(char mode, Adafruit_TSL2591* tsl2591, char* write_val) {
       break;
 
   }
-}
-
-void LI_write(char mode, LIS2DUXS12Sensor* lis2duxs12, char* write_val) {
-  uint16_t write_val_converted; 
-  switch(mode) {
-    case 'P':
-      Serial.println("Writing power value to LI chip");
-
-      // Convert the numeric substring to numeric value
-      write_val_converted = atoi(write_val);
-
-      if(write_val_converted < 0 || write_val_converted > 1) {
-        sig_error();
-        return ;
-      }
-
-      if(write_val_converted == 1) {
-        lis2duxs12->begin();
-      }
-      else {
-        lis2duxs12->end();
-      }
-
-      // Append End of Message terminator
-      Serial.println("!");
-      break;
-  }
-
 }
 
