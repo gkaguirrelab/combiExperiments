@@ -5,72 +5,80 @@
 #include <Adafruit_TSL2591.h>
 #include <Adafruit_AS7341.h>
 #include <Arduino.h>
-#include <minispect_io.h>
-#include <nrf.h>
-#include <vector>
-#include <bitset>
 #include <LSM6DSV16XSensor.h>
+#include <minispect_io.h>
 
-// Initialize hardware connections
 HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
-Adafruit_TSL2591 tsl2591 = Adafruit_TSL2591(2591);  // pass in a number for the sensor identifier (for your use later)
+Adafruit_TSL2591 tsl2591 = Adafruit_TSL2591(2591); // pass in a number for the sensor identifier (for your use later)
 Adafruit_AS7341 as7341;
+int batSensPin = PIN_VBAT;   //PIN_VBAT
+int readbatPin = PIN_VBAT_ENABLE; //p14; //P0_14;//VBAT_ENABLE; //P0_14;// PIN_VBAT;   //PIN_VBAT
+int vCtrl = D3;
+
+int32_t     accel[3], angrate[3];
+int16_t     accel16 [3];
+
+
+
+unsigned long lastRead = 0;
+uint16_t    VBat100x = 0;
+
+String commandfz = "";
+int astep = 999;
+int atime = 49;
+int gain = 8;
+
 LSM6DSV16XSensor LSM6DSV16X(&Wire);
-int batSensPin = PIN_VBAT;         //PIN_VBAT
-int readbatPin = PIN_VBAT_ENABLE;  //p14; //P0_14;//VBAT_ENABLE; //P0_14;// PIN_VBAT;   //PIN_VBAT
-uint16_t VBat100x = 0;
+#define INT1_pin D1
+char report[256];
 
-// Initialize input buffer
-String serial_input = "";
+void INT1Event_cb();
+void sendOrientation();
 
-// Set device mode
-char device_mode = 'S';
-
-// Initialize parameters for AS7341 chip
-int as_astep = 259;
-int as_atime = 249;
-int as_gain = 5;
-
-// Initial parameters for TSL2591 chip 
-auto tsl_gain = TSL2591_GAIN_HIGH;
-auto tsl_integration_time = TSL2591_INTEGRATIONTIME_500MS; 
-
-// Initialize the accelerometer value buffer 
-// and the next open index in it
-int16_t accel_buffer[3 * 20];
-int accel_buffer_pos = 0; 
-
-// Initial setup 
 void setup() {
-  // Begin communication at 115200 baudrate
   Serial.begin(115200);
-
-  Serial.println("Initializing sensors...");
+  while (!Serial);
   
+  pinMode(batSensPin, INPUT);
+  pinMode(readbatPin, OUTPUT);
+  digitalWrite(readbatPin, LOW);
+  pinMode(vCtrl, OUTPUT);
+  digitalWrite(vCtrl, LOW);
   // initialise ADC wireing_analog_nRF52.c:73
-  analogReference(AR_INTERNAL2V4);  // default 0.6V*6=3.6V  wireing_analog_nRF52.c:73
-  analogReadResolution(12);         // wireing_analog_nRF52.c:39
-
-  // Initialize sensors
-  Serial.println("Attempting to initialize bluetooth...");
-  BLE_init();
+  analogReference(AR_INTERNAL2V4);        // default 0.6V*6=3.6V  wireing_analog_nRF52.c:73
+  analogReadResolution(12);           // wireing_analog_nRF52.c:39
   
-  Serial.println("Attempting to initialize TSL2591...");
-  //TSL2591_init();
+  BLE_init();
+  Serial.println("HardwareBLESerial initialized!");
 
-  Serial.println("Attempting to initialize AS7341...");
-  //AS7341_init();
-
-  Serial.println("Attempting to initialize LSM6DSV16X...");
+  TSL2591_init();
+  AS7341_init();
   LSM6DSV16X_init();
 
-  // Allow time for everything to set up
+  // LIS2DUXS12_init();
+
+    // Enable INT1 pin.
+  //attachInterrupt(INT1_pin, INT1Event_cb, RISING);
+
+  // Initlialize components.
+  //LSM6DSV16X.begin();
+  //LSM6DSV16X.Enable_X();
+  //LSM6DSV16X.Enable_G();
+
+  //uint8_t id = 0xFF;
+  //LSM6DSV16X.ReadID(&id);
+  //Serial.print("id "); Serial.println(id);
+  //Wire.setClock(400000);
+  lastRead = millis();
   delay(1000);
 }
 
 void loop() {
+  Serial.println("HELLO!");
+
   return ; 
 
+  /* 
   // Get the command from the controller
   read_command(&serial_input); 
   
@@ -201,8 +209,10 @@ void loop() {
   // Reset command to empty after execution. 
   serial_input = "";
 
+  */ 
 }
 
+/*
 void BatteryRead() {
   int vbatt = analogRead(batSensPin);
   VBat100x = int((240 * vbatt / 4096) * 3.06849);
@@ -214,6 +224,16 @@ void BatteryRead() {
   Serial.println("V    ");
   //  Serial.println(digitalRead(PIN_CHG));
 }
+*/
+
+// Initialize parameters for AS7341 chip
+int as_astep = 259;
+int as_atime = 249;
+int as_gain = 5;
+
+// Initial parameters for TSL2591 chip 
+auto tsl_gain = TSL2591_GAIN_HIGH;
+auto tsl_integration_time = TSL2591_INTEGRATIONTIME_500MS; 
 
 void TSL2591_init() {
   // Ensure the sensor can be found
