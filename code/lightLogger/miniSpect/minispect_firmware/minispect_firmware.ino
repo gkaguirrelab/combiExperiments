@@ -8,25 +8,14 @@
 #include <LSM6DSV16XSensor.h>
 #include <minispect_io.h>
 
+// Initialize hardware connections
 HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
-Adafruit_TSL2591 tsl2591 = Adafruit_TSL2591(2591); // pass in a number for the sensor identifier (for your use later)
+Adafruit_TSL2591 tsl2591 = Adafruit_TSL2591(2591); // user-defined sensor ID as parameter 
 Adafruit_AS7341 as7341;
-int batSensPin = PIN_VBAT;   //PIN_VBAT
-int readbatPin = PIN_VBAT_ENABLE; //p14; //P0_14;//VBAT_ENABLE; //P0_14;// PIN_VBAT;   //PIN_VBAT
-int vCtrl = D3;
-
-int32_t     accel[3], angrate[3];
-int16_t     accel16 [3];
-
-
-
-unsigned long lastRead = 0;
+int batSensPin = PIN_VBAT;  
+int readbatPin = PIN_VBAT_ENABLE; 
 uint16_t    VBat100x = 0;
-
-String commandfz = "";
-int astep = 999;
-int atime = 49;
-int gain = 8;
+int vCtrl = D3;
 
 LSM6DSV16XSensor LSM6DSV16X(&Wire);
 #define INT1_pin D1
@@ -34,6 +23,20 @@ char report[256];
 
 void INT1Event_cb();
 void sendOrientation();
+
+String commandfz = "";
+
+// Initialize parameters for AS7341 chip
+int as_astep = 259;
+int as_atime = 249;
+int as_gain = 5;
+
+// Initial parameters for TSL2591 chip 
+auto tsl_gain = TSL2591_GAIN_HIGH;
+auto tsl_integration_time = TSL2591_INTEGRATIONTIME_500MS; 
+
+int32_t     accel[3], angrate[3];
+int16_t     accel16 [3];
 
 void setup() {
   Serial.begin(115200);
@@ -69,7 +72,6 @@ void setup() {
   //LSM6DSV16X.ReadID(&id);
   //Serial.print("id "); Serial.println(id);
   //Wire.setClock(400000);
-  lastRead = millis();
   delay(1000);
 }
 
@@ -226,15 +228,6 @@ void BatteryRead() {
 }
 */
 
-// Initialize parameters for AS7341 chip
-int as_astep = 259;
-int as_atime = 249;
-int as_gain = 5;
-
-// Initial parameters for TSL2591 chip 
-auto tsl_gain = TSL2591_GAIN_HIGH;
-auto tsl_integration_time = TSL2591_INTEGRATIONTIME_500MS; 
-
 void TSL2591_init() {
   // Ensure the sensor can be found
   if(!tsl2591.begin()) {
@@ -242,8 +235,8 @@ void TSL2591_init() {
   }
 
   // Set the initial parameters
-  tsl2591.setGain(TSL2591_GAIN_HIGH);
-  tsl2591.setTiming(TSL2591_INTEGRATIONTIME_500MS);
+  tsl2591.setGain(tsl_gain);
+  tsl2591.setTiming(tsl_integration_time);
 
   Serial.println("TSL2591 Initialized!");
 }
