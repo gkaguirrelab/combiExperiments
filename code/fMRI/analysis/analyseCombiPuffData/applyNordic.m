@@ -73,6 +73,8 @@ for ii = 1:length(acqSet)
             % The path to the source file
             acqFileNames{pp,ee} = ...
                 sprintf([nameStem acqSet{ii} '_echo-%d' partLabels{pp} '.nii.gz'],ee);
+            acqFileNamesNoZip{pp,ee} = ...
+                sprintf([nameStem acqSet{ii} '_echo-%d' partLabels{pp} '.nii'],ee);
             % The growing 3dZcat command
             command = [command fullfile(repoFuncDir,acqFileNames{pp,ee}) ' '];
             % Get the number of z-slices for this acquisition
@@ -121,11 +123,39 @@ for ii = 1:length(acqSet)
         for ee = 1:nEchoes
             % Move the original func acquisition
             movefile(fullfile(repoFuncDir,acqFileNames{pp,ee}),fullfile(repoOrigDir,acqFileNames{pp,ee}));
-            % Split off the Z slices for this acquisition
+            % Split off the Z slices for this acquisition into the "temp"
+            % dir, as we will update the header of this file in a moment
             a = 0 + (ee-1)*nZslices;
             b = ee*nZslices-1;
-            command = sprintf([afniPath '3dZcutup -keep %d %d -prefix ' fullfile(repoFuncDir,acqFileNames{pp,ee}) ' ' zCatFile],a,b);
+            command = sprintf([afniPath '3dZcutup -keep %d %d -prefix ' fullfile(ARG.DIROUT,acqFileNamesNoZip{pp,ee}) ' ' zCatFile],a,b);
             system(command);
+            % The newly created nifti file has inaccurate spatial header
+            % information. We copy over some header information from the
+            % original to the new nifti file.
+            niftiFields = {'srow_z','srow_x','qoffset_z','quatern_b',...
+                'aux_file','descrip','slice_end','dim_info'};
+            for ff = 1:length(niftiFields)
+                % Get the header value in the original file
+                command = [afniPath 'nifti_tool -quiet -disp_hdr -field ' niftiFields{ff} ' -infiles ' fullfile(repoOrigDir,acqFileNames{pp,ee})];
+                [~,origVal] = system(command);
+                % Remove the trailing carriage return from the output
+                if double(origVal(length(origVal)))
+                    origVal = origVal(1:length(origVal)-1);
+                end
+                % Rename the file to be modified to be called temp
+                movefile(fullfile(ARG.DIROUT,acqFileNamesNoZip{pp,ee}),fullfile(ARG.DIROUT,['tmp_' acqFileNamesNoZip{pp,ee}]))
+                % Place this header value in the new nifti
+                command = [afniPath 'nifti_tool -mod_hdr -mod_field ' niftiFields{ff} ' ''' origVal ''''  ' -infiles ' fullfile(ARG.DIROUT,['tmp_' acqFileNamesNoZip{pp,ee}]) ' -prefix ' fullfile(ARG.DIROUT,acqFileNamesNoZip{pp,ee})];
+                system(command);
+                % Remove the temp file
+                delete(fullfile(ARG.DIROUT,['tmp_' acqFileNamesNoZip{pp,ee}]));
+            end
+            % Zip the file
+            gzip(fullfile(ARG.DIROUT,acqFileNamesNoZip{pp,ee}));
+            % Move it to the func directory
+            movefile(fullfile(ARG.DIROUT,acqFileNames{pp,ee}),fullfile(repoFuncDir,acqFileNames{pp,ee}));
+            % Delete the .nii file that was used to create the zip
+            delete(fullfile(ARG.DIROUT,acqFileNamesNoZip{pp,ee}));
         end
     end
 
