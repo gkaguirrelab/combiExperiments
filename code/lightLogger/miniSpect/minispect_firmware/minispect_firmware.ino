@@ -12,6 +12,7 @@
 HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
 Adafruit_TSL2591 tsl2591 = Adafruit_TSL2591(2591); // user-defined sensor ID as parameter 
 Adafruit_AS7341 as7341;
+
 int batSensPin = PIN_VBAT;  
 int readbatPin = PIN_VBAT_ENABLE; 
 uint16_t    VBat100x = 0;
@@ -20,11 +21,8 @@ int vCtrl = D3;
 LSM6DSV16XSensor LSM6DSV16X(&Wire);
 #define INT1_pin D1
 char report[256];
-
 void INT1Event_cb();
 void sendOrientation();
-
-String commandfz = "";
 
 // Initialize parameters for AS7341 chip
 int as_astep = 259;
@@ -35,52 +33,53 @@ int as_gain = 5;
 auto tsl_gain = TSL2591_GAIN_HIGH;
 auto tsl_integration_time = TSL2591_INTEGRATIONTIME_500MS; 
 
-int32_t     accel[3], angrate[3];
-int16_t     accel16 [3];
+// Initialize buffers for the LSM6DSV16X chip
+int16_t     accel_buffer[3*10], angrate_buffer[3*10];
+size_t accel_buffer_pos = 0;
+
+// Initialize a container for input over the serial port
+String serial_input = "";
+
+// Store the current mode state of the device
+char device_mode = 'S';
 
 void setup() {
+  // Begin communicating at n baud 
   Serial.begin(115200);
+
+  // Wait for the serial connection to be open
   while (!Serial);
   
+  // Set relevant pins
   pinMode(batSensPin, INPUT);
   pinMode(readbatPin, OUTPUT);
   digitalWrite(readbatPin, LOW);
   pinMode(vCtrl, OUTPUT);
   digitalWrite(vCtrl, LOW);
+  
+  
   // initialise ADC wireing_analog_nRF52.c:73
   analogReference(AR_INTERNAL2V4);        // default 0.6V*6=3.6V  wireing_analog_nRF52.c:73
   analogReadResolution(12);           // wireing_analog_nRF52.c:39
+
+
+  // Initialize the sensors
+  Serial.println("Initializing sensors..."); 
   
   BLE_init();
-  Serial.println("HardwareBLESerial initialized!");
-
   TSL2591_init();
   AS7341_init();
   LSM6DSV16X_init();
 
-  // LIS2DUXS12_init();
+  Serial.println("Sensors initialized");
 
-    // Enable INT1 pin.
-  //attachInterrupt(INT1_pin, INT1Event_cb, RISING);
-
-  // Initlialize components.
-  //LSM6DSV16X.begin();
-  //LSM6DSV16X.Enable_X();
-  //LSM6DSV16X.Enable_G();
-
-  //uint8_t id = 0xFF;
-  //LSM6DSV16X.ReadID(&id);
-  //Serial.print("id "); Serial.println(id);
-  //Wire.setClock(400000);
+  // Add a small delay for everything to initialize properly
   delay(1000);
 }
 
 void loop() {
   Serial.println("HELLO!");
 
-  return ; 
-
-  /* 
   // Get the command from the controller
   read_command(&serial_input); 
   
@@ -110,9 +109,20 @@ void loop() {
   
   // Then save the readings to the buffer
   for(size_t i = 0; i < LS_channels.size(); i++) {
-    accel_buffer[accel_buffer_pos+i] = (int16_t) LS_channels[i]; 
+    int16_t accel_value = (int16_t) LS_channels[i];
+    //int16_t angrate_value = (int16_t) LS_channels[i+1];
+    //size_t coord_number = i >> 1;  // counting by 2s, so a division by 2 will tell us the coordinate number
+
+    // First, append to the acceleration buffer to the current buffer position + the number 
+    // of coordinate we are on (X, Y, Z)
+    //accel_buffer[accel_buffer_pos+coord_number] = (int16_t) LS_channels[accel_value]; 
+
+    // Then append to the angle rate buffer 
+    //angrate_buffer[accel_buffer_pos+coord_number] = (int16_t) LS_channels[angrate_value]; 
+
   }
 
+  /*
   // If we are in fast science mode and the buffer is not full
   // simply incremement acceleration buffer and move to the next loop iteration
   if(device_mode == 'S' && accel_buffer_pos != 57) {
@@ -122,6 +132,9 @@ void loop() {
 
     return ; 
   }
+  */
+
+  /*
 
   // If we are in science mode, focus only on building and sending the data buffer
   // when the accel buffer is full
@@ -210,9 +223,10 @@ void loop() {
   }
   // Reset command to empty after execution. 
   serial_input = "";
+  */
 
-  */ 
 }
+
 
 /*
 void BatteryRead() {

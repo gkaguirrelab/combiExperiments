@@ -19,6 +19,7 @@ for pp = 1:3
     ylim([0 size(fielding_function,1)])
     axis off
     title(['sensor channel ' plotColors{pp}])
+    colorbar; 
 end
 
 

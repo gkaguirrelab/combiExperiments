@@ -282,7 +282,7 @@ def initialize_camera(initial_gain: float=1, initial_exposure: int=100) -> objec
     # FPS = 1,000,000 / FrameDurationLimits 
     # e.g. 206.65 = 1000000/FDL => FDL = 1000000/206.65
     # 200 = 
-    frame_duration_limit = int(np.ceil(1000000/200)) #int(np.ceil(1000000/sensor_mode['fps']))
+    frame_duration_limit = int(np.ceil(1000000/CAM_FPS))
     cam.video_configuration.controls['NoiseReductionMode'] = 0
     cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # *2 for lower,upper bound equal
     
