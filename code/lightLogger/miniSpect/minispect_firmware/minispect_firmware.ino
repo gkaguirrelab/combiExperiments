@@ -13,9 +13,6 @@ HardwareBLESerial &bleSerial = HardwareBLESerial::getInstance();
 Adafruit_TSL2591 tsl2591 = Adafruit_TSL2591(2591); // user-defined sensor ID as parameter 
 Adafruit_AS7341 as7341;
 
-int batSensPin = PIN_VBAT;  
-int readbatPin = PIN_VBAT_ENABLE; 
-uint16_t    VBat100x = 0;
 int vCtrl = D3;
 
 LSM6DSV16XSensor LSM6DSV16X(&Wire);
@@ -34,7 +31,9 @@ auto tsl_gain = TSL2591_GAIN_HIGH;
 auto tsl_integration_time = TSL2591_INTEGRATIONTIME_500MS; 
 
 // Initialize buffers for the LSM6DSV16X chip
-int16_t     accel_buffer[3*10], angrate_buffer[3*10];
+size_t buffer_size = 3 * 10;
+std::vector<int16_t> accel_buffer;
+std::vector<int16_t> angrate_buffer;
 size_t accel_buffer_pos = 0;
 
 // Initialize a container for input over the serial port
@@ -44,6 +43,9 @@ String serial_input = "";
 char device_mode = 'S';
 
 void setup() {
+  accel_buffer.reserve(buffer_size);
+  angrate_buffer.reserve(buffer_size);
+
   // Begin communicating at n baud 
   Serial.begin(115200);
 
@@ -51,17 +53,12 @@ void setup() {
   while (!Serial);
   
   // Set relevant pins
-  pinMode(batSensPin, INPUT);
-  pinMode(readbatPin, OUTPUT);
-  digitalWrite(readbatPin, LOW);
   pinMode(vCtrl, OUTPUT);
   digitalWrite(vCtrl, LOW);
-  
   
   // initialise ADC wireing_analog_nRF52.c:73
   analogReference(AR_INTERNAL2V4);        // default 0.6V*6=3.6V  wireing_analog_nRF52.c:73
   analogReadResolution(12);           // wireing_analog_nRF52.c:39
-
 
   // Initialize the sensors
   Serial.println("Initializing sensors..."); 
@@ -73,7 +70,8 @@ void setup() {
 
   Serial.println("Sensors initialized");
 
-  // Add a small delay for everything to initialize properly
+  // Startup complete, add a small delay for hardware initialization to definitely 
+  // complete
   delay(1000);
 }
 
@@ -98,47 +96,40 @@ void loop() {
       Serial.println("!"); 
 
       serial_input = "";
-      return ; 
+      return; 
     }
   }
-
 
   // Getting accelerometer data is highest priority, so 
   // read regardless of mode/command
   std::vector<float_t> LS_channels = LS_read('A', &LSM6DSV16X, device_mode, false); 
   
   // Then save the readings to the buffer
-  for(size_t i = 0; i < LS_channels.size(); i++) {
+  for(size_t i = 0; i < LS_channels.size(); i+=2) {
     int16_t accel_value = (int16_t) LS_channels[i];
-    //int16_t angrate_value = (int16_t) LS_channels[i+1];
-    //size_t coord_number = i >> 1;  // counting by 2s, so a division by 2 will tell us the coordinate number
+    int16_t angrate_value = (int16_t) LS_channels[i+1];
+    size_t coord_number = i >> 1;  // counting by 2s, so a division by 2 will tell us the coordinate number
 
     // First, append to the acceleration buffer to the current buffer position + the number 
     // of coordinate we are on (X, Y, Z)
-    //accel_buffer[accel_buffer_pos+coord_number] = (int16_t) LS_channels[accel_value]; 
+    accel_buffer.push_back(accel_value); 
 
     // Then append to the angle rate buffer 
-    //angrate_buffer[accel_buffer_pos+coord_number] = (int16_t) LS_channels[angrate_value]; 
-
+    angrate_buffer.push_back(angrate_value); 
   }
 
-  /*
+  // 3 values were just added to each of the buffers, so increment the position 
+  accel_buffer_pos += (LS_channels.size() / 2); 
+
   // If we are in fast science mode and the buffer is not full
   // simply incremement acceleration buffer and move to the next loop iteration
-  if(device_mode == 'S' && accel_buffer_pos != 57) {
-    
-    // Increment buffer position, reset if necessary
-    accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
-
-    return ; 
+  if(device_mode == 'S' && accel_buffer_pos != buffer_size) {
+    return; 
   }
-  */
-
-  /*
 
   // If we are in science mode, focus only on building and sending the data buffer
   // when the accel buffer is full
-  else if(device_mode == 'S' && accel_buffer_pos == 57) {
+  else if(device_mode == 'S' && accel_buffer_pos == buffer_size) {
       // Retrieve all 11 AS channels
       std::vector<uint16_t> AS_channels = AS_read('C',&as7341, device_mode);
 
@@ -153,19 +144,22 @@ void loop() {
       std::vector<float_t> LS_temp = LS_read('T', &LSM6DSV16X, device_mode, false); 
 
       // Write the data through the serial port 
-      write_serial(&AS_channels, &TS_channels, LS_temp[0], accel_buffer, 60);  
+      write_serial(&AS_channels, &TS_channels, LS_temp[0], accel_buffer, angrate_buffer, buffer_size);  
 
-      // Increment buffer position, reset if necessary
-      accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
+      // Clear the buffers
+      accel_buffer_pos = 0;
+      accel_buffer.clear();
+      angrate_buffer.clear();
 
       // Go to the next loop iteration
       return; 
   }
 
-  // Increment buffer position, reset if necessary
-  accel_buffer_pos = (accel_buffer_pos + 3) % 60; 
-
-  // Otherwise, we are in calibration mode, so we can read/write to specific chips
+  // Otherwise we are in calibration mode
+  if(accel_buffer_pos == buffer_size) {
+    accel_buffer.clear();
+    angrate_buffer.clear();
+  }
 
   // If we received a well formed command, execute it
   if(serial_input.length() > 2) {
@@ -223,24 +217,7 @@ void loop() {
   }
   // Reset command to empty after execution. 
   serial_input = "";
-  */
-
 }
-
-
-/*
-void BatteryRead() {
-  int vbatt = analogRead(batSensPin);
-  VBat100x = int((240 * vbatt / 4096) * 3.06849);
-  Serial.print(vbatt, HEX);
-  Serial.print("    ");
-  Serial.print(2.40 * vbatt / 4096);  // Resistance ratio 2.961, Vref = 2.4V
-  Serial.print("V    ");
-  Serial.print((2.40 * vbatt / 4096) * 3.06849);  // Resistance ratio 2.96078, Vref = 2.4V
-  Serial.println("V    ");
-  //  Serial.println(digitalRead(PIN_CHG));
-}
-*/
 
 void TSL2591_init() {
   // Ensure the sensor can be found
@@ -293,6 +270,7 @@ void LSM6DSV16X_init() {
 
 }
 
+// Initialize BLE communication
 void BLE_init() {
     // Setup bluetooth emission
   if (!bleSerial.beginAndSetupBLE("White MS")) {
