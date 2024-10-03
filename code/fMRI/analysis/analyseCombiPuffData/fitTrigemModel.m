@@ -1,4 +1,4 @@
-function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels)
+function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels,useTedanaResults)
 
 %{
     fwSessID = '66f17c99d49fdd0e6e9268e1';
@@ -12,9 +12,10 @@ function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,t
     tr = 2.87;
     nNoiseEPIs = 2;
     maskLabelSet = {'brainstem','GM'};
-    smoothSD = 1;
+    smoothSD = 0.99;
     averageVoxels = false;
-    results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels);
+    useTedanaResults = true;
+    results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels,useTedanaResults);
 %}
 
 % Check if we are averaging voxels within the mask
@@ -59,7 +60,11 @@ maskFiles = cellfun(@(x) fullfile(repoMaskDir,[nameStem '_space-MNI152NLin2009cA
 % Create the list of acquisition and covar filenames
 dataFileNames = {}; covarFileNames = {};
 for jj = 1:nAcqs
-    dataFileNames{end+1} = fullfile(repoFuncDir,[nameStem acqSet{jj} '_part-mag_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz' ]);
+    if useTedanaResults
+        dataFileNames{end+1} = fullfile(repoFuncDir,[nameStem acqSet{jj} '_space-MNI152NLin2009cAsym_desc-tdna_bold.nii.gz' ]);
+    else
+        dataFileNames{end+1} = fullfile(repoFuncDir,[nameStem acqSet{jj} '_part-mag_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz' ]);
+    end
     covarFileNames{end+1} = fullfile(repoFuncDir,[nameStem acqSet{jj} '_part-mag_desc-confounds_timeseries.tsv' ]);
 end
 

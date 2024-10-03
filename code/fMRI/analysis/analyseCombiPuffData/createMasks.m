@@ -1,4 +1,4 @@
-function repoMaskDir = createMasks(dataPath,dirName,subID,sesID)
+function repoMaskDir = createMasks(dataPath,dirName,subID,sesID,acqSet)
 % Create a set of masks for this subject to support derivation of
 % nuisance covariates and defining the extent of the voxels to be
 % processed.
@@ -13,8 +13,11 @@ function repoMaskDir = createMasks(dataPath,dirName,subID,sesID)
     dirName = 'fprep';
     subID = '001';
     sesID = '20240923';
-    tr = 2.87;
-    repoMaskDir = createMasks(dataPath,dirName,subID,sesID);
+    acqSet = {...
+        '_task-trigemlow_acq-multiecho_run-01',...
+        '_task-trigemmed_acq-multiecho_run-01',...
+        '_task-trigemhi_acq-multiecho_run-01'};
+    repoMaskDir = createMasks(dataPath,dirName,subID,sesID,acqSet);
 %}
 
 % Define the nameStem for this subject / session
@@ -51,18 +54,60 @@ system(command)
 
 % Apply the warp to the brainstem only mask, creating a mask that is at the
 % resolution of the T1w anatomical image of the subject in MNI space
-command = ['antsApplyTransforms -d 3 -i ' brainstemOnlyMaskPath_FSLMNI152 ' -r ' subjectT1wPath_MNI152NLin2009cAsym ' -o  ' brainstemOnlyMaskPathAnat_MNI152NLin2009cAsym ];
+xfm_FSL2MNI = fullfile(workDir,'FSLMNI_to_MNI152NLin2009cAsym_0GenericAffine.mat');
+command = ['antsApplyTransforms -d 3 -i ' brainstemOnlyMaskPath_FSLMNI152 ' -r ' subjectT1wPath_MNI152NLin2009cAsym ' -t ' xfm_FSL2MNI ' -o ' brainstemOnlyMaskPathAnat_MNI152NLin2009cAsym ];
 system(command);
 
 % Using freesurfer mri_vol2vol, resample the brainstem, white matter, gray
-% matter, and CSF masks to be in func space
+% matter, and CSF masks to be in MNI space, and then threshold
 command = ['mri_vol2vol --regheader --nearest --mov ' brainstemOnlyMaskPathAnat_MNI152NLin2009cAsym ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' brainstemOnlyMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
-command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[nameStem '_space-MNI152NLin2009cAsym_label-GM_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' gmMaskPathFunc_MNI152NLin2009cAsym];
+command = ['fslmaths ' brainstemOnlyMaskPathFunc_MNI152NLin2009cAsym ' -thr 0.25 ' brainstemOnlyMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
+command = ['fslmaths ' brainstemOnlyMaskPathFunc_MNI152NLin2009cAsym ' -bin ' brainstemOnlyMaskPathFunc_MNI152NLin2009cAsym];
+system(command);
+
+    command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[nameStem '_space-MNI152NLin2009cAsym_label-GM_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' gmMaskPathFunc_MNI152NLin2009cAsym];
+system(command);
+command = ['fslmaths ' gmMaskPathFunc_MNI152NLin2009cAsym ' -thr 0.5 ' gmMaskPathFunc_MNI152NLin2009cAsym];
+system(command);
+command = ['fslmaths ' gmMaskPathFunc_MNI152NLin2009cAsym ' -bin ' gmMaskPathFunc_MNI152NLin2009cAsym];
+system(command);
+
+
 command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[nameStem '_space-MNI152NLin2009cAsym_label-WM_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' wmMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
+system(command);
+command = ['fslmaths ' wmMaskPathFunc_MNI152NLin2009cAsym ' -thr 0.5 ' wmMaskPathFunc_MNI152NLin2009cAsym];
+system(command);
+command = ['fslmaths ' wmMaskPathFunc_MNI152NLin2009cAsym ' -bin ' wmMaskPathFunc_MNI152NLin2009cAsym];
+system(command);
+
+
 command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[nameStem '_space-MNI152NLin2009cAsym_label-CSF_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' csfMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
+system(command);
+command = ['fslmaths ' csfMaskPathFunc_MNI152NLin2009cAsym ' -thr 0.5 ' csfMaskPathFunc_MNI152NLin2009cAsym];
+system(command);
+command = ['fslmaths ' csfMaskPathFunc_MNI152NLin2009cAsym ' -bin ' csfMaskPathFunc_MNI152NLin2009cAsym];
+system(command);
+
+
+% Create a brain mask in subject native space for each acqusitions. This is
+% used for tedana processing.
+for ii = 1:length(acqSet)
+    % Transform the brain mask back to boldref
+    xfm_boldref2T1 = fullfile(repoFuncDir,[nameStem,acqSet{ii},'_from-boldref_to-T1w_mode-image_desc-coreg_xfm.txt']);
+    sourceFile = fullfile(repoAnatDir,[nameStem '_desc-brain_mask.nii.gz']);
+    boldrefFile = fullfile(repoFuncDir,[nameStem,acqSet{ii},'_part-mag_desc-coreg_boldref.nii.gz']);
+    outFileBrain = fullfile(repoMaskDir,[nameStem,acqSet{ii},'_desc-brain_mask.nii.gz']);
+    command = ['antsApplyTransforms -d 3 -i ' sourceFile ' -r ' boldrefFile ' -t [ ' xfm_boldref2T1 ' ,1 ] -o  ' outFileBrain ];
+    system(command);
+    % Threshold
+    command = ['fslmaths ' outFileBrain ' -thr 0.25 ' outFileBrain];
+    system(command);
+    command = ['fslmaths ' outFileBrain ' -bin ' outFileBrain];
+    system(command);
+end
 
 end

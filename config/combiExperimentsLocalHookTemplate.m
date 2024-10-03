@@ -77,6 +77,7 @@ warning(warnState);
 %   https://www.mathworks.com/matlabcentral/answers/1750425-python-virtual-environments-with-matlab
 %
 % In brief:
+%   
 %   - Locate your python binary (e.g., /usr/bin/python3)
 %   - Determine your python version using this terminal command:
 %       /usr/bin/python3 --version 
@@ -100,6 +101,10 @@ warning(warnState);
 %
 % A typical path that results would be "/Users/aguirre/py39/bin/python".
 % Place this path string into the variable below:
+%
+% NOTE -- this operation must be performed with terminal set to be in the
+% same state (Rosetta vs. Apple silicon) that is being used by Matlab.
+%
 myPyenvPath = ''; % <--- UPDATE THIS
 if isempty(myPyenvPath)
     warning('Edit combiExperimentsLocalHook to define your python virtual environment.')
