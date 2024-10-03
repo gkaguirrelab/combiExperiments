@@ -18,15 +18,15 @@ import time
 import collections
 
 """Generate plots of the readings from the different sensors"""
-def plot_readings():
+def plot_readings(path_to_readings: str):
     # Gather and parse the reading files
-    AS_df = reading_to_df('./readings/MS/AS_channels.csv', np.uint16)
-    TS_df = reading_to_df('./readings/MS/TS_channels.csv', np.uint16)
-    LI_df = reading_to_df('./readings/MS/LI_channels.csv', np.int16)
-    LI_temp_df = reading_to_df('./readings/MS/LI_temp.csv', np.float32)
+    AS_df = reading_to_df(os.path.join(path_to_readings, 'AS_channels.csv'), np.uint16)
+    TS_df = reading_to_df(os.path.join(path_to_readings, 'TS_channels.csv'), np.uint16)
+    LS_df = reading_to_df(os.path.join(path_to_readings, 'LS_channels.csv'), np.int16)
+    LS_temp_df = reading_to_df(os.path.join(path_to_readings, 'LS_temp.csv'), np.float32)
     
     # Associate chip names to their respective DataFrames
-    chip_df_map = {name:df for name, df in zip(['AS','TS','LI','LI_temp'], [AS_df, TS_df, LI_df, LI_temp_df])}
+    chip_df_map = {name:df for name, df in zip(['AS','TS','LS','LS_temp'], [AS_df, TS_df, LS_df, LS_temp_df])}
 
     # Create a 2x2 figure to display the respective plots on
     fig, axes = plt.subplots(2,2, figsize=(10,6))
@@ -44,7 +44,7 @@ def plot_readings():
         ax.tick_params(axis='x', labelsize=6)
         ax.set_xlabel('Time')
         ax.set_ylabel('Count Value')
-        ax.set_title(f'{name} Count Value by Time (0.1Hz flicker)')
+        ax.set_title(f'{name} Count Value by Time')
         ax.legend(loc='best',fontsize='small')
 
     # Label the Acceleration and Temperature Plots
@@ -55,7 +55,7 @@ def plot_readings():
         ax.tick_params(axis='x', labelsize=6)
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
-        ax.set_title(f'{y_label} by {x_label} (0.1Hz flicker)')
+        ax.set_title(f'{y_label} by {x_label}')
         ax.legend(loc='best',fontsize='small')
 
     # Display the plot 
@@ -146,9 +146,9 @@ def unpack_accel_df(df) -> pd.DataFrame:
         # Package the reformatted measurements 
         reformatted_measurements = [unpacked_times, X_accel, X_angle, Y_accel, Y_angle, Z_accel, Z_angle]
 
-    # Otherwise, simply generate NA timestamps for the length of the new dataframe
+    # Otherwise, simply generate discrete values for the timestamps that are the same length as the df
     else:
-        unpacked_times = [pd.NaT] * (X_accel.shape[0])
+        unpacked_times = [pd.NaT] * X_accel.shape[0]
         
         reformatted_measurements = [unpacked_times, X_accel, X_angle, Y_accel, Y_angle, Z_accel, Z_angle ]
 
@@ -214,6 +214,10 @@ def reading_to_df(reading_path: str, channel_type : type) -> pd.DataFrame:
 
     # Parse further if necessary 
     df = df if is_accelerometer is False else unpack_accel_df(df)
+
+    # Replace NaN timestamps if necessary 
+    if(df['Timestamp'].isna().any()): 
+        df['Timestamp'] = list(range(df.shape[0]))
 
     # Return the DF
     return df 
