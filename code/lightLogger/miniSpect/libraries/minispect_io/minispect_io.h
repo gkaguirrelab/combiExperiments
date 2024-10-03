@@ -18,10 +18,9 @@ void read_BLE_command(String* ble_input, HardwareBLESerial* bleSerial);
 // Write information over the serial port
 void write_serial(std::vector<uint16_t>* AS_channels,
                   std::vector<uint16_t>* TS_channels,
-                  float_t LS_temp,
-                  int16_t* accel_buffer,
-                  size_t buff_size);
-
+                  std::vector<int16_t>* accel_buffer,
+                  std::vector<int16_t>* angrate_buffer,
+                  float_t LS_temp);
 
 // Write information over BLE back to the caller 
 void write_ble(HardwareBLESerial* bleSerial,

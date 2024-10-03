@@ -72,47 +72,46 @@ void read_BLE_command(String* input, HardwareBLESerial* bleSerial) {
 // Write data from all sensors over the serial port
 void write_serial(std::vector<uint16_t>* AS_channels,
                   std::vector<uint16_t>* TS_channels,
-                  float_t LS_temp, 
-                  int16_t* accel_buffer,
-                  size_t buff_size) 
+                  std::vector<int16_t>* accel_buffer,
+                  std::vector<int16_t>* angrate_buffer,
+                  float_t LS_temp) 
 {
-    // Initialize buffer to send and byte to insert data
-    uint8_t data[150];
-    size_t pos = 1;  
 
-    // Set the first character to be the start message delimeter 
-    data[0] = '<';
+    // Define a vector that is the total size of all of the buffers, the temperature, and the separators
+    std::vector<uint8_t> data_buffer; 
+    uint64_t total_bytes = (AS_channels->size() * sizeof(uint16_t)) + (TS_channels->size() * sizeof(uint16_t)); 
+                          + (accel_buffer->size() * sizeof(int16_t)) + (angrate_buffer->size() * sizeof(int16_t))
+                          + (1 * sizeof(float_t))
+                          + (2 * sizeof(char));
+    data_buffer.reserve(total_bytes);
 
-    // Set the last character to be the end message delimeter
-    data[149] = '>';
+    // Set the beginning and ending terminators 
+    data_buffer[0] = '<';
+    data_buffer[data_buffer.capacity()-1] = '>';
 
-    // Copy over AS_channel bytes
-    //10 * 2 bytes from AS channels -> 20
-    //1 + 20 = 21 is pos after this
-    for(size_t i = 0; i < AS_channels->size(); i++) {
-      std::memcpy(&data[pos], &AS_channels->at(i), sizeof(uint16_t));
-      pos += 2; 
-    }
+    // Copy over the elements from all of the buffers
+    uint8_t* start = reinterpret_cast<uint8_t*>(AS_channels->data());
+    uint8_t* end = reinterpret_cast<uint8_t*>(AS_channels->data() + AS_channels->size());
+    data_buffer.insert(data_buffer.end(), start, end);
 
-    //Copy over the TS channel bytes
-    //2 x 2 bytes from TS channels -> 4
-    //21 + 4 = 25 after this 
-    for(size_t i = 0; i < TS_channels->size(); i++) {
-      std::memcpy(&data[pos], &TS_channels->at(i), sizeof(uint16_t));
-      pos += 2; 
-    }
+    start = reinterpret_cast<uint8_t*>(TS_channels->data());
+    end = reinterpret_cast<uint8_t*>(TS_channels->data() + TS_channels->size());
+    data_buffer.insert(data_buffer.end(), start, end);
 
-    // Copy over the LS temp value
-    // 1 x 4 + 25 = 29 after this
-    std::memcpy(&data[pos], &LS_temp, sizeof(float_t));
-    pos += 4; 
+    start = reinterpret_cast<uint8_t*>(accel_buffer->data());
+    end = reinterpret_cast<uint8_t*>(accel_buffer->data() + accel_buffer->size());
+    data_buffer.insert(data_buffer.end(), start, end);
 
-    // Copy over the acceleration buffer, 
-    // 60 x 2  + 29 = 149 after this
-    std::memcpy(&data[pos], accel_buffer, buff_size*sizeof(int16_t));
-    
+    start = reinterpret_cast<uint8_t*>(angrate_buffer->data());
+    end = reinterpret_cast<uint8_t*>(angrate_buffer->data() + angrate_buffer->size());
+    data_buffer.insert(data_buffer.end(), start, end);
+
+    start = reinterpret_cast<uint8_t*>(&LS_temp);
+    end = reinterpret_cast<uint8_t*>(&LS_temp + sizeof(float_t));
+    data_buffer.insert(data_buffer.end(), start, end);
+
     // Write it throught the serial port
-    Serial.write(data, 150);
+    Serial.write(data_buffer.data(), data_buffer.size());
 
 }
 
@@ -389,7 +388,7 @@ std::vector<float_t> LS_read(char mode, LSM6DSV16XSensor* lsm6dsv16x,
   switch(mode) {
     // Read the acceleration information
     case 'A':
-      // Retrieve the snrsor values
+      // Retrieve the sensor values
       lsm6dsv16x->Get_X_Axes(accel);
       lsm6dsv16x->Get_G_Axes(angrate);
 
