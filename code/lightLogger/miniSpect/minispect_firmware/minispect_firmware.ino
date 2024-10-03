@@ -252,7 +252,7 @@ void AS7341_init() {
 // Initialize the LSM6DSV16X sensor
 void LSM6DSV16X_init() {
   // Ensure the sensor can be found
-  if (LSM6DSV16X.begin()) {
+  if (!LSM6DSV16X.begin()) {
     while(true) { Serial.println("Could not find LSM6DSV16X"); delay(1);}
   }
 

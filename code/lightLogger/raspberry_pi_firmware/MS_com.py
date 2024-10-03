@@ -1,11 +1,17 @@
 import os
 import numpy as np
-from utility.MS_util import read_SERIAL, write_SERIAL
 import argparse
 import queue
 import threading
 import signal
+import sys
 
+"""Import utility functions from the MS utility file"""
+ms_lib_path = os.path.join(os.path.dirname(__file__), '..', 'miniSpect')
+sys.path.append(os.path.abspath(ms_lib_path))
+from MS_util import read_SERIAL, write_SERIAL
+
+"""Parse the command line arguments"""
 def parse_args() -> str:
     parser = argparse.ArgumentParser(description='Communicate serially with the MS and save its readings to a desired location.')
 
@@ -15,25 +21,25 @@ def parse_args() -> str:
 
     return args.output_path
 
-
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
     print("Received SIGTERM. Raising KeyboardInterrupt...")
     raise KeyboardInterrupt
 signal.signal(signal.SIGTERM, handle_sigterm)
 
+
 def main():
     # Initialize output directory and names 
     # of reading files
     output_directory: str = parse_args()
     reading_names: list = ['AS_channels','TS_channels',
-                         'LI_channels','LI_temp']
+                           'LS_channels','LS_temp']
 
     # If the output directory does not exist, make it
-    if(not os.path.exists(output_directory)): os.mkdir(output_directory)
+    if(not os.path.exists(output_directory)): os.makedirs(output_directory)
 
     # Initialize write_queue for data to write
-    write_queue = queue.Queue()
+    write_queue: queue.Queue = queue.Queue()
 
     # Create a threading flag to declare when to stop indefinite recordings
     stop_flag: threading.Event = threading.Event()
