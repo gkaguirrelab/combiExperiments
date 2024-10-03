@@ -138,13 +138,13 @@ void loop() {
       //AS_channels.push_back(AS_flicker[0]);
   
       // Retrieve 2 TS channels 
-      std::vector<uint16_t> TS_channels = TS_read('C',&tsl2591, device_mode);
+      std::vector<uint16_t> TS_channels = TS_read('C', &tsl2591, device_mode);
 
       // Retrieve the temp channel of the LI chip
       std::vector<float_t> LS_temp = LS_read('T', &LSM6DSV16X, device_mode, false); 
 
       // Write the data through the serial port 
-      write_serial(&AS_channels, &TS_channels, LS_temp[0], accel_buffer, angrate_buffer, buffer_size);  
+      write_serial(&AS_channels, &TS_channels, &accel_buffer, &angrate_buffer, LS_temp[0]);  
 
       // Clear the buffers
       accel_buffer_pos = 0;
