@@ -40,7 +40,7 @@ size_t accel_buffer_pos = 0;
 String serial_input = "";
 
 // Store the current mode state of the device
-char device_mode = 'S';
+char device_mode = 'C';
 
 void setup() {
   accel_buffer.reserve(buffer_size);
@@ -64,8 +64,8 @@ void setup() {
   Serial.println("Initializing sensors..."); 
   
   BLE_init();
-  TSL2591_init();
   AS7341_init();
+  TSL2591_init();
   LSM6DSV16X_init();
 
   Serial.println("Sensors initialized");
@@ -187,7 +187,7 @@ void loop() {
       SE_read(serial_input[2], NRF_FICR);
     }
 
-    // Read from the LI chip using specific data to read
+    // Read from the LS chip using specific data to read
     else if(mode_and_chip == "RL") {
       LS_read(serial_input[2],&LSM6DSV16X, device_mode, true);
     }
@@ -233,8 +233,7 @@ void TSL2591_init() {
 // Initialize the AS7341 Sensor
 void AS7341_init() {
   // Ensure the sensor can be found
-  if (!as7341.begin()) {
-    Serial.println("Could not find AS7341");
+  if (!as7341.begin()) { 
     while(true) { Serial.println("Could not find AS7341"); delay(1);}
   }
 
@@ -252,7 +251,7 @@ void AS7341_init() {
 // Initialize the LSM6DSV16X sensor
 void LSM6DSV16X_init() {
   // Ensure the sensor can be found
-  if (!LSM6DSV16X.begin()) {
+  if (LSM6DSV16X.begin() == LSM6DSV16X_ERROR) {
     while(true) { Serial.println("Could not find LSM6DSV16X"); delay(1);}
   }
 
