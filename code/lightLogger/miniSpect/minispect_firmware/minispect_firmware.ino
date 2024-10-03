@@ -76,8 +76,6 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("HELLO!");
-
   // Get the command from the controller
   read_command(&serial_input); 
   
