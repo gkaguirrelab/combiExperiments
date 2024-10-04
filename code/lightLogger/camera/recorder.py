@@ -52,7 +52,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
 
         # Write the frame
         save_path: str = os.path.join(filename, f'{frame_num}.npy')
-        np.save(save_path, frame[:, 1::2])
+        np.save(save_path, frame)
 
         # Write the frame info 
         settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
