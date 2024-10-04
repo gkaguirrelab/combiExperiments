@@ -297,9 +297,14 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
         if(token == b'<'):     
             print(f'Received MS TRANSMISSION @{time.time()}')      
             
-            # Read the buffer over the serial port
-            reading_buffer: bytes = ms.read(msg_length - 1)
+            # Read the buffer over the serial port (- 2 for the begin/end delimeters)
+            reading_buffer: bytes = ms.read(msg_length - 2)
 
+            # Assert we didn't overread the buffer by reading the next byte and ensuring
+            # it's the ending delimeter 
+            assert(ms.read(1) == b'>')
+
+            print(f"Size of reading buffer: {len(reading_buffer)}")
             AS, TS, LI, temp = parse_SERIAL(reading_buffer)
 
             print(f'AS CHANNELS: {AS}')
@@ -309,6 +314,7 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
 
             # Append it to the write queue
             write_queue.put(['NA',  reading_buffer])
+
             
             # Flush the reading buffer 
             reading_buffer = None

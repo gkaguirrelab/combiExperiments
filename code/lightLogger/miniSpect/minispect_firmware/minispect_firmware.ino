@@ -40,7 +40,7 @@ size_t accel_buffer_pos = 0;
 String serial_input = "";
 
 // Store the current mode state of the device
-char device_mode = 'C';
+char device_mode = 'S';
 
 void setup() {
   accel_buffer.reserve(buffer_size);
