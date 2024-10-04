@@ -264,6 +264,9 @@ def preview_capture():
     cam.stop()
     cam.stop_preview()
 
+    # Close the camera
+    cam.close()
+
 """Connect to the camera and initialize a control object"""
 def initialize_camera(initial_gain: float=1, initial_exposure: int=100) -> object:
     from picamera2 import Picamera2, Preview
