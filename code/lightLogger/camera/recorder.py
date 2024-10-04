@@ -9,7 +9,7 @@ import pickle
 import threading
 import pandas as pd
 import matplotlib.pyplot as plt
-import multiprocessing as mpu
+import multiprocessing as mp
 
 """Import the custom AGC library"""
 agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
@@ -24,17 +24,10 @@ sys.path.append(os.path.abspath(downsample_lib_path))
 from PyDownsample import import_downsample_lib, downsample
 
 # Import the CPP downsample lib (with types, etc)
-downsample_cpp_lib = import_downsample_lib()
+downsample_lib = import_downsample_lib()
 
 # The FPS we have locked the camera to
 CAM_FPS: float = 200
-
-def process_disk_write(filename, frame, frame_num, current_gain, current_exposure, settings_file):
-    # Initialize a settings file for per-frame settings to be written to.
-    save_path: str = os.path.join(filename, f'{frame_num}.npy')
-    np.save(save_path, frame)
-
-    settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
@@ -59,8 +52,8 @@ def write_frame(write_queue: queue.Queue, filename: str):
         # Extract frame and its metadata
         frame, frame_num, current_gain, current_exposure = ret
 
-        if(frame_num % CAM_FPS == 0):
-            print(f'Queue size: {write_queue.qsize()}')
+        # Print out the state of the queue every second
+        print(f'Camera queue size: {write_queue.qsize()}')
 
         # Write the frame
         save_path: str = os.path.join(filename, f'{frame_num}.npy')
@@ -140,12 +133,14 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
         # Capture the frame
         frame: np.array = cam.capture_array("raw")
 
+        frame_queue.append(frame)
+
         # Capture the current time
         current_time: float = time.time()
 
         # Append the frame and its relevant information 
         # to the storage containers
-        write_queue.put((frame, frame_num, current_exposure, current_gain))
+        #write_queue.put((frame, frame_num, current_exposure, current_gain))
 
         # Change gain every N ms
         if((current_time - last_gain_change)  > gain_change_interval):
@@ -188,7 +183,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     cam.start("video")  
     initial_metadata: dict = cam.capture_metadata()
     current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
-    
+
     # Make absolutely certain Ae and AWB are off 
     # (had to put this here at some point) for it to work 
     cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
@@ -196,19 +191,24 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     # Begin timing capture
     start_capture_time: float = time.time()
     last_gain_change: float = time.time()  
-    
+
+    frame_queue = np.zeros((CAM_FPS,480,640), dtype=np.uint8)
+
     # Capture duration (seconds) of frames
     frame_num: int = 1 
     while(True):
-        # Capture the frame
-        frame: np.array = cam.capture_array('raw')
-        
         # Capture the current time
         current_time: float = time.time()
 
+        # Capture the frame
+        frame: np.array = cam.capture_array('raw')[:, 1::2]
+
+        frame_queue[(frame_num-1) % CAM_FPS] = frame
+
         # Append the frame and its relevant information 
-        # to the storage containers
-        write_queue.put((frame, frame_num, current_gain, current_exposure))
+        # to the write queue
+        if(frame_num % CAM_FPS == 0):
+            write_queue.put((frame_queue, frame_num, current_exposure, current_gain))
    
         # Change gain every N ms
         if((current_time - last_gain_change) > gain_change_interval):
@@ -233,7 +233,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
         # Record the next frame number
         frame_num += 1 
-            
+
     # Record timing of end of capture 
     end_capture_time: float = time.time()
     
