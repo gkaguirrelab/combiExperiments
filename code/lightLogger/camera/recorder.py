@@ -8,11 +8,15 @@ import sys
 import pickle
 import threading
 import pandas as pd
+import matplotlib.pyplot as plt
+import multiprocessing as mpu
 
 """Import the custom AGC library"""
 agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
 sys.path.append(os.path.abspath(agc_lib_path))
-from PyAGC import AGC
+from PyAGC import import_AGC_lib, AGC
+
+AGC_lib = import_AGC_lib()
 
 """Import the custom Downsampling library"""
 downsample_lib_path = os.path.join(os.path.dirname(__file__), 'downsample_lib')
@@ -24,6 +28,13 @@ downsample_cpp_lib = import_downsample_lib()
 
 # The FPS we have locked the camera to
 CAM_FPS: float = 200
+
+def process_disk_write(filename, frame, frame_num, current_gain, current_exposure, settings_file):
+    # Initialize a settings file for per-frame settings to be written to.
+    save_path: str = os.path.join(filename, f'{frame_num}.npy')
+    np.save(save_path, frame)
+
+    settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
@@ -48,7 +59,8 @@ def write_frame(write_queue: queue.Queue, filename: str):
         # Extract frame and its metadata
         frame, frame_num, current_gain, current_exposure = ret
 
-        print(f'Queue size: {write_queue.qsize()}')
+        if(frame_num % CAM_FPS == 0):
+            print(f'Queue size: {write_queue.qsize()}')
 
         # Write the frame
         save_path: str = os.path.join(filename, f'{frame_num}.npy')
@@ -103,7 +115,7 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 def record_live(duration: float, write_queue: queue.Queue, filename: str, 
                 initial_gain: float, initial_exposure: int,
                 stop_flag: threading.Event):
-    from picamera2 import Picamera2, Preview
+    from picamera2 import Picamera2
 
     # Connect to and set up camera
     print(f"Initializing camera")
@@ -165,7 +177,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
 def record_video(duration: float, write_queue: queue.Queue, filename: str, 
                  initial_gain: float, initial_exposure: int,
                  stop_flag: threading.Event): 
-    from picamera2 import Picamera2, Preview
+    from picamera2 import Picamera2
 
     # Connect to and set up camera
     print(f"Initializing camera")
@@ -180,10 +192,6 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     # Make absolutely certain Ae and AWB are off 
     # (had to put this here at some point) for it to work 
     cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
-    
-    # Create containers to store the gain and exposure 
-    # of every frame
-    gain_history, exposure_history = [], [] 
 
     # Begin timing capture
     start_capture_time: float = time.time()
@@ -193,16 +201,14 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     frame_num: int = 1 
     while(True):
         # Capture the frame
-        frame: np.array = cam.capture_array("raw")
-
+        frame: np.array = cam.capture_array('raw')
+        
         # Capture the current time
         current_time: float = time.time()
 
         # Append the frame and its relevant information 
         # to the storage containers
         write_queue.put((frame, frame_num, current_gain, current_exposure))
-        gain_history.append(current_gain)
-        exposure_history.append(current_exposure)
    
         # Change gain every N ms
         if((current_time - last_gain_change) > gain_change_interval):
@@ -210,7 +216,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
             mean_intensity = np.mean(frame, axis=(0,1))
             
             # Feed the settings into the the AGC 
-            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95)
+            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95, AGC_lib)
 
             # Retrieve and set the new gain and exposure from our custom AGC
             new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
@@ -244,7 +250,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     
     print('Finishing recording')
     
-"""View a preview view of what the camera currently sees"""
+"""View a preview view of what the camera currently sees from the main stream"""
 def preview_capture():
     from picamera2 import Picamera2, Preview
     
@@ -257,7 +263,7 @@ def preview_capture():
 
     # Pause while we are viewing the preview
     print('Press q to cancel preview')
-    while(input().lower() != 'q'):
+    while(input().lower().strip() != 'q'):
         time.sleep(1)
 
     # Stop the preview
@@ -269,18 +275,18 @@ def preview_capture():
 
 """Connect to the camera and initialize a control object"""
 def initialize_camera(initial_gain: float=1, initial_exposure: int=100) -> object:
-    from picamera2 import Picamera2, Preview
+    from picamera2 import Picamera2
 
     # Initialize camera 
     cam: Picamera2 = Picamera2()
     
     # Select the mode to put the sensor in
     # (ie, mode for high fps/low res, more pixel HDR etc)
-    sensor_mode: dict = cam.sensor_modes[4]		
+    sensor_mode: dict = cam.sensor_modes[4] # 4		
     
     # Set the mode
     cam.configure(cam.create_video_configuration(sensor={'output_size':sensor_mode['size'], 'bit_depth':sensor_mode['bit_depth']}, main={'size':sensor_mode['size']}, raw=sensor_mode))
-    
+
     # Ensure the frame rate; This is calculated by
     # FPS = 1,000,000 / FrameDurationLimits 
     # e.g. 206.65 = 1000000/FDL => FDL = 1000000/206.65

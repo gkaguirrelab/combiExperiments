@@ -7,10 +7,12 @@ import shutil
 import numpy as np
 import signal
 
+os.system('source ~/.python_environment')
+
 """Import utility functions from the pupil recorder"""
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'pupil')
 sys.path.append(os.path.abspath(recorder_lib_path))
-from recorder import record_live, record_video, write_frame, vid_array_from_npy_folder, reconstruct_video
+from recorder import preview_capture, record_live, record_video, write_frame, vid_array_from_npy_folder, reconstruct_video
 
 """Parse arguments via the command line"""
 def parse_args() -> tuple:
@@ -22,10 +24,11 @@ def parse_args() -> tuple:
     parser.add_argument('--save_frames', default=0, type=int, help='Choose whether or not to save frames of a video after finished recording')
     parser.add_argument('--initial_gain', default=1.0, type=float, help='Gain value with which to initialize the camera')
     parser.add_argument('--initial_exposure', default=1000, type=int, help='Exposure value with which to initialize the camera')
+    parser.add_argument('--preview', default=0, type=int, help='Display a preview of the view of the camera before capturing')
    
     args = parser.parse_args()
     
-    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames)
+    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames), bool(args.preview)
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
@@ -34,7 +37,11 @@ def handle_sigterm(signum, frame):
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 def main():
-    output_path, duration, initial_gain, initial_exposure, save_video, save_frames = parse_args()
+    output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview = parse_args()
+
+    # If the preview is true, view a preview of the camera view before capture
+    if(preview is True):
+        preview_capture()
     
     # Select whether to use the set-duration video recorder or the live recorder
     recorder: object = record_live if duration == float('INF') else record_video

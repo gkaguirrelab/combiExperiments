@@ -210,11 +210,12 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     
     print('Finishing recording')
 
-"""View the output of the camera feed, useful for testing how captured images look"""
-def view_feed():
+"""Preview the camera feed"""
+def preview_capture():
     # Open a connection to the camera
     cam: cv2.VideoCapture = initialize_camera()
 
+    # Capture and display frames
     while(True):
         # Capture the frame
         ret, frame = cam.read()
@@ -238,7 +239,9 @@ def view_feed():
 """Iniitalize the pupil camera"""        
 def initialize_camera() -> cv2.VideoCapture:
     # Open a connection to the camera at index 0
-    cam: cv2.VideoCapture = cv2.VideoCapture(0)
+    cam: cv2.VideoCapture = cv2.VideoCapture(8, cv2.CAP_V4L2)
+
+    # Hangs on 8, 9, 24
 
     # Ensure the camera could be opened
     if(not cam.isOpened()):
