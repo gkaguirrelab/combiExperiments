@@ -7,12 +7,15 @@ nPreISIs = 1;
 % The stim labels
 if extendedModelFlag
     stimLabelSet = {'0psi','1.4psi','3.5psi','9.0psi','23.3psi','caryOver','newStim'};
+    stimLabelSet = {'0psi','1.0psi','1.5psi','2.1psi','3.1psi','4.5psi','6.6psi','9.7psi','14.1psi','20.6psi','30psi','caryOver','newStim'};
 else
     stimLabelSet = {'0psi','1.4psi','3.5psi','9.0psi','23.3psi'};
+    stimLabelSet = {'0psi','1.0psi','1.5psi','2.1psi','3.1psi','4.5psi','6.6psi','9.7psi','14.1psi','20.6psi','30psi'};
 end
 
 % The stim sequence
 stimulusCoarse = [0,0,3,3,4,0,2,0,4,4,2,1,4,3,1,0,1,3,2,4,1,1,2,2,3,0,0,2,2,3,4,3,0,1,4,2,0,4,1,2,1,3,3,2,4,4,0,3,1,1,0,0,1,1,3,0,4,4,2,3,3,1,2,1,4,0,2,4,1,0,3,4,3,2,2,0,0,3,2,2,1,1,4,2,3,1,0,1,3,4,1,2,4,4,0,2,0,4,3,3,0,0];
+stimulusCoarse = [0,0,8,8,6,7,5,2,5,3,3,9,6,6,9,5,10,7,1,0,2,3,4,3,6,8,7,10,9,3,2,9,8,2,6,4,5,1,2,7,3,7,4,6,1,7,2,10,5,8,10,0,7,9,1,6,2,4,1,4,7,6,3,1,1,10,10,2,8,0,9,4,4,2,0,3,0,6,5,4,10,6,10,4,9,9,2,2,1,5,9,10,1,8,1,3,5,6,0,4,8,9,0,1,9,7,8,3,10,8,4,0,5,5,7,7,0,10,3,8,5,0,0];
 
 % Add the preISIs as "-1" events
 stimulusCoarse = [repmat(-1,1,nPreISIs) stimulusCoarse];
