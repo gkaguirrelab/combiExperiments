@@ -35,8 +35,8 @@ nameStem = ['sub-',subID,'_ses-',sesID];
 
 % Define the directories
 repoFuncDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'func');
-repoNordDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'nord');
-repoOrigDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'funcOrig');
+repoNordDir = fullfile(dataPath,dirName,'derivatives',['sub-',subID],['ses-',sesID],'nord');
+repoOrigDir = fullfile(dataPath,dirName,'derivatives',['sub-',subID],['ses-',sesID],'funcOrig');
 mkdir(repoNordDir);
 mkdir(repoOrigDir);
 
@@ -57,9 +57,12 @@ ARG.phase_filter_width = 10;
 % set equal to number of noise frames at end of scan, if present
 ARG.noise_volume_last = nNoiseEPIs;
 % DIROUT may need to be separate from fn_out
-ARG.DIROUT = tempdir();
+ARG.DIROUT = [tempname() filesep];
 % Save a matlab file
 ARG.save_add_info = 1;
+
+% Create the dirout
+mkdir(ARG.DIROUT);
 
 % Loop over the acquisitions
 for ii = 1:length(acqSet)
