@@ -1,4 +1,6 @@
-function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels,useTedanaResults)
+function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,...
+    acqSet,tr,nNoiseEPIs,maskLabelSet,stimSeq,stimLabelSet,smoothSD,...
+    averageVoxels,useTedanaResults,resultLabel)
 
 %{
     fwSessID = '66fab2ad2ea3d370f9dc6608';
@@ -25,6 +27,7 @@ function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,t
 % Check if we are averaging voxels within the mask
 if nargin < 11
     averageVoxels = false;
+    resultLabel = sprintf('forwardModel_smooth=%2.2f',smoothSD);
 end
 
 % The polynomial degree used for high-pass filtering of the timeseries
@@ -55,7 +58,7 @@ repoFuncDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'func');
 repoMaskDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'mask');
 
 % Define a place to save the results
-saveDir = fullfile(dataPath,dirName,sprintf('forwardModel_smooth=%2.2f',smoothSD));
+saveDir = fullfile(dataPath,dirName,resultLabel);
 mkdir(saveDir);
 
 % Load the mask file and derive the vxs
@@ -74,7 +77,7 @@ end
 
 % Create the stimulus description
 extendedModelFlag = true;
-[stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs,extendedModelFlag,fixedStimDelaySecs);
+[stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs,stimSeq,stimLabelSet,extendedModelFlag,fixedStimDelaySecs);
 
 % Obtain the nuisanceVars
 nuisanceVars = assembleNuisanceVars(fwSessID,acqSet,tr,nNoiseEPIs,covarFileNames,covarSet);

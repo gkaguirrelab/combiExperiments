@@ -1,43 +1,35 @@
-function [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs,extendedModelFlag,fixedStimDelaySecs)
+function [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs,stimSeq,stimLabelSet,extendedModelFlag,fixedStimDelaySecs)
 
 % How many non-trial events to be added before the start of the sequence,
 % for the purpose of modeling the period just before the experiment begins
 nPreISIs = 1;
 
-% The stim labels
+% Add labels for the extended model if requested
 if extendedModelFlag
-    stimLabelSet = {'0psi','1.4psi','3.5psi','9.0psi','23.3psi','caryOver','newStim'};
-    stimLabelSet = {'0psi','1.0psi','1.5psi','2.1psi','3.1psi','4.5psi','6.6psi','9.7psi','14.1psi','20.6psi','30psi','caryOver','newStim'};
-else
-    stimLabelSet = {'0psi','1.4psi','3.5psi','9.0psi','23.3psi'};
-    stimLabelSet = {'0psi','1.0psi','1.5psi','2.1psi','3.1psi','4.5psi','6.6psi','9.7psi','14.1psi','20.6psi','30psi'};
+    stimLabelSet = [stimLabelSet,'caryOver','newStim'];
 end
 
-% The stim sequence
-stimulusCoarse = [0,0,3,3,4,0,2,0,4,4,2,1,4,3,1,0,1,3,2,4,1,1,2,2,3,0,0,2,2,3,4,3,0,1,4,2,0,4,1,2,1,3,3,2,4,4,0,3,1,1,0,0,1,1,3,0,4,4,2,3,3,1,2,1,4,0,2,4,1,0,3,4,3,2,2,0,0,3,2,2,1,1,4,2,3,1,0,1,3,4,1,2,4,4,0,2,0,4,3,3,0,0];
-stimulusCoarse = [0,0,8,8,6,7,5,2,5,3,3,9,6,6,9,5,10,7,1,0,2,3,4,3,6,8,7,10,9,3,2,9,8,2,6,4,5,1,2,7,3,7,4,6,1,7,2,10,5,8,10,0,7,9,1,6,2,4,1,4,7,6,3,1,1,10,10,2,8,0,9,4,4,2,0,3,0,6,5,4,10,6,10,4,9,9,2,2,1,5,9,10,1,8,1,3,5,6,0,4,8,9,0,1,9,7,8,3,10,8,4,0,5,5,7,7,0,10,3,8,5,0,0];
-
 % Add the preISIs as "-1" events
-stimulusCoarse = [repmat(-1,1,nPreISIs) stimulusCoarse];
+stimSeq = [repmat(-1,1,nPreISIs) stimSeq];
 
 % Basic stimulus properties
-nStimTypes = length(unique(stimulusCoarse))-1;
+nStimTypes = length(unique(stimSeq))-1;
 isi = 4.5;
 dT = 0.25;
 nParams = length(stimLabelSet);
 
 % Create a single stimulus matrix
-stimVecLength = length(stimulusCoarse)*(isi/dT);
+stimVecLength = length(stimSeq)*(isi/dT);
 singleStimMat = zeros(nStimTypes,stimVecLength);
 carryOver = zeros(1,stimVecLength);
 newStim = zeros(1,stimVecLength);
-for ii = 1:length(stimulusCoarse)
-    if stimulusCoarse(ii) ~= -1
+for ii = 1:length(stimSeq)
+    if stimSeq(ii) ~= -1
         idx = (ii-1)*(isi/dT)+1+round(fixedStimDelaySecs/dT);
-        singleStimMat(stimulusCoarse(ii)+1,idx) = 1;
+        singleStimMat(stimSeq(ii)+1,idx) = 1;
         if ii > 1
-            if stimulusCoarse(ii-1) > 0
-                carryOver(idx) = stimulusCoarse(ii) - stimulusCoarse(ii-1);
+            if stimSeq(ii-1) > 0
+                carryOver(idx) = stimSeq(ii) - stimSeq(ii-1);
             else
                 newStim(idx) = 1;
             end
