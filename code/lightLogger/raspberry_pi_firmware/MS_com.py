@@ -62,14 +62,10 @@ def main():
         # Set the stop flag to tell a live capture to stop
         stop_flag.set()
 
-        # the capture_thread is entirely finished for recording videos
-        capture_thread.join()
-
-        # Wait for the write thread to complete
-        write_thread.join()
-
     # Join threads regardless of interrupt or not. Ensure they are joined
     finally:
+        # Wait until the capture_thread is entirely finished for recording videos
+        # Then wait for the write thread to complete
         for thread in (capture_thread, write_thread):
             thread.join()
   

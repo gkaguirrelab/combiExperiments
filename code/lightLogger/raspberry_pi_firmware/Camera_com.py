@@ -73,16 +73,12 @@ def main():
     except KeyboardInterrupt:
         # Set the stop flag to tell a live capture to stop
         stop_flag.set()
-
-        # Join the capture thread. Will finish the live capture, or wait until 
-        # the capture_thread is entirely finished for recording videos
-        capture_thread.join()
-
-        # Wait for the write thread to complete
-        write_thread.join()
     
     # Join threads regardless of keyboard interrupt or not
     finally:
+        # Join the capture thread. Will finish the live capture, or wait until 
+        # the capture_thread is entirely finished for recording videos
+        # then wait for the write thread to complete
         for thread in (capture_thread, write_thread):
             thread.join()
     
