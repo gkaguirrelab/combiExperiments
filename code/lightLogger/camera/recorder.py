@@ -50,22 +50,49 @@ def write_frame(write_queue: queue.Queue, filename: str):
             break
         
         # Extract frame and its metadata
-        frame, frame_num, current_gain, current_exposure = ret
+        frame_buffer, frame_num, settings_buffer = ret
 
-        # Print out the state of the queue every second
+        # Print out the state of the write queue
         print(f'Camera queue size: {write_queue.qsize()}')
 
         # Write the frame
         save_path: str = os.path.join(filename, f'{frame_num}.npy')
-        np.save(save_path, frame)
+        np.save(save_path, frame_buffer)
 
-        # Write the frame info 
-        settings_file.write(f'{frame_num},{current_gain},{current_exposure}\n')
+        # Write the frame info to the existing csv file
+        np.savetxt(settings_file, settings_buffer, delimiter=',', fmt='%d')
 
     # Close the settings file
     settings_file.close()
 
     print('finishing writing')
+
+"""Unpack chunks of n captured frames. This is used 
+   to reformat the memory-limitation required capture 
+   buffer format into the single frame files the codebase 
+   is built on at the end of a capture."""
+def unpack_capture_chunks(path_to_frames: str):
+    # Declare an accumulator variable to hold the real frame number 
+    # of each frame when we resave it 
+    frame_num: int = 0
+
+    # Iterate over the frame buffer files
+    for frame_buffer_file in natsorted(os.listdir(path_to_frames)):
+        # Load in this buffer 
+        frame_buffer: np.ndarray = np.load(os.path.join(path_to_frames, frame_buffer_file))
+
+        # Iterate over the frames in the buffer 
+        for frame in frame_buffer:
+            # Construct the new path to save this file (all buffer files will be overwritten by these)
+            save_path: str = os.path.join(path_to_frames, f'{frame_num}.npy')
+
+            # Save the frame
+            np.save(save_path, frame)
+
+            # Increment the frame number
+            frame_num += 1 
+
+
 
 """Parse the setting file for a video as a data frame"""
 def parse_settings_file(path: str) -> pd.DataFrame:
@@ -192,23 +219,28 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     start_capture_time: float = time.time()
     last_gain_change: float = time.time()  
 
-    frame_queue = np.zeros((CAM_FPS,480,640), dtype=np.uint8)
+    # Initialize a contiguous memory buffer to store 1 second of frames 
+    # + settings in this is so when we send them to be written, numpy does not have 
+    # to reallocate for contiguous memory, thus slowing down capture
+    frame_buffer: np.array = np.zeros((CAM_FPS, 480, 640), dtype=np.uint8)
+    settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float16) 
 
     # Capture duration (seconds) of frames
-    frame_num: int = 1 
+    frame_num: int = 0
     while(True):
         # Capture the current time
         current_time: float = time.time()
+        
+        # If reached desired duration, stop recording
+        if((current_time - start_capture_time) >= duration):
+            break  
 
-        # Capture the frame
+        # Capture the frame and splice only the odd cols (even cols have junk content)
         frame: np.array = cam.capture_array('raw')[:, 1::2]
 
-        frame_queue[(frame_num-1) % CAM_FPS] = frame
-
-        # Append the frame and its relevant information 
-        # to the write queue
-        if(frame_num % CAM_FPS == 0):
-            write_queue.put((frame_queue, frame_num, current_exposure, current_gain))
+        # Store the frame + settings into the allocated memory buffers
+        frame_buffer[frame_num % CAM_FPS] = frame
+        settings_buffer[frame_num % CAM_FPS] = [current_gain, current_exposure]
    
         # Change gain every N ms
         if((current_time - last_gain_change) > gain_change_interval):
@@ -226,13 +258,14 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
             # wait for next gain change time
             last_gain_change = current_time
             current_gain, current_exposure = new_gain, new_exposure
-        
-        # If reached desired duration, stop recording
-        if((current_time - start_capture_time) >= duration):
-            break  
 
         # Record the next frame number
         frame_num += 1 
+
+        # If we have now captured one second worth of frames, send the frame buffer 
+        # to be written 
+        if(frame_num % CAM_FPS == 0):
+            write_queue.put((frame_buffer, frame_num, settings_buffer))
 
     # Record timing of end of capture 
     end_capture_time: float = time.time()
@@ -242,7 +275,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     
     # Calculate the approximate FPS the frames were taken at 
     # (approximate due to time taken for other computation)
-    observed_fps: float = frame_num/(end_capture_time-start_capture_time)
+    observed_fps: float = (frame_num)/(end_capture_time-start_capture_time)
     print(f'I captured {frame_num} at {observed_fps} fps')
     
     # Stop recording and close the picam object 
