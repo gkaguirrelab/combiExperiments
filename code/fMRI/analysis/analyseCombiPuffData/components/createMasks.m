@@ -27,10 +27,19 @@ function repoMaskDir = createMasks(dataPath,dirName,subID,sesID,acqSet)
 nameStem = ['sub-',subID,'_ses-',sesID];
 
 % Define the repo directories
-repoAnatDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'anat');
 repoFuncDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'func');
 repoMaskDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'mask');
 mkdir(repoMaskDir);
+
+% The relevant anat directory could be inside a session directory, or at
+% the subject level. we check for the presence of a file that we need, and
+% fall back to the other directory possibility if it is not present.
+repoAnatDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'anat');
+anatNameStem = ['sub-',subID,'_ses-',sesID];
+if ~isfile(fullfile(repoAnatDir,[nameStem,'_space-MNI152NLin2009cAsym_desc-preproc_T1w.nii.gz']))
+    repoAnatDir = fullfile(dataPath,dirName,['sub-',subID],'anat');
+    anatNameStem = ['sub-',subID];
+end
 
 % Identify a temp directory
 workDir = tempdir();
@@ -39,12 +48,12 @@ workDir = tempdir();
 brainstemOnlyMaskDir_FSLMNI152 = fullfile(tbLocateProjectSilent('combiExperiments'),'code','fMRI','analysis','masks','brainstemOnly');
 brainstemOnlyMaskPath_FSLMNI152 = fullfile(brainstemOnlyMaskDir_FSLMNI152,'brainstem_only_final_mask.nii');
 templatePath_FSLMNI152 = fullfile(brainstemOnlyMaskDir_FSLMNI152,'FSL_MNI152_FreeSurferConformed_1mm.nii.gz');
-subjectT1wPath_MNI152NLin2009cAsym = fullfile(repoAnatDir,[nameStem,'_space-MNI152NLin2009cAsym_desc-preproc_T1w.nii.gz']);
+subjectT1wPath_MNI152NLin2009cAsym = fullfile(repoAnatDir,[anatNameStem,'_space-MNI152NLin2009cAsym_desc-preproc_T1w.nii.gz']);
 tempDir = dir(fullfile(repoFuncDir,[nameStem,'*space-MNI152NLin2009cAsym_boldref.nii.gz']));
 subjectBoldPath_MNI152NLin2009cAsym = fullfile(tempDir(1).folder,tempDir(1).name);
 
 % Define output paths
-brainstemOnlyMaskPathAnat_MNI152NLin2009cAsym = fullfile(repoAnatDir,[nameStem,'_space-MNI152NLin2009cAsym_label-brainstem.nii.gz']);
+brainstemOnlyMaskPathAnat_MNI152NLin2009cAsym = fullfile(repoAnatDir,[anatNameStem,'_space-MNI152NLin2009cAsym_label-brainstem.nii.gz']);
 brainstemOnlyMaskPathFunc_MNI152NLin2009cAsym = fullfile(repoMaskDir,[nameStem,'_space-MNI152NLin2009cAsym_label-brainstem.nii.gz']);
 gmMaskPathFunc_MNI152NLin2009cAsym = fullfile(repoMaskDir,[nameStem,'_space-MNI152NLin2009cAsym_label-GM.nii.gz']);
 wmMaskPathFunc_MNI152NLin2009cAsym = fullfile(repoMaskDir,[nameStem,'_space-MNI152NLin2009cAsym_label-WM.nii.gz']);
@@ -70,15 +79,14 @@ system(command);
 command = ['fslmaths ' brainstemOnlyMaskPathFunc_MNI152NLin2009cAsym ' -bin ' brainstemOnlyMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
 
-    command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[nameStem '_space-MNI152NLin2009cAsym_label-GM_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' gmMaskPathFunc_MNI152NLin2009cAsym];
+command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[anatNameStem '_space-MNI152NLin2009cAsym_label-GM_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' gmMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
 command = ['fslmaths ' gmMaskPathFunc_MNI152NLin2009cAsym ' -thr 0.5 ' gmMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
 command = ['fslmaths ' gmMaskPathFunc_MNI152NLin2009cAsym ' -bin ' gmMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
 
-
-command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[nameStem '_space-MNI152NLin2009cAsym_label-WM_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' wmMaskPathFunc_MNI152NLin2009cAsym];
+command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[anatNameStem '_space-MNI152NLin2009cAsym_label-WM_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' wmMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
 system(command);
 command = ['fslmaths ' wmMaskPathFunc_MNI152NLin2009cAsym ' -thr 0.5 ' wmMaskPathFunc_MNI152NLin2009cAsym];
@@ -86,8 +94,7 @@ system(command);
 command = ['fslmaths ' wmMaskPathFunc_MNI152NLin2009cAsym ' -bin ' wmMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
 
-
-command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[nameStem '_space-MNI152NLin2009cAsym_label-CSF_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' csfMaskPathFunc_MNI152NLin2009cAsym];
+command = ['mri_vol2vol --regheader --nearest --mov ' fullfile(repoAnatDir,[anatNameStem '_space-MNI152NLin2009cAsym_label-CSF_probseg.nii.gz']) ' --targ ' subjectBoldPath_MNI152NLin2009cAsym ' --o ' csfMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
 system(command);
 command = ['fslmaths ' csfMaskPathFunc_MNI152NLin2009cAsym ' -thr 0.5 ' csfMaskPathFunc_MNI152NLin2009cAsym];
@@ -95,13 +102,12 @@ system(command);
 command = ['fslmaths ' csfMaskPathFunc_MNI152NLin2009cAsym ' -bin ' csfMaskPathFunc_MNI152NLin2009cAsym];
 system(command);
 
-
 % Create a brain mask in subject native space for each acqusitions. This is
 % used for tedana processing.
 for ii = 1:length(acqSet)
     % Transform the brain mask back to boldref
     xfm_boldref2T1 = fullfile(repoFuncDir,[nameStem,acqSet{ii},'_from-boldref_to-T1w_mode-image_desc-coreg_xfm.txt']);
-    sourceFile = fullfile(repoAnatDir,[nameStem '_desc-brain_mask.nii.gz']);
+    sourceFile = fullfile(repoAnatDir,[anatNameStem '_desc-brain_mask.nii.gz']);
     boldrefFile = fullfile(repoFuncDir,[nameStem,acqSet{ii},'_part-mag_desc-coreg_boldref.nii.gz']);
     outFileBrain = fullfile(repoMaskDir,[nameStem,acqSet{ii},'_desc-brain_mask.nii.gz']);
     command = ['antsApplyTransforms -d 3 -i ' sourceFile ' -r ' boldrefFile ' -t [ ' xfm_boldref2T1 ' ,1 ] -o  ' outFileBrain ];

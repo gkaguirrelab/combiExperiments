@@ -1,26 +1,24 @@
-function [physioMatrix,fileNameStem] = returnPhysioMatrix(rawDataPath,subID,sesID,acqSet,tr,nNoiseEPIs)
+function [physioMatrix,fileNameStem] = returnPhysioMatrix(fwSessID,acqSet,tr,nNoiseEPIs)
 
 %{
-    rawDataPath = '/Users/aguirre/Downloads/flywheel/gkaguirrelab/trigeminal/';
-    subID = '001';
-    sesID = '20240923';
+    fwSessID = '66f17c99d49fdd0e6e9268e1';
     acqSet = {...
         '_task-trigemmed_acq-multiecho_run-01',...
         '_task-trigemhi_acq-multiecho_run-01',...
         '_task-trigemlow_acq-multiecho_run-01'...
     };
     tr = 2.87;
-    nNoiseEPIs = 2;
-    [physioMatrix,fileNameStem] = returnPhysioMatrix(rawDataPath,subID,sesID,acqSet,tr,nNoiseEPIs);
+    [physioMatrix,fileNameStem] = returnPhysioMatrix(fwSessID,acqSet,tr);
 %}
+
+
+% Create a flywheel object and get the acquisition list
+fw = flywheel.Flywheel(getpref('flywheelMRSupport','flywheelAPIKey'));
+acquisitionList = fw.getSessionAcquisitions(fwSessID);
+acquisitionLabels = cellfun(@(x) x.label,acquisitionList,'UniformOutput',false);
 
 % Identify a temp directory
 workDir = tempdir();
-
-% Get the list of directory names within the raw data directory
-rawDir = fullfile(rawDataPath,subID,sesID);
-acquisitionLabels = dir(rawDir);
-acquisitionLabels = {acquisitionLabels.name};
 
 % Step through the acquisitions, find the physio files, download the physio
 % dicom
@@ -28,7 +26,7 @@ fileNameStem = [];
 for ii = 1:length(acqSet)
 
     % To be the physio file for our target acquisition, the label of the
-    % acquisition must contain all of these tags
+    % flywheel acquisition must contain all of these tags
     tags = split(acqSet{ii},'_');
     tags = tags(cellfun(@(x) ~isempty(x),tags));
     tags = [tags;'func';'PhysioLog'];
@@ -47,11 +45,12 @@ for ii = 1:length(acqSet)
     physioIdx = find(acqMatches);
 
     % Download the physio DICOM from Flywheel
-    fileName = [acquisitionLabels{physioIdx} '.dcm'];
-    rawPhysioPath = fullfile(rawDir,acquisitionLabels{physioIdx},fileName);
+    fileName = acquisitionList{physioIdx}.files{1}.name;
+    savePath = fullfile(workDir,fileName);
+    fw.downloadFileFromAcquisition(acquisitionList{physioIdx}.id,fileName,savePath);
 
     % Convert the DICOM to ".log" physio files
-    dicomInfo = readCMRRPhysio(rawPhysioPath, 0, workDir);
+    dicomInfo = readCMRRPhysio(savePath, 0, workDir);
 
     % Extract some information about the acquisition to be used later
     % for the tapas analysis
@@ -70,7 +69,7 @@ for ii = 1:length(acqSet)
     movefile(fileIn,fileOutPULS);
 
     % Store the file path and stem name of these physio log files
-    fileNameStem{ii} = strrep(rawPhysioPath,'.dcm','');
+    fileNameStem{ii} = strrep(savePath,'.dcm','');
 
     % Create a "tapasStruct" that has the information needed for the
     % tapas routine
@@ -93,5 +92,8 @@ for ii = 1:length(acqSet)
     physioMatrix{ii} = R';
 
 end
+
+% Delete the fw object
+delete(fw);
 
 end

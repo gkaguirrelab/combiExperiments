@@ -1,10 +1,10 @@
-function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,...
+function results = fitTrigemModel(rawDataPath,dataPath,dirName,subID,sesID,...
     acqSet,tr,nNoiseEPIs,maskLabelSet,stimSeq,stimLabelSet,smoothSD,...
     averageVoxels,useTedanaResults,resultLabel)
 
 %{
-    fwSessID = '66fab2ad2ea3d370f9dc6608';
-    dataPath = fullfile(filesep,'Users','aguirre','Downloads','flywheel','gkaguirrelab','trigeminal');
+    rawDataPath = fullfile(filesep,'Users','aguirre','Downloads','flywheel','gkaguirrelab','trigeminal');
+    dataPath = fullfile(filesep,'Users','aguirre','Downloads','dset');
     dirName = 'fprep';
     subID = '001';
     sesID = '20240930';
@@ -21,7 +21,7 @@ function results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,...
     smoothSD = 0.99;
     averageVoxels = false;
     useTedanaResults = true;
-    results = fitTrigemModel(fwSessID,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels,useTedanaResults);
+    results = fitTrigemModel(rawDataPath,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels,useTedanaResults);
 %}
 
 % Check if we are averaging voxels within the mask
@@ -80,7 +80,7 @@ extendedModelFlag = true;
 [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs,stimSeq,stimLabelSet,extendedModelFlag,fixedStimDelaySecs);
 
 % Obtain the nuisanceVars
-nuisanceVars = assembleNuisanceVars(fwSessID,acqSet,tr,nNoiseEPIs,covarFileNames,covarSet);
+nuisanceVars = assembleNuisanceVars(rawDataPath,subID,sesID,acqSet,tr,nNoiseEPIs,covarFileNames,covarSet);
 
 % Load the data
 [data,templateImage,maskVol] = parseDataFiles(dataFileNames,smoothSD,maskFiles);

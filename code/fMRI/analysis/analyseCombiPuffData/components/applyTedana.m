@@ -1,4 +1,4 @@
-function tedanaPreProcess(dataPath,dirName,subID,sesID,acqSet,echoTimesMs,icaRejectSet)
+function applyTedana(dataPath,dirName,subID,sesID,acqSet,echoTimesMs,icaRejectSet)
 %
 %
 %
@@ -22,7 +22,7 @@ function tedanaPreProcess(dataPath,dirName,subID,sesID,acqSet,echoTimesMs,icaRej
         [1,4,8,22,23],...
         [9,22,60,61]...
         };
-    tedanaPreProcess(dataPath,dirName,subID,sesID,acqSet,echoTimesMs,icaRejectSet);
+    applyTedana(dataPath,dirName,subID,sesID,acqSet,echoTimesMs,icaRejectSet);
 %}
 
 % How many echoes do we have?
@@ -41,16 +41,25 @@ warnState = warning();
 warning('off','MATLAB:table:ModifiedAndSavedVarnames');
 
 % Define the repo directories
-repoAnatDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'anat');
 repoFuncDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'func');
 repoMaskDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'mask');
+
+% The relevant anat directory could be inside a session directory, or at
+% the subject level. we check for the presence of a file that we need, and
+% fall back to the other directory possibility if it is not present.
+repoAnatDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'anat');
+anatNameStem = ['sub-',subID,'_ses-',sesID];
+if ~isfile(fullfile(repoAnatDir,[nameStem,'_space-MNI152NLin2009cAsym_desc-preproc_T1w.nii.gz']))
+    repoAnatDir = fullfile(dataPath,dirName,['sub-',subID],'anat');
+    anatNameStem = ['sub-',subID];
+end
 
 % Create a directory for tedana output
 repoTdnaDir = fullfile(dataPath,dirName,['sub-',subID],['ses-',sesID],'tdna');
 mkdir(repoTdnaDir);
 
 % Get the xfms for MNI space
-xfm_T12MNI = fullfile(repoAnatDir,[nameStem,'_from-T1w_to-MNI152NLin2009cAsym_mode-image_xfm.h5']);
+xfm_T12MNI = fullfile(repoAnatDir,[anatNameStem,'_from-T1w_to-MNI152NLin2009cAsym_mode-image_xfm.h5']);
 
 % Handle an empty icaRejectSet
 if isempty(icaRejectSet)
