@@ -149,33 +149,37 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     
     # Make absolutely certain Ae and AWB are off 
     # (had to put this here at some point) for it to work 
-    cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
+    cam.set_controls({'AeEnable':0, 'AwbEnable':0})   
+
+     # Initialize a contiguous memory buffer to store 1 second of frames 
+    # + settings in this is so when we send them to be written, numpy does not have 
+    # to reallocate for contiguous memory, thus slowing down capture
+    frame_buffer: np.array = np.zeros((CAM_FPS, 480, 640), dtype=np.uint8)
+    settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float16) 
 
     # Initialize the last time we changed the gain as the current time
     last_gain_change: float = time.time()  
 
     # Capture indefinite frames
-    frame_num: int = 1 
+    frame_num: int = 0 
     while(not stop_flag.is_set()):
-        # Capture the frame
-        frame: np.array = cam.capture_array("raw")
-
-        frame_queue.append(frame)
-
         # Capture the current time
         current_time: float = time.time()
+        
+        # Capture the frame and splice only the odd cols (even cols have junk content)
+        frame: np.array = cam.capture_array('raw')[:, 1::2]
 
-        # Append the frame and its relevant information 
-        # to the storage containers
-        #write_queue.put((frame, frame_num, current_exposure, current_gain))
-
+        # Store the frame + settings into the allocated memory buffers
+        frame_buffer[frame_num % CAM_FPS] = frame
+        settings_buffer[frame_num % CAM_FPS] = [current_gain, current_exposure]
+   
         # Change gain every N ms
-        if((current_time - last_gain_change)  > gain_change_interval):
+        if((current_time - last_gain_change) > gain_change_interval):
             # Take the mean intensity of the frame
             mean_intensity = np.mean(frame, axis=(0,1))
             
             # Feed the settings into the the AGC 
-            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95)
+            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95, AGC_lib)
 
             # Retrieve and set the new gain and exposure from our custom AGC
             new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
@@ -188,6 +192,11 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
 
         # Record the next frame number
         frame_num += 1 
+
+        # If we have now captured one second worth of frames, send the frame buffer 
+        # to be written 
+        if(frame_num % CAM_FPS == 0):
+            write_queue.put((frame_buffer, frame_num, settings_buffer))
 
     # Signal the end of the write queue
     write_queue.put(None) 
@@ -213,17 +222,17 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
     # Make absolutely certain Ae and AWB are off 
     # (had to put this here at some point) for it to work 
-    cam.set_controls({'AeEnable':0, 'AwbEnable':0})     
-
-    # Begin timing capture
-    start_capture_time: float = time.time()
-    last_gain_change: float = time.time()  
+    cam.set_controls({'AeEnable':0, 'AwbEnable':0})   
 
     # Initialize a contiguous memory buffer to store 1 second of frames 
     # + settings in this is so when we send them to be written, numpy does not have 
     # to reallocate for contiguous memory, thus slowing down capture
     frame_buffer: np.array = np.zeros((CAM_FPS, 480, 640), dtype=np.uint8)
-    settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float16) 
+    settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float16)   
+
+    # Begin timing capture
+    start_capture_time: float = time.time()
+    last_gain_change: float = time.time()  
 
     # Capture duration (seconds) of frames
     frame_num: int = 0

@@ -7,6 +7,8 @@ import queue
 import threading
 import pandas as pd
 from natsort import natsorted
+import uvc
+import matplotlib.pyplot as plt
 
 CAM_FPS: int = 30
 
@@ -213,55 +215,47 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 """Preview the camera feed"""
 def preview_capture():
     # Open a connection to the camera
-    cam: cv2.VideoCapture = initialize_camera()
+    cam: uvc.Capture = initialize_camera()
 
-    # Capture and display frames
-    while(True):
-        # Capture the frame
-        ret, frame = cam.read()
+    # Capture a frame from the camera
+    frame_obj: uvc_bindings.MJPEGFrame = cam.get_frame_robust()
 
-        # Ensure a frame was properly read 
-        if not ret:
-            print("ERROR: Could not read frame")
-            break
-        
-        # Display the frame
-        cv2.imshow('Camera Feed', frame)
+    print(frame_obj.gray.mean())
 
-        # Break the loop if 'q' is pressed
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    cv2.imwrite('test.jpg', frame_obj.img)
 
-    # Release the camera and close all windows
-    cam.release()
-    cv2.destroyAllWindows()
+    # Close the connection to the camera 
+    cam.close()
 
 """Iniitalize the pupil camera"""        
-def initialize_camera() -> cv2.VideoCapture:
-    # Open a connection to the camera at index 0
-    cam: cv2.VideoCapture = cv2.VideoCapture(8, cv2.CAP_V4L2)
+def initialize_camera() -> uvc.Capture:
+    # Retrieve the camera device
+    device, *_ = uvc.device_list()
 
-    # Hangs on 8, 9, 24
+    # Open a connection to the camera
+    cam = uvc.Capture(device["uid"])
 
-    # Ensure the camera could be opened
-    if(not cam.isOpened()):
-        raise Exception("Error: Could not open camera.")
+    # Set the camera to be 192x192 @ 200 FPS
+    cam.frame_mode = cam.available_modes[5]
 
-    # Placeholders until we do more research into this
-    width: int = 640
-    height: int = 480
-    fps: int = 30
-    initial_exposure_value = cam.get(cv2.CAP_PROP_EXPOSURE)
-    initial_gain_value = cam.get(cv2.CAP_PROP_GAIN)
+    # Retrieve the controls dict
+    controls_dict = {c.display_name: c for c in cam.controls}
+
+    # Configure the 200hz IR cameras 
+    controls_dict['Auto Exposure Mode'].value = 1
+    controls_dict['Gamma'].value = 600
+    controls_dict['Gain'].value = 10000
     
-    # Set the properties of the camera image
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
-    # Set the properties of the camera
-    cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
-    cam.set(cv2.CAP_PROP_FPS, fps)
-    cam.set(cv2.CAP_PROP_GAIN, initial_gain_value)
-    cam.set(cv2.CAP_PROP_EXPOSURE, initial_exposure_value)
+    print(controls_dict)
+    print(dir(cam))
 
-    return cam
+    return cam 
+    
+
+def main():
+    preview_capture()
+
+
+if(__name__ == '__main__'):
+    main()
