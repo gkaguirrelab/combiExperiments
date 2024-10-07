@@ -1,72 +1,83 @@
 import subprocess
 import sys
 import time
+import argparse
+
+"""Parse the command line arguments"""
+def parse_args() -> tuple:
+    parser: argparse.ArgumentParser = argparse.ArgumentParser(description='Main control software for managing each component of the device')
+
+    parser.add_argument('config_path', type=str, help='Where to read the processes and arguments from')
+
+    args = parser.parse_args()
+
+    return args.config_path 
+
+"""Parse the arguments for each subprocess from the main commandline"""
+def parse_process_args(config_path: str) -> dict:
+    # Generate a dictionary to store program names and thier arguments
+    controllers_and_args: dict = {}
+    
+    # Open the config file 
+    with open(config_path, 'r') as f:
+        for line in f:
+            # First, split the line into space-based tokens
+            tokens: list = line.split(' ')
+
+            # Find the program name
+            program_name, *_ = [token for token in tokens 
+                                if '.py' in token]  
+
+            # Save the arguments for the given program name
+            controllers_and_args[program_name] = " ".join([token for token in tokens]).strip()
+
+    return controllers_and_args
+            
 
 def main():
-    print('Building controllers')
-    # List of scripts to run and their associated arguments
-    component_controllers = {#'MS_com.py': ['/media/eds/EXTERNAL1/'],
-                             #'Sunglasses_com.py': ['/media/eds/EXTERNAL1/sunglasses.csv', 'INF'],
-                             'Camera_com.py': ['/media/eds/EXTERNAL1/all_together_now_camera.avi', 'INF', '--save_frames', '1'], 
-                             'Pupil_com.py': ['/media/eds/EXTERNAL1/all_together_now_pupil.mp4', 'INF', '--save_frames', '1']}
+    # Define a set of valid process names to use for data collection
+    valid_processes: set = set(['MS_com.py', 'Sunglasses_com.py', 
+                                'Camera_com.py', 'Pupil_com.py'])
+
+    # Parse the file containing the processes to run and their args
+    config_path = parse_args()
+
+    # Parse the controllers and their arguments
+    print('Parsing processes and args...')
+    component_controllers: dict = parse_process_args(config_path)
+
+    # Assert we have entered valid process names and args for each 
+    assert(all(name in valid_processes for name in component_controllers))
+
+    # Print out each sub program along with its arguments
+    for name, args in component_controllers.items():
+        print(f'Program: {name} | Args: {args}')
 
     # List to keep track of process objects
-    processes = []
-
-    print('starting processes')
+    processes: list = []
     
     # Iterate over the other scripts and start them with their associated arguments
+    print('Starting processes...')
     for script, args in component_controllers.items():
-        p = subprocess.Popen(['python3', script] + args,
-                              stdout=sys.stdout,
-                              stderr=sys.stderr)
+        p = subprocess.Popen(args,
+                             stdout=sys.stdout,
+                             stderr=sys.stderr,
+                             shell=True)
         processes.append(p)
 
-    # Retrieve the processes by name
-    #minispect_process, = processes
-    #minispect_process, pupil_process = processes 
-    #minispect_process, sunglasses_process, camera_process, pupil_process = processes #camera_process = processes 
-    #minispect_process, = processes
-
-    camera_process, pupil_process = processes 
-
-    print(f'Executing')
+    # Execute the processes 
+    print(f'Executing...')
     try:
-        while(True):    
+        while(True):
             time.sleep(1)
-        #minispect_process.terminate()
-        pupil_process.terminate()
-       
-        
-        # Wait for the pupil process to complete for a timed recording
-        #pupil_process.wait()
-        camera_process.terminate()
-        #sunglasses_process.terminate()
-       # camera_process.terminate()
-
-
-        # Then close the minispect process
-        #minispect_process.terminate()
-        
-        #sunglasses_process.wait()
-        pupil_process.wait()
-        camera_process.wait()
-        #minispect_process.wait()
     
+    # Close all processes on exception 
     except:
-        #minispect_process.terminate()
-        camera_process.terminate()
-        #sunglasses_process.terminate()
-        pupil_process.terminate()
+        print('Closing processes...')
 
-
-        # Then close the minispect process
-        #minispect_process.terminate()
-        
-        #sunglasses_process.wait()
-        camera_process.wait()
-        pupil_process.wait()
-        #minispect_process.wait()
+        for process in processes:
+            process.terminate()
+            process.wait()
 
 
 if(__name__ == '__main__'):
