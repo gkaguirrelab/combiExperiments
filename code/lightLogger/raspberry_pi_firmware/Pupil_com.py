@@ -7,12 +7,10 @@ import shutil
 import numpy as np
 import signal
 
-os.system('source ~/.python_environment')
-
 """Import utility functions from the pupil recorder"""
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'pupil')
 sys.path.append(os.path.abspath(recorder_lib_path))
-from recorder import preview_capture, record_live, record_video, write_frame, vid_array_from_npy_folder, reconstruct_video
+from recorder import preview_capture, record_live, record_video, write_frame, vid_array_from_npy_folder, reconstruct_video,  unpack_capture_chunks
 
 """Parse arguments via the command line"""
 def parse_args() -> tuple:
@@ -83,6 +81,10 @@ def main():
             thread.join()
 
     print('Capture/Write processes finished')
+
+    # Unpack the frame buffers into individual frame files 
+    print('Unpacking frame chunks...')
+    unpack_capture_chunks(filename)
 
     # Construct and save a video by the given filename and extension 
     # if desired

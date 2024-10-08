@@ -93,7 +93,6 @@ def unpack_capture_chunks(path_to_frames: str):
             frame_num += 1 
 
 
-
 """Parse the setting file for a video as a data frame"""
 def parse_settings_file(path: str) -> pd.DataFrame:
     return pd.read_csv(path, header=None, names=['frame_num', 'gain_history', 'exposure_history'])

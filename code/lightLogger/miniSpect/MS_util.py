@@ -315,7 +315,6 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
             # Append it to the write queue
             write_queue.put(['NA',  reading_buffer])
 
-            
             # Flush the reading buffer 
             reading_buffer = None
     
