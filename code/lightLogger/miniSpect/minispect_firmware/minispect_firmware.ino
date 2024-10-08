@@ -260,7 +260,6 @@ void LSM6DSV16X_init() {
 
   uint8_t id = 0xFF;
   LSM6DSV16X.ReadID(&id);
-  Serial.print("id "); Serial.println(id);
   Wire.setClock(400000);
 
   Serial.println("LSM6DSV16X Initialized!");
