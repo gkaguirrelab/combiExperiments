@@ -18,13 +18,13 @@ def record_live(duration: float, filename: str):
         readings_file: object = open(filename, 'a')
 
         # Begin recording
-        start_time: float = time.time()
+        last_read: float = time.time()
         while(True):
             # Capture the current time
             current_time: float = time.time()
             
             # If not at a read time, skip 
-            if((current_time - start_time)) < READ_INTERVAL:
+            if((current_time - last_read)) < READ_INTERVAL:
                 continue
 
             # Read data from the device
@@ -32,10 +32,15 @@ def record_live(duration: float, filename: str):
 
             # Convert the data read to 12 bits
             raw_adc = (data[0] & 0x0F) * 256 + data[1]
-            if raw_adc > 2047 : raw_adc -= 4095
+            if(raw_adc > 2047) : raw_adc -= 4095
             
+            print(f'Sunglasses Writing: {raw_adc}')
+
             # Write the reading to the reading file
             readings_file.write(f'{raw_adc}\n')
+
+            # Update the last read time 
+            last_read = current_time
     
     # When exception is raised, close the file
     except KeyboardInterrupt:
@@ -50,13 +55,13 @@ def record(duration: float, filename: str):
     readings_file: object = open(filename, 'a')
 
     # Begin recording
-    start_time: float = time.time()
+    last_read: float = time.time()
     while(True):
         # Capture the current time
         current_time: float = time.time()
         
         # If not at a read time, skip 
-        if((current_time - start_time)) < 1.5:
+        if((current_time - last_read)) < READ_INTERVAL:
             continue
 
         # Read data from the device
@@ -64,9 +69,9 @@ def record(duration: float, filename: str):
 
         # Convert the data read to 12 bits
         raw_adc = (data[0] & 0x0F) * 256 + data[1]
-        if raw_adc > 2047 : raw_adc -= 4095
+        if(raw_adc > 2047): raw_adc -= 4095
         
-        print(f'Writing: {raw_adc}')
+        print(f'Sunglasses Writing: {raw_adc}')
 
         # Write the reading to the reading file
         readings_file.write(f'{raw_adc}\n')
@@ -77,6 +82,9 @@ def record(duration: float, filename: str):
         # Check to see if we have reached the desired recording duration
         if(abs(current_time - start_time) >= duration):
             break 
+        
+        # Update the last read time
+        last_read = current_time    
     
     # Close the readings file
     readings_file.close()
