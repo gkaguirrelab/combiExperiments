@@ -4,19 +4,22 @@ function [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs,stimSeq,stimLabel
 % for the purpose of modeling the period just before the experiment begins
 nPreISIs = 1;
 
+% Basic stimulus properties
+nStimTypes = length(unique(stimSeq));
+isi = 4.5;
+dT = 0.25;
+
+% Ensure that there is one label for every passed stim type
+assert(nStimTypes == length(stimLabelSet));
+
 % Add labels for the extended model if requested
 if extendedModelFlag
     stimLabelSet = [stimLabelSet,'caryOver','newStim'];
 end
+nParams = length(stimLabelSet);
 
 % Add the preISIs as "-1" events
 stimSeq = [repmat(-1,1,nPreISIs) stimSeq];
-
-% Basic stimulus properties
-nStimTypes = length(unique(stimSeq))-1;
-isi = 4.5;
-dT = 0.25;
-nParams = length(stimLabelSet);
 
 % Create a single stimulus matrix
 stimVecLength = length(stimSeq)*(isi/dT);
@@ -24,7 +27,7 @@ singleStimMat = zeros(nStimTypes,stimVecLength);
 carryOver = zeros(1,stimVecLength);
 newStim = zeros(1,stimVecLength);
 for ii = 1:length(stimSeq)
-    if stimSeq(ii) ~= -1
+    if stimSeq(ii) > 0
         idx = (ii-1)*(isi/dT)+1+round(fixedStimDelaySecs/dT);
         singleStimMat(stimSeq(ii)+1,idx) = 1;
         if ii > 1

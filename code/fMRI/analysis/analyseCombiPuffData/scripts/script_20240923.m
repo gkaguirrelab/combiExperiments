@@ -27,14 +27,14 @@ dirName = 'dset/fprep';
 % tedana (after fmriprep)
 dirName = 'dset/fprep';
 icaRejectSet = {[],[],[]};
-applyTedana(dataPath,dirName,subID,sesID,acqSet,echoTimesMs,icaRejectSet);
+%applyTedana(dataPath,dirName,subID,sesID,acqSet,echoTimesMs,icaRejectSet);
 
 % forward model
 dirName = 'dset/fprep';
 stimSeq = [0,0,3,3,4,0,2,0,4,4,2,1,4,3,1,0,1,3,2,4,1,1,2,2,3,0,0,2,2,3,4,3,0,1,4,2,0,4,1,2,1,3,3,2,4,4,0,3,1,1,0,0,1,1,3,0,4,4,2,3,3,1,2,1,4,0,2,4,1,0,3,4,3,2,2,0,0,3,2,2,1,1,4,2,3,1,0,1,3,4,1,2,4,4,0,2,0,4,3,3,0,0];
 stimLabelSet = {'0psi','1.4psi','3.5psi','9.0psi','23.3psi'};
 maskLabelSet = {'brainstem','GM'};
-smoothSD = 1.0;
+smoothSD = 0;
 averageVoxels = false;
 useTedanaResults = true;
 resultLabel = sprintf('forwardModel_smooth=%2.1f',smoothSD);

@@ -18,17 +18,11 @@ function results = fitTrigemModel(rawDataPath,dataPath,dirName,subID,sesID,...
     tr = 2.87;
     nNoiseEPIs = 2;
     maskLabelSet = {'brainstem','GM'};
-    smoothSD = 0.99;
+    smoothSD = 1.0;
     averageVoxels = false;
     useTedanaResults = true;
     results = fitTrigemModel(rawDataPath,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels,useTedanaResults);
 %}
-
-% Check if we are averaging voxels within the mask
-if nargin < 11
-    averageVoxels = false;
-    resultLabel = sprintf('forwardModel_smooth=%2.2f',smoothSD);
-end
 
 % The polynomial degree used for high-pass filtering of the timeseries
 polyDeg = 4;
@@ -76,7 +70,7 @@ for jj = 1:nAcqs
 end
 
 % Create the stimulus description
-extendedModelFlag = true;
+extendedModelFlag = false;
 [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs,stimSeq,stimLabelSet,extendedModelFlag,fixedStimDelaySecs);
 
 % Obtain the nuisanceVars
