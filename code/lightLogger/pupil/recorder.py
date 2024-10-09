@@ -10,7 +10,7 @@ from natsort import natsorted
 import uvc
 import matplotlib.pyplot as plt
 
-CAM_FPS: int = 120
+CAM_FPS: int = 30
 
 """Unpack chunks of n captured frames. This is used 
    to reformat the memory-limitation required capture 
@@ -76,9 +76,6 @@ def write_frame(write_queue: queue.Queue, filename: str):
     if(not os.path.exists(filename)):
         os.mkdir(filename)
 
-    # Initialize a settings file for per-frame settings to be written to.
-    settings_file = open(f'{filename}_settingsHistory.csv', 'a')
-
     while(True):  
         # Retrieve a tuple of (frame, frame_num) from the queue
         ret: tuple = write_queue.get()
@@ -90,7 +87,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
             break
         
         # Retrieve the information out of the ret tuple
-        frame_buffer, frame_num, settings_buffer = ret
+        frame_buffer, frame_num = ret
         
         #print(f'writing {frame_num}')
         print(f"Pupil Queue size: {write_queue.qsize()}")
@@ -98,12 +95,6 @@ def write_frame(write_queue: queue.Queue, filename: str):
         # Write the frame
         save_path: str = os.path.join(filename, f'{frame_num}.npy')
         np.save(save_path, frame_buffer)
-
-        # Write the frame info to the existing csv file
-        np.savetxt(settings_file, settings_buffer, delimiter=',', fmt='%d')
-
-    # Close the settings file
-    settings_file.close()
 
 
 """Record live from the camera with no specified duration"""
@@ -119,8 +110,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
 
     # Initialize buffers to store the frame/settigns data for 1 second's 
     # worth of video
-    frame_buffer: np.array = np.zeros((CAM_FPS, 400, 400), dtype=np.uint8)
-    settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float16)    
+    frame_buffer: np.array = np.zeros((CAM_FPS, 192, 192), dtype=np.uint8)
 
     # Capture indefinite frames
     frame_num = 0
@@ -133,12 +123,11 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
 
         # Store the grayscale frame + settings into the allocated memory buffers
         frame_buffer[frame_num % CAM_FPS] = frame_obj.gray
-        settings_buffer[frame_num % CAM_FPS] = [current_gain, current_exposure]
 
         # If we have finished capturing one second of video, 
         # send the buffer to be written
         if(frame_num % CAM_FPS == 0):
-            write_queue.put((frame_buffer, frame_num, settings_buffer))
+            write_queue.put((frame_buffer, frame_num))
 
         # Record the next frame number
         frame_num += 1 
@@ -147,7 +136,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     write_queue.put(None)
 
     # Close the camera
-    cam.release() 
+    cam.close()
 
 """Record a viceo from the Raspberry Pi camera"""
 def record_video(duration: float, write_queue: queue.Queue, filename: str, 
@@ -163,8 +152,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
     # Initialize buffers to store the frame/settigns data for 1 second's 
     # worth of video
-    frame_buffer: np.array = np.zeros((CAM_FPS, 400, 400), dtype=np.uint8)
-    settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float16) 
+    frame_buffer: np.array = np.zeros((CAM_FPS, 192, 192), dtype=np.uint8)
 
     # Begin timing capture
     start_capture_time: float = time.time() 
@@ -184,12 +172,11 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
         # Store the grayscale frame + settings into the allocated memory buffers
         frame_buffer[frame_num % CAM_FPS] = frame_obj.gray
-        settings_buffer[frame_num % CAM_FPS] = [current_gain, current_exposure]
 
         # If we have finished capturing one second of video, 
         # send the buffer to be written
         if(frame_num % CAM_FPS == 0):
-            write_queue.put((frame_buffer, frame_num, settings_buffer))
+            write_queue.put((frame_buffer, frame_num))
 
         # Record the next frame number
         frame_num += 1 
@@ -240,8 +227,8 @@ def initialize_camera() -> uvc.Capture:
     # Open a connection to the camera
     cam: uvc.Capture = uvc.Capture(device["uid"])
 
-    # Set the camera to be 400x400 @ 120 FPS
-    cam.frame_mode = cam.available_modes[-1]
+    # Set the camera to be 192x192 @ 60 FPS
+    cam.frame_mode = cam.available_modes[0]
 
     # Retrieve the controls dict
     controls_dict: dict = {c.display_name: c for c in cam.controls}

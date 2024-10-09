@@ -27,7 +27,7 @@ from PyDownsample import import_downsample_lib, downsample
 downsample_lib = import_downsample_lib()
 
 # The FPS we have locked the camera to
-CAM_FPS: float = 200
+CAM_FPS: float = 120
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""

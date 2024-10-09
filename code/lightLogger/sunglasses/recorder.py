@@ -2,7 +2,7 @@ import smbus
 import time
 
 # Interval in seconds that readings will be apart
-READ_INTERVAL: float = 1.5
+READ_INTERVAL: float = 10
 
 """Record from the device live with no duration"""
 def record_live(duration: float, filename: str):

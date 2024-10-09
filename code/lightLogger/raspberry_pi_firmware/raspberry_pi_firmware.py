@@ -21,6 +21,9 @@ def parse_process_args(config_path: str) -> dict:
     # Open the config file 
     with open(config_path, 'r') as f:
         for line in f:
+            # Skip commented lines 
+            if(line[0] == '#'): continue
+
             # First, split the line into space-based tokens
             tokens: list = line.split(' ')
 
