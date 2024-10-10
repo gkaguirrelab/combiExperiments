@@ -95,7 +95,7 @@ def unpack_capture_chunks(path_to_frames: str):
 
 """Parse the setting file for a video as a data frame"""
 def parse_settings_file(path: str) -> pd.DataFrame:
-    return pd.read_csv(path, header=None, names=['frame_num', 'gain_history', 'exposure_history'])
+    return pd.read_csv(path, header=None, names=['gain_history', 'exposure_history'])
 
 """Read in a video from a folder full of images saved as .np files as 8-bit unsigned np.array"""
 def vid_array_from_npy_folder(path: str) -> np.array:

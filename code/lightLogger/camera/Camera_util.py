@@ -136,6 +136,39 @@ def generate_fielding_function(video: str | np.ndarray) -> tuple:
     plt.show()
 
     return fielding_function, pixel_matrix
+
+"""Parse the mean of a given set of pixels from a series of frames. This is 
+   used as opposed to parse_mean_video when the frame array is too long to
+   create a video for. This approach only ever stores the mean of each frame 
+   rather than loading them all in and then taking the mean, so saves more memory
+   in that regard too"""
+def parse_mean_frame_array(path_to_frames: str, start_frame: int=0, pixel_indices: np.ndarray=None) -> np.array:
+    # Create a list of the frame files and splice from where to start
+    frame_files: str = [os.path.join(path_to_frames, frame) 
+                        for frame in natsorted(os.listdir(path_to_frames))][start_frame:]
+
+    # Allocate a container to hold the frame means
+    mean_array: list = []
+
+    # Iterate over the files
+    for frame_file in frame_files:
+        # Load in the frame 
+        frame: np.ndarray = np.load(frame_file)
+
+        # Find the mean of the desird pixels, or entire image if no pixels 
+        # specified
+        if(pixel_indices is None or len(pixel_indices) == 0): 
+            pixel_indices = np.arange(0, frame.shape[0]*frame.shape[1])
+        mean_frame: np.ndarray = np.mean(frame.flatten()[pixel_indices])
+
+        # Append the mean of the frame to the mean_array 
+        mean_array.append(mean_frame)
+    
+    # Convert the mean array to a numpy array
+    mean_array: np.ndarray = np.array(mean_array, dtype=np.uint8)
+
+    # Retunr the mean array
+    return mean_array
     
 """Parse video file starting as start_frame as mean of certain pixels of np.array"""
 def parse_mean_video(path_to_video: str, start_frame: int=0, pixel_indices: np.array=None) -> np.array:
@@ -161,7 +194,7 @@ def parse_mean_video(path_to_video: str, start_frame: int=0, pixel_indices: np.a
         # Find the mean of the given pixels per frame 
         if(pixel_indices is None or len(pixel_indices) == 0): 
             pixel_indices = np.arange(0, frame.shape[0]*frame.shape[1])
-        mean_frame = np.mean(frame.flatten()[pixel_indices])
+        mean_frame: np.ndarray = np.mean(frame.flatten()[pixel_indices])
 
         # Append the mean frame to the frames list
         frames.append(mean_frame)
