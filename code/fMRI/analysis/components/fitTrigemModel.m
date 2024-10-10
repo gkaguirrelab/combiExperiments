@@ -70,7 +70,7 @@ for jj = 1:nAcqs
 end
 
 % Create the stimulus description
-extendedModelFlag = false;
+extendedModelFlag = true;
 [stimulus,stimTime,stimLabels] = makeStimMatrix(nAcqs,stimSeq,stimLabelSet,extendedModelFlag,fixedStimDelaySecs);
 
 % Obtain the nuisanceVars
@@ -92,12 +92,13 @@ for ii = 1:nAcqs
     avgAcqIdx{ii} = (1:nTRs) + (ii-1)*nTRs;
 end
 modelOpts = {'stimLabels',stimLabels,'typicalGain',typicalGain,...
-    'paraSD',5,'polyDeg',polyDeg,...
+    'paraSD',3,'polyDeg',polyDeg,...
+    'confoundStimLabel','newStim',...
     'nuisanceVars',nuisanceVars,...
     'avgAcqIdx',avgAcqIdx};
 
 % Define the modelClass
-modelClass = 'mtSinai';
+modelClass = 'mtSinaiShift';
 
 % Call the forwardModel
 results = forwardModel(data,stimulus,tr,...

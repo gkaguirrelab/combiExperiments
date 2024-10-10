@@ -27,7 +27,7 @@ singleStimMat = zeros(nStimTypes,stimVecLength);
 carryOver = zeros(1,stimVecLength);
 newStim = zeros(1,stimVecLength);
 for ii = 1:length(stimSeq)
-    if stimSeq(ii) > 0
+    if stimSeq(ii) ~= -1
         idx = (ii-1)*(isi/dT)+1+round(fixedStimDelaySecs/dT);
         singleStimMat(stimSeq(ii)+1,idx) = 1;
         if ii > 1
