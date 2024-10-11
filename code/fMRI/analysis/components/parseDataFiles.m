@@ -1,4 +1,4 @@
-function [data,templateImage,W] = parseDataFiles(dataFileNames,smoothSD,maskFiles)
+function [data,templateImage,W] = parseDataFiles(dataFileNames,smoothSD,nTRsToZero,maskFiles)
 % Loads data files produced by fmriprep
 %
 
@@ -74,6 +74,12 @@ for nn = 1:length(dataFileNames)
     thisAcqData = 100.*((thisAcqData-meanVec)./meanVec);
     thisAcqData(isnan(thisAcqData)) = 0;
     thisAcqData(isinf(thisAcqData)) = 0;
+
+    % Set the first nTRsToZero to be zero. This removes the effect of
+    % initial changes in steady state tissue magnetization
+    if nTRsToZero > 0
+        thisAcqData(:,1:nTRsToZero) = 0;
+    end
 
     % Store the acquisition data in a cell array
     data{nn} = thisAcqData;

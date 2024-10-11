@@ -14,7 +14,7 @@ assert(nStimTypes == length(stimLabelSet));
 
 % Add labels for the extended model if requested
 if extendedModelFlag
-    stimLabelSet = [stimLabelSet,'caryOver','newStim'];
+    stimLabelSet = [stimLabelSet,'newStim'];
 end
 nParams = length(stimLabelSet);
 
@@ -52,7 +52,8 @@ if extendedModelFlag
     carryOver(idx) = carryOver(idx) - mean(carryOver(idx));
     idx = newStim == 0;
     newStim(idx) = -mean(newStim);
-    singleStimMat = [singleStimMat; carryOver; newStim];
+%    singleStimMat = [singleStimMat; carryOver; newStim];
+    singleStimMat = [singleStimMat; newStim];
 end
 
 % Create a single stimTime

@@ -24,6 +24,10 @@ function results = fitTrigemModel(rawDataPath,dataPath,dirName,subID,sesID,...
     results = fitTrigemModel(rawDataPath,dataPath,dirName,subID,sesID,acqSet,tr,nNoiseEPIs,maskLabelSet,smoothSD,averageVoxels,useTedanaResults);
 %}
 
+% The number of initial TRs in each acquisition to set to zero to remove
+% the effects of steady state tissue magnetization
+nTRsToZero = 2;
+
 % The polynomial degree used for high-pass filtering of the timeseries
 polyDeg = 4;
 
@@ -32,7 +36,7 @@ polyDeg = 4;
 typicalGain = 1;
 
 % There is some delay while the airpuff travels down the tube
-fixedStimDelaySecs = 1;
+fixedStimDelaySecs = 0;
 
 % Basic properties of the data
 nAcqs = length(acqSet);
@@ -77,7 +81,7 @@ extendedModelFlag = true;
 nuisanceVars = assembleNuisanceVars(rawDataPath,subID,sesID,acqSet,tr,nNoiseEPIs,covarFileNames,covarSet);
 
 % Load the data
-[data,templateImage,maskVol] = parseDataFiles(dataFileNames,smoothSD,maskFiles);
+[data,templateImage,maskVol] = parseDataFiles(dataFileNames,smoothSD,nTRsToZero,maskFiles);
 nTRs = size(data{1},2);
 
 % Pick the voxels to analyze
@@ -93,12 +97,12 @@ for ii = 1:nAcqs
 end
 modelOpts = {'stimLabels',stimLabels,'typicalGain',typicalGain,...
     'paraSD',3,'polyDeg',polyDeg,...
-    'confoundStimLabel','newStim',...
+    'confoundStimLabel','',...
     'nuisanceVars',nuisanceVars,...
     'avgAcqIdx',avgAcqIdx};
 
 % Define the modelClass
-modelClass = 'mtSinaiShift';
+modelClass = 'mtSinai';
 
 % Call the forwardModel
 results = forwardModel(data,stimulus,tr,...
