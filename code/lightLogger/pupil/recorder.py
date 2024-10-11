@@ -22,7 +22,9 @@ def unpack_capture_chunks(path_to_frames: str):
     frame_num: int = 0
 
     # Iterate over the frame buffer files
-    for frame_buffer_file in natsorted(os.listdir(path_to_frames)):
+    for i, frame_buffer_file in enumerate(natsorted(os.listdir(path_to_frames))):
+        print(f'Pupil unpacking buffer: {i+1}/{len(os.listfir(path_to_frames))}')
+
         # Load in this buffer 
         frame_buffer: np.ndarray = np.load(os.path.join(path_to_frames, frame_buffer_file))
 
