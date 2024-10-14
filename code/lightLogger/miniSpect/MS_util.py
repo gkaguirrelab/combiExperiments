@@ -281,7 +281,7 @@ def parse_SERIAL(serial_bytes: bytes) -> tuple:
 def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
     # Hard Code the port the MS connects to for Linux and MAC
     # its baudrate, and the length of a message in bytes
-    com_port: str = '/dev/ttyACM0' if sys.platform.startswith('linux') else '/dev/tty.usbmodem14401'
+    com_port: str = '/dev/ttyACM0' if sys.platform.startswith('linux') else '/dev/tty.usbmodem141301'
     baudrate: int = 115200
     msg_length: int = 150
 
