@@ -17,15 +17,15 @@ function [physioMatrix,fileNameStem] = returnPhysioMatrix(rawDataPath,subID,sesI
 % Identify a temp directory
 workDir = tempdir();
 
-% Get the list of directory names within the raw data directory
-rawDir = fullfile(rawDataPath,subID,sesID);
-acquisitionLabels = dir(rawDir);
-acquisitionLabels = {acquisitionLabels.name};
-
 % Step through the acquisitions, find the physio files, download the physio
 % dicom
 fileNameStem = [];
 for ii = 1:length(acqSet)
+
+    % Get the list of directory names within the raw data directory
+    rawDir = fullfile(rawDataPath,subID,sesID{ii});
+    acquisitionLabels = dir(rawDir);
+    acquisitionLabels = {acquisitionLabels.name};
 
     % To be the physio file for our target acquisition, the label of the
     % acquisition must contain all of these tags
