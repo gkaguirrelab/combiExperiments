@@ -1,4 +1,4 @@
-function modulateCombiLED(frequency, cal_path)
+function modulateCombiLED(frequency, cal_path, color_profile)
 % Modulate the combiLED indefinitely at a desired frequency (hz)
 %
 % Syntax:
@@ -12,7 +12,10 @@ function modulateCombiLED(frequency, cal_path)
 %   frequency             - Double. Represents the frequency at which to modulate
 %
 %   cal_path              - String. Represents the path to the light source
-%                           calibration file.      
+%                           calibration file.  
+%   color_profile         - Vector. Represents the color of the light used in
+%                           the modulation. Default is pure white. 
+%       
 % Outputs:
 %   None
 %
@@ -21,13 +24,15 @@ function modulateCombiLED(frequency, cal_path)
     [~, calFileName, calDir] = selectCal();
     cal_path = fullfile(calDir,calFileName);
     frequency = 5; 
-    modulateCombiLED(frequency, cal_path);
+    color_profile = [1,0,0,0,0,0,0,0];
+    modulateCombiLED(frequency, cal_path, color_profile);
 %}
 
     % Validate arguments
     arguments
         frequency (1,1) {mustBeNumeric}
         cal_path (1,:) {mustBeText}
+        color_profile (8,1) {mustBeVector} = [1,1,1,1,1,1,1,1]; % Default color profile is pure white
     end
     
     % Load in the calibration file for the CombiLED
@@ -46,6 +51,11 @@ function modulateCombiLED(frequency, cal_path)
 
     % Compose flicker profile
     modResult = designModulation('LightFlux',photoreceptors,cal);
+
+    % Set the color profile of the modResult
+    modResult.settingsHigh = color_profile; 
+
+    % Initialize other settings of the wave
     CL.setSettings(modResult);
     CL.setWaveformIndex(1);
     CL.setContrast(0.5);
