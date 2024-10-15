@@ -232,8 +232,8 @@ def initialize_camera() -> uvc.Capture:
     # Open a connection to the camera
     cam: uvc.Capture = uvc.Capture(device["uid"])
 
-    # Set the camera to be 192x192 @ 60 FPS
-    cam.frame_mode = cam.available_modes[0]
+    # Set the camera to be 192x192 @ 120 FPS
+    cam.frame_mode = cam.available_modes[3]
 
     # Retrieve the controls dict
     controls_dict: dict = {c.display_name: c for c in cam.controls}

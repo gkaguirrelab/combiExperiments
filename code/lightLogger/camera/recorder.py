@@ -27,7 +27,7 @@ from PyDownsample import import_downsample_lib, downsample
 downsample_lib = import_downsample_lib()
 
 # The FPS we have locked the camera to
-CAM_FPS: float = 120
+CAM_FPS: float = 200
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
@@ -152,7 +152,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
     
     # HARDCODE FOR A SPECIFIC TEST 
-    current_gain, current_exposure = 10, 4839
+    #current_gain, current_exposure = 10, 4839
 
     # Make absolutely certain Ae and AWB are off 
     # (had to put this here at some point) for it to work 
@@ -192,7 +192,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
             new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
 
             # HARD CODE FOR A SPECIFIC TEST 
-            new_gain, new_exposure = 10, 4839
+            #new_gain, new_exposure = 10, 4839
 
             cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
             
@@ -354,12 +354,12 @@ def initialize_camera(initial_gain: float=1, initial_exposure: int=100) -> objec
     cam.video_configuration.controls['AwbEnable'] = 0
     cam.video_configuration.controls['AeEnable'] = 0  
 
+    cam.video_configuration.controls['AnalogueGain'] = initial_gain
+    am.video_configuration.controls['ExposureTime'] = initial_exposure
+
+
     # HARDCODED FOR THE TEST
-
-    #cam.video_configuration.controls['AnalogueGain'] = initial_gain
-   # cam.video_configuration.controls['ExposureTime'] = initial_exposure
-
-    cam.video_configuration.controls['AnalogueGain'] = 10
-    cam.video_configuration.controls['ExposureTime'] = 4839
+    #cam.video_configuration.controls['AnalogueGain'] = 10
+    #cam.video_configuration.controls['ExposureTime'] = 4839
     
     return cam
