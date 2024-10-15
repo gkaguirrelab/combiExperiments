@@ -159,6 +159,7 @@ def parse_mean_frame_array(path_to_frames: str, start_frame: int=0, pixel_indice
         # specified
         if(pixel_indices is None or len(pixel_indices) == 0): 
             pixel_indices = np.arange(0, frame.shape[0]*frame.shape[1])
+        
         mean_frame: np.ndarray = np.mean(frame.flatten()[pixel_indices])
 
         # Append the mean of the frame to the mean_array 
