@@ -76,9 +76,12 @@ def unpack_capture_chunks(path_to_frames: str):
     # of each frame when we resave it 
     frame_num: int = 0
 
+    # First retrieve the frame buffer files
+    frame_buffer_files: list = natsorted(os.listdir(path_to_frames))
+
     # Iterate over the frame buffer files
-    for i, frame_buffer_file in enumerate(natsorted(os.listdir(path_to_frames))):
-        print(f'Camera unpacking buffer: {i+1}/{len(os.listdir(path_to_frames))}')
+    for i, frame_buffer_file in enumerate(frame_buffer_files):
+        print(f'Camera unpacking buffer: {i+1}/{len(frame_buffer_files)}')
 
         # Load in this buffer 
         frame_buffer: np.ndarray = np.load(os.path.join(path_to_frames, frame_buffer_file))
@@ -148,6 +151,9 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     initial_metadata: dict = cam.capture_metadata()
     current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
     
+    # HARDCODE FOR A SPECIFIC TEST 
+    current_gain, current_exposure = 10, 4839
+
     # Make absolutely certain Ae and AWB are off 
     # (had to put this here at some point) for it to work 
     cam.set_controls({'AeEnable':0, 'AwbEnable':0})   
@@ -184,6 +190,10 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
 
             # Retrieve and set the new gain and exposure from our custom AGC
             new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
+
+            # HARD CODE FOR A SPECIFIC TEST 
+            new_gain, new_exposure = 10, 4839
+
             cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
             
             # Update the current_gain and current_exposure, 
@@ -343,7 +353,13 @@ def initialize_camera(initial_gain: float=1, initial_exposure: int=100) -> objec
     # Note, AeEnable changes both AEC and AGC		
     cam.video_configuration.controls['AwbEnable'] = 0
     cam.video_configuration.controls['AeEnable'] = 0  
-    cam.video_configuration.controls['AnalogueGain'] = initial_gain
-    cam.video_configuration.controls['ExposureTime'] = initial_exposure
+
+    # HARDCODED FOR THE TEST
+
+    #cam.video_configuration.controls['AnalogueGain'] = initial_gain
+   # cam.video_configuration.controls['ExposureTime'] = initial_exposure
+
+    cam.video_configuration.controls['AnalogueGain'] = 10
+    cam.video_configuration.controls['ExposureTime'] = 4839
     
     return cam

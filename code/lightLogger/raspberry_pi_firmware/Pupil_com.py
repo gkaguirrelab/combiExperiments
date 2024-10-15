@@ -23,10 +23,11 @@ def parse_args() -> tuple:
     parser.add_argument('--initial_gain', default=1.0, type=float, help='Gain value with which to initialize the camera')
     parser.add_argument('--initial_exposure', default=1000, type=int, help='Exposure value with which to initialize the camera')
     parser.add_argument('--preview', default=0, type=int, help='Display a preview of the view of the camera before capturing')
+    parser.add_argument('--unpack_frames', default=0, type=int, help='Unpack the buffers of frames files into single frame files or not')
    
     args = parser.parse_args()
     
-    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames), bool(args.preview)
+    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames)
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
@@ -35,7 +36,7 @@ def handle_sigterm(signum, frame):
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 def main():
-    output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview = parse_args()
+    output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview, unpack_frames = parse_args()
 
     # If the preview is true, view a preview of the camera view before capture
     if(preview is True):
@@ -83,8 +84,9 @@ def main():
     print('Capture/Write processes finished')
 
     # Unpack the frame buffers into individual frame files 
-    print('Unpacking frame chunks...')
-    unpack_capture_chunks(filename)
+    if(unpack_frames is True):
+        print('Unpacking pupil frame chunks chunks...')
+        unpack_capture_chunks(filename)
 
     # Construct and save a video by the given filename and extension 
     # if desired
