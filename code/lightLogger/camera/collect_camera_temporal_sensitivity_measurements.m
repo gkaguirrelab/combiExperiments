@@ -162,7 +162,7 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
             
             % Step 12: Begin recording to the desired output path for the desired duration
             disp('Begin recording...')
-            remote_command = sprintf('%s && python3 %s %s %f --save_video 1 --initial_gain %f --initial_exposure %d', virtual_environment_path, recorder_path, output_file, duration, initial_gain, initial_exposure);
+            remote_command = sprintf('%s && python3 %s %s %f --save_video 1 --initial_gain %f --initial_exposure %d --unpack_frames 1', virtual_environment_path, recorder_path, output_file, duration, initial_gain, initial_exposure);
             fprintf('Sending command: %s\n', remote_command)
             remote_execute.run_ssh_command(char(host), py.int(22), char(username), char(password), char(remote_command))
             
