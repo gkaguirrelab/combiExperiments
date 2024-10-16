@@ -10,7 +10,7 @@ from natsort import natsorted
 import uvc
 import matplotlib.pyplot as plt
 
-CAM_FPS: int = 30
+CAM_FPS: int = 120
 
 """Unpack chunks of n captured frames. This is used 
    to reformat the memory-limitation required capture 
@@ -115,7 +115,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
 
     # Initialize buffers to store the frame/settigns data for 1 second's 
     # worth of video
-    frame_buffer: np.array = np.zeros((CAM_FPS, 192, 192), dtype=np.uint8)
+    frame_buffer: np.array = np.zeros((CAM_FPS, 400, 400), dtype=np.uint8)
 
     # Capture indefinite frames
     frame_num = 0
@@ -232,8 +232,8 @@ def initialize_camera() -> uvc.Capture:
     # Open a connection to the camera
     cam: uvc.Capture = uvc.Capture(device["uid"])
 
-    # Set the camera to be 192x192 @ 120 FPS
-    cam.frame_mode = cam.available_modes[3]
+    # Set the camera to be 400x400 @ 120 FPS
+    cam.frame_mode = cam.available_modes[-1]
 
     # Retrieve the controls dict
     controls_dict: dict = {c.display_name: c for c in cam.controls}
