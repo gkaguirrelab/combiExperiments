@@ -582,7 +582,7 @@ def generate_klein_ttf(recordings_dir: str, experiment_filename: str):
     plt.show()
 
 """Generate a TTF plot for several light levels, return values used to generate the plot"""
-def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_path: str, hold_figures_on: bool=False) -> dict: 
+def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_path: str=None, hold_figures_on: bool=False) -> dict: 
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
     eng.addpath('~/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')

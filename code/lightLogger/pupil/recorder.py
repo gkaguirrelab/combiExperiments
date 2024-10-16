@@ -7,7 +7,6 @@ import queue
 import threading
 import pandas as pd
 from natsort import natsorted
-import uvc
 import matplotlib.pyplot as plt
 
 CAM_FPS: int = 120
@@ -103,9 +102,11 @@ def write_frame(write_queue: queue.Queue, filename: str):
 
 
 """Record live from the camera with no specified duration"""
-def record_live(duration: float, write_queue: queue.Queue, filename: str, 
-                initial_gain: float, initial_exposure: int,
-                stop_flag: threading.Event):
+def record_live(duration: float, write_queue: queue.Queue, 
+                filename: str, stop_flag: threading.Event):
+    # Import the necessary library (causes conflict on other machines, so just do it locally)
+    import uvc
+
     # Connect to and set up camera
     print(f"Initializing camera")
     cam: uvc.Capture = initialize_camera()
@@ -144,9 +145,10 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     cam.close()
 
 """Record a viceo from the Raspberry Pi camera"""
-def record_video(duration: float, write_queue: queue.Queue, filename: str, 
-                 initial_gain: float, initial_exposure: int,
-                 stop_flag: threading.Event): 
+def record_video(duration: float, write_queue: queue.Queue, 
+                 filename: str, stop_flag: threading.Event): 
+    # Import the necessary library (causes conflict on other machines, so just do it locally)
+    import uvc
 
     # Connect to and set up camera
     print(f"Initializing camera")
@@ -205,6 +207,9 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 # TODO: This does not yet work because no display method seems to work on RPI
 """Preview the camera feed"""
 def preview_capture():
+    # Import the necessary library (causes conflict on other machines, so just do it locally)
+    import uvc
+    
     # Open a connection to the camera
     cam: uvc.Capture = initialize_camera()
 
@@ -225,7 +230,10 @@ def preview_capture():
     cam.close()
 
 """Iniitalize the pupil camera"""        
-def initialize_camera() -> uvc.Capture:
+def initialize_camera() -> object:
+    # Import the necessary library (causes conflict on other machines, so just do it locally)
+    import uvc
+
     # Retrieve the camera device
     device, *_ = uvc.device_list()
 

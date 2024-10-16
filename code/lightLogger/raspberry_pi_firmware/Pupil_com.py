@@ -20,14 +20,12 @@ def parse_args() -> tuple:
     parser.add_argument('duration', type=float, help='Duration of the video')
     parser.add_argument('--save_video', default=0, type=int, help='Choose whether to actually save the video or not')
     parser.add_argument('--save_frames', default=0, type=int, help='Choose whether or not to save frames of a video after finished recording')
-    parser.add_argument('--initial_gain', default=1.0, type=float, help='Gain value with which to initialize the camera')
-    parser.add_argument('--initial_exposure', default=1000, type=int, help='Exposure value with which to initialize the camera')
     parser.add_argument('--preview', default=0, type=int, help='Display a preview of the view of the camera before capturing')
     parser.add_argument('--unpack_frames', default=0, type=int, help='Unpack the buffers of frames files into single frame files or not')
    
     args = parser.parse_args()
     
-    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames)
+    return args.output_path, args.duration, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames)
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
@@ -36,7 +34,7 @@ def handle_sigterm(signum, frame):
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 def main():
-    output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview, unpack_frames = parse_args()
+    output_path, duration, save_video, save_frames, preview, unpack_frames = parse_args()
 
     # If the preview is true, view a preview of the camera view before capture
     if(preview is True):
@@ -55,9 +53,8 @@ def main():
     stop_flag: threading.Event = threading.Event()
 
     # Build thread processes for both capturing frames and writing frames 
-    capture_thread: threading.Thread = threading.Thread(target=recorder, args=(duration, write_queue, filename, 
-                                                                               initial_gain, initial_exposure,
-                                                                               stop_flag))
+    capture_thread: threading.Thread = threading.Thread(target=recorder, args=(duration, write_queue, 
+                                                                               filename, stop_flag))
     write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename))
     
     # Begin the threads

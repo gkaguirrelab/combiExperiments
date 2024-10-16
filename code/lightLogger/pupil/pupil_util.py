@@ -1,10 +1,15 @@
 import numpy as np
 import pandas as pd
 import os
+import pathlib
+import sys
 from recorder import CAM_FPS
+import matplotlib.pyplot as plt
+import matlab
 
 # Import the world camera util library (as we will reuse some functions directly from it)
-world_cam_util_path: str = os.path.join(os.path.dirname(__file__), 'camera')
+world_cam_util_path: str = os.path.join(pathlib.Path(__file__).parents[1], 'camera')
+sys.path.append(world_cam_util_path)
 import Camera_util
 
 """Read all videos in of a certain light level"""
@@ -54,7 +59,7 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     print(f"Generating TTF : {light_level}NDF")
 
     # Read in the videos at different frequencies 
-    (frequencies, mean_videos) = read_light_level_videos(recordings_dir, experiment_filename, light_level, Camera_util.parse_mean_frame_array)
+    (frequencies, mean_videos) = read_light_level_videos(recordings_dir, experiment_filename, light_level, Camera_util.parse_mean_video)
 
     # Assert we read in some videos
     assert len(mean_videos) != 0 
@@ -68,13 +73,13 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
 
     # Find the amplitude and FPS of the videos
     amplitudes, videos_fps, fits = [], [], []
-    for ind, (frequency, mean_video, video_settings_history) in enumerate(zip(frequencies, mean_videos, video_settings)):
+    for ind, (frequency, mean_video) in enumerate(zip(frequencies, mean_videos)):
         print(f"Fitting Source vs Observed Modulation: {light_level}NDF {frequency}hz")
-        moduation_axis, gain_axis = modulation_axes[ind], settings_axes[ind]
+        moduation_axis = modulation_axes[ind]
 
         # Fit the source modulation to the observed for this frequency, 
-        # and find the amplitude
-        observed_amplitude, observed_phase, observed_fps, fit = fit_source_modulation(mean_video, light_level, frequency, moduation_axis)
+        # and find the amplitude                                                                    # Exclude the warmup period of the video by only taking everything after 3 seconds
+        observed_amplitude, observed_phase, observed_fps, fit = Camera_util.fit_source_modulation(mean_video[3*CAM_FPS:], light_level, frequency, moduation_axis, fps_guess=CAM_FPS, fps_guess_increment=(-10,10))
 
         # Append this information to the running lists
         amplitudes.append(observed_amplitude)
@@ -99,23 +104,22 @@ def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, 
     moldulation_fig.subplots_adjust(hspace=2)
 
     # Save the figure
-    moldulation_fig.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/TemporalSensitivity{light_level}NDF.pdf')
+    moldulation_fig.savefig(f'/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/pupilCamera/calibration/graphs/MeasuredVSFitModulations{light_level}NDF.pdf')
 
     # Close the plot and clear the canvas
     plt.close(moldulation_fig)
-    plt.close(settings_fig)
 
     return frequencies, amplitudes, videos_fps, fits
 
 """Generate a TTF plot for several light levels, return values used to generate the plot"""
-def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_path: str, hold_figures_on: bool=False) -> dict: 
+def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tuple, save_path: str=None, hold_figures_on: bool=False) -> dict: 
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
     eng.addpath('~/Documents/MATLAB/toolboxes/combiLEDToolbox/code/calibration/measureFlickerRolloff/')
-    eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/pupil')
+    eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera')
 
     # Create a mapping between light levels and their (frequencies, amplitudes)
-    light_level_ts_map: dict = {str2ndf(light_level) : analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
+    light_level_ts_map: dict = {Camera_util.str2ndf(light_level) : analyze_temporal_sensitivity(recordings_dir, experiment_filename, light_level)
                                                        for light_level in light_levels}
 
     # Create a mapping of the frequencies and their verified amplitudes 
@@ -172,12 +176,12 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     # Label TTF and FPS plot
     ttf_ax0.set_xlabel("Frequency [log]")
     ttf_ax0.set_ylabel("Amplitude")
-    ttf_ax0.set_title("Camera TTF Plot")
+    ttf_ax0.set_title("Pupil Camera TTF Plot")
     ttf_ax0.legend()
 
     ttf_ax1.set_xlabel("Frequency [log]")
     ttf_ax1.set_ylabel("Amplitude")
-    ttf_ax1.set_title("Corrected Camera TTF Plot")
+    ttf_ax1.set_title("Corrected Pupil Camera TTF Plot")
     ttf_ax1.legend()
 
     ttf_ax2.set_xlabel("Frequency [log]")
@@ -188,10 +192,9 @@ def generate_TTF(recordings_dir: str, experiment_filename: str, light_levels: tu
     # Adjust spacing between subplots
     ttf_fig.subplots_adjust(hspace=2)
     ttf_fig.subplots_adjust(wspace=0.5)
-    warmup_fig.subplots_adjust(hspace=1)
 
     # Save the figure
-    ttf_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/SpectacleCamera/calibration/graphs/CameraTemporalSensitivity.pdf')
+    ttf_fig.savefig('/Users/zacharykelly/Aguirre-Brainard Lab Dropbox/Zachary Kelly/FLIC_admin/Equipment/pupilCamera/calibration/graphs/PupilCameraTemporalSensitivity.pdf')
 
     # Display the figure
     if(hold_figures_on is True):
