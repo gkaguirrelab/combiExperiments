@@ -37,8 +37,8 @@ def run_ssh_command(hostname: str, port: int, username: str, password: str, comm
         stdout_output = stdout.read().decode('utf-8') 
         stderr_output = stderr.read().decode('utf-8') 
 
-        print(stdout_output)
-        print(stderr_output)
+        print(stdout_output, flush=True)
+        print(stderr_output, flush=True)
 
 
     except paramiko.SSHException as e:
@@ -54,8 +54,7 @@ def main():
     port: int = 22
     password: str = '1234'
     virtual_environment_init = 'source /home/rpiControl/.python_environment/bin/activate'
-    command: str = f'{virtual_environment_init} && python3 /home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/Camera_com.py test.avi 10 --save_frames 1'
-    #host, port, username, password, command = parseArgs()
+    command: str = f'{virtual_environment_init} && python3 /home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/Camera_com.py test.avi 10 --save_frames 0'
     
     run_ssh_command(host, port, username, password, command)
 

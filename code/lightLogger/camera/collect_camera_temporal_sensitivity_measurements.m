@@ -14,7 +14,8 @@ function collect_camera_temporal_sensitivity_measurements(cal_path, output_filen
 %                           calibration file.      
 %
 %   output_filename       - String. Represents the name of the output video
-%                           and graph files      
+%                           and graph files   
+%   
 %   email                 - String. Email to notify when user needs to exchange
 %                           NDF levels, as well as when experiment is finished
 %

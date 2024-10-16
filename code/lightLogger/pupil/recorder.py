@@ -157,7 +157,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
     # Initialize buffers to store the frame/settigns data for 1 second's 
     # worth of video
-    frame_buffer: np.array = np.zeros((CAM_FPS, 192, 192), dtype=np.uint8)
+    frame_buffer: np.array = np.zeros((CAM_FPS, 400, 400), dtype=np.uint8)
 
     # Begin timing capture
     start_capture_time: float = time.time() 
