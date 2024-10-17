@@ -137,6 +137,46 @@ def generate_fielding_function(video: str | np.ndarray) -> tuple:
 
     return fielding_function, pixel_matrix
 
+"""Parse the mean of a given set of pixels from a series of frame buffers. This is 
+   used as opposed to parse_mean_video when the frame array is too long to
+   create a video for, and when the frames are stored in buffer format. 
+   This approach only ever stores the mean of each frame rather than 
+   loading them all in and then taking the mean, so saves more memory
+   in that regard too"""
+def parse_mean_frame_array_buffer(path_to_frame_buffers: str, start_buffer: int=0, pixel_indices: np.ndarray=None) -> np.array:
+    # Create a list of the frame buffer files and splice from where to start
+    frame_buffer_files: str = [os.path.join(path_to_frame_buffers, frame) 
+                              for frame in natsorted(os.listdir(path_to_frame_buffers))][start_buffer:]
+
+    # Allocate a container to hold the frame means
+    mean_array: list = []
+
+    # Iterate over the files
+    for buffer_file in frame_buffer_files:
+        # Load in the frame 
+        frame_buffer: np.ndarray = np.load(buffer_file)
+
+        # Iterate over the frames in the frame buffer 
+        for frame_idx in range(frame_buffer.shape[0]):
+            # Retrieve the frame
+            frame: np.ndarray = frame_buffer[frame_idx]
+
+            # Find the mean of the desird pixels, or entire image if no pixels 
+            # specified
+            if(pixel_indices is None or len(pixel_indices) == 0): 
+                pixel_indices = np.arange(0, frame.shape[0]*frame.shape[1])
+            
+            mean_frame: np.ndarray = np.mean(frame.flatten()[pixel_indices])
+
+            # Append the mean of the frame to the mean_array 
+            mean_array.append(mean_frame)
+    
+    # Convert the mean array to a numpy array
+    mean_array: np.ndarray = np.array(mean_array, dtype=np.uint8)
+
+    # Retunr the mean array
+    return mean_array
+
 """Parse the mean of a given set of pixels from a series of frames. This is 
    used as opposed to parse_mean_video when the frame array is too long to
    create a video for. This approach only ever stores the mean of each frame 

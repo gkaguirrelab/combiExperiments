@@ -356,10 +356,5 @@ def initialize_camera(initial_gain: float=1, initial_exposure: int=100) -> objec
 
     cam.video_configuration.controls['AnalogueGain'] = initial_gain
     cam.video_configuration.controls['ExposureTime'] = initial_exposure
-
-
-    # HARDCODED FOR THE TEST
-    #cam.video_configuration.controls['AnalogueGain'] = 10
-    #cam.video_configuration.controls['ExposureTime'] = 4839
     
     return cam
