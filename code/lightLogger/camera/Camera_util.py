@@ -143,10 +143,17 @@ def generate_fielding_function(video: str | np.ndarray) -> tuple:
    This approach only ever stores the mean of each frame rather than 
    loading them all in and then taking the mean, so saves more memory
    in that regard too"""
-def parse_mean_frame_array_buffer(path_to_frame_buffers: str, start_buffer: int=0, pixel_indices: np.ndarray=None) -> np.array:
-    # Create a list of the frame buffer files and splice from where to start
-    frame_buffer_files: str = [os.path.join(path_to_frame_buffers, frame) 
-                              for frame in natsorted(os.listdir(path_to_frame_buffers))][start_buffer:]
+def parse_mean_frame_array_buffer(path_to_frame_buffers: str | list, start_buffer: int=0, pixel_indices: np.ndarray=None) -> np.array:
+    # Initialize container for the frame buffer file paths 
+    frame_buffer_files: list = []
+    
+    # Check if we need to generate paths or not
+    if(type(path_to_frame_buffers) != list):
+        # If not already passed in a list, create a list of the frame buffer files and splice from where to start
+        frame_buffer_files = [os.path.join(path_to_frame_buffers, frame) 
+                             for frame in natsorted(os.listdir(path_to_frame_buffers))][start_buffer:]
+    else:
+        frame_buffer_files = path_to_frame_buffers
 
     # Allocate a container to hold the frame means
     mean_array: list = []
@@ -407,6 +414,36 @@ def read_light_level_videos(recordings_dir: str, experiment_filename: str,
 
     return np.array(frequencies, dtype=np.float64), videos, warmup_settings_list, video_settings_list
 
+"""This function is used to plot the fit_info tuple returned by fit_source_modulation 
+   zoomed into a particular section of the fit"""
+def plot_fit(fit_info: tuple, FPS: float, start_second: int=0, end_second: int=None) -> None:
+    # Define the constant of the sampling rate of the fit 
+    fit_sampling_rate: int = 10000
+
+    # Caluculate the start/end index values of the observed and fit 
+    start_ob: int = int(FPS*start_second) 
+    start_f: int = int(fit_sampling_rate*start_second) 
+    
+    end_ob: None | int = None if end_second is None else int(FPS * end_second)
+    end_f: None | int = None if end_second is None else int(fit_sampling_rate * end_second)
+
+
+    # Label the plot
+    plt.title('Observed vs Fit Signal')
+    plt.ylabel('Contrast')
+    plt.xlabel('Time [seconds]')
+
+    # Plot the observed and fit singals
+    plt.plot(fit_info[0][start_ob:end_ob], fit_info[1][start_ob:end_ob], label='Observed', color='blue')
+    plt.plot(fit_info[2][start_f:end_f], fit_info[3][start_f:end_f], label='Fit', color='orange')
+
+    # Add a legend to the plot
+    plt.legend()
+
+    # Show the plot
+    plt.show()
+
+
 """Fit the source modulation to the observed and plot the fit"""
 def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes=None, fps_guess: float=CAM_FPS, fps_guess_increment: tuple=(0,0.25)) -> tuple:     
     # Start the MATLAB engine
@@ -456,7 +493,7 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
     ax.set_ylabel('Contrast')
     ax.set_ylim((-0.5, 0.5))
 
-    return observed_amplitude, observed_phase, observed_fps, (observed_signal_T, signal, observed_model_T, observed_fit)
+    return observed_amplitude, observed_phase, observed_fps, (observed_signal_T, signal, observed_model_T, observed_fit, observed_r2)
 
 """Analyze the temporal sensitivity of a given light level, fit source vs observed for all frequencies"""
 def analyze_temporal_sensitivity(recordings_dir: str, experiment_filename: str, light_level: str) -> tuple:
