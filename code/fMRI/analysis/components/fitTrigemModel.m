@@ -47,11 +47,12 @@ if ~iscell(sesID)
 end
 
 % This is the set of "confound" covariates returned by fmriprep that we
-% will use to generate nuisance covaraites
+% will use to generate nuisance covariates
 covarSet = {'csf','csf_derivative1','framewise_displacement','trans_x',...
     'trans_x_derivative1','trans_y','trans_y_derivative1','trans_z',...
     'trans_z_derivative1','rot_x','rot_x_derivative1','rot_y',...
     'rot_y_derivative1','rot_z','rot_z_derivative1'};
+covarSet = {'trans_x','trans_y','trans_z'};
 
 % Define a place to save the results
 saveDir = fullfile(dataPath,dirName,resultLabel);
@@ -101,7 +102,7 @@ extendedModelFlag = false;
 if averageAcquisitions
     nuisanceVars = {};
 else
-    nuisanceVars = assembleNuisanceVars(rawDataPath,subID,sesID,acqSet,tr,nNoiseEPIs,covarFileNames,covarSet);
+    nuisanceVars = assembleNuisanceVars(rawDataPath,subID,sesID,acqSet,tr,nNoiseEPIs,covarFileNames,covarSet,stimulus,stimTime);
 end
 
 % Create the model opts, which includes stimLabels and typicalGain. The

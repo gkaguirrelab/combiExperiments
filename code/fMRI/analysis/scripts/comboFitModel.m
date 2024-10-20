@@ -30,9 +30,9 @@ stimLabelSet = {'0psi','1.0psi','1.5psi','2.1psi','3.1psi','4.5psi','6.6psi','9.
 maskLabelSet = {'brainstem','GM','WM'};
 smoothSD = 0.5;
 averageVoxels = false;
-averageAcquisitions = true;
+averageAcquisitions = false;
 useTedanaResults = true;
-resultLabel = sprintf(['forwardModel_2sess_smooth=%2.1f'],smoothSD);
+resultLabel = sprintf('forwardModel_2sess_smooth=%2.1f',smoothSD);
 
 results = fitTrigemModel(rawDataPath,dataPath,dirName,subID,sesID,acqSet,...
     tr,nNoiseEPIs,maskLabelSet,stimSeq,stimLabelSet,...
