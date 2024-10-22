@@ -91,6 +91,9 @@ warning(warnState);
 %       python -m pip install regex
 %       python -m pip install scipy
 %       python -m pip install tedana
+%       python -m pip install seaborn
+%       python -m pip install natsort
+%       python -m pip install matlabengine
 %   - Find the location of the virtual python executable by entering the
 %     python environment in the terminal, and then issuing this command:
 %       python
