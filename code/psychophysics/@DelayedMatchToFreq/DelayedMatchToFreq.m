@@ -97,10 +97,10 @@ classdef DelayedMatchToFreq < handle
             % the highest frequency that we will present that the boosted
             % contrast is not greater than unity.
             highestTestFreq = max(refFreqRangeHz)*db2mag(obj.testRangeDecibels);
-            if (obj.testContrast / contrastAttentionByFreq(highestTestFreq)) > 1
+            if (obj.testContrast / contrastAttenuationByFreq(highestTestFreq)) > 1
                 error('The specified stimulus contrast is greater than can be presented for the highest test frequency')
             end
-            if (obj.refContrast / contrastAttentionByFreq(max(refFreqRangeHz))) > 1
+            if (obj.refContrast / contrastAttenuationByFreq(max(refFreqRangeHz))) > 1
                 error('The specified stimulus contrast is greater than can be presented for the highest ref frequency')
             end
         end

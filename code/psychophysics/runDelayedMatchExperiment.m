@@ -13,9 +13,9 @@ function runDelayedMatchExperiment(subjectID,modDirection,testContrast,varargin)
 
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
-p.addParameter('dropBoxBaseDir',getpref('combiLEDToolbox','dropboxBaseDir'),@ischar);
+p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('cal',loadCalByName('CombiLED-B_shortLLG_irFilter_classicEyePiece_ND0'),@isstruct);
+p.addParameter('cal',[],@isstruct);
 p.addParameter('refFreqRangeHz',[2 10],@isnumeric);
 p.addParameter('nTrials',25,@isnumeric);
 p.addParameter('observerAgeInYears',25,@isnumeric);
@@ -80,7 +80,6 @@ CombiLEDObj.setGamma(cal.processedData.gammaTable);
 
 % Send the modulation direction to the CombiLED
 CombiLEDObj.setSettings(modResult);
-CombiLEDObj.setBackground(modResult.settingsBackground);
 
 % Define the filestem for this psychometric object
 psychFileStem = [subjectID '_' modDirection '_' experimentName ...

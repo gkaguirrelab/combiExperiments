@@ -85,7 +85,7 @@ trialData(currTrialIdx).trialStartTime = datetime();
 %% Present the reference
 % Adjust the contrast of the stimulus to account for device attenuation of
 % the modulation at high temporal frequencies
-refContrastAdjusted = refContrast / contrastAttentionByFreq(refFreq);
+refContrastAdjusted = refContrast / contrastAttenuationByFreq(refFreq);
 
 % Prepare the reference stimulus
 obj.CombiLEDObj.setContrast(refContrastAdjusted);
@@ -114,7 +114,7 @@ obj.waitUntil(stopTimeSeconds);
 audioObjs.correct.play;
 obj.CombiLEDObj.setFrequency(testFreq);
 obj.CombiLEDObj.setPhaseOffset(testPhase);
-testContrastAdjusted = testContrast / contrastAttentionByFreq(testFreq);
+testContrastAdjusted = testContrast / contrastAttenuationByFreq(testFreq);
 obj.CombiLEDObj.updateContrast(testContrastAdjusted);
 obj.CombiLEDObj.startModulation;
 
@@ -145,7 +145,7 @@ while stillWaiting
         obj.CombiLEDObj.updateFrequency(testFreq);
 
         % Adjust the contrast for the current frequency
-        testContrastAdjusted = testContrast / contrastAttentionByFreq(testFreq);
+        testContrastAdjusted = testContrast / contrastAttenuationByFreq(testFreq);
         obj.CombiLEDObj.updateContrast(testContrastAdjusted);
 
         % Update the refresh timer
