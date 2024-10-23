@@ -15,7 +15,7 @@ function runDelayedMatchExperiment(subjectID,modDirection,testContrast,varargin)
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiLEDToolbox','dropboxBaseDir'),@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('cal',loadCalByName('CombiLED_shortLLG_classicEyePiece_ND2x5'),@isstruct);
+p.addParameter('cal',loadCalByName('CombiLED-B_shortLLG_irFilter_classicEyePiece_ND0'),@isstruct);
 p.addParameter('refFreqRangeHz',[2 10],@isnumeric);
 p.addParameter('nTrials',25,@isnumeric);
 p.addParameter('observerAgeInYears',25,@isnumeric);
@@ -42,7 +42,7 @@ rng('shuffle');
 % Define the modulation and data directories
 modDir = fullfile(...
     p.Results.dropBoxBaseDir,...
-    'MELA_data',...,
+    'FLIC_data',...,
     p.Results.projectName,...
     subjectID,modDirection);
 dataDir = fullfile(modDir,experimentName);
@@ -101,6 +101,17 @@ if isfile(filename)
 else
     psychObj = DelayedMatchToFreq(CombiLEDObj,refFreqRangeHz,testContrast,'verbose',verbosePsychObj);
 end
+
+% Provide instructions
+fprintf('**********************************\n');
+fprintf('On each of many trials you will be presented with 2 seconds of flicker.\n');
+fprintf('After a delay you will again see a flickering light. Your job is to\n');
+fprintf('use the left and right arrow keys to adjust the second flickering\n');
+fprintf('light so that it looks the same as the first flicker. When you have\n');
+fprintf('made the best match that you can, press the down arrow (or space bar)\n');
+fprintf('to record your response and move to the next trial. After you\n');
+fprintf('complete %d trials in a row the session will end.\n',nTrials);
+fprintf('**********************************\n\n');
 
 % Start the session
 fprintf('Press any key to start trials\n');
