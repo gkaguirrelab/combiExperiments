@@ -61,6 +61,13 @@ def find_active_pixels(path_to_vid: str):
     # Show the heatmap
     plt.show()
 
+"""Parse the timing of captured frames (begin/end) for a given video from the world 
+   camera into a pandas DataFrame"""
+def parse_frame_capture_file(path_to_file: str) -> pd.DataFrame:
+    frame_timing_df: pd.DataFrame = pd.read_csv(path_to_file, header=None, names=['Begin', 'End'])
+
+    return frame_timing_df 
+
 """Generate the flat fielding function for the camera and a matrix of color-classified pixels
    when video input is a string, it's a path to the video file. When it's an np.array,
    its the frames preloaded"""

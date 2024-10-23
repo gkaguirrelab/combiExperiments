@@ -30,13 +30,10 @@ function signal = parse_mean_frame_array_buffer(frame_buffers, start_buffer, pix
     % If we have a cell array of paths, convert to Python list of paths 
     if(iscell(frame_buffers))
         frame_buffers = py.list(frame_buffers);
+    end 
     
-    % Otherwise, if we have a string type that is a path to frame buffers, convert to Python 
-    % string 
-    else
-        frame_buffers = py.str(frame_buffers);
-
-    end
+    % Otherwise, if we have a string type that is a path to frame buffers, 
+    % convert to Python string automatically
 
     % Converting start_buffer is easy as it must be an integer 
     start_buffer = py.int(start_buffer);
