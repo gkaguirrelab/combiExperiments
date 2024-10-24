@@ -61,6 +61,18 @@ def find_active_pixels(path_to_vid: str):
     # Show the heatmap
     plt.show()
 
+"""Generate the temporal support for a givne signal captured at a given FPS"""
+def generate_temporal_support(signal: np.ndarray, CAM_FPS: float=CAM_FPS) -> np.ndarray:
+    t: np.ndarray = np.arange(0, signal.shape[0]/CAM_FPS, 1/CAM_FPS)
+
+    return t
+
+"""Parse the system information for every frame of a given video from the world cam"""
+def parse_system_info_file(path_to_file: str) -> pd.DataFrame:
+    system_info_df: pd.DataFrame = pd.read_csv(path_to_file, header=None, names=['CPU Usage', 'CPU Clockspeed'])
+
+    return system_info_df
+
 """Parse the timing of captured frames (begin/end) for a given video from the world 
    camera into a pandas DataFrame"""
 def parse_frame_capture_file(path_to_file: str) -> pd.DataFrame:
