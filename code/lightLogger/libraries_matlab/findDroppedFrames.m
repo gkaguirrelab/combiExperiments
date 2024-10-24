@@ -2,7 +2,7 @@ function flagged_indices = findDroppedFrames(signal, threshold)
     
 arguments 
     signal {mustBeVector}; 
-    threshold (1,1) {mustBeNumeric} = prctile(signal, 98);
+    threshold (1,1) {mustBeNumeric} = prctile(abs(diff(signal)), 98);
 end
 
 

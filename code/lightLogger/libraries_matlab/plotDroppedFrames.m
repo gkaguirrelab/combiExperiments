@@ -4,7 +4,7 @@ function plotDroppedFrames(signal, signalT, fit, modelT, threshold)
         signalT {mustBeVector};
         fit {mustBeVector};
         modelT {mustBeVector};
-        threshold (1,1) {mustBeNumeric} = prctile(signal, 98);
+        threshold (1,1) {mustBeNumeric} = prctile(abs(diff(signal)), 98);
     end
     
 
@@ -34,7 +34,7 @@ function plotDroppedFrames(signal, signalT, fit, modelT, threshold)
     % Output helpful information telling the user the timepoints 
     % the possible frame drops occured 
     disp('Timestamps of potentially dropped frames');
-    disp(flagged_indices_times);
+    disp(flagged_indices_times');
 
 
 end
