@@ -19,7 +19,7 @@ p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('cal',[],@isstruct);
-p.addParameter('refFreqRangeHz',[2 10],@isnumeric);
+p.addParameter('refFreqRangeHz',[1 25],@isnumeric);
 p.addParameter('testRangeDecibels',7.5,@isnumeric);
 p.addParameter('nTrials',25,@isnumeric);
 p.addParameter('observerAgeInYears',25,@isnumeric);

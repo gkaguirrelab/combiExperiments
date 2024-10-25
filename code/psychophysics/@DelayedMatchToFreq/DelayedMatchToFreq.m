@@ -29,6 +29,7 @@ classdef DelayedMatchToFreq < handle
         feedbackDurationSecs = 1;
         maskDurationSecs = 1;
         interStimulusIntervalSecs = 2;
+        preFeedbackIntervalSecs = 1;
         testRefreshIntervalSecs = 0.1;
         testFreqChangeRateDbsPerSec = 5;
     end

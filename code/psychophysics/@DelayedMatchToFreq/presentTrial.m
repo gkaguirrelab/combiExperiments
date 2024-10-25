@@ -54,20 +54,27 @@ testContrast = obj.testContrast;
 Fs = 8192; % Sampling Frequency
 dur = 0.1; % Duration in seconds
 t  = linspace(0, dur, round(Fs*dur));
+
+% Set a longer time for incorrect tone
+longerDur = 0.30;
+longerTime = linspace(0, longerDur, round(Fs*longerDur));
+
 lowTone = sin(2*pi*500*t);
 midTone = sin(2*pi*750*t);
 highTone = sin(2*pi*1000*t);
-readySound = [lowTone midTone highTone];
-correctSound = sin(2*pi*750*t);
-incorrectSound = sin(2*pi*250*t);
-badSound = [sin(2*pi*250*t) sin(2*pi*250*t)];
+incorrectTone1 = sin(2*pi*250*longerTime);
+incorrectTone2 = sin(2*pi*425*longerTime);
+
+readySound = [highTone highTone highTone];
+incorrectSound = incorrectTone1 + incorrectTone2;
+correctSound = [lowTone midTone highTone];
+
 audioObjs.low = audioplayer(lowTone,Fs);
 audioObjs.mid = audioplayer(midTone,Fs);
 audioObjs.high = audioplayer(highTone,Fs);
 audioObjs.ready = audioplayer(readySound,Fs);
 audioObjs.correct = audioplayer(correctSound,Fs);
 audioObjs.incorrect = audioplayer(incorrectSound,Fs);
-audioObjs.bad = audioplayer(badSound,Fs);
 
 % Determine if we have random phase or not
 if obj.randomizePhase
@@ -98,7 +105,7 @@ stopTimeSeconds = cputime() + 2;
 obj.waitUntil(stopTimeSeconds);
 
 % Present the reference stimulus
-audioObjs.correct.play;
+audioObjs.ready.play;
 stopTimeSeconds = cputime() + obj.refDurationSecs;
 obj.CombiLEDObj.startModulation;
 obj.waitUntil(stopTimeSeconds);
@@ -111,7 +118,7 @@ obj.waitUntil(stopTimeSeconds);
 
 %% Present the test
 % Start the test stimulus
-audioObjs.correct.play;
+audioObjs.high.play;
 obj.CombiLEDObj.setFrequency(testFreq);
 obj.CombiLEDObj.setPhaseOffset(testPhase);
 testContrastAdjusted = testContrast / contrastAttenuationByFreq(testFreq);
@@ -165,6 +172,10 @@ obj.CombiLEDObj.stopModulation;
 % Store the end time
 trialData(currTrialIdx).trialStartTime = datetime();
 
+% Wait before providing feedback
+stopTimeSeconds = cputime() + obj.preFeedbackIntervalSecs;
+obj.waitUntil(stopTimeSeconds);
+
 % Show the reference stimulus again to provide feedback
 obj.CombiLEDObj.setContrast(refContrastAdjusted);
 obj.CombiLEDObj.setFrequency(refFreq);
@@ -183,6 +194,10 @@ stopTimeSeconds = cputime() + obj.feedbackDurationSecs;
 obj.CombiLEDObj.startModulation;
 obj.waitUntil(stopTimeSeconds);
 obj.CombiLEDObj.stopModulation;
+
+% Wait before next trial
+stopTimeSeconds = cputime() + 0.5;
+obj.waitUntil(stopTimeSeconds);
 
 % Close the keypress window
 close(S.fh);
