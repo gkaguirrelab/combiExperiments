@@ -187,19 +187,20 @@ obj.CombiLEDObj.stopModulation;
 % Close the keypress window
 close(S.fh);
 
-%% PRESENT A WHITE NOISE BURST HERE
-% Still needs to be added
-%{
-obj.CombiLEDObj.setWaveformIndex(6); % white noise
-obj.CombiLEDObj.setContrast(refContrastAdjusted);
-stopTimeSeconds = cputime() + obj.maskDurationSecs;
-obj.CombiLEDObj.startModulation;
-obj.waitUntil(stopTimeSeconds);
-obj.CombiLEDObj.stopModulation;
+% Present a white noise burst as a mask
+if obj.presentMaskFlag
+    pause(0.5);
+    obj.CombiLEDObj.setWaveformIndex(6); % white noise
+    obj.CombiLEDObj.setContrast(refContrastAdjusted);
+    obj.CombiLEDObj.setFrequency(1);
+    stopTimeSeconds = cputime() + obj.maskDurationSecs;
+    obj.CombiLEDObj.startModulation;
+    obj.waitUntil(stopTimeSeconds);
+    obj.CombiLEDObj.stopModulation;
 
-% Return the combiLED to the sinusoidal flicker setting
-obj.CombiLEDObj.setWaveformIndex(1);
-%}
+    % Return the combiLED to the sinusoidal flicker setting
+    obj.CombiLEDObj.setWaveformIndex(1);
+end
 
 % Store the trial information
 trialData(currTrialIdx).blockIdx = obj.blockIdx;

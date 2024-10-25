@@ -8,7 +8,10 @@ function runDelayedMatchExperiment(subjectID,modDirection,testContrast,varargin)
 %{
     subjectID = 'DEMO_001';
     modDirection = 'LightFlux';
-    runDetectThreshExperiment(subjectID,modDirection);
+    testContrast = 0.8;
+    load(fullfile(getpref('combiLEDToolbox','CalDataFolder'),'CombiLED-B_shortLLG_irFilter_classicEyePiece_ND0.mat'),'cals');
+    cal = cals{end};
+    runDelayedMatchExperiment(subjectID,modDirection,testContrast,'cal',cal);
 %}
 
 % Parse the parameters
@@ -17,9 +20,11 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('cal',[],@isstruct);
 p.addParameter('refFreqRangeHz',[2 10],@isnumeric);
+p.addParameter('testRangeDecibels',7.5,@isnumeric);
 p.addParameter('nTrials',25,@isnumeric);
 p.addParameter('observerAgeInYears',25,@isnumeric);
 p.addParameter('pupilDiameterMm',4.2,@isnumeric);
+p.addParameter('primaryHeadRoom',0.1,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',false,@islogical);
 p.addParameter('updateFigures',true,@islogical);
@@ -29,6 +34,8 @@ p.parse(varargin{:})
 cal = p.Results.cal;
 refFreqRangeHz = p.Results.refFreqRangeHz;
 nTrials = p.Results.nTrials;
+testRangeDecibels = p.Results.testRangeDecibels;
+primaryHeadRoom = p.Results.primaryHeadRoom;
 verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
 updateFigures = p.Results.updateFigures;
@@ -64,7 +71,7 @@ else
     photoreceptors = photoreceptorDictionaryHuman(...
         'observerAgeInYears',p.Results.observerAgeInYears,...
         'pupilDiameterMm',p.Results.pupilDiameterMm);
-    modResult = designModulation(modDirection,photoreceptors,cal);
+    modResult = designModulation(modDirection,photoreceptors,cal,'primaryHeadRoom',primaryHeadRoom);
     save(filename,'modResult');
     figHandle = plotModResult(modResult,'off');
     filename = fullfile(modDir,'modResult.pdf');
@@ -98,7 +105,10 @@ if isfile(filename)
     psychObj.blockIdx = psychObj.blockIdx+1;
     psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
 else
-    psychObj = DelayedMatchToFreq(CombiLEDObj,refFreqRangeHz,testContrast,'verbose',verbosePsychObj);
+    % Note that we set the 
+    psychObj = DelayedMatchToFreq(CombiLEDObj,refFreqRangeHz,testContrast,...
+        'verbose',verbosePsychObj,'refContrast',testContrast,...
+        'testRangeDecibels',testRangeDecibels);
 end
 
 % Provide instructions

@@ -18,6 +18,7 @@ classdef DelayedMatchToFreq < handle
         refContrast
         testContrast
         testRangeDecibels
+        presentMaskFlag
         goodJobCriterionDb
         randomizePhase
         trialData
@@ -66,7 +67,8 @@ classdef DelayedMatchToFreq < handle
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('refContrast',0.5,@isnumeric);
             p.addParameter('testRangeDecibels',8,@isnumeric);
-            p.addParameter('goodJobCriterionDb',2,@isnumeric);            
+            p.addParameter('goodJobCriterionDb',1,@isnumeric);            
+            p.addParameter('presentMaskFlag',false,@islogical);            
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -77,6 +79,7 @@ classdef DelayedMatchToFreq < handle
             obj.refContrast = p.Results.refContrast;
             obj.testRangeDecibels = p.Results.testRangeDecibels;
             obj.goodJobCriterionDb = p.Results.goodJobCriterionDb;
+            obj.presentMaskFlag = p.Results.presentMaskFlag;           
             obj.randomizePhase = p.Results.randomizePhase;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
