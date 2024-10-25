@@ -18,7 +18,7 @@ import time
 import collections
 
 """Generate plots of the readings from the different sensors"""
-def plot_readings(path_to_readings: str):
+def plot_readings(path_to_readings: str) -> tuple:
     # Gather and parse the reading files
     AS_df = reading_to_df(os.path.join(path_to_readings, 'AS_channels.csv'), np.uint16)
     TS_df = reading_to_df(os.path.join(path_to_readings, 'TS_channels.csv'), np.uint16)
@@ -60,6 +60,9 @@ def plot_readings(path_to_readings: str):
 
     # Display the plot 
     plt.show() 
+
+    # Return fig and axes incase we want to modify
+    return fig, axes 
 
 """Reformat the accelerometer DF to be one reading per row of X,Y,Z values
 instead of each line having a buffer of values"""
