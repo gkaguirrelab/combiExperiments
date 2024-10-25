@@ -165,8 +165,41 @@ obj.CombiLEDObj.stopModulation;
 % Store the end time
 trialData(currTrialIdx).trialStartTime = datetime();
 
+% Show the reference stimulus again to provide feedback
+obj.CombiLEDObj.setContrast(refContrastAdjusted);
+obj.CombiLEDObj.setFrequency(refFreq);
+obj.CombiLEDObj.setPhaseOffset(refPhase);
+
+% Play a tone here that differs for accurate responses vs. inaccurate
+errorDecibels = 10*log10(max([testFreq,refFreq])/min([testFreq,refFreq]));
+if errorDecibels < obj.goodJobCriterionDb
+    audioObjs.correct.play;
+else
+    audioObjs.incorrect.play;
+end
+
+% Present the reference stimulus again
+stopTimeSeconds = cputime() + obj.feedbackDurationSecs;
+obj.CombiLEDObj.startModulation;
+obj.waitUntil(stopTimeSeconds);
+obj.CombiLEDObj.stopModulation;
+
 % Close the keypress window
 close(S.fh);
+
+%% PRESENT A WHITE NOISE BURST HERE
+% Still needs to be added
+%{
+obj.CombiLEDObj.setWaveformIndex(6); % white noise
+obj.CombiLEDObj.setContrast(refContrastAdjusted);
+stopTimeSeconds = cputime() + obj.maskDurationSecs;
+obj.CombiLEDObj.startModulation;
+obj.waitUntil(stopTimeSeconds);
+obj.CombiLEDObj.stopModulation;
+
+% Return the combiLED to the sinusoidal flicker setting
+obj.CombiLEDObj.setWaveformIndex(1);
+%}
 
 % Store the trial information
 trialData(currTrialIdx).blockIdx = obj.blockIdx;
