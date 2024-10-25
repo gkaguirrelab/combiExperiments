@@ -1,4 +1,45 @@
 function plotDroppedFrames(signal, signalT, fit, modelT, threshold)
+% Plots a signal, its fit, and highlights potentially dropped frames in the signal
+%
+% Syntax:
+%   plotDroppedFrames(signal, signalT, fit, modelT, threshold)
+%
+% Description:
+%   Plots a signal and the fit of the signal, while also highlighting 
+%   potentially dropped frames that may have negatively affected the 
+%   fitting procedure. 
+%
+%
+% Inputs:
+%   signal                - Vector. A one dimensional vector 
+%                           representing the signal to analyze
+%
+%   signalT               - Vector. The temporal support of the signal 
+%                           vector.
+%
+%   fit                   - Vector. A one dimensional vector representing
+%                           the curve fitting the signal. 
+%
+%   modelT                 - Vector. The temporal support of the fit. 
+%
+%   threshold             - Double. The value above which the derivative
+%                           of the signal will be considered anomalous.  
+%
+% Outputs:
+%
+%   NONE
+%
+% Examples:
+%{
+    signal = [1,2,5,6,7,10,11,12,19];
+    signal = [1,2,3,4,5,6,7,8,9];
+    fit = [1,2,3,4,5,6,7,8,9];
+    modelT = [1,2,3,4,5,6,7,8,9];
+    threshold = prctile(abs(diff(signal)), 99); 
+    plotDroppedFrames(signal, signalT, fit, modelT, threshold);
+%}
+
+    % Validate the arguments with respect to type and assign default values
     arguments 
         signal {mustBeVector};
         signalT {mustBeVector};
