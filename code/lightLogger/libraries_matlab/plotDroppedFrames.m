@@ -1,4 +1,4 @@
-function plotDroppedFrames(signal, signalT, fit, modelT, threshold)
+function [timestamps, fig_handle] = plotDroppedFrames(signal, signalT, fit, modelT, threshold)
 % Plots a signal, its fit, and highlights potentially dropped frames in the signal
 %
 % Syntax:
@@ -60,26 +60,33 @@ function plotDroppedFrames(signal, signalT, fit, modelT, threshold)
     % Retrieve the y coordinates of those points
     flagged_indices_start_markers = signal(flagged_indices);
     flagged_indices_end_markers = signal(flagged_indices + 1);
+    
+    % Interleave the vectors for plotting purposes
+    dropped_frames_t = reshape([flagged_indices_start_times; flagged_indices_end_times], 1, [])
+    dropped_frames_markers = reshape([flagged_indices_start_markers; flagged_indices_end_markers], 1, [])
+
+    % Create a matrix with columns start time | end time 
+    % of the potentially dropped frames
+    timestamps = [flagged_indices_start_times' flagged_indices_end_times'];
 
     % Now, plot the signal vs fit with potential drop frames highlighted
-    figure; 
-    plot(signalT, signal, 'x', 'Color', 'blue');
+    fig_handle = figure; 
+    plot(signalT, signal, 'x', 'Color', 'blue', 'DisplayName', 'Signal');
     hold on; 
-    plot(modelT, fit, 'x', 'Color', 'black');
-    plot(flagged_indices_start_times, flagged_indices_start_markers, 'o', 'Color', 'magenta');
-    plot(flagged_indices_end_times, flagged_indices_end_markers, 'o', 'Color', 'magenta');
+    plot(modelT, fit, 'x', 'Color', 'black', 'DisplayName', 'Fit');
+    plot(dropped_frames_t, dropped_frames_markers, 'o', 'Color', 'magenta', 'DisplayName', 'Dropped Frames Begin/End');
 
     % Label the plot
     title('Measured vs Fit with Possible Dropped Frames');
     ylabel('Contrast');
     xlabel('Time [seconds]');
-    legend('Signal', 'Fit', 'Dropped Frames Begin/End'); 
-    
+    legend show; 
+
     % Output helpful information telling the user the timepoints 
     % the possible frame drops occured 
-    disp('Timestamps of potentially dropped frames');
+    disp('Timestamps of Potentially Dropped Frames');
     disp('     Start | End');
-    disp([flagged_indices_start_times' flagged_indices_end_times']);
+    disp(timestamps);
 
 
 end
