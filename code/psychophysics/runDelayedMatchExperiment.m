@@ -1,4 +1,4 @@
-function runDelayedMatchExperiment(subjectID,modDirection,testContrast,varargin)
+function runDelayedMatchExperiment(subjectID,modDirection,testContrast,NDlabel,varargin)
 % Psychometric measurement of accuracy and bias in reproduction of the
 % frequency of a flickering stimulus after a delay. The code manages a
 % series of files that store the data from the experiment. As configured,
@@ -51,7 +51,7 @@ modDir = fullfile(...
     p.Results.dropBoxBaseDir,...
     'FLIC_data',...,
     p.Results.projectName,...
-    subjectID,modDirection);
+    subjectID,[modDirection '_ND' NDlabel]);
 dataDir = fullfile(modDir,experimentName);
 
 % Create a directory for the subject
@@ -156,8 +156,8 @@ if updateFigures
     hold on
     loglog([psychObj.trialData.refFreq],[psychObj.trialData.testFreq],'.r')
     loglog(refFreqRangeHz,refFreqRangeHz,'-k')
-    xlim([1 30])
-    ylim([1 30])
+    xlim([1 60])
+    ylim([1 60])
     axis square
 end
 
