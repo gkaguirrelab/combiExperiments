@@ -15,7 +15,7 @@ import pandas as pd
 
 """Import the FPS of the camera"""
 agc_lib_path = os.path.join(os.path.dirname(__file__))
-from recorder import CAM_FPS, parse_settings_file 
+from recorder import CAM_FPS, OBSERVED_FPS, parse_settings_file 
 
 """Parse command line arguments when script is called via command line"""
 def parse_args() -> tuple:
@@ -462,9 +462,41 @@ def plot_fit(fit_info: tuple, FPS: float, start_second: int=0, end_second: int=N
     # Show the plot
     plt.show()
 
+"""Interpolate the camera signal via MATLAB in order to 
+   help dropped frames issue"""
+def interpolate_signal(signal: np.ndarray, signal_t: np.ndarray, 
+                       fit: np.ndarray, fit_t: np.ndarray,
+                       threshold: float, fps: float,
+                       convert_to_contrast: bool=False) -> tuple:
+    # Start the MATLAB engine
+    eng = matlab.engine.start_matlab()
+    eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera')
+    eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/libraries_matlab')
+
+    # Convert signal to contrast (if needed)
+    if(convert_to_contrast is True):
+        signal_mean = np.mean(signal)
+        signal = (signal - signal_mean) / signal_mean
+
+    # Call the MATLAB function to generate the interpolated signal and signal T
+    interpolated_signal, interpolated_signal_T = eng.interpolateSignal(matlab.double(signal),
+                                                                       matlab.double(signal_t),
+                                                                       matlab.double(fit),
+                                                                       matlab.double(fit_t),
+                                                                       matlab.double(threshold),
+                                                                       matlab.double(fps),
+                                                                       nargout=2)
+
+    # Convert returned data back to Python datatype 
+    interpolated_signal: np.array = np.array(interpolated_signal).flatten()
+    interpolated_signal_T: np.array = np.array(interpolated_signal_T).flatten()
+
+    return interpolated_signal, interpolated_signal_T 
 
 """Fit the source modulation to the observed and plot the fit"""
-def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes=None, fps_guess: float=CAM_FPS, fps_guess_increment: tuple=(0,0.25)) -> tuple:     
+def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes=None, 
+                          fps_guess: float=CAM_FPS, fps_guess_increment: tuple=(0,0.25),
+                          convert_to_contrast:bool =False) -> tuple:     
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
     eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera')
@@ -472,9 +504,10 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
     # Ensure MATLAB started properly
     assert eng is not None
     
-    # Convert signal to contrast
-    signal_mean = np.mean(signal)
-    signal = (signal - signal_mean) / signal_mean
+    # Convert signal to contrast (if needed)
+    if(convert_to_contrast is True):
+        signal_mean = np.mean(signal)
+        signal = (signal - signal_mean) / signal_mean
 
     # Find the actual FPS of the observed data (might be slightly different than our guess)
     observed_fps: matlab.double = eng.findObservedFPS(matlab.double(signal), 

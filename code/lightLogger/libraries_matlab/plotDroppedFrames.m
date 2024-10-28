@@ -62,8 +62,8 @@ function [timestamps, fig_handle] = plotDroppedFrames(signal, signalT, fit, mode
     flagged_indices_end_markers = signal(flagged_indices + 1);
     
     % Interleave the vectors for plotting purposes
-    dropped_frames_t = reshape([flagged_indices_start_times; flagged_indices_end_times], 1, [])
-    dropped_frames_markers = reshape([flagged_indices_start_markers; flagged_indices_end_markers], 1, [])
+    dropped_frames_t = reshape([flagged_indices_start_times; flagged_indices_end_times], 1, []);
+    dropped_frames_markers = reshape([flagged_indices_start_markers; flagged_indices_end_markers], 1, []);
 
     % Create a matrix with columns start time | end time 
     % of the potentially dropped frames

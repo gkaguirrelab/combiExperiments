@@ -29,6 +29,9 @@ downsample_lib = import_downsample_lib()
 # The FPS we have locked the camera to
 CAM_FPS: float = 200
 
+# The median of the detected FPS all of the TTF measurements we took 
+OBSERVED_FPS: float = 200.1861
+
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
 def write_frame(write_queue: queue.Queue, filename: str):
