@@ -17,13 +17,21 @@ import threading
 import time
 import collections
 
+"""Return all of the reading data frames of the sensors"""
+def parse_readings(path_to_readings: str) -> tuple: 
+    # Gather and parse the reading files
+    AS_df: pd.DataFrame = reading_to_df(os.path.join(path_to_readings, 'AS_channels.csv'), np.uint16)
+    TS_df: pd.DataFrame = reading_to_df(os.path.join(path_to_readings, 'TS_channels.csv'), np.uint16)
+    LS_df: pd.DataFrame = reading_to_df(os.path.join(path_to_readings, 'LS_channels.csv'), np.int16)
+    LS_temp_df: pd.DataFrame = reading_to_df(os.path.join(path_to_readings, 'LS_temp.csv'), np.float32)
+
+
+    return AS_df, TS_df, LS_df, LS_temp_df 
+
 """Generate plots of the readings from the different sensors"""
 def plot_readings(path_to_readings: str) -> tuple:
-    # Gather and parse the reading files
-    AS_df = reading_to_df(os.path.join(path_to_readings, 'AS_channels.csv'), np.uint16)
-    TS_df = reading_to_df(os.path.join(path_to_readings, 'TS_channels.csv'), np.uint16)
-    LS_df = reading_to_df(os.path.join(path_to_readings, 'LS_channels.csv'), np.int16)
-    LS_temp_df = reading_to_df(os.path.join(path_to_readings, 'LS_temp.csv'), np.float32)
+    # Retrieve the dataframes of readings from all of the sensors 
+    AS_df, TS_df, LS_df, LS_temp_df = parse_readings(path_to_readings)
     
     # Associate chip names to their respective DataFrames
     chip_df_map = {name:df for name, df in zip(['AS','TS','LS','LS_temp'], [AS_df, TS_df, LS_df, LS_temp_df])}

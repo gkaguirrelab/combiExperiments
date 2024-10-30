@@ -1,5 +1,5 @@
 function [timestamps, fig_handle] = plotDroppedFrames(signal, signalT, fit, modelT, threshold)
-% Plots a signal, its fit, and highlights potentially dropped frames in the signal
+% Plots a sinusoidal signal, its fit, and highlights potentially dropped frames in the signal
 %
 % Syntax:
 %   plotDroppedFrames(signal, signalT, fit, modelT, threshold)

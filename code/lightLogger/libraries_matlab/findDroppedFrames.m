@@ -1,12 +1,12 @@
 function flagged_indices = findDroppedFrames(signal, threshold)
-% Finds potentially dropped frames in a signal
+% Finds potentially dropped frames in a sinusoidal signal
 %
 % Syntax:
 %   flagged_indices = findDroppedFrames(signal, threshold)
 %
 % Description:
-%   Finds potentially dropped frames in a signal by looking 
-%   at the absolute value of its derivative, then returning 
+%   Finds potentially dropped frames in a sinusoidal signal by 
+%   looking at the absolute value of its derivative, then returning 
 %   indices above a certain threshold. By default, this is the 
 %   98th percentile of the derivative. 
 %

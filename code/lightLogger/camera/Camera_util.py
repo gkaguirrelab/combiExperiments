@@ -550,11 +550,13 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
                                                       nargout=1)
     
     # Fit the data
-    observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegressionLegacy(matlab.double(signal), 
-                                                                                                                                     matlab.double(frequency), 
-                                                                                                                                     observed_fps, 
-                                                                                                                                     nargout=6)
+    observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(matlab.double(signal), 
+                                                                                                                               matlab.double(frequency), 
+                                                                                                                               observed_fps, 
+                                                                                                                               nargout=6)
     print(f"Observed FPS: {observed_fps}")
+    print(f"R2: {observed_r2}")
+    print(f"Amplitude: {observed_amplitude}")
 
     # Close the MATLAB engine 
     eng.quit()
