@@ -73,7 +73,7 @@ function [timestamps, fig_handle] = plotDroppedFrames(signal, signalT, fit, mode
     fig_handle = figure; 
     plot(signalT, signal, 'x', 'Color', 'blue', 'DisplayName', 'Signal');
     hold on; 
-    plot(modelT, fit, 'x', 'Color', 'black', 'DisplayName', 'Fit');
+    %plot(modelT, fit, 'x', 'Color', 'black', 'DisplayName', 'Fit');
     plot(dropped_frames_t, dropped_frames_markers, 'o', 'Color', 'magenta', 'DisplayName', 'Dropped Frames Begin/End');
 
     % Label the plot

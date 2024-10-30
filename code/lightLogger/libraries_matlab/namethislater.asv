@@ -1,0 +1,21 @@
+figure ; 
+
+signalT_copy = signalT(2*60*)
+
+plot(signalT, signal_contrast, 'Color', 'blue', '-x', 'DisplayName', 'signal');
+hold on; 
+
+plot(signalT, signal_contrast, 'Color', 'orange', '-o', 'DisplayName', 'fit');
+
+amplitude = 0.4; 
+sampling_rate = 120;
+duration = 60*4;
+phaseShift = pi / 2; 
+
+guess_t = 1:1/sampling_rate:duration;
+guess_y = amplitude * sin(2 * pi * frequency * guess_t);
+
+
+
+
+plot(guess_t, guess_y, 'DisplayName', 'Guess')
