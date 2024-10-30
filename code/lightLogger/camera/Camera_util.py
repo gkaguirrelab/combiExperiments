@@ -493,10 +493,44 @@ def interpolate_signal(signal: np.ndarray, signal_t: np.ndarray,
 
     return interpolated_signal, interpolated_signal_T 
 
+"""Similar to fit source modulation, but this time taking into account changes to the MATLAB fourier regression
+   function to allow us to compare phases from any point in time. Needs a signal_t generated with an FPS guess."""
+def fit_source_modulation_with_t(signal: np.ndarray, signal_t: np.ndarray, frequency: float, fit_sampling_rate: float= CAM_FPS, convert_to_contrast: bool=False) -> tuple:
+    # Start the MATLAB engine
+    eng = matlab.engine.start_matlab()
+    eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera')
+
+    # Ensure MATLAB started properly
+    assert eng is not None
+
+    # Convert to contrast units, if desired 
+    if(convert_to_contrast is True):
+        signal_mean = np.mean(signal)
+        signal = (signal - signal_mean) / signal_mean
+    
+    # Call the MATLAB fourier regression function
+    observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegressionWithT(matlab.double(signal.astype(float)), 
+                                                                                                                                    matlab.double(signal_t.astype(float)),
+                                                                                                                                    matlab.double(frequency), 
+                                                                                                                                    matlab.double(fit_sampling_rate), 
+                                                                                                                                    nargout=6)
+
+    # Convert returned data back to Python datatype 
+    observed_signal_T: np.array = np.array(observed_signal_T).flatten()
+    observed_model_T: np.array = np.array(observed_model_T).flatten()
+    observed_fit: np.array = np.array(observed_fit).flatten()
+
+
+    print(f"R2: {observed_r2}")
+    print(f"Amplitude: {observed_amplitude}")
+
+
+    return observed_amplitude, observed_phase, (observed_signal_T, signal, observed_model_T, observed_fit, observed_r2)
+
 """Fit the source modulation to the observed and plot the fit"""
 def fit_source_modulation(signal: np.array, light_level: str, frequency: float, ax: plt.Axes=None, 
                           fps_guess: float=CAM_FPS, fps_guess_increment: tuple=(0,0.25),
-                          convert_to_contrast:bool =False) -> tuple:     
+                          convert_to_contrast: bool =False) -> tuple:     
     # Start the MATLAB engine
     eng = matlab.engine.start_matlab()
     eng.addpath('~/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera')
@@ -516,13 +550,11 @@ def fit_source_modulation(signal: np.array, light_level: str, frequency: float, 
                                                       nargout=1)
     
     # Fit the data
-    observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegression(matlab.double(signal), 
-                                                                                                                               matlab.double(frequency), 
-                                                                                                                               observed_fps, 
-                                                                                                                               nargout=6)
+    observed_r2, observed_amplitude, observed_phase, observed_fit, observed_model_T, observed_signal_T = eng.fourierRegressionLegacy(matlab.double(signal), 
+                                                                                                                                     matlab.double(frequency), 
+                                                                                                                                     observed_fps, 
+                                                                                                                                     nargout=6)
     print(f"Observed FPS: {observed_fps}")
-    print(f"R2: {observed_r2}")
-    print(f"Amplitude: {observed_amplitude}")
 
     # Close the MATLAB engine 
     eng.quit()
