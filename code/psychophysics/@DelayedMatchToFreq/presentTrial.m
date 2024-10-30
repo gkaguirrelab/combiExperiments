@@ -196,7 +196,7 @@ obj.waitUntil(stopTimeSeconds);
 obj.CombiLEDObj.stopModulation;
 
 % Wait before next trial
-stopTimeSeconds = cputime() + 0.5;
+stopTimeSeconds = cputime() + 1;
 obj.waitUntil(stopTimeSeconds);
 
 % Close the keypress window
