@@ -27,11 +27,11 @@ signal_contrast_pupil = (signal_pupil - mean(signal_pupil)) / mean(signal_pupil)
 
 % Plot the observed data and the fits 
 figure ; 
-plot(signalT_ms, signal_contrast_ms, '-x', 'DisplayName', 'Signal TS');
+%plot(signalT_ms, signal_contrast_ms, '-x', 'DisplayName', 'Signal TS');
 hold on ;
 plot(modelT_ms, fit_ms, '-x', 'DisplayName', 'Fit TS');
-plot(signalT_pupil, signal_contrast_pupil, '-o', 'DisplayName', 'Signal Pupil');
-plot(modelT_pupil, fit_pupil, '-o', 'DisplayName', 'Signal Pupil');
+%plot(signalT_pupil, signal_contrast_pupil, '-o', 'DisplayName', 'Signal Pupil');
+plot(modelT_pupil, fit_pupil, '-o', 'DisplayName', 'Fit Pupil');
 
 % Calculate the phase difference in radians 
 phase_difference_rad = phase_pupil - phase_ms;
@@ -39,8 +39,8 @@ phase_difference_rad = phase_pupil - phase_ms;
 % Convert to seconds 
 phase_difference_sec = phase_difference_rad/(2*pi*frequency);
 
-% Plot the adjusted MS data
-plot(signalT_ms + phase_difference_sec, signal_contrast_ms, '-.', 'DisplayName', 'Adjusted TS');
+% Plot the adjusted Pupil data
+plot(signalT_pupil - phase_difference_sec, signal_contrast_pupil, '-.', 'LineWidth', 2, 'DisplayName', 'Adjusted Pupil');
 
 % Label the plot 
 legend show 
