@@ -1,7 +1,7 @@
 
 % The directions and ND settings we will use
 NDlabels = {'0x5','3x5'};
-directions = {'LminusM_wide','LightFlux'};
+directions = {'LminusM_wide','LightFlux_reduced'};
 
 % The background XY chromaticity we will target
 xyTarget = [0.453178;0.348074];
