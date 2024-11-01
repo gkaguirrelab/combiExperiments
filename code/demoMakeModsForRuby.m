@@ -10,7 +10,7 @@ xyTarget = [0.453178;0.348074];
 primaryHeadRoom = 0.1;
 
 % Define and load the observer photoreceptors
-observerAgeInYears = 53;
+observerAgeInYears = 22;
 pupilDiameterMm = 3;
 photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
 
@@ -50,7 +50,7 @@ for nn = 1:length(NDlabels)
     modResult{nn,2} = designModulation(whichDirection,photoreceptors,cal,...
         'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',3,...
         'backgroundPrimary',backgroundPrimary,'searchBackground',true,...
-        'xyTol',0,'xyTolWeight',1e4);
+        'xyTol',0,'xyTolWeight',1e3);
     plotModResult(modResult{nn,2});
-
+pause
 end
