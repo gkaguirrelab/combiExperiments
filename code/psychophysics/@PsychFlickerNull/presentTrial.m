@@ -1,21 +1,11 @@
 function validResponse = presentTrial(obj)
 
-% Get the questData
-questData = obj.questData;
-
 % Get the current trial index
 currTrialIdx = size(questData.trialData,1)+1;
 
 % Determine if we are simulating the stimuli
 simulateStimuli = obj.simulateStimuli;
 simulateResponse = obj.simulateResponse;
-
-% Determine if we are giving feedback on each trial
-giveFeedback = obj.giveFeedback;
-
-% Get the next stimulus setting
-qpStimParams = qpQuery(questData);
-adjustWeight = qpStimParams(1);
 
 % Obtain adjusted modulation settings
 modResultNew = obj.returnAdjustedModResult(adjustWeight);

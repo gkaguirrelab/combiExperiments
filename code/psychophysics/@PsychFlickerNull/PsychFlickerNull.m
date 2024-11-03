@@ -1,11 +1,8 @@
-% Object to support nulling of the luminance component of chromatic
-% modulations. A "target" modResult is passed to the routine, as well as an
-% option "silent" modResult. The object then searchs over weights on the
-% high and low settings of the target modulation. The candidate modulation
-% is flickered at a high (e.g., 30 Hz) frequency and presented within a
-% 2AFC detection trial. The weights are under the control of a quest+
-% search using a psychometric function that attempts to find the null point
-% at which the subject is at chance in detecting the flicker. 
+% Object to support nulling of chromatic and achromatic components of
+% modulations. A "source" modResult is passed to the routine, as well as a
+% "silencing" modResult. The observer is invited to adjust the weight of
+% silencing modulation direction that is added or removed from the source
+% modulation direction to null a percetual feature.
 
 
 classdef PsychFlickerNull < handle
@@ -19,31 +16,17 @@ classdef PsychFlickerNull < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
-        modResult
-        adjustSettingsVec
-        simulatePsiParams
+        sourceModResult
+        silencingModResult
         simulateResponse
         simulateStimuli
-        giveFeedback
-        psiParamsDomainList
-        randomizePhase = true;
-        adjustHighSettings
         stimFreqHz
         stimContrast
-        stimTestSet
-        pulseDurSecs = 1;
-        halfCosineRampDurSecs = 0.125
-        interStimulusIntervalSecs = 0.1;
+        asymmetricAdjustFlag
     end
 
     % These may be modified after object creation
     properties (SetAccess=public)
-
-
-        % We allow this to be modified so that one may combine measurements
-        % from across psychometric objects, place the combined data into
-        % this variable, and make use of the plotting and reporting methods
-        questData
 
         % The display object. This is modifiable so that we can re-load
         % a PsychDetectionThreshold, update this handle, and then continue
@@ -64,42 +47,27 @@ classdef PsychFlickerNull < handle
     methods
 
         % Constructor
-        function obj = PsychFlickerNull(CombiLEDObj,modResult,varargin)
+        function obj = PsychFlickerNull(CombiLEDObj,sourceModResult,silencingModResult,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
-            p.addParameter('adjustSettingsVec',ones(8,1),@isnumeric);
             p.addParameter('stimFreqHz',30,@isnumeric);
-            p.addParameter('stimContrast',0.25,@isnumeric);
-            p.addParameter('randomizePhase',false,@islogical);
+            p.addParameter('stimContrast',0.5,@isnumeric);
+            p.addParameter('asymmetricAdjustFlag',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
-            p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('adjustHighSettings',true,@islogical);
-            p.addParameter('stimTestSet',linspace(-0.5,0.5,31),@isnumeric);
-            p.addParameter('simulatePsiParams',[-0.08, 0.04, 0.50],@isnumeric);
-            p.addParameter('psiParamsDomainList',{...
-                linspace(-0.5,0.5,31), ...
-                linspace(0.01,0.25,10),...
-                linspace(0.50,0.75,10),...
-                },@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
             obj.CombiLEDObj = CombiLEDObj;
-            obj.modResult = modResult;
-            obj.adjustSettingsVec = p.Results.adjustSettingsVec;
+            obj.sourceModResult = sourceModResult;
+            obj.silencingModResult = silencingModResult;
             obj.stimFreqHz = p.Results.stimFreqHz;
             obj.stimContrast = p.Results.stimContrast;            
-            obj.stimTestSet = p.Results.stimTestSet;           
-            obj.adjustHighSettings = p.Results.adjustHighSettings;
-            obj.randomizePhase = p.Results.randomizePhase;
+            obj.asymmetricAdjustFlag = p.Results.asymmetricAdjustFlag;                        
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
-            obj.giveFeedback = p.Results.giveFeedback;
-            obj.simulatePsiParams = p.Results.simulatePsiParams;
-            obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
 
             % Check that there is headroom in the modResult
@@ -113,9 +81,6 @@ classdef PsychFlickerNull < handle
             % Initialize the blockStartTimes field
             obj.blockStartTimes(1) = datetime();
             obj.blockStartTimes(1) = [];
-
-            % Initialize Quest+
-            obj.initializeQP;
 
             % Initialize the CombiLED
             obj.initializeDisplay;
