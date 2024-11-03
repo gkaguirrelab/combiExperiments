@@ -6,8 +6,9 @@ directions = {'LminusM_wide','LightFlux_reduced'};
 % The background XY chromaticity we will target
 xyTarget = [0.453178;0.348074];
 
-% How much headroom we want
-primaryHeadRoom = 0.1;
+% How much headroom we want. We need to enforce extra headroom on the 7th
+% primary, as this one has a poorly behaved gamma function
+primaryHeadRoom = [0.075,0.075,0.075,0.075,0.075,0.075,0.20,0.075];
 
 % Define and load the observer photoreceptors
 observerAgeInYears = 22;
@@ -44,13 +45,12 @@ for nn = 1:length(NDlabels)
         'xyTarget',xyTarget,'searchBackground',true);
     plotModResult(modResult{nn,1});
 
-    whichDirection = 'LightFlux_reduced';
+    whichDirection = 'LightFlux';
     backgroundPrimary = modResult{nn,1}.settingsBackground;
 
     modResult{nn,2} = designModulation(whichDirection,photoreceptors,cal,...
-        'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',3,...
-        'backgroundPrimary',backgroundPrimary,'searchBackground',true,...
-        'xyTol',0,'xyTolWeight',1e3);
+        'primaryHeadRoom',primaryHeadRoom,'backgroundPrimary',backgroundPrimary);
     plotModResult(modResult{nn,2});
-pause
+
+    pause
 end
