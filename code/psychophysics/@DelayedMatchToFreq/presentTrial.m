@@ -173,27 +173,31 @@ obj.CombiLEDObj.stopModulation;
 trialData(currTrialIdx).trialStartTime = datetime();
 
 % Wait before providing feedback
-stopTimeSeconds = cputime() + obj.preFeedbackIntervalSecs;
-obj.waitUntil(stopTimeSeconds);
+%stopTimeSeconds = cputime() + obj.preFeedbackIntervalSecs;
+%obj.waitUntil(stopTimeSeconds);
 
 % Show the reference stimulus again to provide feedback
-obj.CombiLEDObj.setContrast(refContrastAdjusted);
-obj.CombiLEDObj.setFrequency(refFreq);
-obj.CombiLEDObj.setPhaseOffset(refPhase);
+%obj.CombiLEDObj.setContrast(refContrastAdjusted);
+%obj.CombiLEDObj.setFrequency(refFreq);
+%obj.CombiLEDObj.setPhaseOffset(refPhase);
 
 % Play a tone here that differs for accurate responses vs. inaccurate
 errorDecibels = 10*log10(max([testFreq,refFreq])/min([testFreq,refFreq]));
 if errorDecibels < obj.goodJobCriterionDb
     audioObjs.correct.play;
 else
-    audioObjs.incorrect.play;
+    if testFreq > refFreq
+        Speak('too fast','Siri',200)
+    else
+        Speak('too slow','Siri',200)
+    end
 end
 
 % Present the reference stimulus again
-stopTimeSeconds = cputime() + obj.feedbackDurationSecs;
-obj.CombiLEDObj.startModulation;
-obj.waitUntil(stopTimeSeconds);
-obj.CombiLEDObj.stopModulation;
+%stopTimeSeconds = cputime() + obj.feedbackDurationSecs;
+%obj.CombiLEDObj.startModulation;
+%obj.waitUntil(stopTimeSeconds);
+%obj.CombiLEDObj.stopModulation;
 
 % Wait before next trial
 stopTimeSeconds = cputime() + 1;
