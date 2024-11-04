@@ -1,4 +1,8 @@
 
+% Housekeeping
+close all
+clear
+
 % The directions and ND settings we will use
 NDlabels = {'0x5','3x5'};
 directions = {'LminusM_wide','LightFlux_reduced'};
@@ -30,27 +34,28 @@ for nn = 1:length(NDlabels)
     transmittance = targetSPDCal.rawData.gammaCurveMeanMeasurements ./ maxSPDCal.rawData.gammaCurveMeanMeasurements;
 
     % Create this cal file
-    cal = baseCal;
-    for ii = 1:size(cal.processedData.P_device,2)
-        cal.processedData.P_device(:,ii) = ...
-            cal.processedData.P_device(:,ii) .* transmittance;
+    cal{nn} = baseCal;
+    for ii = 1:size(cal{nn}.processedData.P_device,2)
+        cal{nn}.processedData.P_device(:,ii) = ...
+            cal{nn}.processedData.P_device(:,ii) .* transmittance;
     end
-    cal.processedData.P_ambient = cal.processedData.P_ambient .* ...
+    cal{nn}.processedData.P_ambient = cal{nn}.processedData.P_ambient .* ...
         transmittance;
 
     whichDirection = 'LminusM_wide';
 
-    modResult{nn,1} = designModulation(whichDirection,photoreceptors,cal,...
+    modResult{nn,1} = designModulation(whichDirection,photoreceptors,cal{nn},...
         'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',3,...
         'xyTarget',xyTarget,'searchBackground',true);
     plotModResult(modResult{nn,1});
+    drawnow
 
     whichDirection = 'LightFlux';
     backgroundPrimary = modResult{nn,1}.settingsBackground;
 
-    modResult{nn,2} = designModulation(whichDirection,photoreceptors,cal,...
+    modResult{nn,2} = designModulation(whichDirection,photoreceptors,cal{nn},...
         'primaryHeadRoom',primaryHeadRoom,'backgroundPrimary',backgroundPrimary);
     plotModResult(modResult{nn,2});
+    drawnow
 
-    pause
 end

@@ -18,11 +18,17 @@ classdef PsychFlickerNull < handle
     properties (SetAccess=private)
         sourceModResult
         silencingModResult
+        adjustedModResult
         simulateResponse
         simulateStimuli
         stimFreqHz
         stimContrast
+        stimWaveform
         asymmetricAdjustFlag
+        adjustWeight
+        currTrialIdx = 0;
+        responseDurSecs = 3;
+        lastResponse
     end
 
     % These may be modified after object creation
@@ -33,14 +39,13 @@ classdef PsychFlickerNull < handle
         % to collect data
         CombiLEDObj
 
+        % The adjustment weight may be modified to allow larger and smaller
+        % refinements of the stimulus appearance
+        adjustWeightDelta = 0.01;
+
         % Verbosity
         verbose = true;
         blockStartTimes = datetime();
-
-        % We allow this to be modified so we
-        % can set it to be brief during object
-        % initiation when we clear the responses
-        responseDurSecs = 3;
 
     end
 
@@ -53,6 +58,7 @@ classdef PsychFlickerNull < handle
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('stimFreqHz',30,@isnumeric);
             p.addParameter('stimContrast',0.5,@isnumeric);
+            p.addParameter('stimWaveform',1,@isscalar);
             p.addParameter('asymmetricAdjustFlag',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
@@ -64,13 +70,17 @@ classdef PsychFlickerNull < handle
             obj.sourceModResult = sourceModResult;
             obj.silencingModResult = silencingModResult;
             obj.stimFreqHz = p.Results.stimFreqHz;
-            obj.stimContrast = p.Results.stimContrast;            
+            obj.stimContrast = p.Results.stimContrast;   
+            obj.stimWaveform = p.Results.stimWaveform;              
             obj.asymmetricAdjustFlag = p.Results.asymmetricAdjustFlag;                        
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.verbose = p.Results.verbose;
 
-            % Check that there is headroom in the modResult
+            % Set the adjustment weight to zero and define the starting
+            % point of the adjustedModResult
+            obj.adjustWeight = 0;
+            obj.adjustedModResult = sourceModResult;
 
             % Detect incompatible simulate settings
             if obj.simulateStimuli && ~obj.simulateResponse
@@ -88,15 +98,9 @@ classdef PsychFlickerNull < handle
         end
 
         % Required methods
-        initializeQP(obj)
         initializeDisplay(obj)
-        modResult = returnAdjustedModResult(obj,adjustWeight)
-        validResponse = presentTrial(obj)
-        [intervalChoice, responseTimeSecs] = getResponse(obj)
-        [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
-        waitUntil(obj,stopTimeMicroSeconds)
-        [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
-        figHandle = plotOutcome(obj,visible)
-        resetSearch(obj)
+        createAdjustedModResult(obj)
+        presentTrial(obj)
+        [choice, responseTimeSecs] = getResponse(obj)
     end
 end

@@ -15,10 +15,10 @@ if ~obj.simulateStimuli
         fprintf('Initializing CombiLEDObj\n')
     end
 
-    obj.CombiLEDObj.setBackground(obj.modResult.settingsBackground);
-    obj.CombiLEDObj.setWaveformIndex(2); % sinusoidal flicker
+    obj.CombiLEDObj.setSettings(obj.adjustedModResult);
+    obj.CombiLEDObj.setWaveformIndex(obj.stimWaveform); % square wave flicker
     obj.CombiLEDObj.setFrequency(obj.stimFreqHz);
-
+    obj.CombiLEDObj.setContrast(obj.stimContrast);
 end
 
 end
