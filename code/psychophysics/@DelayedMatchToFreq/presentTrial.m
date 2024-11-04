@@ -185,7 +185,9 @@ trialData(currTrialIdx).trialStartTime = datetime();
 errorDecibels = 10*log10(max([testFreq,refFreq])/min([testFreq,refFreq]));
 if errorDecibels < obj.goodJobCriterionDb
     audioObjs.correct.play;
+    trialData(currTrialIdx).goodJob = true;
 else
+    trialData(currTrialIdx).goodJob = false;
     if testFreq > refFreq
         Speak('too fast','Siri',200)
     else
@@ -205,21 +207,6 @@ obj.waitUntil(stopTimeSeconds);
 
 % Close the keypress window
 close(S.fh);
-
-% Present a white noise burst as a mask
-if obj.presentMaskFlag
-    pause(0.5);
-    obj.CombiLEDObj.setWaveformIndex(6); % white noise
-    obj.CombiLEDObj.setContrast(refContrastAdjusted);
-    obj.CombiLEDObj.setFrequency(1);
-    stopTimeSeconds = cputime() + obj.maskDurationSecs;
-    obj.CombiLEDObj.startModulation;
-    obj.waitUntil(stopTimeSeconds);
-    obj.CombiLEDObj.stopModulation;
-
-    % Return the combiLED to the sinusoidal flicker setting
-    obj.CombiLEDObj.setWaveformIndex(1);
-end
 
 % Store the trial information
 trialData(currTrialIdx).blockIdx = obj.blockIdx;
