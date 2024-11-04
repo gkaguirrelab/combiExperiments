@@ -4,8 +4,8 @@ subjectID = GetWithDefault('Subject ID','FLIC_xxxx');
 
 % The light levels and directions
 NDlabelsAll = {'0x5','3x5'};
-modDirections = {'LightFlux','LminusM_wide'};
-targetPhotoreceptorContrast = [0.4,0.09];
+modDirections = {'LminusM_wide','LightFlux'};
+targetPhotoreceptorContrast = [0.09,0.4];
 
 % Define where the experimental files are saved
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
