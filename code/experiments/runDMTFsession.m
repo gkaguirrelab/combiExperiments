@@ -18,7 +18,7 @@ choice = int32(choice);
 idx = find(charSet == choice);
 NDlabel = NDlabelsAll{idx};
 
-% Get the subject ID and age
+% Get the subject ID
 subjectID = GetWithDefault('Subject ID','FLIC_xxxx');
 
 % Define where the experimental files are saved
