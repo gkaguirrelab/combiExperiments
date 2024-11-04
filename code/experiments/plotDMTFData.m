@@ -24,7 +24,7 @@ subjectDir = fullfile(...
 experimentName = 'DMTF';
 
 figHandle = figure();
-figuresize(600, 600,'pt');
+figuresize(600,600,'pt');
 tiledlayout(length(NDlabelsAll),length(modDirections),"TileSpacing","tight","Padding","tight");
 
 for nn = 1:length(NDlabelsAll)
@@ -61,10 +61,10 @@ for nn = 1:length(NDlabelsAll)
 
         % Plot the unit slope and good job feedback boundaries
         nexttile();
-        loglog([1.5 15],[1.5 15],'--k','LineWidth',1.5)        
+        loglog([0.5 60],[0.5 60],'--k','LineWidth',1.5)        
         hold on
-        loglog([1.5 15],[1.5 15]*db2pow(goodJobCriterionDb),':k','LineWidth',1.5)        
-        loglog([1.5 15],[1.5 15]/db2pow(goodJobCriterionDb),':k','LineWidth',1.5)        
+        loglog([0.5 60],[0.5 60]*db2pow(goodJobCriterionDb),':k','LineWidth',1.5)        
+        loglog([0.5 60],[0.5 60]/db2pow(goodJobCriterionDb),':k','LineWidth',1.5)        
                 
         scatter(refFreq(goodJobVec),testFreq(goodJobVec),'k','filled','o','MarkerEdgeColor','none','MarkerFaceAlpha',0.25);
         scatter(refFreq(~goodJobVec),testFreq(~goodJobVec),'r','filled','o','MarkerEdgeColor','none','MarkerFaceAlpha',0.25);
