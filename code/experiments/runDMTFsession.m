@@ -18,7 +18,6 @@ choice = int32(choice);
 idx = find(charSet == choice);
 NDlabel = NDlabelsAll{idx};
 
-
 % Get the subject ID and age
 subjectID = GetWithDefault('Subject ID','FLIC_xxxx');
 
