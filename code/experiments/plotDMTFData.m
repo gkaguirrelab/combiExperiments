@@ -1,4 +1,3 @@
-
 % Get the subject ID
 subjectID = GetWithDefault('Subject ID','FLIC_xxxx');
 
@@ -22,7 +21,7 @@ figHandle = figure();
 figuresize(600, 400,'pt');
 tiledlayout(2,3,"TileSpacing","tight","Padding","tight");
 
-for nn = 1:1 %length(NDlabelsAll)
+for nn = 1:length(NDlabelsAll)
     for dd = 1:length(modDirections)
 
         % Load the psych object for this direction and light level
@@ -32,11 +31,16 @@ for nn = 1:1 %length(NDlabelsAll)
         filename = fullfile(dataDir,[psychFileStem '.mat']);
         load(filename,'psychObj');
 
-
         % Extract the ref and test frequencies, and
         refFreq = [psychObj.trialData.refFreq];
         testFreq = [psychObj.trialData.testFreq];
 
+        % Report the goodJob proportion
+        goodJobVec = [psychObj.trialData.goodJob];
+        proportionCorrect = sum(goodJobVec)/length(goodJobVec);
+        fprintf(['Proportion good, ' [modDirections{dd} '_ND' NDlabelsAll{nn}] ': %2.2f\n'],proportionCorrect);
+
+        % Plot the performance
         [~,edges] = histcounts(log10(refFreq),10);
         Y = discretize(log10(refFreq),edges);
         nBins = length(edges)-1;
@@ -65,3 +69,4 @@ for nn = 1:1 %length(NDlabelsAll)
         title(modDirections{dd})
     end
 end
+

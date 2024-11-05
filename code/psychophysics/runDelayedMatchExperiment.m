@@ -124,8 +124,8 @@ for bb=1:nBlocks
     end
 
     % Start the block
-    fprintf('Press any key to start block %d...',bb);
-    pause
+    fprintf('Press enter to start block %d...',bb);
+    input('');
 
     % Store the block start time
     psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
