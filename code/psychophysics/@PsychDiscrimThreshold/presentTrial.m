@@ -1,4 +1,4 @@
-function validResponse = presentTrial(obj)
+function presentTrial(obj)
 
 % Get the questData
 questData = obj.questData;
@@ -13,8 +13,8 @@ simulateResponse = obj.simulateResponse;
 % Determine if we are giving feedback on each trial
 giveFeedback = obj.giveFeedback;
 
-% The reference frequency and the contrast of the test and ref is set by
-% the calling function
+% The calling function sets the reference frequency, and the contrast of
+% the test and ref
 refFreqHz = obj.refFreqHz;
 refContrast = obj.refContrast;
 testContrast = obj.testContrast;
@@ -42,11 +42,9 @@ end
 testParams = [testContrastAdjusted,testFreqHz,testPhase];
 refParams = [refContrastAdjusted,refFreqHz,refPhase];
 
-% Randomly pick which interval contains the test
-testInterval = 1+logical(round(rand()));
-
-% Assign the stimuli to the intervals
-switch testInterval
+% Randomly assign the stimuli to the intervals and note which interval
+% contains the faster flicker
+switch 1+logical(round(rand()))
     case 1
         intervalParams(1,:) = testParams;
         intervalParams(2,:) = refParams;
@@ -56,6 +54,7 @@ switch testInterval
     otherwise
         error('Not a valid testInterval')
 end
+[~,fasterInterval] = max(intervalParams(:,2));
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -108,7 +107,7 @@ if ~simulateStimuli
     for ii=1:2
 
         % Prepare the stimulus
-        stopTime = tic() + obj.interStimulusIntervalSecs*1e9;
+        stopTime = cputime() + obj.interStimulusIntervalSecs;
         obj.CombiLEDObj.setContrast(intervalParams(ii,1));
         obj.CombiLEDObj.setFrequency(intervalParams(ii,2));
         obj.CombiLEDObj.setPhaseOffset(intervalParams(ii,3));
@@ -116,14 +115,15 @@ if ~simulateStimuli
 
         % Present the stimulus. If it is the first interval, wait the
         % entire stimulusDuration. If it is the second interval. just wait
-        % half of the stimulus and then move on to the response, thus
+        % 1/4 of the stimulus and then move on to the response, thus
         % allowing the subject to respond during the second stimulus.
         if ii == 1
-            stopTime = tic() + obj.stimulusDurationSecs*1e9 + obj.interStimulusIntervalSecs*1e9;
+            stopTime = cputime() + obj.stimulusDurationSecs + obj.interStimulusIntervalSecs;
         else
-            stopTime = tic() + 0.5*obj.stimulusDurationSecs*1e9;
+            stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
         end
         obj.CombiLEDObj.startModulation;
+        stimulusStartTime = cputime();
         if ii==1
             audioObjs.low.play;
         else
@@ -135,78 +135,62 @@ end
 
 % Start the response interval
 if ~simulateResponse
-
     stillWaiting = true;
+    drawnow
     while stillWaiting
-        if cputime() > (lastRefreshTime + testRefreshIntervalSecs)
-            drawnow
-            switch currKeyPress
-                case {'1'}
-                    intervalChoice = 1;
-                case {'2'}
-                    intervalChoice = 2;
-                    stillWaiting = false;
-            end
-
-            % Clear the keypress
-            currKeyPress = '';
-
+        switch currKeyPress
+            case {'1'}
+                intervalChoice = 1;
+            case {'2'}
+                intervalChoice = 2;
+                stillWaiting = false;
         end
+        % Clear the keypress
+        currKeyPress = '';
     end
+else
+    intervalChoice = obj.getSimulatedResponse(qpStimParam,fasterInterval);
 end
 
-% Start the response interval
-    [intervalChoice, responseTimeSecs] = obj.getResponse;
-    % Make sure the stimulus has stopped
+% Store the response time
+responseTimeSecs = cputime() - stimulusStartTime;
+
+% Stop the stimulus in case it is still running
+if ~simulateStimulus
     obj.CombiLEDObj.stopModulation;
-else
-    [intervalChoice, responseTimeSecs] = obj.getSimulatedResponse(qpStimParam,testInterval);
+end
 
 % Determine if the subject has selected the correct interval and handle
 % audio feedback
-if ~isempty(intervalChoice)
-    validResponse = true;
-    if testInterval==intervalChoice
-        % Correct
-        outcome = 2;
-        if obj.verbose
-            fprintf('correct');
-        end
-        if ~simulateStimuli
-            % We are not simulating, and the response was correct.
-            % Regardless of whether we are giving feedback or not, we will
-            % play the "correct" tone
-            audioObjs.correct.play;
-            obj.waitUntil(tic()+5e8);
-        end
-    else
-        outcome = 1;
-        if obj.verbose
-            fprintf('incorrect');
-        end
-        if ~simulateStimuli
-            % We are not simulating
-            if giveFeedback
-                % We are giving feedback, so play the "incorrect" tone
-                audioObjs.incorrect.play;
-            else
-                % We are not giving feedback, so play the same "correct"
-                % tone that is played for correct responses
-                audioObjs.correct.play;
-            end
-            obj.waitUntil(tic()+5e8);
-        end
-    end
-else
-    outcome = nan;
-    validResponse = false;
+if fasterInterval==intervalChoice
+    % Correct
+    outcome = 2;
     if obj.verbose
-        fprintf('no response');
+        fprintf('correct');
     end
     if ~simulateStimuli
-        % Buzz the bad trial
-        audioObjs.bad.play;
-        obj.waitUntil(tic()+3e9);
+        % We are not simulating, and the response was correct.
+        % Regardless of whether we are giving feedback or not, we will
+        % play the "correct" tone
+        audioObjs.correct.play;
+        obj.waitUntil(cputime()+0.5);
+    end
+else
+    outcome = 1;
+    if obj.verbose
+        fprintf('incorrect');
+    end
+    if ~simulateStimuli
+        % We are not simulating
+        if giveFeedback
+            % We are giving feedback, so play the "incorrect" tone
+            audioObjs.incorrect.play;
+        else
+            % We are not giving feedback, so play the same "correct"
+            % tone that is played for correct responses
+            audioObjs.correct.play;
+        end
+        obj.waitUntil(cputime()+0.5);
     end
 end
 
@@ -215,19 +199,13 @@ if obj.verbose
     fprintf('\n');
 end
 
-% Update questData if a valid response
-if validResponse
-    % Update questData
-    questData = qpUpdate(questData,qpStimParam,outcome);
+% Update questData
+questData = qpUpdate(questData,qpStimParam,outcome);
 
-    % Add in the phase and interval information
-    questData.trialData(currTrialIdx).phase = testPhase;
-    questData.trialData(currTrialIdx).testInterval = testInterval;
-    questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
-else
-    % Store a record of the invalid response
-    questData.invalidResponseTrials(end+1) = currTrialIdx;
-end
+% Add in the stimulus information
+questData.trialData(currTrialIdx).testPhase = testPhase;
+questData.trialData(currTrialIdx).testInterval = fasterInterval;
+questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 
 % Put staircaseData back into the obj
 obj.questData = questData;
