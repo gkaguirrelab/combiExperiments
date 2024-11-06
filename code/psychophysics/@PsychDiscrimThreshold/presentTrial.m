@@ -19,14 +19,15 @@ refFreqHz = obj.refFreqHz;
 refContrast = obj.refContrast;
 testContrast = obj.testContrast;
 
-% The difference between the test and reference frequency is given by qp
+% The difference between the reference and test frequency is given by the
+% qpStimParam, which is in units of decibels
 qpStimParam = qpQuery(questData);
-testFreqHz = refFreqHz + qpStimParam;
+testFreqHz = refFreqHz * db2pow(qpStimParam);
 
 % Adjust the contrast that is sent to the device to account for any
 % device attenuation of the modulation at high temporal frequencies
-testContrastAdjusted =  testContrast / contrastAttentionByFreq(testFreqHz);
-refContrastAdjusted =  refContrast / contrastAttentionByFreq(refFreqHz);
+testContrastAdjusted =  testContrast / contrastAttenuationByFreq(testFreqHz);
+refContrastAdjusted =  refContrast / contrastAttenuationByFreq(refFreqHz);
 
 % The ref phase is always 0
 refPhase = 0;
@@ -76,18 +77,20 @@ audioObjs.incorrect = audioplayer(incorrectSound,Fs);
 audioObjs.bad = audioplayer(badSound,Fs);
 
 % Create a figure that will be used to collect key presses
-currKeyPress='0';
-S.fh = figure( 'units','pixels',...
-    'position',[500 500 200 260],...
-    'menubar','none','name','move_fig',...
-    'numbertitle','off','resize','off',...
-    'keypressfcn',@f_capturekeystroke,...
-    'CloseRequestFcn',@f_closecq);
-S.tx = uicontrol('style','text',...
-    'units','pixels',...
-    'position',[60 120 80 20],...
-    'fontweight','bold');
-guidata(S.fh,S)
+if ~simulateResponse
+    currKeyPress='0';
+    S.fh = figure( 'units','pixels',...
+        'position',[500 500 200 260],...
+        'menubar','none','name','move_fig',...
+        'numbertitle','off','resize','off',...
+        'keypressfcn',@f_capturekeystroke,...
+        'CloseRequestFcn',@f_closecq);
+    S.tx = uicontrol('style','text',...
+        'units','pixels',...
+        'position',[60 120 80 20],...
+        'fontweight','bold');
+    guidata(S.fh,S)
+end
 
 % Handle verbosity
 if obj.verbose
@@ -131,6 +134,8 @@ if ~simulateStimuli
         end
         obj.waitUntil(stopTime);
     end
+else
+        stimulusStartTime = cputime();
 end
 
 % Start the response interval
@@ -156,7 +161,7 @@ end
 responseTimeSecs = cputime() - stimulusStartTime;
 
 % Stop the stimulus in case it is still running
-if ~simulateStimulus
+if ~simulateStimuli
     obj.CombiLEDObj.stopModulation;
 end
 

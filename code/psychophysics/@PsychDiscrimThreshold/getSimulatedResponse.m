@@ -1,15 +1,12 @@
-function [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
+function intervalChoice = getSimulatedResponse(obj,qpStimParams,fasterInterval)
 
 % Get the simulated choice of ref1 or ref2
 outcome = obj.questData.qpOutcomeF(qpStimParams);
 
 if outcome==1 % wrong choice
-    intervalChoice = mod(testInterval,2)+1;
+    intervalChoice = mod(fasterInterval,2)+1;
 else
-    intervalChoice = testInterval;
+    intervalChoice = fasterInterval;
 end
-
-% The response is simulated, so make the responseTimeSecs nan
-responseTimeSecs = nan;
 
 end
