@@ -14,11 +14,10 @@ classdef DelayedMatchToFreq < handle
     % Calling function can see, but not modify
     properties (SetAccess=private)
 
+        modResult
         refFreqRangeHz
-        refContrast
         testContrast
         testRangeDecibels
-        presentMaskFlag
         goodJobCriterionDb
         randomizePhase
         trialData
@@ -27,7 +26,6 @@ classdef DelayedMatchToFreq < handle
         simulateStimuli
         refDurationSecs = 2;
         feedbackDurationSecs = 1;
-        maskDurationSecs = 1;
         interStimulusIntervalSecs = 2;
         preFeedbackIntervalSecs = 1;
         testRefreshIntervalSecs = 0.1;
@@ -59,28 +57,25 @@ classdef DelayedMatchToFreq < handle
 
         % Constructor
         % logTestBound = 
-        function obj = DelayedMatchToFreq(CombiLEDObj,refFreqRangeHz,testContrast,varargin)
+        function obj = DelayedMatchToFreq(CombiLEDObj,modResult,refFreqRangeHz,testContrast,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('randomizePhase',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
-            p.addParameter('refContrast',0.5,@isnumeric);
             p.addParameter('testRangeDecibels',8,@isnumeric);
             p.addParameter('goodJobCriterionDb',1,@isnumeric);            
-            p.addParameter('presentMaskFlag',false,@islogical);            
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
             obj.CombiLEDObj = CombiLEDObj;
+            obj.modResult = modResult;
             obj.refFreqRangeHz = refFreqRangeHz;
             obj.testContrast = testContrast;
-            obj.refContrast = p.Results.refContrast;
             obj.testRangeDecibels = p.Results.testRangeDecibels;
             obj.goodJobCriterionDb = p.Results.goodJobCriterionDb;
-            obj.presentMaskFlag = p.Results.presentMaskFlag;           
             obj.randomizePhase = p.Results.randomizePhase;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
@@ -108,9 +103,6 @@ classdef DelayedMatchToFreq < handle
             highestTestFreq = max(refFreqRangeHz)*db2mag(obj.testRangeDecibels);
             if (obj.testContrast / contrastAttenuationByFreq(highestTestFreq)) > 1
                 error('The specified stimulus contrast is greater than can be presented for the highest test frequency')
-            end
-            if (obj.refContrast / contrastAttenuationByFreq(max(refFreqRangeHz))) > 1
-                error('The specified stimulus contrast is greater than can be presented for the highest ref frequency')
             end
         end
 

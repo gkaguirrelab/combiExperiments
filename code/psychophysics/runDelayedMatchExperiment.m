@@ -1,4 +1,4 @@
-function runDelayedMatchExperiment(subjectID,modDirection,testContrast,NDlabel,varargin)
+function runDelayedMatchExperiment(subjectID,NDlabel,varargin)
 % Psychometric measurement of accuracy and bias in reproduction of the
 % frequency of a flickering stimulus after a delay. The code manages a
 % series of files that store the data from the experiment. As configured,
@@ -17,25 +17,28 @@ function runDelayedMatchExperiment(subjectID,modDirection,testContrast,NDlabel,v
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
+p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('cal',[],@isstruct);
-p.addParameter('refFreqRangeHz',[1 25],@isnumeric);
-p.addParameter('testRangeDecibels',7.5,@isnumeric);
-p.addParameter('nTrials',25,@isnumeric);
-p.addParameter('observerAgeInYears',25,@isnumeric);
-p.addParameter('pupilDiameterMm',4.2,@isnumeric);
-p.addParameter('primaryHeadRoom',0.1,@isnumeric);
+p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
+p.addParameter('targetPhotoreceptorContrast',[0.075,0.333],@isnumeric);
+p.addParameter('refFreqRangeHz',[1 32],@isnumeric);
+p.addParameter('testRangeDecibels',7,@isnumeric);
+p.addParameter('goodJobCriterionDb',1.5,@isnumeric);
+p.addParameter('nTrialsPerBlock',20,@isnumeric);
+p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',false,@islogical);
-p.addParameter('updateFigures',true,@islogical);
+p.addParameter('updateFigures',false,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
-cal = p.Results.cal;
 refFreqRangeHz = p.Results.refFreqRangeHz;
-nTrials = p.Results.nTrials;
+nTrialsPerBlock = p.Results.nTrialsPerBlock;
+nBlocks = p.Results.nBlocks;
+modDirections = p.Results.modDirections;
+targetPhotoreceptorContrast = p.Results.targetPhotoreceptorContrast;
 testRangeDecibels = p.Results.testRangeDecibels;
-primaryHeadRoom = p.Results.primaryHeadRoom;
+goodJobCriterionDb = p.Results.goodJobCriterionDb;
 verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
 updateFigures = p.Results.updateFigures;
@@ -47,69 +50,25 @@ experimentName = 'DMTF';
 rng('shuffle');
 
 % Define the modulation and data directories
-modDir = fullfile(...
+subjectDir = fullfile(...
     p.Results.dropBoxBaseDir,...
-    'FLIC_data',...,
+    p.Results.dropBoxSubDir,...,
     p.Results.projectName,...
-    subjectID,[modDirection '_ND' NDlabel]);
-dataDir = fullfile(modDir,experimentName);
+    subjectID);
 
-% Create a directory for the subject
-if ~isfolder(dataDir)
-    mkdir(dataDir)
-end
-
-% Create or load a modulation and save it to the saveModDir
-filename = fullfile(modDir,'modResult.mat');
-if isfile(filename)
-    % The modResult may be a nulled modulation, so handle the possibility
-    % of the variable name being different from "modResult".
-    tmp = load(filename);
-    fieldname = fieldnames(tmp);
-    modResult = tmp.(fieldname{1});
-else
-    photoreceptors = photoreceptorDictionaryHuman(...
-        'observerAgeInYears',p.Results.observerAgeInYears,...
-        'pupilDiameterMm',p.Results.pupilDiameterMm);
-    modResult = designModulation(modDirection,photoreceptors,cal,'primaryHeadRoom',primaryHeadRoom);
-    save(filename,'modResult');
-    figHandle = plotModResult(modResult,'off');
-    filename = fullfile(modDir,'modResult.pdf');
-    saveas(figHandle,filename,'pdf')
-    close(figHandle)
-end
+% Load a modResult file and extract the calibration. We need this to
+% obtain a gamma table to pass to the combiLED, and this property of the
+% device does not change with modulation direction
+modResultFile = ...
+    fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],'modResult.mat');
+load(modResultFile,'modResult');
+cal = modResult.meta.cal;
 
 % Set up the CombiLED
 CombiLEDObj = CombiLEDcontrol('verbose',verboseCombiLED);
 
 % Update the gamma table
 CombiLEDObj.setGamma(cal.processedData.gammaTable);
-
-% Send the modulation direction to the CombiLED
-CombiLEDObj.setSettings(modResult);
-
-% Define the filestem for this psychometric object
-psychFileStem = [subjectID '_' modDirection '_' experimentName ...
-    '_' strrep(num2str(testContrast),'.','x')];
-
-% Create or load the psychometric object
-filename = fullfile(dataDir,[psychFileStem '.mat']);
-if isfile(filename)
-    % Load the object
-    load(filename,'psychObj');
-    % Put in the fresh CombiLEDObj
-    psychObj.CombiLEDObj = CombiLEDObj;
-    % Initiate the CombiLED settings
-    psychObj.initializeDisplay;
-    % Increment blockIdx
-    psychObj.blockIdx = psychObj.blockIdx+1;
-    psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
-else
-    % Note that we set the 
-    psychObj = DelayedMatchToFreq(CombiLEDObj,refFreqRangeHz,testContrast,...
-        'verbose',verbosePsychObj,'refContrast',testContrast,...
-        'testRangeDecibels',testRangeDecibels);
-end
 
 % Provide instructions
 fprintf('**********************************\n');
@@ -118,47 +77,71 @@ fprintf('After a delay you will again see a flickering light. Your job is to\n')
 fprintf('use the left and right arrow keys to adjust the second flickering\n');
 fprintf('light so that it looks the same as the first flicker. When you have\n');
 fprintf('made the best match that you can, press the down arrow (or space bar)\n');
-fprintf('to record your response and move to the next trial. After you\n');
-fprintf('complete %d trials in a row the session will end.\n',nTrials);
+fprintf('to record your response and move to the next trial. Each block has\n');
+fprintf('%d trials in a row after which you may take a brief break.\n',nTrialsPerBlock);
+fprintf('There are a total of %d blocks in this session.\n',nBlocks);
 fprintf('**********************************\n\n');
 
-% Start the session
-fprintf('Press any key to start trials\n');
-pause
+% Prepare to loop over blocks
+for bb=1:nBlocks
 
-% Store the block start time
-psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
+    % Switch back and forth between the modulation directions
+    directionIdx = mod(bb,2)+1;
 
-% Present nTrials.
-for ii = 1:nTrials
-    psychObj.presentTrial
-end
+    % Which direction we will use this time
+    modResultFile = ...
+        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult.mat');
 
-% Play a "done" tone
-Fs = 8192; % Sampling Frequency
-dur = 0.1; % Duration in seconds
-t  = linspace(0, dur, round(Fs*dur));
-lowTone = sin(2*pi*500*t);
-midTone = sin(2*pi*750*t);
-highTone = sin(2*pi*1000*t);
-doneSound = [highTone midTone lowTone];
-donePlayer = audioplayer(doneSound,Fs);
-donePlayer.play;
-pause(0.5);
+    % Load the previously generated modResult file for this direction
+    load(modResultFile,'modResult');
 
-% empty the CombiLEDObj handle and save the psychObj
-psychObj.CombiLEDObj = [];
-save(filename,'psychObj');
+    % Define the filestem for this psychometric object
+    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
+    psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName ...
+        '_' strrep(num2str(targetPhotoreceptorContrast(directionIdx)),'.','x')];
 
-% Plot the data
-if updateFigures
-    loglog([psychObj.trialData.refFreq],[psychObj.trialData.testFreqInitial],'xb')
-    hold on
-    loglog([psychObj.trialData.refFreq],[psychObj.trialData.testFreq],'.r')
-    loglog(refFreqRangeHz,refFreqRangeHz,'-k')
-    xlim([1 60])
-    ylim([1 60])
-    axis square
-end
+    % Calculate the testContrast
+    maxPhotoreceptorContrast = mean(abs(modResult.contrastReceptorsBipolar(modResult.meta.whichReceptorsToTarget)));
+    testContrast = targetPhotoreceptorContrast(directionIdx) / maxPhotoreceptorContrast;
 
-end
+    % Create or load the psychometric object
+    filename = fullfile(dataDir,[psychFileStem '.mat']);
+    if isfile(filename)
+        % Load the object
+        load(filename,'psychObj');
+        % Put in the fresh CombiLEDObj
+        psychObj.CombiLEDObj = CombiLEDObj;
+        % Initiate the CombiLED settings
+        psychObj.initializeDisplay;
+        % Increment blockIdx
+        psychObj.blockIdx = psychObj.blockIdx+1;
+        psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
+    else
+        % Create the object
+        psychObj = DelayedMatchToFreq(CombiLEDObj,modResult,refFreqRangeHz,testContrast,...
+            'verbose',verbosePsychObj,'testRangeDecibels',testRangeDecibels,...
+            'goodJobCriterionDb',goodJobCriterionDb);
+    end
+
+    % Start the block
+    fprintf('Press enter to start block %d...',bb);
+    input('');
+
+    % Store the block start time
+    psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
+
+    % Present nTrials.
+    for ii = 1:nTrialsPerBlock
+        psychObj.presentTrial
+    end
+
+    % Report completion of this block
+    fprintf('done.\n');
+
+    % empty the CombiLEDObj handle and save the psychObj
+    psychObj.CombiLEDObj = [];
+    save(filename,'psychObj');
+
+end % block loop
+
+end % function

@@ -46,8 +46,8 @@ testFreqChangeRateDbsPerSec = obj.testFreqChangeRateDbsPerSec;
 testRefreshIntervalSecs = obj.testRefreshIntervalSecs;
 testFreqChangePerRefresh = testFreqChangeRateDbsPerSec / (1 / testRefreshIntervalSecs);
 
-% Get the desired reference and test contrast
-refContrast = obj.refContrast;
+% Get the desired stimulus contrast. We use the same for the ref and test.
+refContrast = obj.testContrast;
 testContrast = obj.testContrast;
 
 % Prepare the sounds
@@ -172,28 +172,19 @@ obj.CombiLEDObj.stopModulation;
 % Store the end time
 trialData(currTrialIdx).trialStartTime = datetime();
 
-% Wait before providing feedback
-stopTimeSeconds = cputime() + obj.preFeedbackIntervalSecs;
-obj.waitUntil(stopTimeSeconds);
-
-% Show the reference stimulus again to provide feedback
-obj.CombiLEDObj.setContrast(refContrastAdjusted);
-obj.CombiLEDObj.setFrequency(refFreq);
-obj.CombiLEDObj.setPhaseOffset(refPhase);
-
 % Play a tone here that differs for accurate responses vs. inaccurate
 errorDecibels = 10*log10(max([testFreq,refFreq])/min([testFreq,refFreq]));
 if errorDecibels < obj.goodJobCriterionDb
     audioObjs.correct.play;
+    trialData(currTrialIdx).goodJob = true;
 else
-    audioObjs.incorrect.play;
+    trialData(currTrialIdx).goodJob = false;
+    if testFreq > refFreq
+        Speak('too fast','Samantha',200);
+    else
+        Speak('too slow','Samantha',200);
+    end
 end
-
-% Present the reference stimulus again
-stopTimeSeconds = cputime() + obj.feedbackDurationSecs;
-obj.CombiLEDObj.startModulation;
-obj.waitUntil(stopTimeSeconds);
-obj.CombiLEDObj.stopModulation;
 
 % Wait before next trial
 stopTimeSeconds = cputime() + 1;
@@ -201,21 +192,6 @@ obj.waitUntil(stopTimeSeconds);
 
 % Close the keypress window
 close(S.fh);
-
-% Present a white noise burst as a mask
-if obj.presentMaskFlag
-    pause(0.5);
-    obj.CombiLEDObj.setWaveformIndex(6); % white noise
-    obj.CombiLEDObj.setContrast(refContrastAdjusted);
-    obj.CombiLEDObj.setFrequency(1);
-    stopTimeSeconds = cputime() + obj.maskDurationSecs;
-    obj.CombiLEDObj.startModulation;
-    obj.waitUntil(stopTimeSeconds);
-    obj.CombiLEDObj.stopModulation;
-
-    % Return the combiLED to the sinusoidal flicker setting
-    obj.CombiLEDObj.setWaveformIndex(1);
-end
 
 % Store the trial information
 trialData(currTrialIdx).blockIdx = obj.blockIdx;

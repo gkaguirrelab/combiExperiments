@@ -15,7 +15,9 @@ if ~obj.simulateStimuli
         fprintf('Initializing CombiLEDObj\n')
     end
 
+    obj.CombiLEDObj.setSettings(obj.modResult);    
     obj.CombiLEDObj.setWaveformIndex(1); % sinusoidal flicker
+    
 end
 
 end
