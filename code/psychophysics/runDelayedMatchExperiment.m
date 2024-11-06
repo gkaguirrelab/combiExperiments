@@ -20,9 +20,9 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
-p.addParameter('targetPhotoreceptorContrast',[0.09, 0.4],@isnumeric);
-p.addParameter('refFreqRangeHz',[1 25],@isnumeric);
-p.addParameter('testRangeDecibels',7.5,@isnumeric);
+p.addParameter('targetPhotoreceptorContrast',[0.075,0.333],@isnumeric);
+p.addParameter('refFreqRangeHz',[1 32],@isnumeric);
+p.addParameter('testRangeDecibels',7,@isnumeric);
 p.addParameter('goodJobCriterionDb',1.5,@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
