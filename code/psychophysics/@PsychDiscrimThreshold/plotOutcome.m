@@ -11,10 +11,13 @@ questData = obj.questData;
 stimParamsDomainList = obj.stimParamsDomainList;
 nTrials = length(obj.questData.trialData);
 
-% Get the Max Likelihood psi params, temporarily turning off verbosity
+% Get the Max Likelihood psi params, temporarily turning off verbosity.
+% Also, lock the mu parameter to be zero.
+lb = [0,min(obj.psiParamsDomainList{2})];
+ub = [0,max(obj.psiParamsDomainList{2})];
 storeVerbose = obj.verbose;
 obj.verbose = false;
-[~, psiParamsFit] = obj.reportParams;
+[~, psiParamsFit] = obj.reportParams('lb',lb,'ub',ub);
 obj.verbose = storeVerbose;
 
 % Set up a figure
@@ -71,7 +74,7 @@ plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 % Labels and range
 ylim([-0.1 1.1]);
 xlabel('stimulus difference [dB]')
-ylabel('proportion correct');
+ylabel('proportion pick test as faster');
 title('Psychometric function');
 
 % Entropy by trial
@@ -83,7 +86,7 @@ ylabel('entropy');
 title('Entropy by trial number')
 
 % Add a supertitle
-str = sprintf('Freq = %d Hz; [mu, sigma] = [%2.3f,%2.3f]',...
+str = sprintf('Ref freq = %d Hz; [mu, sigma] = [%2.3f,%2.3f]',...
     obj.refFreqHz,psiParamsFit);
 sgtitle(str);
 

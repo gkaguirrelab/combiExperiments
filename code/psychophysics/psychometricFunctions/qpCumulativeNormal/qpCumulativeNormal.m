@@ -5,9 +5,11 @@ function responseProbabilities = qpCumulativeNormal(stimParams,psiParams)
 %     probCorrectChoice = qpCumulativeNormal(stimParams,psiParams)
 %
 % Description:
-%   Given two intervals, one of which contains a more intense stimulus,
-%   this is the probability of correctly selecting the more intense
-%   interval given a stimulus property r that ranges from -inf to inf.
+%   Given a reference and a test interval which differ in intensity, this
+%   function returns the probability that the test interval will be
+%   selected as more intense. If the intensity of the reference interval is
+%   given by x, the relative intensity of the test interval is given by
+%   stimParam r in units of dBs.
 %
 %  The parameters are:
 %   sigma                 - The width of the Gaussian over r

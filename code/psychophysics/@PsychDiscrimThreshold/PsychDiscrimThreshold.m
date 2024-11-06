@@ -1,6 +1,10 @@
 % Object to support conducting a 2AFC flicker discrimination task,
-% using Quest+ to select stimuli in an effort to estimate the sigma (slope)
-% of a cumulative normal Gaussian.
+% using QUEST+ to select stimuli in an effort to estimate the sigma (slope)
+% of a cumulative normal Gaussian. The search is also asked to estimate the
+% mu (mean) of the cumulative normal, which prompts QUEST+ to explore both
+% above and below the reference stimulus. In fitting and reporting the
+% results we lock the mu to 0, which corresponds to being 50% accurate when
+% there is no physical difference between the stimuli.
 
 classdef PsychDiscrimThreshold < handle
 
@@ -110,7 +114,7 @@ classdef PsychDiscrimThreshold < handle
         initializeDisplay(obj)
         presentTrial(obj)
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
-        waitUntil(obj,stopTimeMicroSeconds)
+        waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
         figHandle = plotOutcome(obj,visible)
         resetSearch(obj)
