@@ -14,18 +14,16 @@ size_t pixel_to_index(int r, int c, int cols) {
     return r * cols + c; 
 }
 
-extern "C" uint8_t* downsample(uint8_t* flattened_img, 
-                               uint16_t rows, 
-                               uint16_t cols,
-                               uint8_t factor) 
+extern "C" void downsample(const uint8_t* flattened_img, 
+                           uint16_t rows, 
+                           uint16_t cols,
+                           uint8_t factor,
+                           uint8_t* output) 
 {       
     // Find the shape of the new image by dividing by 2 x factor 
     // along each dimension
     size_t new_rows = rows >> factor; 
     size_t new_cols = cols >> factor; 
-
-    // Allocate the new image 
-    uint8_t* downsampled_img = new uint8_t[new_rows * new_cols]; 
 
     // Keep track of where where to put the new pixels
     size_t downsampled_r = 0; 
@@ -78,10 +76,10 @@ extern "C" uint8_t* downsample(uint8_t* flattened_img,
             uint8_t gr_average = static_cast<uint8_t>(gr_sum >> 2);
 
             // Set the downsampled image to have their values
-            downsampled_img[ pixel_to_index(downsampled_r, downsampled_c, new_cols) ] = b_average; 
-            downsampled_img[ pixel_to_index(downsampled_r, downsampled_c+1, new_cols) ] = gb_average; 
-            downsampled_img[ pixel_to_index(downsampled_r+1, downsampled_c+1, new_cols) ] = r_average; 
-            downsampled_img[ pixel_to_index(downsampled_r+1, downsampled_c, new_cols) ] = gr_average; 
+            output[ pixel_to_index(downsampled_r, downsampled_c, new_cols) ] = b_average; 
+            output[ pixel_to_index(downsampled_r, downsampled_c+1, new_cols) ] = gb_average; 
+            output[ pixel_to_index(downsampled_r+1, downsampled_c+1, new_cols) ] = r_average; 
+            output[ pixel_to_index(downsampled_r+1, downsampled_c, new_cols) ] = gr_average; 
 
             // After each column block is finished in the downsampled image,
             // move to the next block 
@@ -92,10 +90,6 @@ extern "C" uint8_t* downsample(uint8_t* flattened_img,
         // move to the next block 
         downsampled_r += 2; 
     }
-
-
-    // Return the downsampled img array
-    return downsampled_img; 
 }
 
 int main() {

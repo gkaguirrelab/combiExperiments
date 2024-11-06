@@ -61,47 +61,59 @@ def import_downsample_lib() -> ctypes.CDLL:
     downsample_lib = ctypes.CDLL(downsample_cpp_path) 
     downsample_lib.downsample.argtypes = [  ctypes.POINTER(ctypes.c_uint8), 
                                             ctypes.c_uint16, 
-                                            ctypes.c_uint16]
-    downsample_lib.downsample.restype = ctypes.POINTER(ctypes.c_uint8)
+                                            ctypes.c_uint16,
+                                            ctypes.c_uint8,
+                                            ctypes.POINTER(ctypes.c_uint8)]
+
 
     return downsample_lib
 
-"""A generalized bayer downsample algorithm written in CPP called by Python
+"""A generalized bayer-aware downsample algorithm written in CPP called by Python
    Note: factor is a power of two. So factor=1 downscales by 2 along
    dimension"""
 def downsample(img: np.array, factor: int, lib: ctypes.CDLL=None) -> np.array:
     # Import the downsample library if we need to. Note, this is very time consuming
     if(lib is None): lib = import_downsample_lib()
     
-    # Retrieve the downsampled image
-    new_shape: np.array = np.array(img.shape) >> factor
-    downsampled_ptr = lib.downsample(img.flatten().ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)), 
-                                                img.shape[0], img.shape[1]); 
-    downsampled: np.array = np.ctypeslib.as_array(downsampled_ptr, shape=new_shape).astype(np.uint8)
+    # Retrieve the shape of the image
+    height, width = img.shape[0], img.shape[1]
+    new_height, new_width = img.shape[0] >> factor, img.shape[1] >> factor 
     
-    # Free the dynamically allocated memory
-    lib.free(downsampled_ptr)
+    # Allocate the output image buffer (empty so as not to set any values, marginally faster)
+    downsampled: np.ndarray = np.empty((new_height, new_width), dtype=np.uint8)
+    
+    # Downsample the image and populate the buffer
+    lib.downsample(img.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)), 
+                   height, width,
+                   factor,
+                   downsampled.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))); 
 
     # Return the downsampled image
     return downsampled
 
-
+"""Main used for testing purposes"""
 def main():
-    path_to_vid = '/Users/zacharykelly/Documents/MATLAB/projects/combiExperiments/code/lightLogger/camera/downsample_lib/tests/green_video'
-    sample_frame = cv2.imread(os.path.join(path_to_vid, os.listdir(path_to_vid)[0]))[:,:,0]
+    # Define a path to a video 
+    path_to_vid: str = '/Volumes/EXTERNAL1/120fps_5hz_0NDF/120fps_5hz_0NDF_world'
+    
+    # Read in the first frame buffer
+    first_frame_buffer: np.ndarray = np.load(os.path.join(path_to_vid, '120.npy'))
+
+    # Retrieve a sample frame 
+    sample_frame: np.ndarray = first_frame_buffer[0]
 
     print(f'Dimensions before: {sample_frame.shape}')
-    
-    plt.imshow(sample_frame, cmap='gray')
-    plt.show()
 
-    downsampled = downsample(sample_frame.copy())
+    # Import the CPP downsamplig lib 
+    lib = import_downsample_lib()
+
+    downsampled = downsample(sample_frame, 1, lib)
 
     print(f"Dimensions after downsampling: {downsampled.shape}")
 
-    plt.imshow(downsampled, cmap='gray')
+    #plt.imshow(downsampled, cmap='gray')
 
-    plt.show()
+    #plt.show()
 
 if(__name__ == '__main__'):
     main()

@@ -38,6 +38,35 @@ def close_all_figures():
 def pixel_to_index(r: int, c: int, cols: int) -> int:
     return r * cols + c
 
+"""Convert a .raw video to frames"""
+def raw_video_to_frames(path_to_video: str, video_shape: tuple) -> np.ndarray:
+    # Unpack the shape of the video 
+    frames, height, width = video_shape 
+
+    # Initialize container to hold frames 
+    frames: list = []
+
+    # Open the raw video file
+    with open(path_to_video, 'rb') as f:
+        for i in range(frame_count):
+            # Read one frame's worth of data
+            raw_data: bytes = f.read(frame_size)
+            
+            # Break when we hit the end of the file
+            if(not raw_data):
+                break  
+            
+            # Convert raw bytes to a 2D numpy array of the input image shape
+            frame: np.ndarray = np.frombuffer(raw_data, dtype=np.uint8).reshape((height, width))
+
+            # Append this frame to the frame array 
+            frames.append(frame)
+
+    # Convert frames to np.ndarray and return 
+    frames: np.ndarray = np.ndarray(frames)
+    
+    return frames
+
 """Find the pixels activated by a given stimulus video"""
 def find_active_pixels(path_to_vid: str):
     # Read in the frame series as a np.array

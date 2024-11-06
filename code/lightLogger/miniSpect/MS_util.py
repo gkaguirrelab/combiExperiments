@@ -247,6 +247,9 @@ def reading_to_string(read_time: datetime, reading: np.array) -> str:
 
 """Write MS readings taken from the serial connection"""
 def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory: str):
+    # Open the reading file handles
+    reading_file_handles: list = [open(os.path.join(output_directory, reading_name + '.csv'), 'a')]
+
     while(True):
         print(f'MS Queue size {write_queue.qsize()}')
 
@@ -263,20 +266,13 @@ def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory
         # Parse the the readings into np.arrays 
         readings: tuple = parse_SERIAL(bluetooth_bytes)
 
-        # Create mapping between filenames and readings 
-        # from the Minispect
-        results_mapping: dict = {reading_name:reading 
-                                for reading_name, reading 
-                                in zip(reading_names, readings)}
-
-        # Iterate over the reading names/readings
-        for reading_name, reading in results_mapping.items():
-            # Path for this reading's data file
-            save_path: str = os.path.join(output_directory, reading_name + '.csv')
-
-            # Open file, append new reading to the end
-            with open(save_path,'a') as f:
-                f.write(reading_to_string(read_time, reading))
+        # Iterate over the reading files and append this info to them
+        for reading_file, reading in zip(reading_file_handles):
+            reading_file.write(reading_to_string(read_time, reading))
+    
+    # Close all of the file handles 
+    for file_handle in reading_file_handles:
+        file_handle.close()
 
 """Parse a MS reading from the serial connection (or broadly), e.g., no async operations necessary"""
 def parse_SERIAL(serial_bytes: bytes) -> tuple:
@@ -315,13 +311,13 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
             # it's the ending delimeter 
             assert(ms.read(1) == b'>')
 
-            print(f"Size of reading buffer: {len(reading_buffer)}")
+            #print(f"Size of reading buffer: {len(reading_buffer)}")
             AS, TS, LI, temp = parse_SERIAL(reading_buffer)
 
-            print(f'AS CHANNELS: {AS}')
-            print(f'TS CHANNELS: {TS}')
-            print(f'LI CHANNELS: {LI}')
-            print(f'TEMP: {temp}')
+            #print(f'AS CHANNELS: {AS}')
+            #print(f'TS CHANNELS: {TS}')
+            #print(f'LI CHANNELS: {LI}')
+            #print(f'TEMP: {temp}')
 
             # Append it to the write queue
             write_queue.put(['NA',  reading_buffer])
