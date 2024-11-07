@@ -43,18 +43,22 @@ end
 testParams = [testContrastAdjusted,testFreqHz,testPhase];
 refParams = [refContrastAdjusted,refFreqHz,refPhase];
 
-% Randomly assign the stimuli to the intervals and note which interval
-% contains the faster flicker
+% Randomly assign the stimuli to the intervals
 switch 1+logical(round(rand()))
     case 1
         intervalParams(1,:) = testParams;
         intervalParams(2,:) = refParams;
+        testInterval = 1;
     case 2
         intervalParams(1,:) = refParams;
         intervalParams(2,:) = testParams;
+        testInterval = 2;
     otherwise
         error('Not a valid testInterval')
 end
+
+% Note which interval contains the faster flicker, which is used for
+% feedback
 [~,fasterInterval] = max(intervalParams(:,2));
 
 % Prepare the sounds
@@ -135,7 +139,7 @@ if ~simulateStimuli
         obj.waitUntil(stopTime);
     end
 else
-        stimulusStartTime = cputime();
+    stimulusStartTime = cputime();
 end
 
 % Start the response interval
@@ -154,7 +158,7 @@ if ~simulateResponse
         currKeyPress = '';
     end
 else
-    intervalChoice = obj.getSimulatedResponse(qpStimParam,fasterInterval);
+    intervalChoice = obj.getSimulatedResponse(qpStimParam,testInterval);
 end
 
 % Store the response time
@@ -165,11 +169,17 @@ if ~simulateStimuli
     obj.CombiLEDObj.stopModulation;
 end
 
-% Determine if the subject has selected the correct interval and handle
-% audio feedback
-if fasterInterval==intervalChoice
-    % Correct
+% Determine if the subject has selected the ref or test interval
+if intervalChoice == testInterval
     outcome = 2;
+else
+    outcome = 1;
+end
+
+% Determine if the subject has selected the faster interval and handle
+% audio feedback
+if intervalChoice==fasterInterval
+    % Correct
     if obj.verbose
         fprintf('correct');
     end
@@ -181,7 +191,6 @@ if fasterInterval==intervalChoice
         obj.waitUntil(cputime()+0.5);
     end
 else
-    outcome = 1;
     if obj.verbose
         fprintf('incorrect');
     end
@@ -209,7 +218,8 @@ questData = qpUpdate(questData,qpStimParam,outcome);
 
 % Add in the stimulus information
 questData.trialData(currTrialIdx).testPhase = testPhase;
-questData.trialData(currTrialIdx).testInterval = fasterInterval;
+questData.trialData(currTrialIdx).testInterval = testInterval;
+questData.trialData(currTrialIdx).fasterInterval = fasterInterval;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 
 % Put staircaseData back into the obj

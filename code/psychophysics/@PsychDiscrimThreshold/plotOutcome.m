@@ -39,21 +39,21 @@ title('stimulus by trial');
 subplot(1,3,2);
 hold on
 
-% Get the stim percent correct for each stimulus
+% Get the proportion selected "test" for each stimulus
 stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
 stim = zeros(length(stimCounts),questData.nStimParams);
 for cc = 1:length(stimCounts)
     stim(cc) = stimCounts(cc).stim;
     nTrials(cc) = sum(stimCounts(cc).outcomeCounts);
-    pCorrect(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+    pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
 end
 
 % Plot these
 markerSizeIdx = discretize(nTrials,3);
 markerSizeSet = [25,50,100];
 for cc = 1:length(stimCounts)
-    scatter(stim(cc),pCorrect(cc),markerSizeSet(markerSizeIdx(cc)),'o', ...
-        'MarkerFaceColor',[pCorrect(cc) 0 1-pCorrect(cc)], ...
+    scatter(stim(cc),pSelectTest(cc),markerSizeSet(markerSizeIdx(cc)),'o', ...
+        'MarkerFaceColor',[pSelectTest(cc) 0 1-pSelectTest(cc)], ...
         'MarkerEdgeColor','k', ...
         'MarkerFaceAlpha',nTrials(cc)/max(nTrials));
     hold on

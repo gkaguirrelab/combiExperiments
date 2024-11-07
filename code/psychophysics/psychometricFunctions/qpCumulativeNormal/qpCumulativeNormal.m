@@ -51,9 +51,9 @@ nStim = size(stimParams,1);
 responseProbabilities = zeros(nStim,2);
 
 %% Compute
-probCorrect = normcdf(r,mu,sigma);
-responseProbabilities(:,1) = 1-probCorrect;
-responseProbabilities(:,2) = probCorrect;
+probChooseTest = normcdf(r,mu,sigma);
+responseProbabilities(:,1) = 1-probChooseTest;
+responseProbabilities(:,2) = probChooseTest;
 
 end
 
