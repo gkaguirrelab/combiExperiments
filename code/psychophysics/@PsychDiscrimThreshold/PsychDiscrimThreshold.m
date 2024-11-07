@@ -54,11 +54,11 @@ classdef PsychDiscrimThreshold < handle
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
-            p.addParameter('testContrast',0.4,@isnumeric);
-            p.addParameter('refContrast',0.4,@isnumeric);
+            p.addParameter('testContrast',0.333,@isnumeric);
+            p.addParameter('refContrast',0.333,@isnumeric);
             p.addParameter('randomizePhase',false,@islogical);
-            p.addParameter('simulateResponse',true,@islogical);
-            p.addParameter('simulateStimuli',true,@islogical);
+            p.addParameter('simulateResponse',false,@islogical);
+            p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('simulatePsiParams',[0,0.5],@isnumeric);            
             p.addParameter('stimParamsDomainList',linspace(-2,2,51),@isnumeric);
