@@ -23,6 +23,7 @@ classdef PsychDiscrimThreshold < handle
         simulateResponse
         simulateStimuli
         giveFeedback
+        staircaseRule
         stimParamsDomainList
         psiParamsDomainList
         randomizePhase = false;
@@ -40,6 +41,11 @@ classdef PsychDiscrimThreshold < handle
         % a PsychDetectionThreshold, update this handle, and then continue
         % to collect data
         CombiLEDObj
+
+        % Can switch between using a staircase and QUEST+ to select the
+        % next trial
+        useStaircase
+
 
         % Verbosity
         verbose = true;
@@ -60,10 +66,12 @@ classdef PsychDiscrimThreshold < handle
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('simulatePsiParams',[0,0.5],@isnumeric);            
-            p.addParameter('stimParamsDomainList',linspace(-2,2,51),@isnumeric);
+            p.addParameter('useStaircase',true,@islogical);            
+            p.addParameter('staircaseRule',[1,2],@isnumeric);
+            p.addParameter('simulatePsiParams',[0,0.3],@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(-1,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(-0.1,0.1,51),linspace(0.1,4,51)},@isnumeric);
+                {linspace(0,0,1),linspace(0,1,51)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -77,6 +85,8 @@ classdef PsychDiscrimThreshold < handle
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;
+            obj.useStaircase = p.Results.useStaircase;
+            obj.staircaseRule = p.Results.staircaseRule;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
             obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
@@ -113,6 +123,7 @@ classdef PsychDiscrimThreshold < handle
         initializeQP(obj)
         initializeDisplay(obj)
         presentTrial(obj)
+        stimParam = staircase(obj,currTrialIdx);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)

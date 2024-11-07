@@ -19,10 +19,17 @@ refFreqHz = obj.refFreqHz;
 refContrast = obj.refContrast;
 testContrast = obj.testContrast;
 
+% Get the stimParam to use for this trial. Can use either a staircase or
+% QUEST+
+if obj.useStaircase
+    stimParam = obj.staircase(currTrialIdx);
+else
+    stimParam = qpQuery(questData);
+end
+
 % The difference between the reference and test frequency is given by the
 % qpStimParam, which is in units of decibels
-qpStimParam = qpQuery(questData);
-testFreqHz = refFreqHz * db2pow(qpStimParam);
+testFreqHz = refFreqHz * db2pow(stimParam);
 
 % Adjust the contrast that is sent to the device to account for any
 % device attenuation of the modulation at high temporal frequencies
@@ -82,18 +89,7 @@ audioObjs.bad = audioplayer(badSound,Fs);
 
 % Create a figure that will be used to collect key presses
 if ~simulateResponse
-    currKeyPress='0';
-    S.fh = figure( 'units','pixels',...
-        'position',[500 500 200 260],...
-        'menubar','none','name','move_fig',...
-        'numbertitle','off','resize','off',...
-        'keypressfcn',@f_capturekeystroke,...
-        'CloseRequestFcn',@f_closecq);
-    S.tx = uicontrol('style','text',...
-        'units','pixels',...
-        'position',[60 120 80 20],...
-        'fontweight','bold');
-    guidata(S.fh,S)
+    [currKeyPress,S] = createResponseWindow();
 end
 
 % Handle verbosity
@@ -130,7 +126,6 @@ if ~simulateStimuli
             stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
         end
         obj.CombiLEDObj.startModulation;
-        stimulusStartTime = cputime();
         if ii==1
             audioObjs.low.play;
         else
@@ -138,31 +133,22 @@ if ~simulateStimuli
         end
         obj.waitUntil(stopTime);
     end
-else
-    stimulusStartTime = cputime();
 end
 
 % Start the response interval
 if ~simulateResponse
-    stillWaiting = true;
-    drawnow
-    while stillWaiting
-        switch currKeyPress
-            case {'1'}
-                intervalChoice = 1;
-            case {'2'}
-                intervalChoice = 2;
-                stillWaiting = false;
-        end
-        % Clear the keypress
-        currKeyPress = '';
+    [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2'});
+    switch keyPress
+        case {'1','numpad1'}
+            intervalChoice = 1;
+        case {'2','numpad2'}
+            intervalChoice = 2;
     end
+    close(S.fh);
 else
-    intervalChoice = obj.getSimulatedResponse(qpStimParam,testInterval);
+    intervalChoice = obj.getSimulatedResponse(stimParam,testInterval);
+    responseTimeSecs = nan;
 end
-
-% Store the response time
-responseTimeSecs = cputime() - stimulusStartTime;
 
 % Stop the stimulus in case it is still running
 if ~simulateStimuli
@@ -180,6 +166,7 @@ end
 % audio feedback
 if intervalChoice==fasterInterval
     % Correct
+    correct = true;
     if obj.verbose
         fprintf('correct');
     end
@@ -191,6 +178,8 @@ if intervalChoice==fasterInterval
         obj.waitUntil(cputime()+0.5);
     end
 else
+    % incorrect
+    correct = false;
     if obj.verbose
         fprintf('incorrect');
     end
@@ -214,13 +203,14 @@ if obj.verbose
 end
 
 % Update questData
-questData = qpUpdate(questData,qpStimParam,outcome);
+questData = qpUpdate(questData,stimParam,outcome);
 
 % Add in the stimulus information
 questData.trialData(currTrialIdx).testPhase = testPhase;
 questData.trialData(currTrialIdx).testInterval = testInterval;
 questData.trialData(currTrialIdx).fasterInterval = fasterInterval;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
+questData.trialData(currTrialIdx).correct = correct;
 
 % Put staircaseData back into the obj
 obj.questData = questData;
