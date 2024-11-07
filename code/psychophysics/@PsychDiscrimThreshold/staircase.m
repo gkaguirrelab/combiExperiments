@@ -30,6 +30,7 @@ end
 
 % Get the last stimParam and the sequence of correct/incorrect responses
 stimParamLast = trialData(end).stim;
+stimParamVector = [trialData.stim];
 correctResponses = [trialData.correct];
 
 % Figure out the index within the stimParamsDomainList that corresponds to
@@ -42,9 +43,9 @@ if currTrialIdx <= nUp
     return
 end
 
-% Check for the "up" condition that results from the observer making
-% mistakes
-if ~any(correctResponses(end-nUp+1:end))
+% Check for the "up" condition that results from the observer making a
+% series of mistakes at this stimulus intensity level
+if ~any(correctResponses(end-nUp+1:end)) && isscalar(unique(stimParamVector(end-nUp+1:end)))
     % If we are already at the max stimulus, no further action to take
     if stimIdx == 1
         stimParam = stimParamLast;
@@ -61,9 +62,9 @@ if currTrialIdx <= nDown
     return
 end
 
-% Check for the "down" condition that results from the observer making
-% correct responses
-if all(correctResponses(end-nDown+1:end))
+% Check for the "down" condition that results from the observer making a
+% series of correct responses at this stimulus intensity level
+if all(correctResponses(end-nDown+1:end)) && isscalar(unique(stimParamVector(end-nDown+1:end)))
     % If we are already at the min stimulus, no further action to take
     if stimIdx == length(sortedStimParamsDomainList)
         stimParam = stimParamLast;

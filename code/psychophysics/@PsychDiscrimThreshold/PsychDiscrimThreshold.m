@@ -49,6 +49,7 @@ classdef PsychDiscrimThreshold < handle
 
         % Verbosity
         verbose = true;
+        blockIdx = 1;
         blockStartTimes = datetime();
 
     end
