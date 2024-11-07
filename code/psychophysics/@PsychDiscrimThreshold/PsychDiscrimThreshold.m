@@ -46,6 +46,8 @@ classdef PsychDiscrimThreshold < handle
         % next trial
         useStaircase
 
+        % Assign a filename which is handy for saving and loading
+        filename
 
         % Verbosity
         verbose = true;
@@ -72,7 +74,7 @@ classdef PsychDiscrimThreshold < handle
             p.addParameter('simulatePsiParams',[0,0.3],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,1,51)},@isnumeric);
+                {linspace(0,0,1),linspace(0,2,51)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 

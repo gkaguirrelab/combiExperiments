@@ -1,4 +1,4 @@
-function runDiscrimThreshExperiment(subjectID,NDlabel,varargin)
+function runDiscrimThreshExperiment(subjectID,NDlabel,refFreqHz,varargin)
 % Psychometric measurement of discrmination thresholds at a set of
 % frequencies for two post-receptoral directions (LMS and L-M).
 %
@@ -6,7 +6,8 @@ function runDiscrimThreshExperiment(subjectID,NDlabel,varargin)
 %{
     subjectID = 'PILT_0001';
     NDlabel = '0x5';
-    runDiscrimThreshExperiment(subjectID,NDlabel);
+    refFreqHz = 10;
+    runDiscrimThreshExperiment(subjectID,NDlabel,refFreqHz);
 %}
 
 % Parse the parameters
@@ -18,8 +19,7 @@ p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
 p.addParameter('targetPhotoreceptorContrast',[0.075,0.333],@isnumeric);
 p.addParameter('stimParamsHi',{linspace(0,1,51),linspace(0,1,51)},@isnumeric);
 p.addParameter('stimParamsLow',{linspace(-1,0,51),linspace(-1,0,51)},@isnumeric);
-p.addParameter('refFreqValuesHz',[2 10],@isnumeric);
-p.addParameter('nTrialsPerBlock',32,@isnumeric);
+p.addParameter('nTrialsPerBlock',30,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
@@ -27,16 +27,12 @@ p.addParameter('updateFigures',false,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
-refFreqValuesHz = p.Results.refFreqValuesHz;
 nTrialsPerBlock = p.Results.nTrialsPerBlock;
 nBlocks = p.Results.nBlocks;
 modDirections = p.Results.modDirections;
 targetPhotoreceptorContrast = p.Results.targetPhotoreceptorContrast;
 verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
-
-% How many frequencies will we interleave and test?
-nRefFreqs = length(refFreqValuesHz);
 
 % Set our experimentName
 experimentName = 'DSCM';
@@ -91,26 +87,22 @@ for bb=1:nBlocks
     % Load the previously generated modResult file for this direction
     load(modResultFile,'modResult');
 
-
     % Create a directory for the subject
     dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
     if ~isfolder(dataDir)
         mkdir(dataDir)
     end
 
-    % Loop through the set of psychObjs we require, one for each reference
-    % frequency to be tested
+    % Assemble the psychObj array, looping over the high and low range of
+    % the discrimination function
     psychObjArray = {};
-    for ff = 1:nRefFreqs
-
-        % Loop over the high and low range of the discrimination function
-        for ss = 1:2
+    for ss = 1:2
 
         % Define the filestem for this psychometric object
         dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
         psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName ...
             '_' strrep(num2str(targetPhotoreceptorContrast(directionIdx)),'.','x') ...
-            '_refFreq-' num2str(refFreqValuesHz(ff)) 'Hz' ...
+            '_refFreq-' num2str(refFreqHz) 'Hz' ...
             '_' stimParamLabels{ss}];
 
         % Calculate the testContrast
@@ -134,17 +126,19 @@ for bb=1:nBlocks
             psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
         else
             % Create the object
-            psychObj = PsychDiscrimThreshold(CombiLEDObj,modResult,refFreqValuesHz(ff),...
+            psychObj = PsychDiscrimThreshold(CombiLEDObj,modResult,refFreqHz,...
                 'refContrast',testContrast,'testContrast',testContrast,...
                 'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj);
+            % Store the filename
+            psychObj.filename = filename;
         end
 
         % Store in the psychObjArray
-        psychObjArray{end+1} = psychObj;
+        psychObjArray{ss} = psychObj;
 
         % Clear the psychObj
         clear psychObj
-        end
+
     end
 
     % Start the block
@@ -152,14 +146,14 @@ for bb=1:nBlocks
     input('');
 
     % Store the block start time
-    for pp = 1:nRefFreqs
+    for ss = 1:2
         blockStartTime = datetime();
-        psychObjArray{pp}.blockStartTimes(psychObjArray{pp}.blockIdx) = blockStartTime;
+        psychObjArray{ss}.blockStartTimes(psychObjArray{ss}.blockIdx) = blockStartTime;
     end
 
     % Present nTrials.
     for ii = 1:nTrialsPerBlock
-        psychObjIdx = mod(ii,nRefFreqs*2)+1;
+        psychObjIdx = mod(ii,2)+1;
         psychObjArray{psychObjIdx}.presentTrial
     end
 
@@ -167,11 +161,12 @@ for bb=1:nBlocks
     fprintf('done.\n');
 
     % Store the psychObjArray entries
-    for pp = 1:nRefFreqs*2
-        psychObj = psychObjArray{pp};
+    for ss = 1:2
+        % Grab the next psychObj
+        psychObj = psychObjArray{ss};
         % empty the CombiLEDObj handle and save the psychObj
         psychObj.CombiLEDObj = [];
-        save(filename,'psychObj');
+        save(psychObj.filename,'psychObj');
     end
 
 end % block loop
