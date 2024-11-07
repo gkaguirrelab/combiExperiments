@@ -8,7 +8,7 @@
 % psychometric function. When we derive the final, maximum likelihood set
 % of parameters, we lock the guess rate to 0.5.
 
-classdef PsychDetectionThreshold < handle
+classdef PsychDetectFlickerThreshold < handle
 
     properties (Constant)
     end
@@ -54,7 +54,7 @@ classdef PsychDetectionThreshold < handle
     methods
 
         % Constructor
-        function obj = PsychDetectionThreshold(CombiLEDObj,testFreqHz,varargin)
+        function obj = PsychDetectFlickerThreshold(CombiLEDObj,testFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;

@@ -6,7 +6,7 @@
 % results we lock the mu to 0, which corresponds to being 50% accurate when
 % there is no physical difference between the stimuli.
 
-classdef PsychDiscrimThreshold < handle
+classdef PsychDiscrimFlickerThreshold < handle
 
     properties (Constant)
     end
@@ -59,7 +59,7 @@ classdef PsychDiscrimThreshold < handle
     methods
 
         % Constructor
-        function obj = PsychDiscrimThreshold(CombiLEDObj,modResult,refFreqHz,varargin)
+        function obj = PsychDiscrimFlickerThreshold(CombiLEDObj,modResult,refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;

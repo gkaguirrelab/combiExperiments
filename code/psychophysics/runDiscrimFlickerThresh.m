@@ -1,4 +1,4 @@
-function runDiscrimThreshExperiment(subjectID,NDlabel,refFreqHz,varargin)
+function runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,varargin)
 % Psychometric measurement of discrmination thresholds at a set of
 % frequencies for two post-receptoral directions (LMS and L-M).
 %
@@ -126,7 +126,7 @@ for bb=1:nBlocks
             psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
         else
             % Create the object
-            psychObj = PsychDiscrimThreshold(CombiLEDObj,modResult,refFreqHz,...
+            psychObj = PsychDiscrimFlickerThreshold(CombiLEDObj,modResult,refFreqHz,...
                 'refContrast',testContrast,'testContrast',testContrast,...
                 'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj);
             % Store the filename

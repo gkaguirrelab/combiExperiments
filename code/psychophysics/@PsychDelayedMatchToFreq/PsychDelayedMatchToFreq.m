@@ -2,7 +2,7 @@
 % the observer attempts to match the frequency of a presented stimulus. The
 % measurement uses the method of constant stimuli.
 
-classdef DelayedMatchToFreq < handle
+classdef PsychDelayedMatchToFreq < handle
 
     properties (Constant)
     end
@@ -57,7 +57,7 @@ classdef DelayedMatchToFreq < handle
 
         % Constructor
         % logTestBound = 
-        function obj = DelayedMatchToFreq(CombiLEDObj,modResult,refFreqRangeHz,testContrast,varargin)
+        function obj = PsychDelayedMatchToFreq(CombiLEDObj,modResult,refFreqRangeHz,testContrast,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
