@@ -69,7 +69,7 @@ classdef PsychDiscrimThreshold < handle
             p.addParameter('useStaircase',true,@islogical);            
             p.addParameter('staircaseRule',[1,3],@isnumeric);
             p.addParameter('simulatePsiParams',[0,0.3],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(-1,1,51),@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
                 {linspace(0,0,1),linspace(0,1,51)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
