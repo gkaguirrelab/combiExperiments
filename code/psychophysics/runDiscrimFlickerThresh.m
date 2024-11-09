@@ -23,7 +23,6 @@ p.addParameter('nTrialsPerBlock',30,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
-p.addParameter('updateFigures',false,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
@@ -170,5 +169,10 @@ for bb=1:nBlocks
     end
 
 end % block loop
+
+% Clean up
+CombiLEDObj.goDark;
+CombiLEDObj.serialClose;
+clear CombiLEDObj
 
 end % function
