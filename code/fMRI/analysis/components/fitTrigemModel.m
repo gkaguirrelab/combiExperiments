@@ -1,4 +1,4 @@
-function results = fitTrigemModel(rawDataPath,dataPath,dirName,subID,sesID,...
+function [results,resultsDir] = fitTrigemModel(rawDataPath,dataPath,dirName,subID,sesID,...
     acqSet,tr,nNoiseEPIs,maskLabelSet,stimSeq,stimLabelSet,smoothSD,...
     averageVoxels,averageAcquisitions,useTedanaResults,resultLabel)
 
@@ -47,16 +47,21 @@ if ~iscell(sesID)
 end
 
 % This is the set of "confound" covariates returned by fmriprep that we
-% will use to generate nuisance covariates
+% will use to generate nuisance covariates. After some experimentation, I
+% am limiting the covariate set to just the translation parameters. The
+% comment here contains the entire, available set of covariates for
+% reference.
+%{
 covarSet = {'csf','csf_derivative1','framewise_displacement','trans_x',...
     'trans_x_derivative1','trans_y','trans_y_derivative1','trans_z',...
     'trans_z_derivative1','rot_x','rot_x_derivative1','rot_y',...
     'rot_y_derivative1','rot_z','rot_z_derivative1'};
+%}
 covarSet = {'trans_x','trans_y','trans_z'};
 
 % Define a place to save the results
-saveDir = fullfile(dataPath,dirName,resultLabel);
-mkdir(saveDir);
+resultsDir = fullfile(dataPath,dirName,resultLabel);
+mkdir(resultsDir);
 
 % Create the list of acquisition and covar filenames
 dataFileNames = {}; covarFileNames = {};
@@ -136,7 +141,7 @@ results = forwardModel(data,stimulus,tr,...
 figFields = fieldnames(results.figures);
 if ~isempty(figFields)
     for ii = 1:length(figFields)
-        fileName = fullfile(saveDir,sprintf([subID '_trigemResults_fig%d.pdf'],ii));
+        fileName = fullfile(resultsDir,sprintf([subID '_trigemResults_fig%d.pdf'],ii));
         saveas(results.figures.(figFields{ii}),fileName);
     end
 end
@@ -145,11 +150,11 @@ end
 if numel(vxs)>1
 
     % Save the results
-    fileName = fullfile(saveDir,[subID '_trigemResults.mat']);
+    fileName = fullfile(resultsDir,[subID '_trigemResults.mat']);
     save(fileName,'results');
 
     % Save the template image
-    fileName = fullfile(saveDir,[subID '_epiTemplate.nii']);
+    fileName = fullfile(resultsDir,[subID '_epiTemplate.nii']);
     MRIwrite(templateImage, fileName);
 
     % Save a map of R2 values
@@ -159,25 +164,8 @@ if numel(vxs)>1
     volVec(isnan(volVec)) = 0;
     r2Map = reshape(volVec,xyz(1),xyz(2),xyz(3));
     newImage.vol = r2Map;
-    fileName = fullfile(saveDir,[subID '_trigem_R2.nii']);
+    fileName = fullfile(resultsDir,[subID '_trigem_R2.nii']);
     MRIwrite(newImage, fileName);
-
-    % Save thresholded maps
-    r2Thresh = [0.075,0.25,0.175];
-    clusterThresh = [20,200,100];
-    for tt = 1:length(r2Thresh)
-        S=regionprops3(r2Map>r2Thresh(tt),'Volume','VoxelIdxList','VoxelList');
-        goodClusters=[S.Volume] > clusterThresh(tt);
-        S = S(goodClusters,:);
-        r2MapThresh=zeros(size(r2Map));
-        for i=1:size(S,1)
-            idx=S.VoxelIdxList{i};
-            r2MapThresh(idx)=r2Map(idx);
-        end
-        newImage.vol = r2MapThresh;
-        fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d.nii'],r2Thresh(tt),clusterThresh(tt)));
-        MRIwrite(newImage, fileName);
-    end
 
 end
 
