@@ -1,12 +1,18 @@
 function plotROIs(dataPath,dirName,subID,sesID,resultsDir)
-% Plot some results of the analysis
+% Plot some results of the analysis. This is highly shaped to isolate a set
+% of regions that I wish to illustrate in an NIH R01 application.
+% Intellectually, some of this is equivalent to hand-drawing regions of
+% interest to pick parts of the data I wish to highlight.
+%
+% Good for highlighting provocative aspects of preliminary data, not good
+% for hypothesis testing.
 %
 %{
     dataPath = fullfile(filesep,'Users','aguirre','Downloads');
     dirName = 'dset/fprep';
     subID = '001';
     sesID = [repmat({'20240930'},1,5),repmat({'20241014'},1,9)];
-    resultsDir = '/Users/aguirre/Downloads/dset/fprep/forwardModel_2sess_smooth=0.5';
+    resultsDir = '/Users/aguirre/Downloads/dset/fprep/forwardModel_2sess_smooth=1.0';
     plotROIs(dataPath,dirName,subID,sesID,resultsDir);
 %}
 
@@ -58,35 +64,75 @@ newImage.vol = rhoMap;
 fileName = fullfile(resultsDir,[subID '_trigem_logLinearRho.nii']);
 MRIwrite(newImage, fileName);
 
-% Save a "cleaned" map of the R2 effect
-clustThresh = 25;
-r2MapClean = r2Map;
-r2MapClean(rhoMap<=0) = 0;
-S = regionprops3(r2MapClean,'Volume','VoxelIdxList','VoxelList');
+% Save a "cleaned" rho map. First filter out tiny 2D regions
+clustThresh = [7,5,10];
+statThresh = 0.25;
+rhoMapClean = rhoMap;
+rhoMapClean(rhoMap<=statThresh) = 0;
+for dd = 1:3
+    for ss = 1:size(rhoMapClean,dd)
+        switch dd
+            case 1
+                thisSlice = squeeze(rhoMapClean(ss,:,:));
+            case 2
+                thisSlice = squeeze(rhoMapClean(:,ss,:));
+            case 3
+                thisSlice = squeeze(rhoMapClean(:,:,ss));
+        end
+        binThisSlice = thisSlice;
+        binThisSlice(binThisSlice>0) = 1;
+        binThisSlice(binThisSlice<0) = 0;
+        binThisSlice = logical(binThisSlice);
+        S = regionprops(binThisSlice,'Area','PixelIdxList');
+        if ~isempty(S)
+            for ii = 1:size(S,1)
+                if S(ii).Area < clustThresh(dd)
+                    thisSlice(S(ii).PixelIdxList)=0;
+                end
+            end
+        end
+        switch dd
+            case 1
+                rhoMapClean(ss,:,:) = thisSlice;
+            case 2
+                rhoMapClean(:,ss,:) = thisSlice;
+            case 3
+                rhoMapClean(:,:,ss) = thisSlice;
+        end
+    end
+end
+
+% Now filter in 3D
+clustThresh = 100;
+S = regionprops3(rhoMapClean,'Volume','VoxelIdxList','VoxelList');
 for ii = 1:size(S,1)
     if S(ii,"Volume") < clustThresh
-        r2MapClean(S(ii,'VoxelIdxList'))=0;
+        rhoMapClean(S(ii,'VoxelIdxList'))=0;
     end
 end
 newImage = templateImage;
-newImage.vol = r2MapClean;
-fileName = fullfile(resultsDir,[subID '_cleanedR2Map.nii']);
+newImage.vol = rhoMapClean;
+fileName = fullfile(resultsDir,[subID '_cleanedRhoMap.nii']);
 MRIwrite(newImage, fileName);
 
-
 % Plot the response in some big cortical regions
-statThresh = 0.35;
-subRhoMap = zeros(size(rhoMap));
-subRhoMap(gmMask>0.5) = rhoMap(gmMask>0.5);
-S = regionprops3(subRhoMap>statThresh,subRhoMap,'Volume','VoxelIdxList','VoxelList','MeanIntensity');
+statThresh = 0.25;
+subRhoMap = rhoMapClean;
+subRhoMap(bsMask>0.5) = 0;
+S = regionprops3(subRhoMap>statThresh,subRhoMap,'Volume','VoxelIdxList','VoxelList','MeanIntensity','Centroid');
 [~,sortIdx] = sort(abs(S.Volume),'descend');
 S = S(sortIdx,:);
 
 % Loop through the 2 biggest regions
-roiLabels = {'R_S1','L_S1'};
+roiLabels = {...
+    'R_cerebellum','R_insula','R_S1','R_frontal',...
+    'L_insula','R_parietal','R_frontal','R_S2',...
+    'L_caudate','R_frontal','R_caudate','L_caudate',...
+    'R_opticRads','R_midFront','L_cerebellum','R_frontal',...
+    'R_precun','R_frontalWM','?','?'};
 figure
-tiledlayout(3,1);
-for ii = 1:2
+tiledlayout(2,2);
+for ii = [2 5]
 
     % Save a map of this region
     roiMap=zeros(size(r2Map));
@@ -106,79 +152,33 @@ for ii = 1:2
     bm = bm(2:end)';
     bs = std(betas,[],2)/sqrt(14);
     bs = bs(2:end)';
+    plot([1 10],[0 0],':k');
+    hold on
     patch([1:10,10:-1:1],[bm-bs, fliplr(bm+bs)],'r','FaceAlpha',0.2,'EdgeColor','none');
-    hold on
-    plot(1:10,bm,'.-k');
+    plot(1:10,bm,'.-k');    
     title(sprintf([roiLabels{ii} ' %d , rho = %2.2f, vol = %d'],ii,S.MeanIntensity(ii),S.Volume(ii)))
     ylim([-2 6]);
     xlim([0 11]);
     ylabel('BOLD %');
     xlabel('stimulus [PSI]');
     a = gca();
-    a.XTick = [1 5 10];
-    a.XTickLabel = {'1','4.5','30'};
+    a.XTick = [1 4 7 10];
+    a.XTickLabel = {'1','3','10','30'};
 
 end
 
-
-
-% Plot the negative cortical response
-%{
-statThresh = 0.35;
-subRhoMap = zeros(size(rhoMap));
-subRhoMap(gmMask>0.5) = rhoMap(gmMask>0.5);
-S = regionprops3(subRhoMap<(-statThresh),subRhoMap,'Volume','VoxelIdxList','VoxelList','MeanIntensity');
-[~,sortIdx] = sort(abs(S.Volume),'descend');
-S = S(sortIdx,:);
-
-% Loop through the 1 biggest region
-roiLabels = {'occipital'};
-for ii = 1:1
-
-    % Save a map of this region
-    roiMap=zeros(size(r2Map));
-    voxIdx = S.VoxelIdxList{ii};
-    roiMap(voxIdx)=1;
-    newImage = templateImage;
-    newImage.vol = roiMap;
-    fileName = fullfile(resultsDir,sprintf([subID '_' roiLabels{ii} '_trigem_rho_thresh_%2.3f_ROI_%d.nii'],statThresh,ii));
-    MRIwrite(newImage, fileName);
-
-    % Save a plot of the beta values
-    nexttile;
-    betas = mean(results.params(voxIdx,1:154));
-    betas = reshape(betas,11,14);
-    betas = betas - betas(1,:);
-    bm = mean(betas,2);
-    bm = bm(2:end)';
-    bs = std(betas,[],2)/sqrt(14);
-    bs = bs(2:end)';
-    patch([1:10,10:-1:1],[bm-bs, fliplr(bm+bs)],'b','FaceAlpha',0.2,'EdgeColor','none');
-    hold on
-    plot(1:10,bm,'.-k');
-    title(sprintf([roiLabels{ii} ' %d , rho = %2.2f, vol = %d'],ii,S.MeanIntensity(ii),S.Volume(ii)))
-    ylim([-2 6]);
-    xlim([0 11]);
-    ylabel('BOLD %');
-    xlabel('stimulus [PSI]');
-    a = gca();
-    a.XTick = [1 5 10];
-    a.XTickLabel = {'1','4.5','30'};
-
-end
-%}
 
 % Plot the response the subcortex
 statThresh = 0.25;
-subRhoMap = zeros(size(rhoMap));
-subRhoMap(bsMask>0.5) = rhoMap(bsMask>0.5);
+subRhoMap = zeros(size(rhoMapClean));
+subRhoMap(bsMask>0.5) = rhoMapClean(bsMask>0.5);
 S = regionprops3(subRhoMap>statThresh,subRhoMap,'Volume','VoxelIdxList','VoxelList','MeanIntensity');
 [~,sortIdx] = sort(abs(S.Volume),'descend');
 S = S(sortIdx,:);
 
 % Loop through the 2 biggest regions
-roiLabels = {'caudate','thalamus'};
-for ii = 2:2
+roiLabels = {'B_antThalamus','L_midbrain','R_postThalamus','R_midbrain','L_whitematter','R_postPons'};
+for ii = [3 6]
 
     % Save a map of this region
     roiMap=zeros(size(r2Map));
@@ -186,7 +186,7 @@ for ii = 2:2
     roiMap(voxIdx)=1;
     newImage = templateImage;
     newImage.vol = roiMap;
-    fileName = fullfile(resultsDir,sprintf([subID '_trigem_rho_thresh_%2.3f_ROI_%d.nii'],statThresh,ii));
+    fileName = fullfile(resultsDir,sprintf([subID '_' roiLabels{ii} '_trigem_rho_thresh_%2.3f_ROI_%d.nii'],statThresh,ii));
     MRIwrite(newImage, fileName);
 
     % Save a plot of the beta values
@@ -198,8 +198,9 @@ for ii = 2:2
     bm = bm(2:end)';
     bs = std(betas,[],2)/sqrt(14);
     bs = bs(2:end)';
-    patch([1:10,10:-1:1],[bm-bs, fliplr(bm+bs)],'r','FaceAlpha',0.2,'EdgeColor','none');
+    plot([1 10],[0 0],':k');
     hold on
+    patch([1:10,10:-1:1],[bm-bs, fliplr(bm+bs)],'r','FaceAlpha',0.2,'EdgeColor','none');
     plot(1:10,bm,'.-k');
     title(sprintf([roiLabels{ii} ' %d , rho = %2.2f, vol = %d'],ii,S.MeanIntensity(ii),S.Volume(ii)))
     ylim([-2 6]);
@@ -207,62 +208,9 @@ for ii = 2:2
     ylabel('BOLD %');
     xlabel('stimulus [PSI]');
     a = gca();
-    a.XTick = [1 5 10];
-    a.XTickLabel = {'1','4.5','30'};
+    a.XTick = [1 4 7 10];
+    a.XTickLabel = {'1','3','10','30'};
 
 end
 
 end
-%     rawVoxIdx = [];
-%     for bb = 1:length(thisIdxSet)
-%         sIdx = find(cellfun(@(x) any(x==thisIdxSet(bb)),[S.VoxelIdxList]));
-%         rawVoxIdx{bb} = S.VoxelIdxList{sIdx};
-%     end
-%     voxIdx{ii} = cell2mat(rawVoxIdx');
-%     betas = mean(results.params(voxIdx{ii},1:35));
-%     betas = reshape(betas,7,5)';
-%     betas = betas(:,1:5);
-%     betas = betas - betas(:,1);
-%     betas = betas(:,2:5);
-%     bm = mean(betas);
-%     bs = std(betas)/sqrt(5);
-%     patch([1:4,4:-1:1],[bm-bs, fliplr(bm+bs)],plotColor{ii},'FaceAlpha',0.2,'EdgeColor','none');
-%     hold on
-%     plot(1:4,bm,['o-' plotColor{ii}]);
-%     hold on
-%
-%     % Save a map of this region
-%     roiMap=zeros(size(r2Map));
-%     roiMap(voxIdx{ii})=1;
-%     newImage = templateImage;
-%     newImage.vol = roiMap;
-%     fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d_ROI_%d.nii'],r2Thresh(ii),clusterThresh(ii),ii));
-%     MRIwrite(newImage, fileName);
-%
-% end
-% a=gca();
-% a.XTick = 1:4;
-% a.XTickLabel = {'3.2','7.5','15','30'};
-% xlim([0.25,5.25]);
-% xlabel('Stimulus Pressure [PSI]')
-% ylabel('BOLD repsonse [%∆]')
-% fileName = fullfile(saveDir,sprintf([subID '_trigem_R2_thresh_%2.3f_%d_betaPlots.pdf'],r2Thresh(ii),clusterThresh(ii)));
-% saveas(a,fileName);
-%
-% % Plot the time-series data and fit for a selected region
-% roiToPlot = 2;
-% resultsROI = forwardModel(data,stimulus,tr,...
-%     'stimTime',stimTime,...
-%     'vxs',voxIdx{roiToPlot},...
-%     'averageVoxels',true,...
-%     'verbose',false,...
-%     'modelClass',modelClass,...
-%     'modelOpts',modelOpts,...
-%     'verbose',true);
-% figFields = fieldnames(resultsROI.figures);
-% for ii = 1:length(figFields)
-%     figHandle = struct2handle(resultsROI.figures.(figFields{ii}).hgS_070000,0,'convert');
-%     figHandle.Visible = 'on';
-%     fileName = fullfile(saveDir,sprintf([subID '_ROI_%d_modelFitFig_%d.pdf'],roiToPlot,ii));
-%     saveas(figHandle,fileName);
-% end

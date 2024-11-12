@@ -28,7 +28,7 @@ stimSeq = [0,0,8,8,6,7,5,2,5,3,3,9,6,6,9,5,10,7,1,0,2,3,4,3,6,8,7,10,9,3,2,9,8,2
 stimLabelSet = {'0psi','1.0psi','1.5psi','2.1psi','3.1psi','4.5psi','6.6psi','9.7psi','14.1psi','20.6psi','30psi'};
 
 maskLabelSet = {'brainstem','GM','WM'};
-smoothSD = 0.5;
+smoothSD = 1;
 averageVoxels = false;
 averageAcquisitions = false;
 useTedanaResults = true;
