@@ -70,8 +70,10 @@ def import_downsample_lib() -> ctypes.CDLL:
 
 """A generalized bayer-aware downsample algorithm written in CPP called by Python
    Note: factor is a power of two. So factor=1 downscales by 2 along
-   dimension"""
-def downsample(img: np.array, factor: int, lib: ctypes.CDLL=None) -> np.array:
+   dimension. Populates output_memory_buffer with the downsampled image. 
+   Should be the size of the image downsampled by the factor and an 
+   np.empty of dtype np.uint8"""
+def downsample(img: np.ndarray, factor: int, output_memory_buffer: np.ndarray, lib: ctypes.CDLL=None) -> None:
     # Import the downsample library if we need to. Note, this is very time consuming
     if(lib is None): lib = import_downsample_lib()
     
@@ -79,17 +81,11 @@ def downsample(img: np.array, factor: int, lib: ctypes.CDLL=None) -> np.array:
     height, width = img.shape[0], img.shape[1]
     new_height, new_width = img.shape[0] >> factor, img.shape[1] >> factor 
     
-    # Allocate the output image buffer (empty so as not to set any values, marginally faster)
-    downsampled: np.ndarray = np.empty((new_height, new_width), dtype=np.uint8)
-    
     # Downsample the image and populate the buffer
     lib.downsample(img.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)), 
                    height, width,
                    factor,
-                   downsampled.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))); 
-
-    # Return the downsampled image
-    return downsampled
+                   output_memory_buffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))); 
 
 """Main used for testing purposes"""
 def main():
@@ -116,4 +112,4 @@ def main():
     #plt.show()
 
 if(__name__ == '__main__'):
-    main()
+    main()  

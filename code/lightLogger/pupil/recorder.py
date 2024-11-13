@@ -30,13 +30,16 @@ def unpack_capture_chunks(path_to_frames: str):
         # Load in this buffer 
         frame_buffer: np.ndarray = np.load(os.path.join(path_to_frames, frame_buffer_file))
 
+        # Assert we are unpacking a buffer and not a frame
+        assert(len(frame_buffer.shape) == 3 and frame_buffer.shape[0] == CAM_FPS) 
+
         # Iterate over the frames in the buffer 
-        for frame in frame_buffer:
+        for frame_idx in range(frame_buffer.shape[0]):
             # Construct the new path to save this file (all buffer files will be overwritten by these)
             save_path: str = os.path.join(path_to_frames, f'{frame_num}.npy')
 
             # Save the frame
-            np.save(save_path, frame)
+            np.save(save_path, frame_buffer[frame_idx])
 
             # Increment the frame number
             frame_num += 1 
@@ -76,9 +79,24 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
 def write_frame(write_queue: queue.Queue, filename: str):
+    # Initialize a variable as a buffer offset for when we are recording chunks 
+    # and we need to know the offset this chunk's frame numbers are from the actual start 
+    chunk_frame_buff_offset: int = 0 
+    
     # Create output directory for frames   
     if(not os.path.exists(filename)):
         os.mkdir(filename)
+    
+    # Otherwise, if this exists, like when we are chunking, we need to find the last frame 
+    # number in the file 
+    else:
+        # Find the sorted frame buffers
+        frame_buffers: list = natsorted(os.listdir(filename)) 
+        
+        # If there are frame buffers in here
+        if(len(frame_buffers) != 0):
+            # Extract the final buffer that was captured 
+            chunk_frame_buff_offset = int(os.path.splitext(frame_buffers[-1])[0])
 
     while(True):  
         # Retrieve a tuple of (frame, frame_num) from the queue
@@ -97,7 +115,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
         print(f"Pupil Queue size: {write_queue.qsize()}")
 
         # Write the frame
-        save_path: str = os.path.join(filename, f'{frame_num}.npy')
+        save_path: str = os.path.join(filename, f'{chunk_frame_buff_offset+frame_num}.npy')
         np.save(save_path, frame_buffer)
 
 
@@ -249,10 +267,6 @@ def initialize_camera() -> object:
     # Configure the 200hz IR cameras 
     controls_dict['Auto Exposure Mode'].value = 1
     controls_dict["Auto Focus"].value = 1
-    
-
-    #print(controls_dict)
-    #print(dir(cam))
 
     return cam 
     

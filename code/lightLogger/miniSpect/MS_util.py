@@ -17,21 +17,13 @@ import threading
 import time
 import collections
 
-"""Return all of the reading data frames of the sensors"""
-def parse_readings(path_to_readings: str) -> tuple: 
-    # Gather and parse the reading files
-    AS_df: pd.DataFrame = reading_to_df(os.path.join(path_to_readings, 'AS_channels.csv'), np.uint16)
-    TS_df: pd.DataFrame = reading_to_df(os.path.join(path_to_readings, 'TS_channels.csv'), np.uint16)
-    LS_df: pd.DataFrame = reading_to_df(os.path.join(path_to_readings, 'LS_channels.csv'), np.int16)
-    LS_temp_df: pd.DataFrame = reading_to_df(os.path.join(path_to_readings, 'LS_temp.csv'), np.float32)
-
-
-    return AS_df, TS_df, LS_df, LS_temp_df 
-
 """Generate plots of the readings from the different sensors"""
-def plot_readings(path_to_readings: str) -> tuple:
-    # Retrieve the dataframes of readings from all of the sensors 
-    AS_df, TS_df, LS_df, LS_temp_df = parse_readings(path_to_readings)
+def plot_readings(path_to_readings: str):
+    # Gather and parse the reading files
+    AS_df = reading_to_df(os.path.join(path_to_readings, 'AS_channels.csv'), np.uint16)
+    TS_df = reading_to_df(os.path.join(path_to_readings, 'TS_channels.csv'), np.uint16)
+    LS_df = reading_to_df(os.path.join(path_to_readings, 'LS_channels.csv'), np.int16)
+    LS_temp_df = reading_to_df(os.path.join(path_to_readings, 'LS_temp.csv'), np.float32)
     
     # Associate chip names to their respective DataFrames
     chip_df_map = {name:df for name, df in zip(['AS','TS','LS','LS_temp'], [AS_df, TS_df, LS_df, LS_temp_df])}
@@ -68,9 +60,6 @@ def plot_readings(path_to_readings: str) -> tuple:
 
     # Display the plot 
     plt.show() 
-
-    # Return fig and axes incase we want to modify
-    return fig, axes 
 
 """Reformat the accelerometer DF to be one reading per row of X,Y,Z values
 instead of each line having a buffer of values"""
@@ -248,8 +237,10 @@ def reading_to_string(read_time: datetime, reading: np.array) -> str:
 """Write MS readings taken from the serial connection"""
 def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory: str):
     # Open the reading file handles
-    reading_file_handles: list = [open(os.path.join(output_directory, reading_name + '.csv'), 'a')]
+    reading_file_handles: list = [open(os.path.join(output_directory, reading_name + '.csv'), 'a')
+                                 for reading_name in reading_names]
 
+    # Write while we are receiving information
     while(True):
         print(f'MS Queue size {write_queue.qsize()}')
 
@@ -267,7 +258,7 @@ def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory
         readings: tuple = parse_SERIAL(bluetooth_bytes)
 
         # Iterate over the reading files and append this info to them
-        for reading_file, reading in zip(reading_file_handles):
+        for reading_file, reading in zip(reading_file_handles, readings):
             reading_file.write(reading_to_string(read_time, reading))
     
     # Close all of the file handles 
@@ -302,7 +293,7 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
 
         #Check if the token is equal to the starting delimeter
         if(token == b'<'):     
-            print(f'Received MS TRANSMISSION @{time.time()}')      
+            #print(f'Received MS TRANSMISSION @{time.time()}')      
             
             # Read the buffer over the serial port (- 2 for the begin/end delimeters)
             reading_buffer: bytes = ms.read(msg_length - 2)
@@ -312,7 +303,7 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
             assert(ms.read(1) == b'>')
 
             #print(f"Size of reading buffer: {len(reading_buffer)}")
-            AS, TS, LI, temp = parse_SERIAL(reading_buffer)
+            #AS, TS, LI, temp = parse_SERIAL(reading_buffer)
 
             #print(f'AS CHANNELS: {AS}')
             #print(f'TS CHANNELS: {TS}')
@@ -320,7 +311,7 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
             #print(f'TEMP: {temp}')
 
             # Append it to the write queue
-            write_queue.put(['NA',  reading_buffer])
+            #write_queue.put(['NA',  reading_buffer])
 
             # Flush the reading buffer 
             reading_buffer = None
@@ -465,11 +456,11 @@ async def main():
     if(not os.path.exists(output_directory)):
         os.mkdir(output_directory)
 
-    id: str = 'White MS'
+    id_: str = 'White MS'
     read_queue = asyncio.Queue()
     write_queue = asyncio.Queue()
 
-    read_task = asyncio.create_task(read_MSBLE(read_queue, id))
+    read_task = asyncio.create_task(read_MSBLE(read_queue, id_))
     parse_task = asyncio.create_task(parse_MSBLE(read_queue, write_queue))
     write_task = asyncio.create_task(write_MSBLE(write_queue, reading_names, output_directory))
 
