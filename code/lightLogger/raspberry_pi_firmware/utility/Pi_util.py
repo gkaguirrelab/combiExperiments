@@ -1,29 +1,36 @@
-from datetime import datetime,time
-import requests
+import os 
+import re
+from natsort import natsorted
 
-DAILY_UPLOAD_TIME = time(0,0,0)
-LAST_UPLOAD_DATE = None
 
-# Upload the data from the raspberry 
-# pi to our servers
-def upload_data():
-    pass
+"""Group chunks' information together from a recording file and return them 
+   as a list of tuples"""
+def parse_chunks(experiment_path: str) -> list:
+    # Define a container for the sorted chunks 
+    sorted_chunks: list = []
 
-# Detect if the raspberry pi is 
-# currently connected to wifi
-def has_internet():
-    # Try connecting to a well-maintained website
-    try: 
-        # If the line executes, we have internet
-        response = requests.get("http://www.google.com", timeout=10)
+    # Find all of the names in the experiment path 
+    experiment_files: list = os.listdir(experiment_path)
 
-        return True
+    # Find all of the bursts in sorted order
+    burst_names: list = natsorted(set([re.search(r'burst\d+', file).group() 
+                        for file in experiment_files]))
 
-    # If there was a connection error, we do 
-    # not have internet
-    except requests.ConnectionError:
-        
-        return False
+    # Iterate over the burst names and build the filepaths
+    # all of a given burst's readings
+    for burst_idx, burst_name in enumerate(burst_names):
+        # Construct filepaths to all of the readings for a given bursts 
+        # by iterating over the files in the directory and finding 
+        # those that contain the burst name. Sort so it is always in
+        # the same order
+        burst_readings: list = sorted([os.path.join(experiment_path, file)
+                                       for file in experiment_files
+                                       if burst_name in file])
+
+        # Append this chunks' readings to the growing list
+        sorted_chunks.append(burst_readings)
+
+    return sorted_chunks
 
 def main():
     pass 

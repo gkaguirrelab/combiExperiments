@@ -54,6 +54,8 @@ function modulateCombiLED(frequency, cal_path, color_profile)
 
     % Set the color profile of the modResult
     modResult.settingsHigh = color_profile; 
+    modResult.settingsBackground = color_profile./2; 
+    modResult.settingsLow = color_profile.*0; 
 
     % Initialize other settings of the wave
     CL.setSettings(modResult);

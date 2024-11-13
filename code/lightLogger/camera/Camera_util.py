@@ -15,7 +15,7 @@ import pandas as pd
 
 """Import the FPS of the camera"""
 agc_lib_path = os.path.join(os.path.dirname(__file__))
-from recorder import CAM_FPS, OBSERVED_FPS, parse_settings_file 
+from recorder import CAM_FPS, parse_settings_file 
 
 """Parse command line arguments when script is called via command line"""
 def parse_args() -> tuple:
