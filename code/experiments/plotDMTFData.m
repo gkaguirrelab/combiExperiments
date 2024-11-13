@@ -1,6 +1,6 @@
 
 % Housekeeping
-close all
+%close all
 clear
 
 % Get the subject ID
@@ -9,7 +9,7 @@ subjectID = GetWithDefault('Subject ID','FLIC_xxxx');
 % The light levels and directions
 NDlabelsAll = {'0x5','3x5'};
 modDirections = {'LminusM_wide','LightFlux'};
-targetPhotoreceptorContrast = [0.09,0.4];
+targetPhotoreceptorContrast = [0.075,0.333];
 plotColor = {'r','k'};
 
 % Define where the experimental files are saved
@@ -58,7 +58,6 @@ for nn = 1:length(NDlabelsAll)
         proportionGoodjob = sum(goodJobVec)/length(goodJobVec);
         fprintf(['Proportion good job ' modDirections{dd} ' ND' NDlabelsAll{nn} ': %2.2f\n'],proportionGoodjob)
 
-
         % Plot the unit slope and good job feedback boundaries
         nexttile();
         loglog([0.5 60],[0.5 60],'--k','LineWidth',1.5)        
@@ -79,9 +78,22 @@ for nn = 1:length(NDlabelsAll)
         box off
         title([modDirections{dd} ' ND' NDlabelsAll{nn}],'Interpreter','none');
 
-        % Add a fit line
-        p = polyfit(log10(refFreq),log10(testFreq),1);
-        plot(refFreq,10.^polyval(p,log10(refFreq)),'-b','LineWidth',2);
+        % Add a fit line. We wish to enforce that the fit has a zero
+        % intercept at an arbirtarily small stimulus frequency, so we have
+        % to do some business here to achieve this.
+        mdl = fitlm(log10(refFreq)+1,log10(testFreq)+1,'Intercept',false);
+        xFitLog = [0 log10(refFreq)+1]';
+        yFitLog = predict(mdl,xFitLog);
+        xFit = 10.^(xFitLog-1);
+        yFit = 10.^(yFitLog-1);
+        plot(xFit,yFit,'-b','LineWidth',2);
+
+        % Add a shaded region to indicate the variance of the residuals
+        mean2DF = std(mdl.Residuals.Raw)*2;
+        xVerts = [1 32 32 1];
+        yVertsLog = (predict(mdl,log10(xVerts')+1)-1)';
+        yVerts = 10.^(yVertsLog + repmat(mean2DF,1,4) .* [0.5 0.5 -0.5 -0.5]);
+        patch(xVerts,yVerts,'b','FaceColor','b','LineStyle','none','FaceAlpha',.3)
 
     end
 end
