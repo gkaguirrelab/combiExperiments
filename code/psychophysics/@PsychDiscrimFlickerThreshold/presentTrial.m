@@ -13,11 +13,11 @@ simulateResponse = obj.simulateResponse;
 % Determine if we are giving feedback on each trial
 giveFeedback = obj.giveFeedback;
 
-% The calling function sets the refPuffPSI, the duration of each puff, and
-% the inter-puff-interval
-refPuffPSI = obj.refPuffPSI;
-stimulusDurationSecs = obj.stimulusDurationSecs;
-interStimulusIntervalSecs = obj.interStimulusIntervalSecs;
+% The calling function sets the reference frequency, and the contrast of
+% the test and ref
+refFreqHz = obj.refFreqHz;
+refContrast = obj.refContrast;
+testContrast = obj.testContrast;
 
 % Get the stimParam to use for this trial. Can use either a staircase or
 % QUEST+
@@ -29,11 +29,26 @@ end
 
 % The difference between the reference and test frequency is given by the
 % qpStimParam, which is in units of decibels
-testPuffPSI = refPuffPSI * db2pow(stimParam);
+testFreqHz = refFreqHz * db2pow(stimParam);
+
+% Adjust the contrast that is sent to the device to account for any
+% device attenuation of the modulation at high temporal frequencies
+testContrastAdjusted =  testContrast / contrastAttenuationByFreq(testFreqHz);
+refContrastAdjusted =  refContrast / contrastAttenuationByFreq(refFreqHz);
+
+% The ref phase is always 0
+refPhase = 0;
+
+% Determine if we have random test phase or not
+if obj.randomizePhase
+    testPhase = round(rand())*pi;
+else
+    testPhase = 0;
+end
 
 % Assemble the param sets
-testParams = [stimulusDurationSecs,testPuffPSI];
-refParams = [stimulusDurationSecs,refPuffPSI];
+testParams = [testContrastAdjusted,testFreqHz,testPhase];
+refParams = [refContrastAdjusted,refFreqHz,refPhase];
 
 % Randomly assign the stimuli to the intervals
 switch 1+logical(round(rand()))
@@ -49,9 +64,9 @@ switch 1+logical(round(rand()))
         error('Not a valid testInterval')
 end
 
-% Note which interval contains the more intense stimulus, which is used for
+% Note which interval contains the faster flicker, which is used for
 % feedback
-[~,moreIntenseInterval] = max(intervalParams(:,2));
+[~,fasterInterval] = max(intervalParams(:,2));
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -79,7 +94,7 @@ end
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Pressure PSI [%2.2f, %2.2f Hz]...', ...
+    fprintf('Trial %d; Freq [%2.2f, %2.2f Hz]...', ...
         currTrialIdx,intervalParams(1,2),intervalParams(2,2));
 end
 
@@ -96,8 +111,9 @@ if ~simulateStimuli
 
         % Prepare the stimulus
         stopTime = cputime() + obj.interStimulusIntervalSecs;
-        obj.CombiAirObj.setDurationDirect(intervalParams(ii,1));
-        obj.CombiAirObj.setPressureDirect(intervalParams(ii,2));
+        obj.CombiLEDObj.setContrast(intervalParams(ii,1));
+        obj.CombiLEDObj.setFrequency(intervalParams(ii,2));
+        obj.CombiLEDObj.setPhaseOffset(intervalParams(ii,3));
         obj.waitUntil(stopTime);
 
         % Present the stimulus. If it is the first interval, wait the
@@ -109,7 +125,7 @@ if ~simulateStimuli
         else
             stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
         end
-        obj.CombiAirObj.triggerPuffDirect;
+        obj.CombiLEDObj.startModulation;
         if ii==1
             audioObjs.low.play;
         else
@@ -134,9 +150,9 @@ else
     responseTimeSecs = nan;
 end
 
-% Set the pressure back to zero
+% Stop the stimulus in case it is still running
 if ~simulateStimuli
-    obj.CombiAirObj.setPressureDirect(0);
+    obj.CombiLEDObj.stopModulation;
 end
 
 % Determine if the subject has selected the ref or test interval
@@ -148,7 +164,7 @@ end
 
 % Determine if the subject has selected the faster interval and handle
 % audio feedback
-if intervalChoice==moreIntenseInterval
+if intervalChoice==fasterInterval
     % Correct
     correct = true;
     if obj.verbose
@@ -190,8 +206,9 @@ end
 questData = qpUpdate(questData,stimParam,outcome);
 
 % Add in the stimulus information
+questData.trialData(currTrialIdx).testPhase = testPhase;
 questData.trialData(currTrialIdx).testInterval = testInterval;
-questData.trialData(currTrialIdx).fasterInterval = moreIntenseInterval;
+questData.trialData(currTrialIdx).fasterInterval = fasterInterval;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
 

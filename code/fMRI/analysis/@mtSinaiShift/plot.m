@@ -28,13 +28,13 @@ function results = plot(obj, data, results)
 vxs = results.meta.vxs;          % vector of analyzed vertices / voxels
 
 % Setup a figure
-fig1 = figure('visible','off');
+fig1 = figure('visible','on');
 set(fig1,'PaperOrientation','landscape');
 set(fig1,'PaperUnits','normalized');
 set(gcf,'Units','points','Position',[500 500 1500 300]);
 
 % Pick the voxel with the best model fit
-[~,vx]=nanmax(results.R2(vxs));
+[~,vx]=max(results.R2(vxs),[],"omitnan");
 
 % Grab the time series
 datats = data(vx,:)';
@@ -56,7 +56,7 @@ ylabel('BOLD signal');
 if results.meta.averageVoxels
     title(['Fit to average time series, n=' num2str(length(vxs)) ' vertices']);
 else
-    title(['Best fit time-series, CIFTI vertex ' num2str(vxs(vx))]);
+    title(['Best fit time-series, vertex ' num2str(vxs(vx))]);
 end
 
 % Add an annotation to report the R^2 fit
@@ -81,8 +81,7 @@ xlabel('Time [seconds]');
 title('HRF');
 
 % Store the figure contents in a variable
-results.figures.fig1 = returnFigVar(fig1);
-results.figures.fig1.format = '-dpdf';
+results.figures.fig1 = fig1;
 
 % If averageVoxels is true, save the data, model fit, and hrf
 if results.meta.averageVoxels
@@ -100,12 +99,11 @@ if ~isempty(obj.avgAcqIdx)
     [metric, signal, modelFit] = obj.metric(datats, results.params(vxs(vx),:));
     
     % Setup a figure
-    fig2 = figure('visible','off');
+    fig2 = figure('visible','on');
     set(fig2,'PaperOrientation','landscape');
     set(fig2,'PaperUnits','normalized');
     set(gcf,'Units','points','Position',[500 500 1500 300]);
-    
-    
+        
     % Plot the time series
     plot(flatDataTime(1:length(signal)),signal,'-','Color',[0.75 0.75 0.75],'LineWidth',2);
     hold on;
@@ -124,8 +122,7 @@ if ~isempty(obj.avgAcqIdx)
     annotation('textbox',dim,'String',outString,'FitBoxToText','on');
     
     % Store the figure contents in a variable
-    results.figures.fig2 = returnFigVar(fig2);
-    results.figures.fig2.format = '-dpdf';
+    results.figures.fig2 = fig2;
     
     % If averageVoxels is true, save the signal and modelFit
     if results.meta.averageVoxels
@@ -133,7 +130,6 @@ if ~isempty(obj.avgAcqIdx)
         results.data.avgModelFit = modelFit;
     end
     
-
 end
 
 end

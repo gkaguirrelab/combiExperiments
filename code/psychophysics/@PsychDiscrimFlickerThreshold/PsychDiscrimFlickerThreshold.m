@@ -1,14 +1,12 @@
-% Object to support conducting a 2AFC contrast threshold detection task,
-% using the log Weibull CFD under the control of Quest+ to select stimuli.
-% A nuance of the parameterization is that we allow Quest+ to search for
-% the value of the "guess rate", even though by design this rate must be
-% 0.5. By providing this bit of flexibility in the parameter space, Quest+
-% tends to explore the lower end of the contrast range a bit more,
-% resulting in slightly more accurate estimates of the slope of the
-% psychometric function. When we derive the final, maximum likelihood set
-% of parameters, we lock the guess rate to 0.5.
+% Object to support conducting a 2AFC flicker discrimination task,
+% using QUEST+ to select stimuli in an effort to estimate the sigma (slope)
+% of a cumulative normal Gaussian. The search is also asked to estimate the
+% mu (mean) of the cumulative normal, which prompts QUEST+ to explore both
+% above and below the reference stimulus. In fitting and reporting the
+% results we lock the mu to 0, which corresponds to being 50% accurate when
+% there is no physical difference between the stimuli.
 
-classdef PsychDetectionThreshold < handle
+classdef PsychDiscrimFlickerThreshold < handle
 
     properties (Constant)
     end
@@ -19,16 +17,20 @@ classdef PsychDetectionThreshold < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
+        modResult
         questData
         simulatePsiParams
         simulateResponse
         simulateStimuli
         giveFeedback
+        staircaseRule
+        stimParamsDomainList
         psiParamsDomainList
         randomizePhase = false;
-        testFreqHz
-        testLogContrastSet
-        stimulusDurationSecs = 1;
+        refFreqHz
+        refContrast
+        testContrast
+        stimulusDurationSecs = 2;
         interStimulusIntervalSecs = 0.2;
     end
 
@@ -40,48 +42,56 @@ classdef PsychDetectionThreshold < handle
         % to collect data
         CombiLEDObj
 
+        % Can switch between using a staircase and QUEST+ to select the
+        % next trial
+        useStaircase
+
+        % Assign a filename which is handy for saving and loading
+        filename
+
         % Verbosity
         verbose = true;
+        blockIdx = 1;
         blockStartTimes = datetime();
-
-        % We allow this to be modified so we
-        % can set it to be brief during object
-        % initiation when we clear the responses
-        responseDurSecs = 3;
 
     end
 
     methods
 
         % Constructor
-        function obj = PsychDetectionThreshold(CombiLEDObj,testFreqHz,varargin)
+        function obj = PsychDiscrimFlickerThreshold(CombiLEDObj,modResult,refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
-            p.addParameter('randomizePhase',true,@islogical);
+            p.addParameter('testContrast',0.333,@isnumeric);
+            p.addParameter('refContrast',0.333,@isnumeric);
+            p.addParameter('randomizePhase',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('testLogContrastSet',linspace(-3,-0.3,31),@isnumeric);
-            p.addParameter('simulatePsiParams',[-2, 1.5, 0.5, 0.0],@isnumeric);
-            p.addParameter('psiParamsDomainList',{...
-                linspace(-2.5,-0.3,21), ...
-                logspace(log10(1),log10(10),21),...
-                [0.5],...
-                [0]...
-                },@isnumeric);
+            p.addParameter('useStaircase',true,@islogical);            
+            p.addParameter('staircaseRule',[1,3],@isnumeric);
+            p.addParameter('simulatePsiParams',[0,0.3],@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
+            p.addParameter('psiParamsDomainList',...
+                {linspace(0,0,1),linspace(0,2,51)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
             obj.CombiLEDObj = CombiLEDObj;
-            obj.testFreqHz = testFreqHz;
-            obj.testLogContrastSet = p.Results.testLogContrastSet;
+            obj.modResult = modResult;
+            obj.refFreqHz = refFreqHz;
+            obj.testContrast = p.Results.testContrast;
+            obj.refContrast = p.Results.refContrast;
             obj.randomizePhase = p.Results.randomizePhase;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;
+            obj.useStaircase = p.Results.useStaircase;
+            obj.staircaseRule = p.Results.staircaseRule;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
+            obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
 
@@ -102,23 +112,23 @@ classdef PsychDetectionThreshold < handle
             obj.initializeDisplay;
 
             % There is a roll-off (attenuation) of the amplitude of
-            % modulations with frequency. Detect those cases which are outside of our ability to
-            % correct
-            testContrastSetAdjusted = (10.^obj.testLogContrastSet) ./ ...
-                contrastAttentionByFreq(obj.testFreqHz);
-
-            % Check that the adjusted contrast does not exceed unity
-            mustBeInRange(testContrastSetAdjusted,0,1);
+            % modulations with frequency. The stimParamsDomainList gives
+            % the range of possible test frequencies (in dBs) relative to
+            % the reference frequency. Check here that we can achieve the
+            % called-for test and reference contrast given this.
+            maxTestFreqHz = obj.refFreqHz * db2pow(max(obj.stimParamsDomainList));
+            assert(obj.testContrast/contrastAttenuationByFreq(maxTestFreqHz) < 1);
+            assert(obj.refContrast/contrastAttenuationByFreq(obj.refFreqHz) < 1);
 
         end
 
         % Required methds
         initializeQP(obj)
         initializeDisplay(obj)
-        validResponse = presentTrial(obj)
-        [intervalChoice, responseTimeSecs] = getResponse(obj)
+        presentTrial(obj)
+        stimParam = staircase(obj,currTrialIdx);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
-        waitUntil(obj,stopTimeMicroSeconds)
+        waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
         figHandle = plotOutcome(obj,visible)
         resetSearch(obj)

@@ -1,19 +1,10 @@
-% Object to support conducting a 2AFC contrast threshold discrimination
-% task, using the log Weibull CFD under the control of Quest+ to select
-% stimuli. A nuance of the parameterization is that we allow Quest+ to
-% search for the value of the "guess rate", even though by design this rate
-% must be 0.5. By providing this bit of flexibility in the parameter space,
-% Quest+ tends to explore the lower end of the contrast range a bit more,
-% resulting in slightly more accurate estimates of the slope of the
-% psychometric function. When we derive the final, maximum likelihood set
-% of parameters, we lock the guess rate to 0.5.
-%
-% The parameters of the psychometric function are:
-%                      threshold  Threshold parameter in log units
-%                      slope      Slope
-%                      guess      Guess rate
-%                      lapse      Lapse rate
-%
+% Object to support conducting a 2AFC air puff discrimination task,
+% using QUEST+ to select stimuli in an effort to estimate the sigma (slope)
+% of a cumulative normal Gaussian. The search is also asked to estimate the
+% mu (mean) of the cumulative normal, which prompts QUEST+ to explore both
+% above and below the reference stimulus. In fitting and reporting the
+% results we lock the mu to 0, which corresponds to being 50% accurate when
+% there is no physical difference between the stimuli.
 
 classdef PsychDiscrimPuffThreshold < handle
 
@@ -31,65 +22,65 @@ classdef PsychDiscrimPuffThreshold < handle
         simulateResponse
         simulateStimuli
         giveFeedback
+        staircaseRule
+        stimParamsDomainList
         psiParamsDomainList
-        refLogIntensity
-        validLogIntesityRange
-        logIntensityDiffSet
-        stimulusDurSecs = 0.2;
-        PostStimDelaySecs = 0.35;
+        refPuffPSI
+        stimulusDurationSecs = 0.5;
         interStimulusIntervalSecs = 1;
     end
 
     % These may be modified after object creation
     properties (SetAccess=public)
 
-        % The stimulus object. This is modifiable so that we can re-load
-        % a PsychDetectionThreshold, update this handle, and then continue
+        % The display object. This is modifiable so that we can re-load
+        % the psychometric object, update this handle, and then continue
         % to collect data
         CombiAirObj
 
+        % Can switch between using a staircase and QUEST+ to select the
+        % next trial
+        useStaircase
+
+        % Assign a filename which is handy for saving and loading
+        filename
+
         % Verbosity
         verbose = true;
+        blockIdx = 1;
         blockStartTimes = datetime();
-
-        % We allow this to be modified so we
-        % can set it to be brief during object
-        % initiation when we clear the responses
-        responseDurSecs = 3;
 
     end
 
     methods
 
         % Constructor
-        function obj = PsychDiscrimPuffThreshold(CombiAirObj,refLogIntensity,varargin)
+        function obj = PsychDiscrimPuffThreshold(CombiAirObj,refPuffPSI,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('validLogIntesityRange',[0,2.8],@isnumeric);
-            p.addParameter('logIntensityDiffSet',linspace(0,1,31),@isnumeric);
-            p.addParameter('simulatePsiParams',[0.5, 1.5, 0.5, 0.0],@isnumeric);
-            p.addParameter('psiParamsDomainList',{...
-                linspace(0.01,1,21), ...
-                logspace(log10(1),log10(10),21),...
-                [0.5],...
-                [0]...
-                },@isnumeric);
+            p.addParameter('useStaircase',true,@islogical);            
+            p.addParameter('staircaseRule',[1,3],@isnumeric);
+            p.addParameter('simulatePsiParams',[0,0.3],@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
+            p.addParameter('psiParamsDomainList',...
+                {linspace(0,0,1),linspace(0,2,51)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
             obj.CombiAirObj = CombiAirObj;
-            obj.refLogIntensity = refLogIntensity;
-            obj.validLogIntesityRange = p.Results.validLogIntesityRange;
-            obj.logIntensityDiffSet = p.Results.logIntensityDiffSet;
+            obj.refPuffPSI = refPuffPSI;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;
+            obj.useStaircase = p.Results.useStaircase;
+            obj.staircaseRule = p.Results.staircaseRule;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
+            obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
 
@@ -106,14 +97,18 @@ classdef PsychDiscrimPuffThreshold < handle
             % Initialize Quest+
             obj.initializeQP;
 
+            % Initialize the CombiAir
+            obj.initializeDisplay;
+
         end
 
         % Required methds
         initializeQP(obj)
-        validResponse = presentTrial(obj)
-        [intervalChoice, responseTimeSecs] = getResponse(obj)
+        initializeDisplay(obj)
+        presentTrial(obj)
+        stimParam = staircase(obj,currTrialIdx);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
-        waitUntil(obj,stopTimeMicroSeconds)
+        waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
         figHandle = plotOutcome(obj,visible)
         resetSearch(obj)

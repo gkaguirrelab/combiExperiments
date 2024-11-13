@@ -44,6 +44,19 @@
         "hook": "",
         "importance": "",
         "localHookTemplate": "",
+        "name": "mQUESTPlus",
+        "pathPlacement": "append",
+        "subfolder": "",
+        "toolboxRoot": "",
+        "type": "include",
+        "update": "",
+        "url": ""
+    },
+    {
+        "flavor": "",
+        "hook": "",
+        "importance": "",
+        "localHookTemplate": "",
         "name": "mgl",
         "pathPlacement": "append",
         "subfolder": "",
@@ -77,6 +90,19 @@
         "type": "git",
         "update": "",
         "url": "https:\/\/github.com\/CMRR-C2P\/MB.git"
+    },
+    {
+        "flavor": "",
+        "hook": "",
+        "importance": "",
+        "localHookTemplate": "",
+        "name": "nordic",
+        "pathPlacement": "append",
+        "subfolder": "",
+        "toolboxRoot": "",
+        "type": "git",
+        "update": "",
+        "url": "https:\/\/github.com\/SteenMoeller\/NORDIC_Raw.git"
     },
     {
         "flavor": "",

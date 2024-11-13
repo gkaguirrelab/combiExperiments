@@ -43,4 +43,4 @@ if ~isfile(fullfile(subjectDir,['LightFlux' '_ND' NDlabel],'modResult.mat'))
 end
 
 % Conduct the session
-runDelayedMatchExperiment(subjectID,NDlabel);
+runDelayedMatchToFreq(subjectID,NDlabel);

@@ -1,4 +1,4 @@
-function runDelayedMatchExperiment(subjectID,NDlabel,varargin)
+function runDelayedMatchToFreq(subjectID,NDlabel,varargin)
 % Psychometric measurement of accuracy and bias in reproduction of the
 % frequency of a flickering stimulus after a delay. The code manages a
 % series of files that store the data from the experiment. As configured,
@@ -118,7 +118,7 @@ for bb=1:nBlocks
         psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
     else
         % Create the object
-        psychObj = DelayedMatchToFreq(CombiLEDObj,modResult,refFreqRangeHz,testContrast,...
+        psychObj = PsychDelayedMatchToFreq(CombiLEDObj,modResult,refFreqRangeHz,testContrast,...
             'verbose',verbosePsychObj,'testRangeDecibels',testRangeDecibels,...
             'goodJobCriterionDb',goodJobCriterionDb);
     end
