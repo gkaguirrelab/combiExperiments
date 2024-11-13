@@ -13,38 +13,57 @@ def parse_args() -> tuple:
     parser.add_argument('config_path', type=str, help='Where to read the processes and arguments from')
     parser.add_argument('n_bursts', type=float, help='The number of bursts to take')
     parser.add_argument('burst_seconds', type=int, help='The amount of seconds for each capture burst')
+    parser.add_argument('--shell_output', type=int, choices=[0,1], default=1, help='Enable/Disable output to the terminal from all of the subprocesses')
 
     args = parser.parse_args()
 
-    return args.config_path, args.n_bursts, args.burst_seconds
+    return args.config_path, args.n_bursts, args.burst_seconds, bool(args.shell_output)
 
 """Parse the arguments for each subprocess from the main commandline run file"""
-def parse_process_args(config_path: str) -> dict:
+def parse_process_args(config_path: str) -> tuple:
+    # Define a container for the experiment name + path 
+    experiment_name: str = None
+
     # Generate a dictionary to store program names and thier arguments
     controllers_and_args: dict = {}
     
     # Open the config file 
     with open(config_path, 'r') as f:
-        for line in f:
-            # Skip commented lines 
-            if(line[0] == '#'): continue
+        # Iterate over the lines of the file
+        for line_num, line in enumerate(f):
+             # Skip commented lines 
+            if(len(line.strip()) == 0 or line.strip()[0] == '#'): continue
+
+            # First line is going to be the overarching experiment name + path
+            if(experiment_name is None):
+                experiment_name = line.strip()
+                continue
 
             # First, split the line into space-based tokens
             tokens: list = line.split(' ')
 
             # Find the program name
             program_name, *_ = [token for token in tokens 
-                                if '.py' in token]  
+                                if '.py' in token]
+
+            # Find the file extension for this controller 
+            file_extension, *_ = [token for token in tokens 
+                                 if 'burstX' in token]
+            
+            # Define the formula for the filename as the savepath plus the 
+            # burst placeholder and extension
+            filename_formula: str = os.path.join(experiment_name, os.path.basename(experiment_name.strip('/')) + file_extension)
 
             # Save the arguments for the given program name
-            controllers_and_args[program_name] = " ".join([token for token in tokens]).strip()
+            controllers_and_args[program_name] = " ".join(tokens[0:1] + [program_name, filename_formula] + tokens[3:]).strip()
 
-    return controllers_and_args
+    return controllers_and_args, experiment_name
      
 """Capture a burst of length burst_seconds
    from all of the sensors"""
 def capture_burst(component_controllers: list, CPU_priorities: list, 
                   burst_seconds: float,
+                  burst_num: int,
                   shell_output: bool= True) -> None:
 
     # List to keep track of process objects
@@ -52,6 +71,9 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
 
     # Iterate over the other scripts and start them with their associated arguments
     for (script, args), (core, priority) in zip(component_controllers.items(), CPU_priorities):
+        # In the args, we must replace the burstX with the burst number
+        args: str = args.replace('burstX', f'burst{burst_num}')
+        
         # Launch the subprocess
         p = subprocess.Popen(args,
                              stdout=sys.stdout,
@@ -98,12 +120,19 @@ def main():
                                 'Camera_com.py', 'Pupil_com.py'])
 
     # Parse the file containing the processes to run and their args
-    config_path, n_bursts, burst_seconds = parse_args()
+    config_path, n_bursts, burst_seconds, shell_output = parse_args()
 
     # Parse the controllers and their arguments
     print('Parsing processes and args...')
-    component_controllers: dict = parse_process_args(config_path)
-    cores_and_priorities: list = [(0,-20), (1, -20), (2,-20), (3,-20)]
+    component_controllers, experiment_name = parse_process_args(config_path)
+
+    # Make a supra directory for this experiment 
+    # if it does not exist 
+    if(not os.path.exists(experiment_name)):
+        os.makedirs(experiment_name)
+
+    # Assign max priority to all processes
+    cores_and_priorities: list = [(process_num, -20) for process_num in range(len(component_controllers))]
 
     # Assert we have entered valid process names and args for each 
     assert(all(name in valid_processes for name in component_controllers))
@@ -123,9 +152,9 @@ def main():
         component_controllers[process] = commandline_input
 
     # Print out each sub program along with its arguments
-    print(f'Executing: {n_bursts} of {burst_seconds} seconds using processes:')
+    print(f'Executing: {n_bursts} bursts of {burst_seconds} seconds using processes:')
     for name, args in component_controllers.items():
-        print(f'Program: {name} | Args: {args}')   
+        print(f'\tProgram: {name} | Args: {args}')   
 
     # Iterate over the number of bursts
     burst_num: int = 0
@@ -133,7 +162,7 @@ def main():
         print(f'Begin burst: {burst_num+1}')
 
         # Capture the burst
-        capture_burst(component_controllers, cores_and_priorities, burst_seconds)
+        capture_burst(component_controllers, cores_and_priorities, burst_seconds, burst_num, shell_output=shell_output)
 
         print(f'End burst: {burst_num+1}')
 

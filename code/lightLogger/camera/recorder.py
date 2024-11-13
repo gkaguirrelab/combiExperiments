@@ -22,46 +22,37 @@ AGC_lib = import_AGC_lib()
 """Import the custom Downsampling library"""
 downsample_lib_path = os.path.join(os.path.dirname(__file__), 'downsample_lib')
 sys.path.append(os.path.abspath(downsample_lib_path))
-from PyDownsample import import_downsample_lib, downsample, downsample_pure_python
+from PyDownsample import import_downsample_lib, downsample, downsample_buffer, downsample_pure_python
 
 # Import the CPP downsample lib (with types, etc)
 downsample_lib = import_downsample_lib()
 
-# The FPS we have locked the camera to
+# The FPS we have locked the camera to (as opposed to 206.65 in the settings)
 CAM_FPS: float = 200
+
+# The origial dimensions of the camera before downsampling 
+CAM_IMG_DIMS: np.ndarray = np.array((480, 640))
+
+# The power of 2 to downsample the recorded image by 
+downsample_factor: int = 4
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
 def write_frame(write_queue: queue.Queue, filename: str):
-    # Initialize a variable as a buffer offset for when we are recording chunks 
-    # and we need to know the offset this chunk's frame numbers are from the actual start 
-    chunk_frame_buff_offset: int = 0 
-    
-    # Create output directory for frames   
+    # Ensure the output directory exists
     if(not os.path.exists(filename)):
-        os.mkdir(filename)
-    
-    # Otherwise, if this exists, like when we are chunking, we need to find the last frame 
-    # number in the file 
-    else:
-        # Find the sorted frame buffers
-        frame_buffers: list = natsorted(os.listdir(filename)) 
-        
-        # If there are frame buffers in here
-        if(len(frame_buffers) != 0):
-            # Extract the final buffer that was captured 
-            chunk_frame_buff_offset = int(os.path.splitext(frame_buffers[-1])[0])
-
+        os.makedirs(filename)
 
     # Initialize a settings file for per-frame settings to be written to.
     settings_file = open(f'{filename}_settingsHistory.csv', 'a')
-    #frame_timings_file = open(f'{filename}_frameTimings.csv', 'a')
-    #cpu_info_file = open(f'{filename}_cpuInfo.csv', 'a')
-    downsample_factor: int = 3
-    new_image_shape = (60, 80) # Calculate by old image shape >> factor
 
-    downsampled_buffer = np.zeros((CAM_FPS, *new_image_shape), dtype=np.uint8)
+    # Calculate the downsampled image shape
+    downsampled_image_shape: tuple = CAM_IMG_DIMS >> downsample_factor
 
+    # Create a contiguous memory buffer for to store downsampled images
+    downsampled_buffer = np.zeros((CAM_FPS, *downsampled_image_shape), dtype=np.uint8)
+
+    # While we are recording
     while(True):  
         # Retrieve a tuple of (frame, frame_num) from the queue
         ret: tuple = write_queue.get()
@@ -72,38 +63,26 @@ def write_frame(write_queue: queue.Queue, filename: str):
             break
         
         # Extract frame and its metadata
-       # frame_buffer, frame_num, settings_buffer, frame_timings_buffer, cpu_info_buffer = ret
         frame_buffer, frame_num, settings_buffer = ret
-        #frame_buffer, frame_num = ret
 
         # Print out the state of the write queue
         print(f'Camera queue size: {write_queue.qsize()}')
 
-        # Downsample every frame by a factor of 2^4 = 8 along each dimension 
-       #frame_buffer = np.array([downsample_pure_python(frame_buffer[i], 4) 
-        #                          for i in range(frame_buffer.shape[0])],
-        #                          dtype=np.uint8)
-
-        #ret = downsample(frame_buffer[0], 1, downsample_lib)
-
-
+        # Downsample every frame in the frame buffer and populate the downsampled buffer 
+        #downsample_buffer(frame_buffer, CAM_FPS, downsample_factor, downsampled_buffer, downsample_lib)
+        
         for i in range(frame_buffer.shape[0]):
             downsample(frame_buffer[i], downsample_factor, downsampled_buffer[i], downsample_lib) 
 
         # Write the frame
-        save_path: str = os.path.join(filename, f'{chunk_frame_buff_offset+frame_num}.npy')
+        save_path: str = os.path.join(filename, f'{frame_num}.npy')
         np.save(save_path, downsampled_buffer)
 
         # Write the frame info to the existing csv file
         np.savetxt(settings_file, settings_buffer, delimiter=',', fmt='%d')
-        #np.savetxt(frame_timings_file, frame_timings_buffer, delimiter=',', fmt='%f')
-       # np.savetxt(cpu_info_file, cpu_info_buffer, delimiter=',', fmt='%f')
 
     # Close the settings and frame timings files
     settings_file.close()
-    #frame_timings_file.close()
-    #cpu_info_file.close()
-
 
 """Unpack chunks of n captured frames. This is used 
    to reformat the memory-limitation required capture 
@@ -392,14 +371,14 @@ def initialize_camera(initial_gain: float=1, initial_exposure: int=100) -> objec
                                                  raw=sensor_mode,
                                                  queue=True))
                                                  #buffer_count=150))
-
+  
     # Ensure the frame rate; This is calculated by
     # FPS = 1,000,000 / FrameDurationLimits 
     # e.g. 206.65 = 1000000/FDL => FDL = 1000000/206.65
     # 200 = 
     frame_duration_limit = int(np.ceil(1000000/CAM_FPS))
     cam.video_configuration.controls['NoiseReductionMode'] = 0
-    cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # *2 for lower,upper bound equal
+    cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # for lower,upper bound equal
     
     # Set runtime camera information, such as auto-gain
     # auto exposure, white point balance, etc

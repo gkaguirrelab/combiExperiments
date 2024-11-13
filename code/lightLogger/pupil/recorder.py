@@ -79,24 +79,10 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
 def write_frame(write_queue: queue.Queue, filename: str):
-    # Initialize a variable as a buffer offset for when we are recording chunks 
-    # and we need to know the offset this chunk's frame numbers are from the actual start 
-    chunk_frame_buff_offset: int = 0 
-    
-    # Create output directory for frames   
+    # Ensure the output directory exists
     if(not os.path.exists(filename)):
-        os.mkdir(filename)
-    
-    # Otherwise, if this exists, like when we are chunking, we need to find the last frame 
-    # number in the file 
-    else:
-        # Find the sorted frame buffers
-        frame_buffers: list = natsorted(os.listdir(filename)) 
-        
-        # If there are frame buffers in here
-        if(len(frame_buffers) != 0):
-            # Extract the final buffer that was captured 
-            chunk_frame_buff_offset = int(os.path.splitext(frame_buffers[-1])[0])
+        os.makedirs(filename)
+
 
     while(True):  
         # Retrieve a tuple of (frame, frame_num) from the queue
@@ -115,7 +101,7 @@ def write_frame(write_queue: queue.Queue, filename: str):
         print(f"Pupil Queue size: {write_queue.qsize()}")
 
         # Write the frame
-        save_path: str = os.path.join(filename, f'{chunk_frame_buff_offset+frame_num}.npy')
+        save_path: str = os.path.join(filename, f'{frame_num}.npy')
         np.save(save_path, frame_buffer)
 
 
@@ -215,7 +201,7 @@ def record_video(duration: float, write_queue: queue.Queue,
     # Calculate the approximate FPS the frames were taken at 
     # (approximate due to time taken for other computation)
     observed_fps: float = frame_num/(end_capture_time-start_capture_time)
-    print(f'I captured {frame_num} at {observed_fps} fps')
+    print(f'Pupil cam captured {frame_num} at {observed_fps} fps')
     
     # Stop recording and close the camera object 
     cam.close()

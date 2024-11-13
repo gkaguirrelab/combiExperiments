@@ -2,7 +2,7 @@ import smbus
 import time
 
 # Interval in seconds that readings will be apart
-READ_INTERVAL: float = 10
+READ_INTERVAL: float = 5
 
 """Record from the device live with no duration"""
 def record_live(duration: float, filename: str):
@@ -55,10 +55,15 @@ def record(duration: float, filename: str):
     readings_file: object = open(filename, 'a')
 
     # Begin recording
+    start_time: float = time.time()
     last_read: float = time.time()
     while(True):
         # Capture the current time
         current_time: float = time.time()
+
+        # Check to see if we have reached the desired recording duration
+        if(abs(current_time - start_time) >= duration):
+            break 
         
         # If not at a read time, skip 
         if((current_time - last_read)) < READ_INTERVAL:
@@ -76,13 +81,6 @@ def record(duration: float, filename: str):
         # Write the reading to the reading file
         readings_file.write(f'{raw_adc}\n')
 
-        # Retrieve the current time
-        current_time: float = time.time()
-
-        # Check to see if we have reached the desired recording duration
-        if(abs(current_time - start_time) >= duration):
-            break 
-        
         # Update the last read time
         last_read = current_time    
     

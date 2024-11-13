@@ -79,13 +79,35 @@ def downsample(img: np.ndarray, factor: int, output_memory_buffer: np.ndarray, l
     
     # Retrieve the shape of the image
     height, width = img.shape[0], img.shape[1]
-    new_height, new_width = img.shape[0] >> factor, img.shape[1] >> factor 
+    new_height, new_width = height >> factor, width >> factor 
     
     # Downsample the image and populate the buffer
     lib.downsample(img.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)), 
                    height, width,
                    factor,
                    output_memory_buffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))); 
+
+"""A generalized bayer-aware downsample algorithm written in CPP called by Python
+   Note: factor is a power of two. So factor=1 downscales by 2 along
+   dimension. Populates output_memory_buffer with a buffer of downsampled images. 
+   Should be the the number of frames, then the size of the image downsampled by 
+   the factor and an np.empty of dtype np.uint8"""
+def downsample_buffer(img_buffer: np.ndarray, buffer_size: int, factor: int, output_memory_buffer: np.ndarray, lib: ctypes.CDLL=None) -> None:
+    # TODO: Currently broken, causes a seg fault
+    
+    # Import the downsample library if we need to. Note, this is very time consuming
+    if(lib is None): lib = import_downsample_lib()
+    
+    # Retrieve the shape of the image
+    height, width = img_buffer.shape[1], img_buffer.shape[2]
+    new_height, new_width = height >> factor, width >> factor 
+    
+    # Downsample the image and populate the buffer
+    lib.downsample_buffer(img_buffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8)), 
+                          buffer_size, 
+                          height, width,
+                          factor,
+                          output_memory_buffer.ctypes.data_as(ctypes.POINTER(ctypes.c_uint8))); 
 
 """Main used for testing purposes"""
 def main():
