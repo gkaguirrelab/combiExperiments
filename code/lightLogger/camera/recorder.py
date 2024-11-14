@@ -41,14 +41,6 @@ downsample_factor: int = 4
 # Define a variable when used for multiprocessing to know when to begin
 wait_for_sensors: bool = False
 
-"""Add a handle to receive a USRSIG from the main process 
-   to begin capturing when all sensors have reported ready"""
-def handle_gosignal(signum):
-    print(f'World Cam: Received Go signal')
-    wait_for_sensors = True
-
-signal.signal(signal.SIGUSR1, handle_gosignal)
-
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
 def write_frame(write_queue: queue.Queue, filename: str):
@@ -173,7 +165,8 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
                 initial_gain: float, initial_exposure: int,
                 stop_flag: threading.Event,
                 is_subprocess: bool,
-                parent_pid: int):
+                parent_pid: int, 
+                go_flag: threading.Event):
     from picamera2 import Picamera2
 
     # Connect to and set up camera
@@ -261,7 +254,8 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
                  initial_gain: float, initial_exposure: int,
                  stop_flag: threading.Event,
                  is_subprocess: bool,
-                 parent_pid: int): 
+                 parent_pid: int,
+                 go_flag: threading.Event): 
     from picamera2 import Picamera2
 
     # Tell the recorder if this is a subprocess or not 
@@ -287,6 +281,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     # + settings in this is so when we send them to be written, numpy does not have 
     # to reallocate for contiguous memory, thus slowing down capture
     frame_buffer: np.array = np.zeros((CAM_FPS, 480,640), dtype=np.uint8)
+    settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float16)
 
     # Sleep for 2 seconds for this sensor to fully initialize 
     time.sleep(2)
@@ -294,16 +289,16 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     # If we were run as a subprocess, send a message to the parent 
     # process that we are ready to go
     if(is_subprocess): 
-        print('World Cam initialized. Sending ready signal...')
+        print('World Cam: Initialized. Sending ready signal...')
         os.kill(parent_pid, signal.SIGUSR1)
 
-    # If we have run as a subprocess, wait for all processes to be 
-    # ready and initialized before we begin recording
-    while(wait_for_sensors is True):
-        print('World Cam waiting for go signal...')
+        # While we have not receieved the GO signal wait 
+        while(not go_flag.is_set()):
+            print('World Cam: Waiting for GO signal...')
+            time.sleep(3)
 
     # Once the go signal has been received, begin capturing
-    print('World Cam beginning capture')
+    print('World Cam: Beginning capture')
 
     # Begin timing capture
     start_capture_time: float = time.time()

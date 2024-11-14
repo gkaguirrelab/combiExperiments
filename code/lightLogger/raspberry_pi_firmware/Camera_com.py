@@ -38,6 +38,18 @@ def handle_sigterm(signum, frame):
     raise KeyboardInterrupt
 signal.signal(signal.SIGTERM, handle_sigterm)
 
+# Create a threading flag to declare when to start recording 
+# when run as a subprocess
+go_flag: threading.Event = threading.Event()
+
+"""Add a handle to receive a USRSIG from the main process 
+   to begin capturing when all sensors have reported ready"""
+def handle_gosignal(signum, frame=None):
+    print(f'World Cam: Received Go signal')
+    go_flag.set()
+
+signal.signal(signal.SIGUSR1, handle_gosignal)
+
 def main():
     output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview, unpack_frames, is_subprocess, parent_pid = parse_args()
     
@@ -63,7 +75,8 @@ def main():
                                                                                initial_gain, initial_exposure,
                                                                                stop_flag,
                                                                                is_subprocess,
-                                                                               parent_pid))
+                                                                               parent_pid,
+                                                                               go_flag))
     write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename))
     
     # Begin the threads
