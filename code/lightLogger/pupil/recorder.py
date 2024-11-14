@@ -171,9 +171,6 @@ def record_video(duration: float, write_queue: queue.Queue,
     # worth of video
     frame_buffer: np.array = np.zeros((CAM_FPS, 400, 400), dtype=np.uint8)
 
-    # Sleep for 2 seconds (same as for the world cam, so initialization can finish)
-    time.sleep(2)
-
     # If we were run as a subprocess, send a message to the parent 
     # process that we are ready to go
     if(is_subprocess): 
@@ -181,8 +178,14 @@ def record_video(duration: float, write_queue: queue.Queue,
         os.kill(parent_pid, signal.SIGUSR1)
 
         # While we have not receieved the GO signal wait 
+        last_read: float = time.time()
         while(not go_flag.is_set()):
-            print('Pupil Cam: Waiting for GO signal...')
+            # Every 2 seconds, output a message
+            current_wait: float = time.time()
+            
+            if((current_wait - last_read) >= 2):
+                print('Pupil Cam: Waiting for GO signal...')
+                last_read = current_wait
 
     # Once the go signal has been received, begin capturing
     print('Pupil Cam: Beginning capture')

@@ -19,6 +19,30 @@ def parse_args() -> tuple:
 
     return args.config_path, args.n_bursts, args.burst_seconds, bool(args.shell_output)
 
+"""Find all PIDS of processes with a given name"""
+def find_all_pids(target_name: str) -> list:
+    # Initialize a list to store the pids we find 
+    # of processes with the target name
+    pids: list = []
+
+    # Iterate over the existing processes
+    for proc in psutil.process_iter(attrs=['pid', 'name']):
+        # Try to access the process information
+        try:
+            # Get the process's info, including name and pid
+            process_name: str = proc.info['name']
+            pid: int = proc.info['pid']
+            
+            # Check if process name matches the target name
+            if(process_name == target_name):
+                pids.append(pid)
+        
+        # Skip errored processes
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    
+    return pids
+
 """Parse the arguments for each subprocess from the main commandline run file"""
 def parse_process_args(config_path: str) -> tuple:
     # Define a container for the experiment name + path 
@@ -80,9 +104,6 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
     # List to keep track of process objects
     processes: list = []
 
-    # Create a mapping by PID to controller name
-    controllers_by_pid: dict = {}
-
     # Initialize a dict of controller names and if they are initialized 
     # or not
     controllers_ready: list = []
@@ -105,12 +126,6 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
                              stdout=sys.stdout,
                              stderr=sys.stderr,
                              shell=shell_output)
-        
-        # For some reason, spawning these sub processes actually makes it so 
-        # that the real PID is 2 plus the number reported by subprocess 
-        # I presume this is because we are spawning 2 threads? But in any case
-        # just record that here 
-        changed_pid: int = p.pid + 2
 
         # Turn p into a psutil process so we can set core 
         # affinity and niceity
@@ -119,35 +134,41 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
         # Set the cpu affinity (which core this will run on)
         # as well as its niceity (priority)
         psutil_process.cpu_affinity([core])
-        
+
         # Have to include this to define niceity because 
         # using the psutil_process.nice() command requires sudo 
         # privelges, which if I run this script with, says my 
         # libraries don't exist
         # Also do before change and after to ensure both are top priority
         os.system(f"sudo renice -n -20 -p {p.pid}")
-        os.system(f"sudo renice -n -20 -p {changed_pid}")
 
         # Append this process to the list of processes 
         # and its pid to the list of pids
         processes.append(p)
 
-        # Associate this pid with a component controller 
-        controllers_by_pid[p.pid] = script
-
     # Wait for all of the sensors to initialize by waiting for their signals
+    last_read: float = time.time()
     while(len(controllers_ready) != len(component_controllers)):
-        print(f'Waiting for all controllers to initialize: {len(controllers_ready)}/{len(component_controllers)}')
+        # Every 2 seconds, output a message
+        current_wait: float = time.time()
+        
+        if((current_wait - last_read) >= 3):
+            print(f'Waiting for all controllers to initialize: {len(controllers_ready)}/{len(component_controllers)}')
+            last_read = current_wait
     
+    # Have all sensors sleep for 2 seconds 
+    time.sleep(2)
+    
+    # Find the current PID of all of the controllers (basically, everything with Python in it)
+    pids: list = find_all_pids('python3')
+
     # Once all sensors are initialized, send a go signal to them
     print(f'Master process {master_pid} sending go signals...')
-    for (pid, component_controller) in controllers_by_pid.items():
-        # Reconstruct the altered PID (for unknown reasons) once again
-        changed_pid: int = pid+2 
+    for pid in pids:
         
         # Send the signal to begin recording
-        print(f'\tSending GO to: {changed_pid} | {component_controller}')
-        os.kill(changed_pid, signal.SIGUSR1)
+        print(f'\tSending GO to: {pid}')
+        os.kill(pid, signal.SIGUSR1)
 
     # Denote the start time of this burst as when all sensors 
     # have begun and their priorities have been set

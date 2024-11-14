@@ -61,10 +61,6 @@ def record(duration: float, filename: str,
     # Initialize the file to output readings to
     readings_file: object = open(filename, 'a')
 
-    # Sleep for 2 seconds along with all sensors to wait for all of them 
-    # to initialize 
-    time.sleep(2)
-
     # If we were run as a subprocess, send a message to the parent 
     # process that we are ready to go
     if(is_subprocess): 
@@ -72,8 +68,14 @@ def record(duration: float, filename: str,
         os.kill(parent_pid, signal.SIGUSR1)
 
         # While we have not receieved the GO signal wait 
+        last_read: float = time.time()
         while(not go_flag.is_set()):
-            print('Sunglasses: Waiting for GO signal...')
+            # Every 2 seconds, output a message
+            current_wait: float = time.time()
+            
+            if((current_wait - last_read) >= 2):
+                print('Sunglasses: Waiting for GO signal...')
+                last_read = current_wait
 
     # Once the go signal has been received, begin capturing
     print('Sunglasses: Beginning capture')
