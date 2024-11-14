@@ -250,6 +250,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     # Connect to and set up camera
     print(f"Initializing camera")
     cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
+
     gain_change_interval: float = 0.250 # the time between AGC adjustments 
     
     # Begin Recording and capture initial metadata 
@@ -267,6 +268,9 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     frame_buffer: np.array = np.zeros((CAM_FPS, 480,640), dtype=np.uint8)
     settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float32)   
     #frame_timings_buffer: np.array = np.zeros((CAM_FPS,2), dtype=float) 
+
+    # Sleep for 2 seconds (same as for the pupil cam, so initialization can finish)
+    time.sleep(2)
 
     # Begin timing capture
     start_capture_time: float = time.time()

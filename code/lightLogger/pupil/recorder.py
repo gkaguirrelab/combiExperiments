@@ -165,6 +165,9 @@ def record_video(duration: float, write_queue: queue.Queue,
     # worth of video
     frame_buffer: np.array = np.zeros((CAM_FPS, 400, 400), dtype=np.uint8)
 
+    # Sleep for 2 seconds (same as for the world cam, so initialization can finish)
+    time.sleep(2)
+
     # Begin timing capture
     start_capture_time: float = time.time() 
     
