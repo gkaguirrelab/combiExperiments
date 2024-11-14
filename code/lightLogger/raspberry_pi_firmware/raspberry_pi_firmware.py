@@ -6,6 +6,9 @@ import psutil
 import os 
 import signal
 
+# The time in seconds to allow for sensors to start up
+sensor_initialization_time: float = 3
+
 """Parse the command line arguments"""
 def parse_args() -> tuple:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description='Main control software for managing each component of the device')
@@ -156,16 +159,15 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
             print(f'Waiting for all controllers to initialize: {len(controllers_ready)}/{len(component_controllers)}')
             last_read = current_wait
     
-    # Have all sensors sleep for 2 seconds 
-    time.sleep(2)
+    # Have all sensors sleep for 3 seconds 
+    time.sleep(sensor_initialization_time)
     
     # Find the current PID of all of the controllers (basically, everything with Python in it)
     pids: list = find_all_pids('python3')
 
     # Once all sensors are initialized, send a go signal to them
     print(f'Master process {master_pid} sending go signals...')
-    for pid in pids:
-        
+    for pid in pids:        
         # Send the signal to begin recording
         print(f'\tSending GO to: {pid}')
         os.kill(pid, signal.SIGUSR1)
@@ -176,8 +178,7 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
     current_time: float = start_time
 
     # Record burst seconds long with extra time for initialization 
-    initialization_time: float = 2
-    while((current_time - start_time) + initialization_time < burst_seconds):
+    while((current_time - start_time) < (burst_seconds + sensor_initialization_time)):
         time.sleep(1)
         current_time = time.time()
     
