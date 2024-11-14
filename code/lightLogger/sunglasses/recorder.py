@@ -1,11 +1,16 @@
 import smbus
 import time
+import threading
+import os
+import signal
 
 # Interval in seconds that readings will be apart
 READ_INTERVAL: float = 5
 
 """Record from the device live with no duration"""
-def record_live(duration: float, filename: str):
+def record_live(duration: float, filename: str,
+                is_subprocess: bool, parent_pid: int,
+                go_flag: threading.Event):
     # Initialize the readings file variable
     readings_file: object = None
 
@@ -47,12 +52,32 @@ def record_live(duration: float, filename: str):
         readings_file.close()
 
 """Record from the device for a given duration"""
-def record(duration: float, filename: str):
+def record(duration: float, filename: str,
+           is_subprocess: bool, parent_pid: int, 
+           go_flag: threading.Event):
     # Initialize a connection to the device
     device: smbus.SMBus = initialize_connection()
 
     # Initialize the file to output readings to
     readings_file: object = open(filename, 'a')
+
+    # Sleep for 2 seconds along with all sensors to wait for all of them 
+    # to initialize 
+    time.sleep(2)
+
+    # If we were run as a subprocess, send a message to the parent 
+    # process that we are ready to go
+    if(is_subprocess): 
+        print('Sunglasses: Initialized. Sending ready signal...')
+        os.kill(parent_pid, signal.SIGUSR1)
+
+        # While we have not receieved the GO signal wait 
+        while(not go_flag.is_set()):
+            print('Sunglasses: Waiting for GO signal...')
+            time.sleep(3)
+
+    # Once the go signal has been received, begin capturing
+    print('Sunglasses: Beginning capture')
 
     # Begin recording
     start_time: float = time.time()

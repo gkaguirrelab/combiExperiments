@@ -135,10 +135,9 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
         # Associate this pid with a component controller 
         controllers_by_pid[p.pid] = script
 
-
     # Wait for all of the sensors to initialize by waiting for their signals
     while(len(controllers_ready) != len(component_controllers)):
-        print(f'Waiting for all controllers to initialize: {len(controllers_ready)/len(component_controllers)}')
+        print(f'Waiting for all controllers to initialize: {len(controllers_ready)}/{len(component_controllers)}')
         time.sleep(10)
     
     # Once all sensors are initialized, send a go signal to them
@@ -150,7 +149,6 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
         # Send the signal to begin recording
         print(f'\tSending GO to: {changed_pid} | {component_controller}')
         os.kill(changed_pid, signal.SIGUSR1)
-
 
     # Denote the start time of this burst as when all sensors 
     # have begun and their priorities have been set
@@ -181,16 +179,19 @@ def main():
     print('Parsing processes and args...')
     component_controllers, experiment_name = parse_process_args(config_path)
 
+    # Assert we have put some controllers into the file 
+    assert(len(component_controllers) != 0)
+
+    # Assert we have entered valid process names and args for each 
+    assert(all(name in valid_processes for name in component_controllers))
+
     # Make a supra directory for this experiment 
     # if it does not exist 
     if(not os.path.exists(experiment_name)):
         os.makedirs(experiment_name)
 
-    # Assign max priority to all processes
+     # Assign max priority to all processes
     cores_and_priorities: list = [(process_num, -20) for process_num in range(len(component_controllers))]
-
-    # Assert we have entered valid process names and args for each 
-    assert(all(name in valid_processes for name in component_controllers))
 
     # Now, add the burst seconds of capture argument for the controllers we are 
     # using

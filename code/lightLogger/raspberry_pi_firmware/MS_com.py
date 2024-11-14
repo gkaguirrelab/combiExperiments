@@ -17,10 +17,12 @@ def parse_args() -> str:
 
     parser.add_argument('output_path', type=str, help='The folder in which to output the MS readings.')
     parser.add_argument('duration', type=float, help='Duration of the video')
+    parser.add_argument('--is_subprocess', default=0, type=int, help='A flag to tell this process if it has been run as a subprocess or not')
+    parser.add_argument('--parent_pid', default=0, type=int, help='A flag to tell this process what the pid is of the parent process which called it')
 
     args = parser.parse_args()
 
-    return args.output_path, args.duration
+    return args.output_path, args.duration, bool(args.is_subprocess), args.parent_pid
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
@@ -28,11 +30,22 @@ def handle_sigterm(signum, frame):
     raise KeyboardInterrupt
 signal.signal(signal.SIGTERM, handle_sigterm)
 
+# Create a threading flag to declare when to start recording 
+# when run as a subprocess
+go_flag: threading.Event = threading.Event()
+
+"""Add a handle to receive a USRSIG from the main process 
+   to begin capturing when all sensors have reported ready"""
+def handle_gosignal(signum, frame=None):
+    print(f'MS: Received Go signal')
+    go_flag.set()
+
+signal.signal(signal.SIGUSR1, handle_gosignal)
 
 def main():
     # Initialize output directory and names 
     # of reading files
-    output_directory, duration = parse_args()
+    output_directory, duration, is_subprocess, parent_pid = parse_args()
     reading_names: list = ['AS_channels','TS_channels',
                            'LS_channels','LS_temp']
 
@@ -49,7 +62,8 @@ def main():
     stop_flag: threading.Event = threading.Event()
 
     # Build thread processes for both capturing frames and writing frames 
-    capture_thread: threading.Thread = threading.Thread(target=recorder, args=(duration, write_queue, stop_flag))
+    capture_thread: threading.Thread = threading.Thread(target=recorder, args=(duration, write_queue, stop_flag,
+                                                                               is_subprocess, parent_pid, go_flag))
     write_thread: threading.Thread = threading.Thread(target=write_SERIAL, args=(write_queue, reading_names, output_directory))
     
     # Begin the threads

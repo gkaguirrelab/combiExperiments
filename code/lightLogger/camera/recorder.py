@@ -38,9 +38,6 @@ CAM_IMG_DIMS: np.ndarray = np.array((480, 640))
 # The power of 2 to downsample the recorded image by 
 downsample_factor: int = 4
 
-# Define a variable when used for multiprocessing to know when to begin
-wait_for_sensors: bool = False
-
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
 def write_frame(write_queue: queue.Queue, filename: str):
@@ -257,10 +254,6 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
                  parent_pid: int,
                  go_flag: threading.Event): 
     from picamera2 import Picamera2
-
-    # Tell the recorder if this is a subprocess or not 
-    # and therefore if we should wait for sensors 
-    wait_for_sensors = is_subprocess
 
     # Connect to and set up camera
     print(f"Initializing camera")

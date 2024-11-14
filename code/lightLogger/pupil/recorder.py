@@ -8,7 +8,9 @@ import threading
 import pandas as pd
 from natsort import natsorted
 import matplotlib.pyplot as plt
+import signal
 
+# The FPS we have locked the camera to
 CAM_FPS: int = 120
 
 """Unpack chunks of n captured frames. This is used 
@@ -107,7 +109,9 @@ def write_frame(write_queue: queue.Queue, filename: str):
 
 """Record live from the camera with no specified duration"""
 def record_live(duration: float, write_queue: queue.Queue, 
-                filename: str, stop_flag: threading.Event):
+                filename: str, stop_flag: threading.Event,
+                is_subprocess: bool, parent_pid: int,
+                go_flag: threading.Event):
     # Import the necessary library (causes conflict on other machines, so just do it locally)
     import uvc
 
@@ -150,7 +154,9 @@ def record_live(duration: float, write_queue: queue.Queue,
 
 """Record a viceo from the Raspberry Pi camera"""
 def record_video(duration: float, write_queue: queue.Queue, 
-                 filename: str, stop_flag: threading.Event): 
+                 filename: str, stop_flag: threading.Event,
+                 is_subprocess: bool, parent_pid: int,
+                 go_flag: threading.Event): 
     # Import the necessary library (causes conflict on other machines, so just do it locally)
     import uvc
 
@@ -167,6 +173,20 @@ def record_video(duration: float, write_queue: queue.Queue,
 
     # Sleep for 2 seconds (same as for the world cam, so initialization can finish)
     time.sleep(2)
+
+    # If we were run as a subprocess, send a message to the parent 
+    # process that we are ready to go
+    if(is_subprocess): 
+        print('Pupil Cam: Initialized. Sending ready signal...')
+        os.kill(parent_pid, signal.SIGUSR1)
+
+        # While we have not receieved the GO signal wait 
+        while(not go_flag.is_set()):
+            print('Pupil Cam: Waiting for GO signal...')
+            time.sleep(3)
+
+    # Once the go signal has been received, begin capturing
+    print('Pupil Cam: Beginning capture')
 
     # Begin timing capture
     start_capture_time: float = time.time() 

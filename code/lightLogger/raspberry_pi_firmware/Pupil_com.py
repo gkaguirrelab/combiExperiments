@@ -22,10 +22,12 @@ def parse_args() -> tuple:
     parser.add_argument('--save_frames', default=0, type=int, help='Choose whether or not to save frames of a video after finished recording')
     parser.add_argument('--preview', default=0, type=int, help='Display a preview of the view of the camera before capturing')
     parser.add_argument('--unpack_frames', default=0, type=int, help='Unpack the buffers of frames files into single frame files or not')
+    parser.add_argument('--is_subprocess', default=0, type=int, help='A flag to tell this process if it has been run as a subprocess or not')
+    parser.add_argument('--parent_pid', default=0, type=int, help='A flag to tell this process what the pid is of the parent process which called it')
    
     args = parser.parse_args()
     
-    return args.output_path, args.duration, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames)
+    return args.output_path, args.duration, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames), bool(args.is_subprocess), args.parent_pid
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
@@ -33,8 +35,21 @@ def handle_sigterm(signum, frame):
     raise KeyboardInterrupt
 signal.signal(signal.SIGTERM, handle_sigterm)
 
+# Create a threading flag to declare when to start recording 
+# when run as a subprocess
+go_flag: threading.Event = threading.Event()
+
+"""Add a handle to receive a USRSIG from the main process 
+   to begin capturing when all sensors have reported ready"""
+def handle_gosignal(signum, frame=None):
+    print(f'Pupil Cam: Received Go signal')
+    go_flag.set()
+
+signal.signal(signal.SIGUSR1, handle_gosignal)
+
+
 def main():
-    output_path, duration, save_video, save_frames, preview, unpack_frames = parse_args()
+    output_path, duration, save_video, save_frames, preview, unpack_frames, is_subprocess, parent_pid = parse_args()
 
     # If the preview is true, view a preview of the camera view before capture
     if(preview is True):
@@ -54,7 +69,10 @@ def main():
 
     # Build thread processes for both capturing frames and writing frames 
     capture_thread: threading.Thread = threading.Thread(target=recorder, args=(duration, write_queue, 
-                                                                               filename, stop_flag))
+                                                                               filename, stop_flag,
+                                                                               is_subprocess,
+                                                                               parent_pid,
+                                                                               go_flag))
     write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename))
     
     # Begin the threads

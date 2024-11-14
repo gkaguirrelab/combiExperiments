@@ -5,6 +5,7 @@ import time
 import serial
 import os
 import sys
+import signal
 from MS_util import reading_to_string, parse_SERIAL
 
 """Write MS readings taken from the serial connection"""
@@ -48,11 +49,32 @@ def record_live(duration: float, write_queue: queue.Queue,
 
 """Record from all of the MS sensors for a set length of time"""
 def record_video(duration: float, write_queue: queue.Queue,
-                 stop_flag: threading.Event) -> None:
+                 stop_flag: threading.Event,
+                 is_subprocess: bool, 
+                 parent_pid: int, 
+                 go_flag: threading.Event) -> None:
 
         # Initialize a serial connection to the Minispect 
         # and how many bytes it will be transfering
         ms, msg_length = initialize_ms()
+
+        # Sleep for a certain amount of time (equal to all other sensors)
+        # while the sensors initialize 
+        time.sleep(2)
+
+        # If we were run as a subprocess, send a message to the parent 
+        # process that we are ready to go
+        if(is_subprocess): 
+            print('MS: Initialized. Sending ready signal...')
+            os.kill(parent_pid, signal.SIGUSR1)
+
+            # While we have not receieved the GO signal wait 
+            while(not go_flag.is_set()):
+                print('MS: Waiting for GO signal...')
+                time.sleep(3)
+
+        # Once the go signal has been received, begin capturing
+        print('MS: Beginning capture')
 
         # Initialize the start time of recording
         start_time: float = time.time() 
