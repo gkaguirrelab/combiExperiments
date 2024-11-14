@@ -154,8 +154,9 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
     start_time: float = time.time()
     current_time: float = start_time
 
-    # Record burst seconds long
-    while((current_time - start_time) < burst_seconds):
+    # Record burst seconds long with extra time for initialization 
+    initialization_time: float = 2
+    while((current_time - start_time) + initialization_time < burst_seconds):
         time.sleep(1)
         current_time = time.time()
     
@@ -225,7 +226,7 @@ def main():
         burst_num += 1
 
         # Sleep for a few seconds for things to flush
-        time.sleep(5)
+        time.sleep(2)
 
 
 if(__name__ == '__main__'):
