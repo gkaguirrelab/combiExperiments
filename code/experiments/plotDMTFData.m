@@ -78,21 +78,19 @@ for nn = 1:length(NDlabelsAll)
         box off
         title([modDirections{dd} ' ND' NDlabelsAll{nn}],'Interpreter','none');
 
-        % Add a fit line. We wish to enforce that the fit has a zero
-        % intercept at an arbirtarily small stimulus frequency, so we have
-        % to do some business here to achieve this.
-        mdl = fitlm(log10(refFreq)+1,log10(testFreq)+1,'Intercept',false);
-        xFitLog = [0 log10(refFreq)+1]';
+        % Add a fit line.
+        mdl = fitlm(log10(refFreq),log10(testFreq));
+        xFitLog = log10(refFreq)';
         yFitLog = predict(mdl,xFitLog);
-        xFit = 10.^(xFitLog-1);
-        yFit = 10.^(yFitLog-1);
+        xFit = 10.^(xFitLog);
+        yFit = 10.^(yFitLog);
         plot(xFit,yFit,'-b','LineWidth',2);
 
         % Add a shaded region to indicate the variance of the residuals
-        mean2DF = std(mdl.Residuals.Raw)*2;
+        meanStd = std(mdl.Residuals.Raw);
         xVerts = [1 32 32 1];
-        yVertsLog = (predict(mdl,log10(xVerts')+1)-1)';
-        yVerts = 10.^(yVertsLog + repmat(mean2DF,1,4) .* [0.5 0.5 -0.5 -0.5]);
+        yVertsLog = predict(mdl,log10(xVerts'))';
+        yVerts = 10.^(yVertsLog + repmat(meanStd,1,4) .* [0.5 0.5 -0.5 -0.5]);
         patch(xVerts,yVerts,'b','FaceColor','b','LineStyle','none','FaceAlpha',.3)
 
     end
