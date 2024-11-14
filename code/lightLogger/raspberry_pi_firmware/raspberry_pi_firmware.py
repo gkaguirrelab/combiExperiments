@@ -138,7 +138,6 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
     # Wait for all of the sensors to initialize by waiting for their signals
     while(len(controllers_ready) != len(component_controllers)):
         print(f'Waiting for all controllers to initialize: {len(controllers_ready)}/{len(component_controllers)}')
-        time.sleep(10)
     
     # Once all sensors are initialized, send a go signal to them
     print(f'Master process {master_pid} sending go signals...')

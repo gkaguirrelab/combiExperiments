@@ -288,7 +288,6 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
         # While we have not receieved the GO signal wait 
         while(not go_flag.is_set()):
             print('World Cam: Waiting for GO signal...')
-            time.sleep(3)
 
     # Once the go signal has been received, begin capturing
     print('World Cam: Beginning capture')

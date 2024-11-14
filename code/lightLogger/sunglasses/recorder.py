@@ -74,7 +74,6 @@ def record(duration: float, filename: str,
         # While we have not receieved the GO signal wait 
         while(not go_flag.is_set()):
             print('Sunglasses: Waiting for GO signal...')
-            time.sleep(3)
 
     # Once the go signal has been received, begin capturing
     print('Sunglasses: Beginning capture')
