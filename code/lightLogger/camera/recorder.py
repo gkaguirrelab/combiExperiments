@@ -11,6 +11,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import multiprocessing as mp
 import psutil
+import signal
+
 
 """Import the custom AGC library"""
 agc_lib_path = os.path.join(os.path.dirname(__file__), 'AGC_lib')
@@ -35,6 +37,17 @@ CAM_IMG_DIMS: np.ndarray = np.array((480, 640))
 
 # The power of 2 to downsample the recorded image by 
 downsample_factor: int = 4
+
+# Define a variable when used for multiprocessing to know when to begin
+wait_for_sensors: bool = False
+
+"""Add a handle to receive a USRSIG from the main process 
+   to begin capturing when all sensors have reported ready"""
+def handle_gosignal(signum):
+    print(f'World Cam: Received Go signal')
+    wait_for_sensors = True
+
+signal.signal(signal.SIGUSR1, handle_gosignal)
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
@@ -158,7 +171,9 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 """Record live from the camera with no specified duration"""
 def record_live(duration: float, write_queue: queue.Queue, filename: str, 
                 initial_gain: float, initial_exposure: int,
-                stop_flag: threading.Event):
+                stop_flag: threading.Event,
+                is_subprocess: bool,
+                parent_pid: int):
     from picamera2 import Picamera2
 
     # Connect to and set up camera
@@ -244,8 +259,14 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
 """Record a viceo from the Raspberry Pi camera"""
 def record_video(duration: float, write_queue: queue.Queue, filename: str, 
                  initial_gain: float, initial_exposure: int,
-                 stop_flag: threading.Event): 
+                 stop_flag: threading.Event,
+                 is_subprocess: bool,
+                 parent_pid: int): 
     from picamera2 import Picamera2
+
+    # Tell the recorder if this is a subprocess or not 
+    # and therefore if we should wait for sensors 
+    wait_for_sensors = is_subprocess
 
     # Connect to and set up camera
     print(f"Initializing camera")
@@ -266,11 +287,23 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     # + settings in this is so when we send them to be written, numpy does not have 
     # to reallocate for contiguous memory, thus slowing down capture
     frame_buffer: np.array = np.zeros((CAM_FPS, 480,640), dtype=np.uint8)
-    settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float32)   
-    #frame_timings_buffer: np.array = np.zeros((CAM_FPS,2), dtype=float) 
 
-    # Sleep for 2 seconds (same as for the pupil cam, so initialization can finish)
+    # Sleep for 2 seconds for this sensor to fully initialize 
     time.sleep(2)
+
+    # If we were run as a subprocess, send a message to the parent 
+    # process that we are ready to go
+    if(is_subprocess): 
+        print('World Cam initialized. Sending ready signal...')
+        os.kill(parent_pid, signal.SIGUSR1)
+
+    # If we have run as a subprocess, wait for all processes to be 
+    # ready and initialized before we begin recording
+    while(wait_for_sensors is True):
+        print('World Cam waiting for go signal...')
+
+    # Once the go signal has been received, begin capturing
+    print('World Cam beginning capture')
 
     # Begin timing capture
     start_capture_time: float = time.time()

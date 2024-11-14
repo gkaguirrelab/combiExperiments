@@ -25,10 +25,12 @@ def parse_args() -> tuple:
     parser.add_argument('--initial_gain', default=1.0, type=float, help='Gain value with which to initialize the camera')
     parser.add_argument('--initial_exposure', default=1000, type=int, help='Exposure value with which to initialize the camera')
     parser.add_argument('--unpack_frames', default=0, type=int, help='Unpack the buffers of frames files into single frame files or not')
+    parser.add_argument('--is_subprocess', default=0, type=int, help='A flag to tell this process if it has been run as a subprocess or not')
+    parser.add_argument('--parent_pid', default=0, type=int, help='A flag to tell this process what the pid is of the parent process which called it')
 
     args = parser.parse_args()
     
-    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames)
+    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames), bool(args.is_subprocess), args.parent_pid
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
@@ -37,7 +39,7 @@ def handle_sigterm(signum, frame):
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 def main():
-    output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview, unpack_frames = parse_args()
+    output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview, unpack_frames, is_subprocess, parent_pid = parse_args()
     
     # If the preview flag is true, first display a preview of the camera 
     # until it is in position
@@ -59,7 +61,9 @@ def main():
     # Build thread processes for both capturing frames and writing frames 
     capture_thread: threading.Thread = threading.Thread(target=recorder, args=(duration, write_queue, filename, 
                                                                                initial_gain, initial_exposure,
-                                                                               stop_flag))
+                                                                               stop_flag,
+                                                                               is_subprocess,
+                                                                               parent_pid))
     write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename))
     
     # Begin the threads

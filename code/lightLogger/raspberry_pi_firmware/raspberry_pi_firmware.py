@@ -54,8 +54,16 @@ def parse_process_args(config_path: str) -> tuple:
             # burst placeholder and extension
             filename_formula: str = os.path.join(experiment_name, os.path.basename(experiment_name.strip('/')) + file_extension)
 
+            # Recombine the args into one commandline string
+            args: str = " ".join(tokens[0:1] + [program_name, filename_formula] + tokens[3:]).strip()
+
+            # Because we are going to run this process as a subprocess, 
+            # we must ensure it has both the flag and a placeholder 
+            # for the pid of this parent process
+            assert('--is_subprocess 1' in args and '--parent_pid X' in args)
+
             # Save the arguments for the given program name
-            controllers_and_args[program_name] = " ".join(tokens[0:1] + [program_name, filename_formula] + tokens[3:]).strip()
+            controllers_and_args[program_name] = args
 
     return controllers_and_args, experiment_name
      
@@ -66,14 +74,27 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
                   burst_num: int,
                   shell_output: bool= True) -> None:
 
+    # Determine the current pid of this master process
+    master_pid: int = os.getpid()
+
     # List to keep track of process objects
     processes: list = []
+
+    # Initialize a dict of controller names and if they are initialized 
+    # or not
+    controllers_ready: list = []
+
+    """Define a function to receive signals when the processes are ready"""
+    def receive_readysig(signal):
+        print(f'Received a sensor ready signal!')
+        controllers_ready.append(True)
 
     # Iterate over the other scripts and start them with their associated arguments
     for (script, args), (core, priority) in zip(component_controllers.items(), CPU_priorities):
         # In the args, we must replace the burstX with the burst number
-        args: str = args.replace('burstX', f'burst{burst_num}')
-        
+        # and the parent process ID with the parent processID of this file 
+        args: str = args.replace('burstX', f'burst{burst_num}').replace('--parent_pid X', f'--parent_pid {master_pid}')
+
         # Launch the subprocess
         p = subprocess.Popen(args,
                              stdout=sys.stdout,
@@ -96,6 +117,10 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
 
         # Append this process to the list of processes 
         processes.append(p)
+
+    # Wait for all of the sensors to initialize by waiting for their signals
+    while(len(controllers_ready) != len(component_controllers)):
+        print(f'Waiting for all controllers to initialize: {len(controllers_ready)/len(component_controllers)}')
 
     # Denote the start time of this burst as when all sensors 
     # have begun and their priorities have been set
