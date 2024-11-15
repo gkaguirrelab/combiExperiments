@@ -35,7 +35,11 @@ for nn = 1:length(NDlabelsAll)
         psychFileStem = [subjectID '_' modDirections{dd} '_' experimentName ...
             '_' strrep(num2str(targetPhotoreceptorContrast(dd)),'.','x')];
         filename = fullfile(dataDir,[psychFileStem '.mat']);
-        load(filename,'psychObj');
+        if ~isfile(filename)
+            continue
+        else
+            load(filename,'psychObj');
+        end
 
         % Extract the ref and test frequencies
         refFreq = [psychObj.trialData.refFreq];
