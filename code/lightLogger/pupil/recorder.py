@@ -137,14 +137,14 @@ def record_live(duration: float, write_queue: queue.Queue,
 
         # Store the grayscale frame + settings into the allocated memory buffers
         frame_buffer[frame_num % CAM_FPS] = frame_obj.gray
+        
+        # Record the next frame number
+        frame_num += 1 
 
         # If we have finished capturing one second of video, 
         # send the buffer to be written
         if(frame_num % CAM_FPS == 0):
             write_queue.put((frame_buffer, frame_num))
-
-        # Record the next frame number
-        frame_num += 1 
 
     # Signal the end of the write queue
     write_queue.put(None)
@@ -191,7 +191,7 @@ def record_video(duration: float, write_queue: queue.Queue,
     print('Pupil Cam: Beginning capture')
 
     # Begin timing capture
-    start_capture_time: float = time.time() 
+    start_capture_time = time.time() 
     
     # Capture duration (seconds) of frames
     frame_num: int = 0
@@ -209,13 +209,13 @@ def record_video(duration: float, write_queue: queue.Queue,
         # Store the grayscale frame + settings into the allocated memory buffers
         frame_buffer[frame_num % CAM_FPS] = frame_obj.gray
 
+        # Record the next frame number
+        frame_num += 1 
+
         # If we have finished capturing one second of video, 
         # send the buffer to be written
         if(frame_num % CAM_FPS == 0):
             write_queue.put((frame_buffer, frame_num))
-
-        # Record the next frame number
-        frame_num += 1 
             
     # Record timing of end of capture 
     end_capture_time: float = time.time()
