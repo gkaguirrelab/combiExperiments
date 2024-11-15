@@ -7,7 +7,7 @@ import os
 import signal
 
 # The time in seconds to allow for sensors to start up
-sensor_initialization_time: float = 3
+sensor_initialization_time: float = 0.25
 
 """Parse the command line arguments"""
 def parse_args() -> tuple:
@@ -178,7 +178,7 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
     current_time: float = start_time
 
     # Record burst seconds long with extra time for initialization 
-    while((current_time - start_time) < (burst_seconds + sensor_initialization_time)):
+    while((current_time - start_time) < burst_seconds):
         time.sleep(1)
         current_time = time.time()
     
