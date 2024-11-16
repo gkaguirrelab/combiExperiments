@@ -13,11 +13,9 @@ simulateResponse = obj.simulateResponse;
 % Determine if we are giving feedback on each trial
 giveFeedback = obj.giveFeedback;
 
-% The calling function sets the refPuffPSI, the duration of each puff, and
-% the inter-puff-interval
+% The calling function sets the refPuffPSI and the duration of each puff
 refPuffPSI = obj.refPuffPSI;
 stimulusDurationSecs = obj.stimulusDurationSecs;
-interStimulusIntervalSecs = obj.interStimulusIntervalSecs;
 
 % Get the stimParam to use for this trial. Can use either a staircase or
 % QUEST+
@@ -95,10 +93,8 @@ if ~simulateStimuli
     for ii=1:2
 
         % Prepare the stimulus
-        stopTime = cputime() + obj.interStimulusIntervalSecs;
-        obj.CombiAirObj.setDurationDirect(intervalParams(ii,1));
+        obj.CombiAirObj.setDurationDirect(intervalParams(ii,1)*1000);
         obj.CombiAirObj.setPressureDirect(intervalParams(ii,2));
-        obj.waitUntil(stopTime);
 
         % Present the stimulus. If it is the first interval, wait the
         % entire stimulusDuration. If it is the second interval. just wait

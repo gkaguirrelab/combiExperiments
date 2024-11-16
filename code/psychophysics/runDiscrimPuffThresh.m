@@ -4,10 +4,9 @@ function runDiscrimPuffThresh(subjectID,refPuffPSI,varargin)
 %
 % Examples:
 %{
-    subjectID = 'PILT_0001';
-    NDlabel = '0x5';
+    subjectID = 'DEMO_0001';
     refPuffPSI = 10;
-    runDiscrimThreshExperiment(subjectID,NDlabel,refPuffPSI);
+    runDiscrimPuffThresh(subjectID,refPuffPSI);
 %}
 
 % Parse the parameters
@@ -18,7 +17,8 @@ p.addParameter('projectName','combiAir',@ischar);
 p.addParameter('stimParamsHi',linspace(0,1,51),@isnumeric);
 p.addParameter('stimParamsLow',linspace(-1,0,51),@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
-p.addParameter('nBlocks',1,@isnumeric);
+p.addParameter('nBlocks',5,@isnumeric);
+p.addParameter('useStaircase',false,@islogical);
 p.addParameter('verboseCombiAir',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.parse(varargin{:})
@@ -26,6 +26,7 @@ p.parse(varargin{:})
 %  Pull out of the p.Results structure
 nTrialsPerBlock = p.Results.nTrialsPerBlock;
 nBlocks = p.Results.nBlocks;
+useStaircase = p.Results.useStaircase;
 verboseCombiAir = p.Results.verboseCombiAir;
 verbosePsychObj = p.Results.verbosePsychObj;
 
@@ -71,7 +72,6 @@ for bb=1:nBlocks
     for ss = 1:2
 
         % Define the filestem for this psychometric object
-        dataDir = fullfile(subjectDir,experimentName);
         psychFileStem = [subjectID '_' experimentName ...
             '_refPSI-' num2str(refPuffPSI) ...
             '_' stimParamLabels{ss}];
@@ -91,10 +91,13 @@ for bb=1:nBlocks
             % Increment blockIdx
             psychObj.blockIdx = psychObj.blockIdx+1;
             psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
+            % Update the useStaircase flag in case this has changed
+            psychObj.useStaircase = useStaircase;
         else
             % Create the object
             psychObj = PsychDiscrimPuffThreshold(CombiAirObj,refPuffPSI,...
-                'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj);
+                'stimParamsDomainList',stimParamsDomainList,...
+                'verbose',verbosePsychObj,'useStaircase',useStaircase);
             % Store the filename
             psychObj.filename = filename;
         end
@@ -108,6 +111,7 @@ for bb=1:nBlocks
     end
 
     % Start the block
+    Speak('Ready');
     fprintf('Press enter to start block %d...',bb);
     input('');
 

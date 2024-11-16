@@ -87,7 +87,7 @@ title('Entropy by trial number')
 
 % Add a supertitle
 str = sprintf('Ref freq = %d Hz; [mu, sigma] = [%2.3f,%2.3f]',...
-    obj.refFreqHz,psiParamsFit);
+    obj.refPuffPSI,psiParamsFit);
 sgtitle(str);
 
 end
