@@ -7,12 +7,20 @@ arguments
     options.confInterval (1,1) = 0.8
     options.lb = []
     options.ub = []
+    options.psiParamsDomainList = [];
 end
 
 % Grab some variables
 questData = obj.questData;
-psiParamsDomainList = obj.psiParamsDomainList;
 verbose = obj.verbose;
+
+% Use the object or passed psiParamsDomainList
+if isempty(options.psiParamsDomainList)
+    psiParamsDomainList = obj.psiParamsDomainList;
+else
+    psiParamsDomainList = options.psiParamsDomainList;
+end
+
 
 % The best quess at the params from Quest
 psiParamsIndex = qpListMaxArg(questData.posterior);

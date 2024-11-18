@@ -27,7 +27,7 @@ classdef PsychDiscrimPuffThreshold < handle
         psiParamsDomainList
         refPuffPSI
         stimulusDurationSecs = 0.5;
-        interStimulusIntervalSecs = 1;
+        interStimulusIntervalSecs = 2;
     end
 
     % These may be modified after object creation
@@ -88,6 +88,13 @@ classdef PsychDiscrimPuffThreshold < handle
             if obj.simulateStimuli && ~obj.simulateResponse
                 fprintf('Forcing simulateResponse to true, as one cannot respond to a simulated stimulus\n')
                 obj.simulateResponse = true;
+            end
+
+            % Check that the max required pressure is within the safety
+            % range
+            maxPressurePSI = refPuffPSI * db2pow(max(obj.stimParamsDomainList));
+            if maxPressurePSI > 40
+                error('Max called-for stimulus exceeds allowable limits');
             end
 
             % Initialize the blockStartTimes field
