@@ -7,6 +7,7 @@ import os
 import sys
 import signal
 from MS_util import reading_to_string, parse_SERIAL
+import traceback
 
 """Write MS readings taken from the serial connection"""
 def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory: str):
@@ -56,24 +57,49 @@ def record_video(duration: float, write_queue: queue.Queue,
 
         # Initialize a serial connection to the Minispect 
         # and how many bytes it will be transfering
-        ms, msg_length = initialize_ms()
+        try:
+            print('Initializing MS')
+            ms, msg_length = initialize_ms()
+        except Exception as e:
+            # Print the traceback to stderr for this exception 
+            traceback.print_exc()
+            print(e)
+            print('Failed to initailize MiniSpect. Exiting...')
+            sys.exit(1)
+
 
         # If we were run as a subprocess, send a message to the parent 
         # process that we are ready to go
-        if(is_subprocess): 
-            print('MS: Initialized. Sending ready signal...')
-            os.kill(parent_pid, signal.SIGUSR1)
+        try:
+            if(is_subprocess): 
+                print('MS: Initialized. Sending ready signal...')
+                os.kill(parent_pid, signal.SIGUSR1)
 
-            # While we have not receieved the GO signal wait 
-            last_read: float = time.time()
-            while(not go_flag.is_set()):
-                # Every 2 seconds, output a message
-                current_wait: float = time.time()
-                
-                if((current_wait - last_read) >= 2):
-                    print('MS: Waiting for GO signal...')
-                    last_read = current_wait
+                # While we have not receieved the GO signal wait 
+                start_wait: float = time.time()
+                last_read: float = time.time()
+                while(not go_flag.is_set()):
+                    # Capture the current time
+                    current_wait: float = time.time()
+
+                    # If we haven't received a GO signal in 30 
+                    # seconds, something has gone wrong 
+                    if((current_wait - start_wait) >= 60):
+                        raise Exception('ERROR: Minispect did not receive a GO signal in time.')
+
+                    # Every 2 seconds, output a message
+                    if((current_wait - last_read) >= 2):
+                        print('MS: Waiting for GO signal...')
+                        last_read = current_wait
         
+        # Catch if there was an error in some part of the pipeline and we did not receive 
+        # a go signal in the appropriate amount of time
+        except Exception as e:
+            # Print the tracback to stderr for what caused this exception
+            traceback.print_exc()
+            print(e)
+            sys.exit(1)
+            
 
         # Once the go signal has been received, begin capturing
         print('MS: Beginning capture')

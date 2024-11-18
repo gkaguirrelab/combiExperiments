@@ -3,6 +3,8 @@ import time
 import threading
 import os
 import signal
+import traceback
+import sys
 
 # Interval in seconds that readings will be apart
 READ_INTERVAL: float = 5
@@ -55,27 +57,50 @@ def record_live(duration: float, filename: str,
 def record(duration: float, filename: str,
            is_subprocess: bool, parent_pid: int, 
            go_flag: threading.Event):
+    
     # Initialize a connection to the device
-    device: smbus.SMBus = initialize_connection()
+    try:
+        print('Initializing Sunglasses')
+        device: smbus.SMBus = initialize_connection()
+    except Exception as e:
+        # Print the tracback to the stderr for this exeption 
+        traceback.print_exc()
+        print(e)
+        print('Failed to initialize sunglasss. Exiting...')
+        sys.exit(1)
 
     # Initialize the file to output readings to
     readings_file: object = open(filename, 'a')
 
     # If we were run as a subprocess, send a message to the parent 
     # process that we are ready to go
-    if(is_subprocess): 
-        print('Sunglasses: Initialized. Sending ready signal...')
-        os.kill(parent_pid, signal.SIGUSR1)
+    try:
+        if(is_subprocess): 
+            print('Sunglasses: Initialized. Sending ready signal...')
+            os.kill(parent_pid, signal.SIGUSR1)
 
-        # While we have not receieved the GO signal wait 
-        last_read: float = time.time()
-        while(not go_flag.is_set()):
-            # Every 2 seconds, output a message
-            current_wait: float = time.time()
-            
-            if((current_wait - last_read) >= 2):
-                print('Sunglasses: Waiting for GO signal...')
-                last_read = current_wait
+            # While we have not receieved the GO signal wait 
+            start_wait: float = time.time()
+            last_read: float = time.time()
+            while(not go_flag.is_set()):
+                # Capture the current time
+                current_wait: float = time.time()
+
+                # If we haven't received a GO signal in 30 
+                # seconds, something has gone wrong 
+                if((current_wait - start_wait) >= 60):
+                    raise Exception('ERROR: Sunglasses did not receive a GO signal in time.')
+                
+                # Send a message to the terminal every 2 seconds
+                if((current_wait - last_read) >= 2):
+                    print('Sunglasses: Waiting for GO signal...')
+                    last_read = current_wait
+    
+    # Catch if there was an error in some part of the pipeline and we did not receive 
+    # a go signal in the appropriate amount of time
+    except Exception as e:
+        print(e)
+        sys.exit(1)
 
     # Once the go signal has been received, begin capturing
     print('Sunglasses: Beginning capture')

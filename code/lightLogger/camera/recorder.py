@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 import psutil
 import signal
+import traceback
 
 
 """Import the custom AGC library"""
@@ -167,7 +168,7 @@ def record_live(duration: float, write_queue: queue.Queue, filename: str,
     from picamera2 import Picamera2
 
     # Connect to and set up camera
-    print(f"Initializing camera")
+    print(f"Initializing World camera")
     cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
     gain_change_interval: float = 0.250 # the time between AGC adjustments 
     
@@ -256,8 +257,15 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     from picamera2 import Picamera2
 
     # Connect to and set up camera
-    print(f"Initializing camera")
-    cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
+    try:
+        print(f"Initializing world camera")
+        cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
+    except Exception as e:
+        # Print the traceback to the series of function calls that led to the error 
+        traceback.print_exc()
+        print(e)
+        sys.exit(1)
+
 
     gain_change_interval: float = 0.250 # the time between AGC adjustments 
     
@@ -278,19 +286,35 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
     # If we were run as a subprocess, send a message to the parent 
     # process that we are ready to go
-    if(is_subprocess): 
-        print('World Cam: Initialized. Sending ready signal...')
-        os.kill(parent_pid, signal.SIGUSR1)
+    try:
+        if(is_subprocess): 
+            print('World Cam: Initialized. Sending ready signal...')
+            os.kill(parent_pid, signal.SIGUSR1)
 
-        # While we have not receieved the GO signal wait 
-        last_read: float = time.time()
-        while(not go_flag.is_set()):
-            # Every 2 seconds, output a message
-            current_wait: float = time.time()
-            
-            if((current_wait - last_read) >= 3):
-                print('World Cam: Waiting for GO signal...')
-                last_read = current_wait
+            # While we have not receieved the GO signal wait 
+            start_wait: float = time.time()
+            last_read: float = time.time()
+            while(not go_flag.is_set()):
+                # Capture the current time
+                current_wait: float = time.time()
+
+                # If we haven't received a GO signal in 30 
+                # seconds, something has gone wrong 
+                if((current_wait - start_wait) >= 60):
+                    raise Exception('ERROR: World camera did not receive a GO signal in time.')
+                
+                # Every 2 seconds, output a message
+                if((current_wait - last_read) >= 2):
+                    print('World Cam: Waiting for GO signal...')
+                    last_read = current_wait
+    
+    # Catch if there was an error in some part of the pipeline and we did not receive 
+    # a go signal in the appropriate amount of time
+    except Exception as e:
+        # Print the traceback of the function calls that caused the error
+        traceback.print_exc()
+        print(e)
+        sys.exit(1)
   
 
     # Once the go signal has been received, begin capturing

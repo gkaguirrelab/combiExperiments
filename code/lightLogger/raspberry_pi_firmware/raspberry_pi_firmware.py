@@ -5,9 +5,10 @@ import argparse
 import psutil
 import os 
 import signal
+import traceback
 
 # The time in seconds to allow for sensors to start up
-sensor_initialization_time: float = 0.25
+sensor_initialization_time: float = 1.5
 
 """Parse the command line arguments"""
 def parse_args() -> tuple:
@@ -150,14 +151,29 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
         processes.append(p)
 
     # Wait for all of the sensors to initialize by waiting for their signals
-    last_read: float = time.time()
-    while(len(controllers_ready) != len(component_controllers)):
-        # Every 2 seconds, output a message
-        current_wait: float = time.time()
-        
-        if((current_wait - last_read) >= 3):
-            print(f'Waiting for all controllers to initialize: {len(controllers_ready)}/{len(component_controllers)}')
-            last_read = current_wait
+    try:
+        start_wait: float = time.time()
+        last_read: float = time.time()
+        while(len(controllers_ready) != len(component_controllers)):
+            # Capture the current time
+            current_wait: float = time.time()
+
+            # If we waited 45 seconds without all sensors being ready, throw an error
+            if((current_wait - start_wait) >= 45):
+                raise Exception('ERROR: Main controller did not receive enough READY signals by timeout')
+            
+            # Every 2 seconds, output a messag
+            if((current_wait - last_read) >= 2):
+                print(f'Waiting for all controllers to initialize: {len(controllers_ready)}/{len(component_controllers)}')
+                last_read = current_wait
+    
+    # Catch and safely handle when the sensors error in their initialization
+    except Exception as e:
+        # Print the traceback of the function calls that caused the error
+        traceback.print_exc()
+        print(e)
+        print('Main process did not receive sensors ready signal in time. Exiting...')
+        sys.exit(1)
     
     # Have all sensors sleep for 3 seconds 
     time.sleep(sensor_initialization_time)
@@ -185,6 +201,9 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
     # Close the processes after recording 
     for process in processes:
         process.wait()
+
+    # Sleep for a little bit to allow sensors to close nicely 
+    time.sleep(0.5)
 
     return
 

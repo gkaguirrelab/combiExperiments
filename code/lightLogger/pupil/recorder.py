@@ -9,6 +9,8 @@ import pandas as pd
 from natsort import natsorted
 import matplotlib.pyplot as plt
 import signal
+import traceback
+import sys
 
 # The FPS we have locked the camera to
 CAM_FPS: int = 120
@@ -161,8 +163,15 @@ def record_video(duration: float, write_queue: queue.Queue,
     import uvc
 
     # Connect to and set up camera
-    print(f"Initializing camera")
-    cam: uvc.Capture = initialize_camera()
+    try:
+        print(f"Initializing pupil camera")
+        cam: uvc.Capture = initialize_camera()
+    except Exception as e:
+        # Print the traceback to stderror for this exception
+        traceback.print_exc()
+        print(e)
+        print('Pupil cam failed to initialize')
+        sys.exit(1)
     
     # Retrieve the initial gain and exposure values
     current_gain, current_exposure = 0, 0   
@@ -173,19 +182,33 @@ def record_video(duration: float, write_queue: queue.Queue,
 
     # If we were run as a subprocess, send a message to the parent 
     # process that we are ready to go
-    if(is_subprocess): 
-        print('Pupil Cam: Initialized. Sending ready signal...')
-        os.kill(parent_pid, signal.SIGUSR1)
+    try:
+        if(is_subprocess): 
+            print('Pupil Cam: Initialized. Sending ready signal...')
+            os.kill(parent_pid, signal.SIGUSR1)
 
-        # While we have not receieved the GO signal wait 
-        last_read: float = time.time()
-        while(not go_flag.is_set()):
-            # Every 2 seconds, output a message
-            current_wait: float = time.time()
-            
-            if((current_wait - last_read) >= 2):
-                print('Pupil Cam: Waiting for GO signal...')
-                last_read = current_wait
+            # While we have not receieved the GO signal wait 
+            start_wait: float = time.time()
+            last_read: float = time.time()
+            while(not go_flag.is_set()):
+                # Capture the current time
+                current_wait: float = time.time()
+
+                # If we haven't received a GO signal in 30 
+                # seconds, something has gone wrong 
+                if((current_wait - start_wait) >= 60):
+                    raise Exception('ERROR: Pupil did not receive a GO signal in time.')
+                
+                if((current_wait - last_read) >= 2):
+                    print('Pupil Cam: Waiting for GO signal...')
+                    last_read = current_wait
+    # Catch if there was an error in some part of the pipeline and we did not receive 
+    # a go signal in the appropriate amount of time
+    except Exception as e:
+        # Print the traceback to stderr for this exception 
+        traceback.print_exc()
+        print(e)
+        sys.exit(1)
 
     # Once the go signal has been received, begin capturing
     print('Pupil Cam: Beginning capture')
