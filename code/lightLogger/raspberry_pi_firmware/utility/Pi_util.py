@@ -5,7 +5,7 @@ from natsort import natsorted
 
 """Group chunks' information together from a recording file and return them 
    as a list of tuples"""
-def parse_chunks(experiment_path: str) -> list:
+def parse_chunk_paths(experiment_path: str) -> list:
     # Define a container for the sorted chunks 
     sorted_chunks: list = []
 
@@ -23,9 +23,9 @@ def parse_chunks(experiment_path: str) -> list:
         # by iterating over the files in the directory and finding 
         # those that contain the burst name. Sort so it is always in
         # the same order
-        burst_readings: list = sorted([os.path.join(experiment_path, file)
+        burst_readings: list = sorted((os.path.join(experiment_path, file)
                                        for file in experiment_files
-                                       if burst_name in file])
+                                       if burst_name in file))
 
         # Append this chunks' readings to the growing list
         sorted_chunks.append(burst_readings)

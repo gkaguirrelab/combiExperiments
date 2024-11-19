@@ -1,4 +1,4 @@
-function modulateCombiLED(frequency, cal_path, color_profile)
+function modulateCombiLED(frequency, cal_path, color_profile, contrast)
 % Modulate the combiLED indefinitely at a desired frequency (hz)
 %
 % Syntax:
@@ -30,9 +30,10 @@ function modulateCombiLED(frequency, cal_path, color_profile)
 
     % Validate arguments
     arguments
-        frequency (1,1) {mustBeNumeric}
-        cal_path (1,:) {mustBeText}
+        frequency (1,1) {mustBeNumeric} % Frequency of the modulation 
+        cal_path (1,:) {mustBeText} % Path to calibration file
         color_profile (8,1) {mustBeVector} = [1,1,1,1,1,1,1,1]; % Default color profile is pure white
+        contrast (1,1) {mustBeNumeric} = 0.5; % The contrast of the modulation
     end
     
     % Load in the calibration file for the CombiLED
