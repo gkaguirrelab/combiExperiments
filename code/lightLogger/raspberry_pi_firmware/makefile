@@ -1,6 +1,7 @@
 # Compiler and compiler flags
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++17 -O2 -fPIC
+CXXFLAGS = -Wall -Wextra -shared -O2 -fPIC -std=c++17
+LDFLAGS = -shared  # Linker flag to create a shared library
 
 # Directories
 SRC_DIR1 = ../camera/AGC_lib
@@ -26,12 +27,12 @@ all: $(AGC_TARGET) $(DOWNSAMPLE_TARGET)
 # Build AGC program
 $(AGC_TARGET): $(AGC_OBJ)
 	mkdir -p $(BIN_DIR)
-	$(CXX) $(AGC_OBJ) -o $@
+	$(CXX) $(LDFLAGS) $(AGC_OBJ) -o $@
 
 # Build Downsample program
 $(DOWNSAMPLE_TARGET): $(DOWNSAMPLE_OBJ)
 	mkdir -p $(BIN_DIR)
-	$(CXX) $(DOWNSAMPLE_OBJ) -o $@
+	$(CXX) $(LDFLAGS) $(DOWNSAMPLE_OBJ) -o $@
 
 # Compile AGC.cpp
 $(AGC_OBJ): $(AGC_SRC)
