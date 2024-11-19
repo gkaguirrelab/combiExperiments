@@ -3,6 +3,7 @@ import time
 import threading
 import os
 import signal
+import psutil
 import traceback
 import sys
 
@@ -85,6 +86,12 @@ def record(duration: float, filename: str,
             while(not go_flag.is_set()):
                 # Capture the current time
                 current_wait: float = time.time()
+
+                # If the parent process is no longer existent, something has gone wrong
+                # and we should quit 
+                if(not psutil.pid_exists(parent_pid)):
+                    raise Exception('ERROR: Parent process was killed')
+
 
                 # If we haven't received a GO signal in 30 
                 # seconds, something has gone wrong 

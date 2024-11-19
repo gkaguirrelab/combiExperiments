@@ -270,9 +270,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     gain_change_interval: float = 0.250 # the time between AGC adjustments 
     
     # Begin Recording and capture initial metadata 
-    cam.start("video")  
-    initial_metadata: dict = cam.capture_metadata()
-    current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
+    current_gain, current_exposure = initial_gain, initial_exposure
 
     # Make absolutely certain Ae and AWB are off 
     # (had to put this here at some point) for it to work 
@@ -298,6 +296,11 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
                 # Capture the current time
                 current_wait: float = time.time()
 
+                # If the parent process is no longer existent, something has gone wrong
+                # and we should quit 
+                if(not psutil.pid_exists(parent_pid)):
+                    raise Exception('ERROR: Parent process was killed')
+
                 # If we haven't received a GO signal in 30 
                 # seconds, something has gone wrong 
                 if((current_wait - start_wait) >= 60):
@@ -319,6 +322,7 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
     # Once the go signal has been received, begin capturing
     print('World Cam: Beginning capture')
+    cam.start("video")  
 
     # Begin timing capture
     start_capture_time: float = time.time()
