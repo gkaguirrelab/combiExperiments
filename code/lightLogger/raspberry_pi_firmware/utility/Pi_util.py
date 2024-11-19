@@ -26,7 +26,7 @@ def parse_chunk_paths(experiment_path: str) -> list:
         # Find all of the files of this burst
         burst_files: list = (os.path.join(experiment_path, file)
                              for file in experiment_files
-                             if burst_name in file)
+                             if f'_{burst_name}_' in file)
         
         # Next, we will assign the files to their respective sensors
         for file in burst_files:
@@ -53,7 +53,7 @@ def parse_chunk_paths(experiment_path: str) -> list:
         # Go over all of the keys and values and sort the values 
         # so keys with multiple values always have their 
         # values show up in the same order 
-        for key, val in chunk_dict.items():
+        for key, val in chunk_dict.items(): 
             chunk_dict[key].sort()
 
         # Append this chunks' readings to the growing list
