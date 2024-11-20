@@ -266,10 +266,11 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
         print(e)
         sys.exit(1)
 
+    # Define the time between AGC measurements
+    gain_change_interval: float = 0.250 
 
-    gain_change_interval: float = 0.250 # the time between AGC adjustments 
-    
     # Begin Recording and capture initial metadata 
+    cam.start("video")  
     current_gain, current_exposure = initial_gain, initial_exposure
 
     # Make absolutely certain Ae and AWB are off 
@@ -300,11 +301,6 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
                 # and we should quit 
                 if(not psutil.pid_exists(parent_pid)):
                     raise Exception('ERROR: Parent process was killed')
-
-                # If we haven't received a GO signal in 30 
-                # seconds, something has gone wrong 
-                if((current_wait - start_wait) >= 60):
-                    raise Exception('ERROR: World camera did not receive a GO signal in time.')
                 
                 # Every 2 seconds, output a message
                 if((current_wait - last_read) >= 2):
@@ -322,7 +318,6 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
     # Once the go signal has been received, begin capturing
     print('World Cam: Beginning capture')
-    cam.start("video")  
 
     # Begin timing capture
     start_capture_time: float = time.time()

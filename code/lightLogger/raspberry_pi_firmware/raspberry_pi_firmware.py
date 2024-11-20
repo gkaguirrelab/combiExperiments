@@ -7,6 +7,10 @@ import os
 import signal
 import traceback
 
+# Define the time in seconds to wait before 
+# raising a timeout error
+sensor_initialization_timeout: float = 45
+
 # The time in seconds to allow for sensors to start up
 sensor_initialization_time: float = 1.5
 
@@ -95,12 +99,11 @@ def parse_process_args(config_path: str) -> tuple:
 
     return controllers_and_args, experiment_name
      
+
 """Capture a burst of length burst_seconds
    from all of the sensors"""
-def capture_burst(component_controllers: list, CPU_priorities: list, 
-                  burst_seconds: float,
-                  burst_num: int,
-                  shell_output: bool= True) -> None:
+def capture_burst(info_file: object, component_controllers: list, CPU_priorities: list, 
+                  burst_seconds: float, burst_num: int, shell_output: bool= True) -> None:
 
     # Determine the current pid of this master process
     master_pid: int = os.getpid()
@@ -115,8 +118,13 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
     """Define a function to receive signals when the processes are ready"""
     def handle_readysig(signum, frame=None):
         print(f'Received a sensor ready signal!')
-        controllers_ready.append(True)
 
+        # Record the time the signal was received 
+        time_received: float = time.time()
+        
+        # Append the ready signal and the time received to controllers ready
+        controllers_ready.append((True, time_received))
+    
     signal.signal(signal.SIGUSR1, handle_readysig)
 
     # Iterate over the other scripts and start them with their associated arguments
@@ -158,8 +166,8 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
             # Capture the current time
             current_wait: float = time.time()
 
-            # If we waited 45 seconds without all sensors being ready, throw an error
-            if((current_wait - start_wait) >= 45):
+            # If we waited N seconds without all sensors being ready, throw an error
+            if((current_wait - start_wait) >= sensor_initialization_timeout):
                 raise Exception('ERROR: Main controller did not receive enough READY signals by timeout')
             
             # Every 2 seconds, output a messag
@@ -175,7 +183,7 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
         print('Main process did not receive sensors ready signal in time. Exiting...')
         sys.exit(1)
     
-    # Have all sensors sleep for 3 seconds 
+    # Have all sensors sleep for N seconds 
     time.sleep(sensor_initialization_time)
     
     # Find the current PID of all of the controllers (basically, everything with Python in it)
@@ -183,6 +191,9 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
 
     # Once all sensors are initialized, send a go signal to them
     print(f'Master process {master_pid} sending go signals...')
+
+    # Record the time the go signal was sent by the master process
+    time_sent: float = time.time()
     for pid in pids:        
         # Send the signal to begin recording
         print(f'\tSending GO to: {pid}')
@@ -202,8 +213,10 @@ def capture_burst(component_controllers: list, CPU_priorities: list,
     for process in processes:
         process.wait()
 
-    # Sleep for a little bit to allow sensors to close nicely 
-    time.sleep(0.5)
+    # Record the time the processes ready signals 
+    # were received as well as the go time sent
+    chunk_signal_info: str = ",".join([str(time) for (state, time) in controllers_ready] + [str(time_sent)])
+    info_file.write(chunk_signal_info + "\n")
 
     return
 
@@ -231,7 +244,12 @@ def main():
     if(not os.path.exists(experiment_name)):
         os.makedirs(experiment_name)
 
-     # Assign max priority to all processes
+    # Initialize a .csv to track when sensors report ready 
+    # and when go signals are sent 
+    experiment_info_file: str = open(os.path.join(experiment_name, 'info_file.csv'), 'a')
+    experiment_info_file.write('READY0,READY1,READY2,READY3,GO\n')
+
+    # Assign max priority to all processes
     cores_and_priorities: list = [(process_num, -20) for process_num in range(len(component_controllers))]
 
     # Now, add the burst seconds of capture argument for the controllers we are 
@@ -256,18 +274,21 @@ def main():
     # Iterate over the number of bursts
     burst_num: int = 0
     while(burst_num < n_bursts):
-        print(f'Begin burst: {burst_num+1}')
+        print(f'Begin burst: {burst_num+1}/{n_bursts}')
 
         # Capture the burst
-        capture_burst(component_controllers, cores_and_priorities, burst_seconds, burst_num, shell_output=shell_output)
+        capture_burst(experiment_info_file, component_controllers, cores_and_priorities, burst_seconds, burst_num, shell_output=shell_output)
 
-        print(f'End burst: {burst_num+1}')
+        print(f'End burst: {burst_num+1}/{n_bursts}')
 
         # Increase the burst num we are on 
         burst_num += 1
 
         # Sleep for a few seconds for things to flush
         time.sleep(2)
+    
+    # Close the info file
+    experiment_info_file.close()
 
 
 if(__name__ == '__main__'):

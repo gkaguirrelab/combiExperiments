@@ -199,12 +199,6 @@ def record_video(duration: float, write_queue: queue.Queue,
                 # and we should quit 
                 if(not psutil.pid_exists(parent_pid)):
                     raise Exception('ERROR: Parent process was killed')
-
-
-                # If we haven't received a GO signal in 30 
-                # seconds, something has gone wrong 
-                if((current_wait - start_wait) >= 60):
-                    raise Exception('ERROR: Pupil did not receive a GO signal in time.')
                 
                 if((current_wait - last_read) >= 2):
                     print('Pupil Cam: Waiting for GO signal...')
