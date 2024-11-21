@@ -64,38 +64,38 @@ for nn = 1:length(NDlabelsAll)
 
         % Plot the unit slope and good job feedback boundaries
         nexttile();
-        loglog([0.5 60],[0.5 60],'--k','LineWidth',1.5)        
+        semilogx([0.5 60],[0 0],'--k','LineWidth',1.5)        
         hold on
-        loglog([0.5 60],[0.5 60]*db2pow(goodJobCriterionDb),':k','LineWidth',1.5)        
-        loglog([0.5 60],[0.5 60]/db2pow(goodJobCriterionDb),':k','LineWidth',1.5)        
+        xFitLog = linspace(0,2,100)';
+%        plot(xFitLog,log10(10.^xFitLog.*db2pow(goodJobCriterionDb)-10.^xFitLog),':k','LineWidth',1.5)        
+%        plot(xFitLog,log10(10.^xFitLog./db2pow(goodJobCriterionDb)-10.^xFitLog),':k','LineWidth',1.5)        
                 
-        scatter(refFreq(goodJobVec),testFreq(goodJobVec),'k','filled','o','MarkerEdgeColor','none','MarkerFaceAlpha',0.25);
-        scatter(refFreq(~goodJobVec),testFreq(~goodJobVec),'r','filled','o','MarkerEdgeColor','none','MarkerFaceAlpha',0.25);
+        scatter(refFreq(goodJobVec),testFreq(goodJobVec)-refFreq(goodJobVec),'k','filled','o','MarkerEdgeColor','none','MarkerFaceAlpha',0.25);
+        scatter(refFreq(~goodJobVec),testFreq(~goodJobVec)-refFreq(~goodJobVec),'r','filled','o','MarkerEdgeColor','none','MarkerFaceAlpha',0.25);
         xlim([0.5 60])
-        ylim([0.5 60])
+        ylim([-30 30])
         axis square
         a=gca();
         a.XTick = [1,2,4,8,16,32];
-        a.YTick = [1,2,4,8,16,32];
+%        a.YTick = [1,2,4,8,16,32];
         xlabel('Reference Frequency [Hz]')
-        ylabel('Match Frequency [Hz]')
+        ylabel('Error [Hz]')
         box off
         title([modDirections{dd} ' ND' NDlabelsAll{nn}],'Interpreter','none');
 
         % Add a fit line.
         mdl = fitlm(log10(refFreq),log10(testFreq));
-        xFitLog = log10(refFreq)';
         yFitLog = predict(mdl,xFitLog);
         xFit = 10.^(xFitLog);
         yFit = 10.^(yFitLog);
-        plot(xFit,yFit,'-b','LineWidth',2);
+        plot(xFit,yFit-xFit,'-b','LineWidth',2);
 
         % Add a shaded region to indicate the variance of the residuals
         meanStd = std(mdl.Residuals.Raw);
         xVerts = [1 32 32 1];
         yVertsLog = predict(mdl,log10(xVerts'))';
         yVerts = 10.^(yVertsLog + repmat(meanStd,1,4) .* [0.5 0.5 -0.5 -0.5]);
-        patch(xVerts,yVerts,'b','FaceColor','b','LineStyle','none','FaceAlpha',.3)
+%        patch(xVerts,yVerts-xVerts,'b','FaceColor','b','LineStyle','none','FaceAlpha',.3)
 
     end
 end
