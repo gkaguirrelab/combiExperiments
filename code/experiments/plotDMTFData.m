@@ -67,8 +67,9 @@ for nn = 1:length(NDlabelsAll)
         semilogx([0.5 60],[0 0],'--k','LineWidth',1.5)        
         hold on
         xFitLog = linspace(0,2,100)';
-%        plot(xFitLog,log10(10.^xFitLog.*db2pow(goodJobCriterionDb)-10.^xFitLog),':k','LineWidth',1.5)        
-%        plot(xFitLog,log10(10.^xFitLog./db2pow(goodJobCriterionDb)-10.^xFitLog),':k','LineWidth',1.5)        
+        xFit = 10.^(xFitLog);
+        semilogx(xFit,xFit.*db2pow(goodJobCriterionDb)-xFit,':k','LineWidth',1.5)        
+        semilogx(xFit,xFit./db2pow(goodJobCriterionDb)-xFit,':k','LineWidth',1.5)        
                 
         scatter(refFreq(goodJobVec),testFreq(goodJobVec)-refFreq(goodJobVec),'k','filled','o','MarkerEdgeColor','none','MarkerFaceAlpha',0.25);
         scatter(refFreq(~goodJobVec),testFreq(~goodJobVec)-refFreq(~goodJobVec),'r','filled','o','MarkerEdgeColor','none','MarkerFaceAlpha',0.25);
@@ -86,7 +87,6 @@ for nn = 1:length(NDlabelsAll)
         % Add a fit line.
         mdl = fitlm(log10(refFreq),log10(testFreq));
         yFitLog = predict(mdl,xFitLog);
-        xFit = 10.^(xFitLog);
         yFit = 10.^(yFitLog);
         plot(xFit,yFit-xFit,'-b','LineWidth',2);
 
