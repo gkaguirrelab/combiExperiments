@@ -286,7 +286,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     # If we were run as a subprocess, send a message to the parent 
     # process that we are ready to go
     try:
-        print('World Cam: Initialized. Sending ready signal...')
+        print(f'World Cam: Initialized. Sending ready signal to parent: {parent_pid}')
         os.kill(parent_pid, signal.SIGUSR1)
 
         # While we have not receieved the GO signal wait 
@@ -355,7 +355,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
 
             # Report to the parent process we are ready to go for the next burst 
             os.kill(parent_pid, signal.SIGUSR1)
-            print(f'World cam: Finished burst: {burst_num+1} | Sending ready signal!')
+            print(f'World cam: Finished burst: {burst_num+1} | Sending ready signal to parent: {parent_pid}!')
         
             # Increment the burst number += 1 
             burst_num += 1

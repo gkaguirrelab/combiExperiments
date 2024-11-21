@@ -7,6 +7,7 @@ import os
 import shutil
 import numpy as np
 import signal
+import setproctitle
 
 """Import utility functions from the RPI recorder"""
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'camera')
@@ -66,6 +67,9 @@ signal.signal(signal.SIGUSR2, handle_stopsignal)
 
 
 def main():
+    # Set the program title so we can see what it is in TOP 
+    setproctitle.setproctitle(os.path.basename(__file__))
+
     output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview, unpack_frames, is_subprocess, parent_pid, use_signalcom = parse_args()
     
     # If the preview flag is true, first display a preview of the camera 

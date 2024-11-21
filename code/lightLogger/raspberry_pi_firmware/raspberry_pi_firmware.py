@@ -6,6 +6,7 @@ import psutil
 import os 
 import signal
 import traceback
+import setproctitle
 import threading
 
 # Define the time in seconds to wait before 
@@ -31,8 +32,8 @@ def parse_args() -> tuple:
 
     return args.config_path, args.n_bursts, args.burst_seconds, bool(args.shell_output)
 
-"""Find all PIDS of processes with a given name"""
-def find_all_pids(target_name: str) -> list:
+"""Find the PIDS of a process with a given name"""
+def find_pid(target_name: tuple) -> list:
     # Initialize a list to store the pids we find 
     # of processes with the target name
     pids: list = []
@@ -248,14 +249,7 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
 
     """Define a function to receive signals when the processes are ready"""
     def handle_readysig(signum, frame, siginfo=None):
-        #print(f'Master process: Received a sensor ready signal!')
-        
-        # Record the time the signal was received 
-        #time_received: float = time.time()
-        
-        # If there are already 2 readings in the ready list, 
-        # they are from the previous reading, so clear 
-        #if(len(controllers_ready) >= len(component_controllers)): controllers_ready.pop(0)
+        print(f'Master process: Received a sensor ready signal!')
 
         # Note that we have received a sigready, preventing race conditions from handlers
         with container_lock:
@@ -264,7 +258,7 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     signal.signal(signal.SIGUSR1, handle_readysig)
 
     # Iterate over the other scripts and start them with their associated arguments
-    for (script, args), (core, priority) in zip(component_controllers.items(), CPU_priorities):
+    for script, args in component_controllers.items():
         # In the args, we must replace the burstX with the burst number
         # and the parent process ID with the parent processID of this file 
         args: str = args.replace('--parent_pid X', f'--parent_pid {master_pid}')
@@ -274,21 +268,6 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
                              stdout=sys.stdout,
                              stderr=sys.stderr,
                              shell=shell_output)
-
-        # Turn p into a psutil process so we can set core 
-        # affinity and niceity
-        psutil_process: psutil.Process = psutil.Process(p.pid)
-
-        # Set the cpu affinity (which core this will run on)
-        # as well as its niceity (priority)
-        psutil_process.cpu_affinity([core])
-
-        # Have to include this to define niceity because 
-        # using the psutil_process.nice() command requires sudo 
-        # privelges, which if I run this script with, says my 
-        # libraries don't exist
-        # Also do before change and after to ensure both are top priority
-        os.system(f"sudo renice -n -20 -p {p.pid}")
 
         # Append this process to the list of processes 
         # and its pid to the list of pids
@@ -322,10 +301,32 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     # Clear the history of ready sensors
     with container_lock:
         controllers_ready.clear()
-    
-    # Find the current PID of all of the controllers (basically, everything with Python in it)
-    pids: list = find_all_pids('python3') 
-    pids.remove(master_pid) # remove the master pid so there isn't a duplicate
+
+    # Retrieve the pids of the actual process (most recent PID, per my working theory, thus last in sorted list)
+    # for each of the component controllers 
+    pids: dict = {controller: pid 
+                 for controller, pid 
+                 in zip(component_controllers.keys(), [find_pid(key)[-1] 
+                                                      for key in component_controllers.keys()])}
+
+    # Now, we are going to set the priorities and CPU cores 
+    for (controller, pid), (core, priority) in zip(pids.items(), CPU_priorities):
+        print(f'Affixing {controller} | pid: {pid} to CPU core: {core} with priority: {priority}')
+
+        # Turn p into a psutil process so we can set core 
+        # affinity and niceity
+        psutil_process: psutil.Process = psutil.Process(p.pid)
+
+        # Set the cpu affinity (which core this will run on)
+        # as well as its niceity (priority)
+        psutil_process.cpu_affinity([core])
+
+        # Have to include this to define niceity because 
+        # using the psutil_process.nice() command requires sudo 
+        # privelges, which if I run this script with, says my 
+        # libraries don't exist
+        # Also do before change and after to ensure both are top priority
+        os.system(f"sudo renice -n -20 -p {p.pid}")
 
     # Define the burst we are on
     burst_num: int = 0 
@@ -343,9 +344,9 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
 
         # Capture when the GO signal is sent to the controllers
         #time_sent: float = time.time()
-        for pid in pids:        
+        for controller, pid in pids.items():        
             # Send the signal to begin/continue recording
-            print(f'\tMaster Process | Sending GO to: {pid}')
+            print(f'\tMaster Process | Sending GO to: {controller} pid: {pid}')
             os.kill(pid, signal.SIGUSR1)
         
         # Wait until we have received all of the sensors have finished 
@@ -374,12 +375,11 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         #time.sleep(0.5)
         
     
-    
     # If we have recorded the desired bursts, 
     # send a stop signal 
-    for pid in pids:        
+    for controller, pid in pids.items():        
         # Send the signal to STOP recording
-        print(f'\tSending STOP to: {pid}')
+        print(f'\tMaster process: {master_pid} | Sending STOP to {controller}: {pid}')
         os.kill(pid, signal.SIGUSR2)
     
     # Close the processes after recording 
@@ -394,6 +394,9 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     return
 
 def main():
+    # Set the program title so we can see what it is in TOP 
+    setproctitle.setproctitle(os.path.basename(__file__))
+
     # Define a set of valid process names to use for data collection
     valid_processes: set = set(['MS_com.py', 'Sunglasses_com.py', 
                                 'Camera_com.py', 'Pupil_com.py'])

@@ -6,6 +6,7 @@ import queue
 import shutil
 import numpy as np
 import signal
+import setproctitle
 
 """Import utility functions from the pupil recorder"""
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'pupil')
@@ -63,6 +64,9 @@ signal.signal(signal.SIGUSR2, handle_stopsignal)
 
 
 def main():
+    # Set the program title so we can see what it is in TOP 
+    setproctitle.setproctitle(os.path.basename(__file__))
+
     output_path, duration, save_video, save_frames, preview, unpack_frames, is_subprocess, parent_pid, use_signalcom = parse_args()
 
     # If the preview is true, view a preview of the camera view before capture

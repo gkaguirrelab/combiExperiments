@@ -240,7 +240,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     # process that we are ready to go
     try:
         if(is_subprocess): 
-            print('Pupil Cam: Initialized. Sending ready signal...')
+            print(f'Pupil Cam: Initialized. Sending ready signal to parent: {parent_pid}')
             os.kill(parent_pid, signal.SIGUSR1)
 
             # While we have not receieved the GO signal, wait 
@@ -300,7 +300,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
 
             # Report to the parent process we are ready to go for the next burst 
             os.kill(parent_pid, signal.SIGUSR1)
-            print(f'Pupil: Finished burst: {burst_num+1} | Sending ready signal!')
+            print(f'Pupil: Finished burst: {burst_num+1} | Sending ready signal to parent: {parent_pid}!')
         
             # Increment the burst number += 1 
             burst_num += 1
