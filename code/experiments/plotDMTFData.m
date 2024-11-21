@@ -85,7 +85,7 @@ for nn = 1:length(NDlabelsAll)
         title([modDirections{dd} ' ND' NDlabelsAll{nn}],'Interpreter','none');
 
         % Add a fit line.
-        mdl = fitlm(log10(refFreq),log10(testFreq));
+        mdl = fitlm(log10(refFreq),log10(testFreq),'RobustOpts','on');
         yFitLog = predict(mdl,xFitLog);
         yFit = 10.^(yFitLog);
         plot(xFit,yFit-xFit,'-b','LineWidth',2);
