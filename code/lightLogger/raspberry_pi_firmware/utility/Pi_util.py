@@ -14,7 +14,8 @@ def parse_chunk_paths(experiment_path: str) -> list:
 
     # Find all of the bursts in sorted order
     burst_names: list = natsorted(set([re.search(r'burst\d+', file).group() 
-                        for file in experiment_files]))
+                                      for file in experiment_files
+                                      if 'burst' in file]))
 
     # Iterate over the burst names and build the filepaths
     # all of a given burst's readings

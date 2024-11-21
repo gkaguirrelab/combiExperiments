@@ -41,13 +41,14 @@ downsample_factor: int = 4
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
-def write_frame(write_queue: queue.Queue, filename: str):
+def write_frame(write_queue: queue.Queue, filename: str, generate_settingsfile: bool=True):
     # Ensure the output directory exists
     if(not os.path.exists(filename)):
         os.makedirs(filename)
 
-    # Initialize a settings file for per-frame settings to be written to.
-    settings_file = open(f'{filename}_settingsHistory.csv', 'a')
+    # Initialize a settings file for per-frame settings to be written to if this 
+    # script is not using signal communication
+    if(generate_settingsfile is True): settings_file = open(f'{filename}_settingsHistory.csv', 'a')
 
     # Calculate the downsampled image shape
     downsampled_image_shape: tuple = CAM_IMG_DIMS >> downsample_factor
@@ -66,7 +67,12 @@ def write_frame(write_queue: queue.Queue, filename: str):
             break
         
         # Extract frame and its metadata
-        frame_buffer, frame_num, settings_buffer = ret
+        frame_buffer, frame_num, settings_buffer = ret[0:3]
+
+        # If the length is greater than two, we've passed it 
+        # the filename (directory) to save under and the settings file
+        if(len(ret) > 3): 
+            filename, settings_file = ret[3:5]
 
         # Print out the state of the write queue
         print(f'Camera queue size: {write_queue.qsize()}')
@@ -157,6 +163,177 @@ def reconstruct_video(video_frames: np.array, output_path: str):
 
     # Release the VideoWriter object
     out.release()
+
+
+def capture_helper(cam: object, duration: float, write_queue: queue.Queue,
+                  current_gain: float, current_exposure: float,
+                  gain_change_interval: float,
+                  frame_buffer: np.ndarray, settings_buffer: np.ndarray,
+                  filename: str, settings_file: object, 
+                  burst_num: int):
+    print('World Cam: Beginning capture')
+
+    # Begin timing capture
+    start_capture_time: float = time.time()
+    last_gain_change: float = time.time()  
+
+    # Capture duration (seconds) of frames
+    frame_num: int = 0
+    while(True):
+        # Capture the current time
+        current_time: float = time.time()
+        
+        # If reached desired duration, stop recording
+        if((current_time - start_capture_time) >= duration):
+            break  
+
+        # Capture the frame and splice only the odd cols (even cols have junk content)
+        frame: np.array = cam.capture_array('raw')[:, 1::2]
+
+        # Store the frame + settings into the allocated memory buffers
+        frame_buffer[frame_num % CAM_FPS] = frame
+        settings_buffer[frame_num % CAM_FPS] = (current_gain, current_exposure) 
+
+        # Change gain every N ms
+        if((current_time - last_gain_change) > gain_change_interval):
+            # Take the mean intensity of the frame
+            mean_intensity = np.mean(frame, axis=(0,1))
+            
+            # Feed the settings into the the AGC 
+            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95, AGC_lib)
+
+            # Retrieve and set the new gain and exposure from our custom AGC
+            #new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
+            new_gain, new_exposure = 2, 4839
+            
+            cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
+            
+            # Update the current_gain and current_exposure, 
+            # wait for next gain change time
+            last_gain_change = current_time
+            current_gain, current_exposure = new_gain, new_exposure
+
+        # Record the next frame number
+        frame_num += 1 
+
+        # If we have now captured one second worth of frames, send the frame buffer 
+        # to be written 
+        if(frame_num % CAM_FPS == 0):
+            #write_queue.put((frame_buffer, frame_num, settings_buffer, frame_timings_buffer))
+            write_queue.put((frame_buffer, frame_num, settings_buffer, filename, settings_file))
+    
+    # Record timing of end of capture 
+    end_capture_time: float = time.time()
+    
+    # Calculate the approximate FPS the frames were taken at 
+    # (approximate due to time taken for other computation)
+    observed_fps: float = (frame_num)/(end_capture_time-start_capture_time)
+    print(f'World Camera captured {frame_num} at ~{observed_fps} fps')
+
+
+"""Record from with the camera with a specified duration, but 
+   communicating with signals"""
+def record_video_signalcom(duration: float, write_queue: queue.Queue, 
+                           filename: str, initial_gain: float, initial_exposure: int,
+                           stop_flag: threading.Event, is_subprocess: bool,
+                           parent_pid: int, go_flag: threading.Event) -> None:
+
+    # Connect to and set up camera
+    print(f"Initializing World camera")
+    cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
+    gain_change_interval: float = 0.250 # the time between AGC adjustments 
+    
+    # Begin Recording and capture initial metadata 
+    cam.start("video")  
+    initial_metadata: dict = cam.capture_metadata()
+    current_gain, current_exposure = initial_metadata['AnalogueGain'], initial_metadata['ExposureTime']
+
+    # Make absolutely certain Ae and AWB are off 
+    # (had to put this here at some point) for it to work 
+    cam.set_controls({'AeEnable':0, 'AwbEnable':0})
+
+    # Initialize a contiguous memory buffer to store 1 second of frames 
+    # + settings in this is so when we send them to be written, numpy does not have 
+    # to reallocate for contiguous memory, thus slowing down capture
+    frame_buffer: np.array = np.zeros((CAM_FPS, 480,640), dtype=np.uint8)
+    settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float16)
+
+    # If we were run as a subprocess, send a message to the parent 
+    # process that we are ready to go
+    try:
+        print('World Cam: Initialized. Sending ready signal...')
+        os.kill(parent_pid, signal.SIGUSR1)
+
+        # While we have not receieved the GO signal wait 
+        start_wait: float = time.time()
+        last_read: float = time.time()
+        while(not go_flag.is_set()):
+            # Capture the current time
+            current_wait: float = time.time()
+
+            # If the parent process is no longer existent, something has gone wrong
+            # and we should quit 
+            if(not psutil.pid_exists(parent_pid)):
+                raise Exception('ERROR: Parent process was killed')
+            
+            # Every 2 seconds, output a message
+            if((current_wait - last_read) >= 2):
+                print('World Cam: Waiting for GO signal...')
+                last_read = current_wait
+    
+    # Catch if there was an error in some part of the pipeline and we did not receive 
+    # a go signal in the appropriate amount of time
+    except Exception as e:
+        # Close the camera 
+        cam.close()
+
+        # Print the traceback of the function calls that caused the error
+        traceback.print_exc()
+        print(e)
+        sys.exit(1)
+
+    # Now, the camera was initialized and the first ready was sent and the first go was received
+    # Therefore, let's record the amount of time we desire
+
+    # Once the go signal has been received, begin capturing chunks until we 
+    # receive a stop signal
+    while(not stop_flag.is_set()):
+        # Define the starting burst number
+        burst_num: float = 0 
+        
+        # Reformat and generate filename for this burst 
+        # and ensure it exists 
+        filename = filename.replace('burstX', f"burst{burst_num}")
+        if(not os.path.exists(filename)): os.mkdir(filename)
+        
+        # Generate the settings file for this burst
+        settings_file: object = open(f'{filename}_settingsHistory.csv', 'a')
+
+        # While we have the GO signal, record a burst
+        while(go_flag.is_set()):
+            # Capture duration worth of frames
+            capture_helper(cam, duration, write_queue, current_gain, current_exposure,
+                           gain_change_interval,
+                           frame_buffer, settings_buffer,
+                           filename, settings_file,
+                           burst_num)
+
+            # Stop recording until we receive the GO signal again 
+            go_flag.clear()
+
+            # Report to the parent process we are ready to go for the next burst 
+            os.kill(parent_pid, signal.SIGUSR1)
+            print(f'World cam: Finished burst: {burst_num+1} | Sending ready signal!')
+
+            # Increment the burst number += 1 
+            burst_num += 1
+
+    # Append None to the write queue to signal it is time to stop 
+    write_queue.put(None)
+
+    # Stop recording and close the picam object 
+    cam.close() 
+    
 
 """Record live from the camera with no specified duration"""
 def record_live(duration: float, write_queue: queue.Queue, filename: str, 
@@ -266,10 +443,11 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
         print(e)
         sys.exit(1)
 
+    # Define the time between AGC measurements
+    gain_change_interval: float = 0.250 
 
-    gain_change_interval: float = 0.250 # the time between AGC adjustments 
-    
     # Begin Recording and capture initial metadata 
+    cam.start("video")  
     current_gain, current_exposure = initial_gain, initial_exposure
 
     # Make absolutely certain Ae and AWB are off 
@@ -300,11 +478,6 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
                 # and we should quit 
                 if(not psutil.pid_exists(parent_pid)):
                     raise Exception('ERROR: Parent process was killed')
-
-                # If we haven't received a GO signal in 30 
-                # seconds, something has gone wrong 
-                if((current_wait - start_wait) >= 60):
-                    raise Exception('ERROR: World camera did not receive a GO signal in time.')
                 
                 # Every 2 seconds, output a message
                 if((current_wait - last_read) >= 2):
@@ -314,6 +487,9 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     # Catch if there was an error in some part of the pipeline and we did not receive 
     # a go signal in the appropriate amount of time
     except Exception as e:
+        # Close the camera 
+        cam.close()
+
         # Print the traceback of the function calls that caused the error
         traceback.print_exc()
         print(e)
@@ -322,7 +498,6 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
 
     # Once the go signal has been received, begin capturing
     print('World Cam: Beginning capture')
-    cam.start("video")  
 
     # Begin timing capture
     start_capture_time: float = time.time()
