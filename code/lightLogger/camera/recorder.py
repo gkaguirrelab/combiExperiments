@@ -42,8 +42,8 @@ downsample_factor: int = 4
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
 def write_frame(write_queue: queue.Queue, filename: str, generate_settingsfile: bool=True):
-    # Ensure the output directory exists
-    if(not os.path.exists(filename)):
+    # Ensure the output directory exists (if we are not running via signalcommunication)
+    if(not os.path.exists(filename) and generate_settingsfile):
         os.makedirs(filename)
 
     # Initialize a settings file for per-frame settings to be written to if this 
@@ -294,20 +294,26 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
 
     # Now, the camera was initialized and the first ready was sent and the first go was received
     # Therefore, let's record the amount of time we desire
+    
+    # Define the starting burst number
+    # and the thus the initial filename
+    # and settings file
+    burst_num: float = 0 
+    filename : str = filename.replace('burstX', f"burst{burst_num}") 
+    settings_file: object = open(f'{filename}_settingsHistory.csv', 'a')
 
     # Once the go signal has been received, begin capturing chunks until we 
     # receive a stop signal
-    while(not stop_flag.is_set()):
-        # Define the starting burst number
-        burst_num: float = 0 
-        
-        # Reformat and generate filename for this burst 
-        # and ensure it exists 
-        filename = filename.replace('burstX', f"burst{burst_num}")
+    while(not stop_flag.is_set()):     
+        # Use the milliseconds of time gaps between GO signals to generate files and hopefully not add 
+        # any delay in the start of a burst capture
+        # Akin to racing the beam on ATARI 2600! 
+
+        # Generate the directory for this burst if it does not already exist
         if(not os.path.exists(filename)): os.mkdir(filename)
         
-        # Generate the settings file for this burst
-        settings_file: object = open(f'{filename}_settingsHistory.csv', 'a')
+        # Generate/Open the settings file for this burst if it does not already exist
+        if(settings_file is None): settings_file = open(f'{filename}_settingsHistory.csv', 'a')
 
         # While we have the GO signal, record a burst
         while(go_flag.is_set()):
@@ -324,9 +330,16 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
             # Report to the parent process we are ready to go for the next burst 
             os.kill(parent_pid, signal.SIGUSR1)
             print(f'World cam: Finished burst: {burst_num+1} | Sending ready signal!')
-
+        
             # Increment the burst number += 1 
             burst_num += 1
+
+            # Update the filename for the new burst number
+            filename = filename.replace(f'burst{burst_num-1}', f"burst{burst_num}")
+
+            # Close the settings file for this burst 
+            settings_file.close()
+            settings_file = None
 
     # Append None to the write queue to signal it is time to stop 
     write_queue.put(None)

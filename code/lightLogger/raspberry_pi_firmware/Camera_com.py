@@ -90,7 +90,7 @@ def main():
                                                                                parent_pid,
                                                                                go_flag))
     write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename, 
-                                                                                use_signalcom))
+                                                                                not use_signalcom))
     
     # Begin the threads
     for thread in (capture_thread, write_thread):
