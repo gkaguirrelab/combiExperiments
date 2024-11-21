@@ -250,6 +250,10 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         # Record the time the signal was received 
         time_received: float = time.time()
         
+        # If there are already 2 readings in the ready list, 
+        # they are from the previous reading, so clear 
+        if(len(controllers_ready) >= len(component_controllers)): controllers_ready.pop(0)
+
         # Append the ready signal and the time received to controllers ready
         controllers_ready.append((True, time_received))
     
@@ -311,6 +315,9 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         print('Master Process: Did not receive sensors ready signal in time. Exiting...')
         sys.exit(1)
 
+    # Clear the history of ready sensors
+    controllers_ready.clear()
+
     # Have all sensors sleep for N seconds 
     time.sleep(sensor_initialization_time)
     
@@ -323,9 +330,6 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     
     # Capture the desired amount of bursts
     while(burst_num < n_bursts):
-        # Clear the history of ready sensors
-        controllers_ready.clear()
-
         # Note which burst we are on 
         print(f'Master process: Burst num: {burst_num+1}/{n_bursts}')
 
@@ -346,13 +350,20 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     
         # Wait for the subcontrollers to be ready for the next chunk
         while(len(controllers_ready) != len(component_controllers)):
+            # Capture the current time since we begun waiting
+            current_wait: float = time.time()
             if((current_wait - last_read) >= 2):
                 print(f'Master Process: Waiting for sensors to be ready... {len(controllers_ready)}/{len(component_controllers)}')
-                
-            time.sleep(0.5)
+                last_read = current_wait 
         
         # Increment the burst number 
         burst_num += 1
+
+        print(f'Master Process: Sensors ready! {len(controllers_ready)}/{len(component_controllers)}')
+        
+        # Sleep for a short moment before sending a go-ahead 
+        #time.sleep(0.5)
+        
     
     
     # If we have recorded the desired bursts, 
