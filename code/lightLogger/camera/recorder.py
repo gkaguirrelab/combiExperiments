@@ -91,6 +91,11 @@ def write_frame(write_queue: queue.Queue, filename: str, generate_settingsfile: 
 
                 # Set the current one to be the new one
                 current_settingsfile = settings_file
+        
+        # Quickly check and ensure the output directory exists 
+        # it always should, but I had an error where it didn't. 
+        # must have been timing related
+        if(not os.path.exists(filename)): os.mkdir(filename)
 
         # Print out the state of the write queue
         print(f'Camera queue size: {write_queue.qsize()}')
@@ -195,7 +200,7 @@ def capture_helper(cam: object, duration: float, write_queue: queue.Queue,
 
     # Begin timing capture
     start_capture_time: float = time.time()
-    last_gain_change: float = time.time()  
+    last_gain_change: float = start_capture_time 
 
     # Capture duration (seconds) of frames
     frame_num: int = 0

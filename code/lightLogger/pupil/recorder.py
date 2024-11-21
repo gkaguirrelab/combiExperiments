@@ -106,11 +106,17 @@ def write_frame(write_queue: queue.Queue, filename: str, generate_settingsfile: 
         if(len(ret) > 2):
             filename, settings_file = ret[2:4]
 
+        # Quickly check and ensure the output directory exists 
+        # it always should, but I had an error where it didn't. 
+        # must have been timing related
+        if(not os.path.exists(filename)): os.mkdir(filename)
+
         #print(f'writing {frame_num}')
         print(f"Pupil Queue size: {write_queue.qsize()}")
 
         # Write the frame
         save_path: str = os.path.join(filename, f'{frame_num}.npy')
+
         np.save(save_path, frame_buffer)
 
 

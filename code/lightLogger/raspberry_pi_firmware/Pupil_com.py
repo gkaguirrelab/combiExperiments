@@ -43,7 +43,7 @@ go_flag: threading.Event = threading.Event()
 """Add a handle to receive a USRSIG1 from the main process 
    to begin capturing when all sensors have reported ready"""
 def handle_gosignal(signum, frame=None):
-    print(f'Pupil Cam: Received GO signal')
+    #print(f'Pupil Cam: Received GO signal')
     go_flag.set()
 
 signal.signal(signal.SIGUSR1, handle_gosignal)
@@ -56,7 +56,7 @@ stop_flag: threading.Event = threading.Event()
    to beendgin capturing when the desired number of bursts 
    have been captured"""
 def handle_stopsignal(signum, frame=None):
-    print(f'Pupil Cam: Received STOP signal')
+    #print(f'Pupil Cam: Received STOP signal')
     stop_flag.set()
 
 signal.signal(signal.SIGUSR2, handle_stopsignal)
