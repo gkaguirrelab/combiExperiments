@@ -6,6 +6,7 @@ import psutil
 import os 
 import signal
 import traceback
+import threading
 
 # Define the time in seconds to wait before 
 # raising a timeout error
@@ -13,6 +14,9 @@ sensor_initialization_timeout: float = 45
 
 # The time in seconds to allow for sensors to start up
 sensor_initialization_time: float = 1.5
+
+# Lock for accessing variables in signal handlers 
+container_lock: threading.Lock = threading.Lock()
 
 """Parse the command line arguments"""
 def parse_args() -> tuple:
@@ -119,7 +123,7 @@ def capture_burst_multi_init(info_file: object, component_controllers: list, CPU
 
     """Define a function to receive signals when the processes are ready"""
     def handle_readysig(signum, frame, siginfo=None):
-        print(f'Received a sensor ready signal!')
+        #print(f'Received a sensor ready signal!')
         
         # Determine the pid of the sender
         sender_pid: int = siginfo.si_pid 
@@ -239,19 +243,23 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     # List to keep track of process objects
     processes: list = []
 
-    # Initialize a dict of controller names and if they are initialized 
-    # or not
+    # Initialize an int to track how many sensors are ready at a given point
     controllers_ready: list = []
 
     """Define a function to receive signals when the processes are ready"""
     def handle_readysig(signum, frame, siginfo=None):
-        print(f'Master process: Received a sensor ready signal!')
+        #print(f'Master process: Received a sensor ready signal!')
         
         # Record the time the signal was received 
-        time_received: float = time.time()
+        #time_received: float = time.time()
         
-        # Append the ready signal and the time received to controllers ready
-        controllers_ready.append((True, time_received))
+        # If there are already 2 readings in the ready list, 
+        # they are from the previous reading, so clear 
+        #if(len(controllers_ready) >= len(component_controllers)): controllers_ready.pop(0)
+
+        # Note that we have received a sigready, preventing race conditions from handlers
+        with container_lock:
+            controllers_ready.append(True)
     
     signal.signal(signal.SIGUSR1, handle_readysig)
 
@@ -311,8 +319,9 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         print('Master Process: Did not receive sensors ready signal in time. Exiting...')
         sys.exit(1)
 
-    # Have all sensors sleep for N seconds 
-    time.sleep(sensor_initialization_time)
+    # Clear the history of ready sensors
+    with container_lock:
+        controllers_ready.clear()
     
     # Find the current PID of all of the controllers (basically, everything with Python in it)
     pids: list = find_all_pids('python3') 
@@ -320,12 +329,12 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
 
     # Define the burst we are on
     burst_num: int = 0 
+
+    # Have all sensors sleep for N seconds 
+    time.sleep(sensor_initialization_time)
     
     # Capture the desired amount of bursts
     while(burst_num < n_bursts):
-        # Clear the history of ready sensors
-        controllers_ready.clear()
-
         # Note which burst we are on 
         print(f'Master process: Burst num: {burst_num+1}/{n_bursts}')
 
@@ -346,13 +355,24 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     
         # Wait for the subcontrollers to be ready for the next chunk
         while(len(controllers_ready) != len(component_controllers)):
+            # Capture the current time since we begun waiting
+            current_wait: float = time.time()
             if((current_wait - last_read) >= 2):
                 print(f'Master Process: Waiting for sensors to be ready... {len(controllers_ready)}/{len(component_controllers)}')
-                
-            time.sleep(0.5)
+                last_read = current_wait
+
+        print(f'Master Process: Sensors ready! {len(controllers_ready)}/{len(component_controllers)}')
+
+        # Clear the controllers ready variable 
+        with container_lock:
+            controllers_ready.clear() 
         
         # Increment the burst number 
         burst_num += 1
+        
+        # Sleep for a short moment before sending a go-ahead 
+        #time.sleep(0.5)
+        
     
     
     # If we have recorded the desired bursts, 

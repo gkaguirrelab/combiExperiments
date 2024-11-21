@@ -35,7 +35,7 @@ def parse_args() -> tuple:
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
-    print("Received SIGTERM. Raising KeyboardInterrupt...")
+    #print("Received SIGTERM. Raising KeyboardInterrupt...")
     raise KeyboardInterrupt
 signal.signal(signal.SIGTERM, handle_sigterm)
 
@@ -46,7 +46,7 @@ go_flag: threading.Event = threading.Event()
 """Add a handle to receive a USRSIG1 from the main process 
    to begin capturing when all sensors have reported ready"""
 def handle_gosignal(signum, frame=None):
-    print(f'World Cam: Received GO signal')
+    #print(f'World Cam: Received GO signal')
     go_flag.set()
 
 signal.signal(signal.SIGUSR1, handle_gosignal)

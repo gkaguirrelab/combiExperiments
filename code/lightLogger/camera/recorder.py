@@ -48,13 +48,17 @@ def write_frame(write_queue: queue.Queue, filename: str, generate_settingsfile: 
 
     # Initialize a settings file for per-frame settings to be written to if this 
     # script is not using signal communication
-    if(generate_settingsfile is True): settings_file = open(f'{filename}_settingsHistory.csv', 'a')
+    if(generate_settingsfile is True): settings_file: object = open(f'{filename}_settingsHistory.csv', 'a')
 
     # Calculate the downsampled image shape
     downsampled_image_shape: tuple = CAM_IMG_DIMS >> downsample_factor
 
     # Create a contiguous memory buffer for to store downsampled images
     downsampled_buffer = np.zeros((CAM_FPS, *downsampled_image_shape), dtype=np.uint8)
+
+    # Define a container for the settings file object, as this will change 
+    # when using signalcom
+    current_settingsfile: object = settings_file if generate_settingsfile else None
 
     # While we are recording
     while(True):  
@@ -74,6 +78,25 @@ def write_frame(write_queue: queue.Queue, filename: str, generate_settingsfile: 
         if(len(ret) > 3): 
             filename, settings_file = ret[3:5]
 
+            # If this is the first settings file 
+            if(current_settingsfile is None):
+                # Set the current one to be the new one 
+                current_settingsfile = settings_file
+            
+            # Otherwise, if it's a new settingsfile, close the old 
+            # and swap to the new
+            elif(current_settingsfile.name != settings_file.name):
+                # Close the old settings file
+                current_settingsfile.close()
+
+                # Set the current one to be the new one
+                current_settingsfile = settings_file
+        
+        # Quickly check and ensure the output directory exists 
+        # it always should, but I had an error where it didn't. 
+        # must have been timing related
+        if(not os.path.exists(filename)): os.mkdir(filename)
+
         # Print out the state of the write queue
         print(f'Camera queue size: {write_queue.qsize()}')
 
@@ -88,10 +111,10 @@ def write_frame(write_queue: queue.Queue, filename: str, generate_settingsfile: 
         np.save(save_path, downsampled_buffer)
 
         # Write the frame info to the existing csv file
-        np.savetxt(settings_file, settings_buffer, delimiter=',', fmt='%d')
+        np.savetxt(current_settingsfile, settings_buffer, delimiter=',', fmt='%d')
 
-    # Close the settings and frame timings files
-    settings_file.close()
+    # Close the settings and frame timings files (if needed)
+    if(not current_settingsfile.closed): current_settingsfile.close()
 
 """Unpack chunks of n captured frames. This is used 
    to reformat the memory-limitation required capture 
@@ -164,7 +187,9 @@ def reconstruct_video(video_frames: np.array, output_path: str):
     # Release the VideoWriter object
     out.release()
 
-
+"""A helper function that contains the meat of capturing 
+   a video of a set length, for use when communicating 
+   via signals"""
 def capture_helper(cam: object, duration: float, write_queue: queue.Queue,
                   current_gain: float, current_exposure: float,
                   gain_change_interval: float,
@@ -175,7 +200,7 @@ def capture_helper(cam: object, duration: float, write_queue: queue.Queue,
 
     # Begin timing capture
     start_capture_time: float = time.time()
-    last_gain_change: float = time.time()  
+    last_gain_change: float = start_capture_time 
 
     # Capture duration (seconds) of frames
     frame_num: int = 0
@@ -228,7 +253,7 @@ def capture_helper(cam: object, duration: float, write_queue: queue.Queue,
     # Calculate the approximate FPS the frames were taken at 
     # (approximate due to time taken for other computation)
     observed_fps: float = (frame_num)/(end_capture_time-start_capture_time)
-    print(f'World Camera captured {frame_num} at ~{observed_fps} fps')
+    print(f'World cam: captured {frame_num} at ~{observed_fps} fps')
 
 
 """Record from with the camera with a specified duration, but 
@@ -302,18 +327,19 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     filename : str = filename.replace('burstX', f"burst{burst_num}") 
     settings_file: object = open(f'{filename}_settingsHistory.csv', 'a')
 
-    # Once the go signal has been received, begin capturing chunks until we 
+    # Once the GO signal has been received, begin capturing chunks until we 
     # receive a stop signal
     while(not stop_flag.is_set()):     
         # Use the milliseconds of time gaps between GO signals to generate files and hopefully not add 
         # any delay in the start of a burst capture
-        # Akin to racing the beam on ATARI 2600! 
+        # Akin to racing the beam on ATARI 2600, pretty cool! 
 
         # Generate the directory for this burst if it does not already exist
         if(not os.path.exists(filename)): os.mkdir(filename)
         
         # Generate/Open the settings file for this burst if it does not already exist
-        if(settings_file is None): settings_file = open(f'{filename}_settingsHistory.csv', 'a')
+        if(settings_file.name != f'{filename}_settingsHistory.csv'): 
+            settings_file = open(f'{filename}_settingsHistory.csv', 'a')
 
         # While we have the GO signal, record a burst
         while(go_flag.is_set()):
@@ -337,15 +363,23 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
             # Update the filename for the new burst number
             filename = filename.replace(f'burst{burst_num-1}', f"burst{burst_num}")
 
-            # Close the settings file for this burst 
-            settings_file.close()
-            settings_file = None
-
     # Append None to the write queue to signal it is time to stop 
     write_queue.put(None)
 
     # Stop recording and close the picam object 
     cam.close() 
+
+    ## If the last dir we made never got used, remove it
+    if(len(os.listdir(filename)) == 0): os.rmdir(filename)
+
+    # Close the settings file if it was never used for a burst
+    # and thus wasn't closed in writing
+    if(not settings_file.closed): settings_file.close()
+
+    # Remove it as well if it is empty
+    if(os.path.getsize(settings_file.name) == 0): os.remove(settings_file.name)
+
+    print(f'World cam: Finishing recording')
     
 
 """Record live from the camera with no specified duration"""

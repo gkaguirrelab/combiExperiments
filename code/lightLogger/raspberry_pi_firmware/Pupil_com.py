@@ -10,7 +10,7 @@ import signal
 """Import utility functions from the pupil recorder"""
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'pupil')
 sys.path.append(os.path.abspath(recorder_lib_path))
-from recorder import preview_capture, record_live, record_video, write_frame, vid_array_from_npy_folder, reconstruct_video,  unpack_capture_chunks
+from recorder import preview_capture, record_live, record_video, record_video_signalcom, write_frame, vid_array_from_npy_folder, reconstruct_video,  unpack_capture_chunks
 
 """Parse arguments via the command line"""
 def parse_args() -> tuple:
@@ -24,10 +24,11 @@ def parse_args() -> tuple:
     parser.add_argument('--unpack_frames', default=0, type=int, help='Unpack the buffers of frames files into single frame files or not')
     parser.add_argument('--is_subprocess', default=0, type=int, help='A flag to tell this process if it has been run as a subprocess or not')
     parser.add_argument('--parent_pid', default=0, type=int, help='A flag to tell this process what the pid is of the parent process which called it')
+    parser.add_argument('--signal_communication', default=0, type=int, help='A flag to tell this process to use signal communication with a master process when it is run as a subprocess')
    
     args = parser.parse_args()
     
-    return args.output_path, args.duration, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames), bool(args.is_subprocess), args.parent_pid
+    return args.output_path, args.duration, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames), bool(args.is_subprocess), args.parent_pid, bool(args.signal_communication)
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
@@ -39,24 +40,37 @@ signal.signal(signal.SIGTERM, handle_sigterm)
 # when run as a subprocess
 go_flag: threading.Event = threading.Event()
 
-"""Add a handle to receive a USRSIG from the main process 
+"""Add a handle to receive a USRSIG1 from the main process 
    to begin capturing when all sensors have reported ready"""
 def handle_gosignal(signum, frame=None):
-    print(f'Pupil Cam: Received Go signal')
+    #print(f'Pupil Cam: Received GO signal')
     go_flag.set()
 
 signal.signal(signal.SIGUSR1, handle_gosignal)
 
+# Create a threading flag to declare when to stop capturing 
+# when run as a subprocess
+stop_flag: threading.Event = threading.Event()
+
+"""Add a handle to receive a USRSIG2 from the main process 
+   to beendgin capturing when the desired number of bursts 
+   have been captured"""
+def handle_stopsignal(signum, frame=None):
+    #print(f'Pupil Cam: Received STOP signal')
+    stop_flag.set()
+
+signal.signal(signal.SIGUSR2, handle_stopsignal)
+
 
 def main():
-    output_path, duration, save_video, save_frames, preview, unpack_frames, is_subprocess, parent_pid = parse_args()
+    output_path, duration, save_video, save_frames, preview, unpack_frames, is_subprocess, parent_pid, use_signalcom = parse_args()
 
     # If the preview is true, view a preview of the camera view before capture
     if(preview is True):
         preview_capture()
     
-    # Select whether to use the set-duration video recorder or the live recorder
-    recorder: object = record_live if duration == float('INF') else record_video
+  # Select whether to use the set-duration video recorder or the live recorder
+    recorder: object = record_video_signalcom if use_signalcom is True else record_live if duration == float('INF') else record_video
 
     # Retrieve the experiment filename and the video extension
     filename, extension = os.path.splitext(output_path) 
@@ -64,16 +78,14 @@ def main():
     # Initialize a queue for frames to write 
     write_queue: queue.Queue = queue.Queue()
 
-    # Create a threading flag to declare when to stop indefinite videos
-    stop_flag: threading.Event = threading.Event()
-
     # Build thread processes for both capturing frames and writing frames 
     capture_thread: threading.Thread = threading.Thread(target=recorder, args=(duration, write_queue, 
                                                                                filename, stop_flag,
                                                                                is_subprocess,
                                                                                parent_pid,
                                                                                go_flag))
-    write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename))
+    write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename,
+                                                                                not use_signalcom))
     
     # Begin the threads
     for thread in (capture_thread, write_thread):
