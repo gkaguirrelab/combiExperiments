@@ -70,12 +70,26 @@ def write_frame(write_queue: queue.Queue, filename: str, generate_settingsfile: 
         if(ret is None):
             break
         
+        # In this case, we passed FPS information 
+        if(type(ret) is dict):
+            # Construct the path to the FPS file from the name 
+            # of the settings file 
+            fps_file_path: str = current_settingsfile.name.replace('settingsHistory.csv', 'FPS.pkl')
+
+            # Simply save this information and continue
+            with open(fps_file_path, 'wb') as f:
+                pickle.dump(ret, f)
+            
+            # Skip the rest of the loop work
+            continue
+
         # Extract frame and its metadata
         frame_buffer, frame_num, settings_buffer = ret[0:3]
 
         # If the length is greater than two, we've passed it 
         # the filename (directory) to save under and the settings file
         if(len(ret) > 3): 
+            # Retrieve the directory name and the settings file object
             filename, settings_file = ret[3:5]
 
             # If this is the first settings file 
@@ -253,6 +267,10 @@ def capture_helper(cam: object, duration: float, write_queue: queue.Queue,
     # Calculate the approximate FPS the frames were taken at 
     # (approximate due to time taken for other computation)
     observed_fps: float = (frame_num)/(end_capture_time-start_capture_time)
+
+    # Add this observed FPS to the write queue, to denote the FPS of the video 
+    write_queue.put({"num_frames_captured": frame_num, "observed_fps": observed_fps})
+
     print(f'World cam: captured {frame_num} at ~{observed_fps} fps')
 
 
@@ -322,7 +340,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     
     # Define the starting burst number
     # and the thus the initial filename
-    # and settings file
+    # settings file
     burst_num: float = 0 
     filename : str = filename.replace('burstX', f"burst{burst_num}") 
     settings_file: object = open(f'{filename}_settingsHistory.csv', 'a')
