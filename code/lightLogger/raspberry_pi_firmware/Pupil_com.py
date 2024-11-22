@@ -45,6 +45,8 @@ go_flag: threading.Event = threading.Event()
    to begin capturing when all sensors have reported ready"""
 def handle_gosignal(signum, frame=None):
     #print(f'Pupil Cam: Received GO signal')
+
+    os.write(sys.stdout.fileno(), b"Pupil cam: Received a GO signal\n")
     go_flag.set()
 
 signal.signal(signal.SIGUSR1, handle_gosignal)
@@ -58,6 +60,8 @@ stop_flag: threading.Event = threading.Event()
    have been captured"""
 def handle_stopsignal(signum, frame=None):
     #print(f'Pupil Cam: Received STOP signal')
+
+    os.write(sys.stdout.fileno(), b"Pupil cam: Received a STOP signal\n")
     stop_flag.set()
 
 signal.signal(signal.SIGUSR2, handle_stopsignal)
