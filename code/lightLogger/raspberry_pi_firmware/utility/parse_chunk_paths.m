@@ -60,8 +60,8 @@ function sorted_chunks = parse_chunk_paths(path_to_experiment)
     % Now, convert every dict to a struct
     sorted_chunks = cellfun(@(x) struct(x), sorted_chunks, 'UniformOutput', false);
 
-    % Finally, go across all of the dicts and convert all of their py.lists of 
-    % strings to MATLAB string array
+    % Finally, go across all of the dicts and convert all of their py.str path
+    % strings to MATLAB string 
     for cc = 1:size(sorted_chunks, 1)
         % Retrieve the chunk struct
         chunk_struct = sorted_chunks{cc};
@@ -73,8 +73,7 @@ function sorted_chunks = parse_chunk_paths(path_to_experiment)
             % Retrieve the name of the field 
             fieldName = fieldNames{ff};
             
-            % Convert the list of strings to a string 
-            % array
+            % Convert the Python string to MATLAB string
             chunk_struct.(fieldName) = string(chunk_struct.(fieldName));
 
         end 
@@ -84,9 +83,6 @@ function sorted_chunks = parse_chunk_paths(path_to_experiment)
 
     end
 
-
-
     return ; 
-
 
 end

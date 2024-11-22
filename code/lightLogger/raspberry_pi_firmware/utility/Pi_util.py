@@ -21,8 +21,8 @@ def parse_chunk_paths(experiment_path: str) -> list:
     # all of a given burst's readings
     for burst_idx, burst_name in enumerate(burst_names):
         # Initialize an empty dictionary for all sensors
-        chunk_dict: dict = {name: [] 
-                           for name in ('MS', 'Pupil', 'World', 'Sunglasses')}
+        chunk_dict: dict = {name: ""
+                           for name in ('MS', 'Pupil', 'World', 'Sunglasses', 'WorldSettings', 'WorldFPS')}
         
         # Find all of the files of this burst
         burst_files: list = (os.path.join(experiment_path, file)
@@ -31,31 +31,29 @@ def parse_chunk_paths(experiment_path: str) -> list:
         
         # Next, we will assign the files to their respective sensors
         for file in burst_files:
-            # Append world sensor files to that category 
-            if('world' in os.path.basename(file).lower()):
-                chunk_dict['World'].append(file)
+            # Append world sensor directory to that category 
+            if('world' in os.path.basename(file).lower() and os.path.isdir(file)):
+                chunk_dict['World'] = file
+
+            # Append the world sensor's settings file to the category
+            elif('_settingshistory' in os.path.basename(file).lower() and not os.path.isdir(file)):
+                chunk_dict['WorldSettings'] = file 
+            
+            # Append the world's FPS tracking information to that category
+            elif('_fps' in os.path.basename(file).lower() and not os.path.isdir(file)):
+                chunk_dict['WorldFPS'] = file
             
             # Append MS sensor files to that category
-            elif('ms_readings' in os.path.basename(file).lower()):
-                chunk_dict['MS'].append(file)
+            elif('ms_readings' in os.path.basename(file).lower() and os.path.isdir(file)):
+                chunk_dict['MS'] = file
             
             # Append pupil sensor files to that category
-            elif('pupil' in os.path.basename(file).lower()):
-                chunk_dict['Pupil'].append(file)
+            elif('pupil' in os.path.basename(file).lower() and os.path.isdir(file)):
+                chunk_dict['Pupil'] = file
             
-            # THE .TXT HERE IS A KLUDGE. I FORGOT TO PUT SUNGLASSES
-            # IN SOME FILENAMES FOR TESTING. IN THE FUTURE 
-            # THE SUNGLASSES WILL BE ALL THAT IS NEEDED
             # Append sunglasses sensor files to that category
-            elif('sunglasses' in os.path.basename(file).lower() 
-                 or '.txt' in os.path.basename(file).lower()):
-                 chunk_dict['Sunglasses'].append(file)
-
-        # Go over all of the keys and values and sort the values 
-        # so keys with multiple values always have their 
-        # values show up in the same order 
-        for key, val in chunk_dict.items(): 
-            chunk_dict[key].sort()
+            elif('sunglasses' in os.path.basename(file).lower() and not os.path.isdir(file )):
+                 chunk_dict['Sunglasses'] = file
 
         # Append this chunks' readings to the growing list
         sorted_chunks.append(chunk_dict)
