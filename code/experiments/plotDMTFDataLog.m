@@ -5,6 +5,7 @@ clear
 
 % How many bins to use when calculating the variance across frequency?
 nBins = 10;
+binOverlap = 0;
 
 % Get the subject ID
 subjectID = GetWithDefault('Subject ID','FLIC_xxxx');
