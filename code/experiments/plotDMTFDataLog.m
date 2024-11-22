@@ -3,10 +3,8 @@
 %close all
 clear
 
-% How many bins to use when calculating the variance across frequency? How
-% much overlap to have between bins (expressed as a proportion)
+% How many bins to use when calculating the variance across frequency?
 nBins = 10;
-binOverlap = 0.0;
 
 % Get the subject ID
 subjectID = GetWithDefault('Subject ID','FLIC_xxxx');
@@ -95,15 +93,15 @@ for nn = 1:length(NDlabelsAll)
 
         % Add a plot line to indicate the variance of the residuals
         residuals = mdl.Residuals.Raw;
-        [~,E]=discretize(log10(refFreq),nBins);
+        E = linspace(log10(1),log10(32),nBins+1);
         binCenters = E(1:nBins)+(E(2)-E(1))/2;
         for rr = 1:nBins
             binStart = max([min(E),E(rr)-E(rr)*(binOverlap/2)]);
             binEnd = min([max(E),E(rr+1)+E(rr+1)*(binOverlap/2)]);
-            idx = find(and(log(refFreq)>=binStart,log(refFreq)<=binEnd));
-            stdVals(rr) = std(residuals(idx));
+            idx = find(and(log10(refFreq)>=binStart,log10(refFreq)<=binEnd));
+            varVals(rr) = std(residuals(idx)).^2;
         end
-        plot(10.^binCenters,stdVals,'o-m','LineWidth',2);
+        plot(10.^binCenters,varVals,'o-m','LineWidth',2);
 
     end
 end
