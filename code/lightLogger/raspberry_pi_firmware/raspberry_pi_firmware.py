@@ -46,10 +46,11 @@ def parse_args() -> tuple:
     parser.add_argument('burst_seconds', type=int, help='The amount of seconds for each capture burst')
     parser.add_argument('--shell_output', type=int, choices=[0,1], default=1, help='Enable/Disable output to the terminal from all of the subprocesses')
     parser.add_argument('--starting_chunk_number', type=int, default=0, help='The chunk number to start counting at')
+    parser.add_argument('--startup_delay_seconds', type=int, default=0, help='The delay with which to start executing commands in the process.')
 
     args = parser.parse_args()
 
-    return args.config_path, args.n_bursts, args.burst_seconds, bool(args.shell_output), args.starting_chunk_number
+    return args.config_path, args.n_bursts, args.burst_seconds, bool(args.shell_output), args.starting_chunk_number, args.startup_delay_seconds
 
 """Find the PIDS of a process with a given name"""
 def find_pid(target_name: tuple) -> list:
@@ -249,6 +250,19 @@ def capture_burst_multi_init(info_file: object, component_controllers: list, CPU
 
     return
 
+"""Helper function to send STOP signals to the subprocesses"""
+def stop_subprocesses(pids: dict, master_pid: int):
+    # If we have recorded the desired bursts, 
+    # send a stop signal 
+    for controller, pid in pids.items():        
+        # Send the signal to STOP recording
+        print(f'\tMaster process: {master_pid} | Sending STOP to {controller}: {pid}')
+        os.kill(pid, signal.SIGUSR2)
+    
+    # Close the processes after recording 
+    for process in processes:
+        process.wait()
+
 
 """Capture a burst of length burst_seconds
    from all of the sensors by calling the controllers 
@@ -389,40 +403,29 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
 
         # If we didn't receive enough ready signals, something has gone wrong. Likely, the signal 
         # just disappeared, but could be other reasons. We are going to safely exit, then begin the program again
-        except:
-            # Record the time of this crash
-            crash_time: datetime.datetime = datetime.datetime.now()
+        except Exception as e:
+            # Kill the subprocesses (allow for devices to be freed and so on)
+            stop_subprocesses(pids, master_pid)
 
-            print(f'ERROR:  Master process did not receive enough READY signals by timeout. TIMESTAMP {crash_time}')
-            print(f'Restarting process...')
+            # If it's a control C, simply just exit 
+            if(isinstance(e, KeyboardInterrupt)):
+                sys.exit(0)
 
-            # Command to activate the environment used to run the script
-            env_activation_cmd: str = "source ~/.python_environment/bin/activate"
-            script_execution_cmd: str = ""
-
-            # Recall the 
-            os.system( python3 &')
-
-            # Exit with error code
-            sys.exit(1)
+            # Otherwise, return the burst number. This 
+            # is not going to be equal to the n_bursts and is therefore 
+            # an error signal
+            return burst_num 
 
         print(f'Master Process: Sensors ready!')
 
         # Increment the burst number 
         burst_num += 1
-    
-    # If we have recorded the desired bursts, 
-    # send a stop signal 
-    for controller, pid in pids.items():        
-        # Send the signal to STOP recording
-        print(f'\tMaster process: {master_pid} | Sending STOP to {controller}: {pid}')
-        os.kill(pid, signal.SIGUSR2)
-    
-    # Close the processes after recording 
-    for process in processes:
-        process.wait()
 
-    return
+    # Stop the subprocesses
+    stop_subprocesses(pids, master_pid)
+
+    # Return the burst num. If this is equal to n bursts, we executed successfully. 
+    return burst_num
 
 def main():
     # Set the program title so we can see what it is in TOP 
@@ -433,7 +436,11 @@ def main():
                                 'Camera_com.py', 'Pupil_com.py'])
 
     # Parse the file containing the processes to run and their args
-    config_path, n_bursts, burst_seconds, shell_output, starting_chunk_number = parse_args()
+    config_path, n_bursts, burst_seconds, shell_output, starting_chunk_number, startup_delay_seconds = parse_args()
+
+    # Sleep for the desired amount of delay before executing processes
+    print(f'DELAYING BEGIN FOR: {startup_delay_seconds}')
+    time.sleep(startup_delay_seconds)
 
     # Parse the controllers and their arguments
     print('Parsing processes and args...')
@@ -478,8 +485,19 @@ def main():
         print(f'\tProgram: {name} | Args: {args}')   
 
     # Iterate over the number of bursts
-    capture_burst_single_init(experiment_info_file, component_controllers, cores_and_priorities,
-                              burst_seconds, n_bursts, shell_output=True, burst_num=starting_chunk_number)
+    burst_num_reached: int = 0
+    while(burst_num_reached < n_bursts):
+        # Attempt to carry out the experiment
+        burst_num_reached = capture_burst_single_init(experiment_info_file, component_controllers, cores_and_priorities,
+                                                      burst_seconds, n_bursts, shell_output=True)
+
+        # Detect if there was a crash in capturing the bursts
+        if(burst_num_reached != n_bursts):
+            print(f'CRASHED! Restarting after small delay')
+        
+        # Sleep for a small delay to allow for sensors to close cleanly
+        time.sleep(sensor_initialization_delay)
+        
     
     # Close the info file
     experiment_info_file.close()

@@ -21,10 +21,11 @@ def parse_args() -> str:
     parser.add_argument('--is_subprocess', default=0, type=int, help='A flag to tell this process if it has been run as a subprocess or not')
     parser.add_argument('--parent_pid', default=0, type=int, help='A flag to tell this process what the pid is of the parent process which called it')
     parser.add_argument('--signal_communication', default=0, type=int, help='A flag to tell this process to use signal communication with a master process when it is run as a subprocess')
+    parser.add_argument('--starting_chunk_number', default=0, type=int, help='A flag to use when the main controller script crashes and it needs to resume where it left off')
 
     args = parser.parse_args()
 
-    return args.output_path, args.duration, bool(args.is_subprocess), args.parent_pid, bool(args.signal_communication)
+    return args.output_path, args.duration, bool(args.is_subprocess), args.parent_pid, bool(args.signal_communication), args.starting_chunk_number
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
@@ -54,7 +55,7 @@ def main():
 
     # Initialize output directory and names 
     # of reading files
-    output_directory, duration, is_subprocess, parent_pid, use_signalcom = parse_args()
+    output_directory, duration, is_subprocess, parent_pid, use_signalcom, starting_chunk_number = parse_args()
     reading_names: list = ['AS_channels','TS_channels',
                            'LS_channels','LS_temp']
 
@@ -68,7 +69,8 @@ def main():
     capture_thread: threading.Thread = threading.Thread(target=recorder, args=(duration, write_queue,
                                                                                output_directory, 
                                                                                reading_names, stop_flag,
-                                                                               is_subprocess, parent_pid, go_flag))
+                                                                               is_subprocess, parent_pid, go_flag,
+                                                                               starting_chunk_number))
     write_thread: threading.Thread = threading.Thread(target=write_SERIAL, args=(write_queue, reading_names, 
                                                                                 output_directory, not use_signalcom))
     

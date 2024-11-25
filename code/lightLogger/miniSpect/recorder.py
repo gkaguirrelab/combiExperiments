@@ -113,7 +113,8 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
                            stop_flag: threading.Event,
                            is_subprocess: bool, 
                            parent_pid: int, 
-                           go_flag: threading.Event) -> None:
+                           go_flag: threading.Event,
+                           burst_num: int = 0) -> None:
 
     # Initialize a serial connection to the Minispect 
     # and how many bytes it will be transfering
@@ -170,7 +171,6 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     # Define the starting burst number
     # and the thus the initial filename
     # settings file
-    burst_num: float = 0 
     filename : str = filename.replace('burstX', f"burst{burst_num}") 
     if(not os.path.exists(filename)): os.mkdir(filename)
     reading_filehandles: list = [open(os.path.join(filename, reading_name + '.csv'), 'a')
@@ -234,7 +234,8 @@ def record_video(duration: float, write_queue: queue.Queue,
                  stop_flag: threading.Event,
                  is_subprocess: bool, 
                  parent_pid: int, 
-                 go_flag: threading.Event) -> None:
+                 go_flag: threading.Event,
+                 burst_num: int=0) -> None:
 
         # Initialize a serial connection to the Minispect 
         # and how many bytes it will be transfering
