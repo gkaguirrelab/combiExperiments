@@ -9,11 +9,12 @@ import traceback
 import queue
 import setproctitle
 import threading
+import datetime
 import multiprocessing as mp
 
 # Define the time in seconds to wait before 
 # raising a timeout error
-sensor_initialization_timeout: float = 45
+sensor_initialization_timeout: float = 30
 
 # The time in seconds to allow for sensors to start up
 sensor_initialization_time: float = 1.5
@@ -44,10 +45,11 @@ def parse_args() -> tuple:
     parser.add_argument('n_bursts', type=float, help='The number of bursts to take')
     parser.add_argument('burst_seconds', type=int, help='The amount of seconds for each capture burst')
     parser.add_argument('--shell_output', type=int, choices=[0,1], default=1, help='Enable/Disable output to the terminal from all of the subprocesses')
+    parser.add_argument('--starting_chunk_number', type=int, default=0, help='The chunk number to start counting at')
 
     args = parser.parse_args()
 
-    return args.config_path, args.n_bursts, args.burst_seconds, bool(args.shell_output)
+    return args.config_path, args.n_bursts, args.burst_seconds, bool(args.shell_output), args.starting_chunk_number
 
 """Find the PIDS of a process with a given name"""
 def find_pid(target_name: tuple) -> list:
@@ -253,7 +255,8 @@ def capture_burst_multi_init(info_file: object, component_controllers: list, CPU
    once and communicating with signals when to start/stop
    the next chunk"""
 def capture_burst_single_init(info_file: object, component_controllers: list, CPU_priorities: list, 
-                              burst_seconds: float, n_bursts: int, shell_output: bool= True) -> None:
+                              burst_seconds: float, n_bursts: int, shell_output: bool= True,
+                              burst_num: int=0) -> None:
 
     global controllers_ready
 
@@ -337,11 +340,11 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         # Also do before change and after to ensure both are top priority
         os.system(f"sudo renice -n -20 -p {p.pid}")
 
-    # Define the burst we are on
-    burst_num: int = 0 
-
     # Have all sensors sleep for N seconds 
     time.sleep(sensor_initialization_time)
+
+    # Capture the start of this chunk
+    chunk_start_time: datetime.datetime = datetime.datetime.now()
     
     # Capture the desired amount of bursts
     while(burst_num < n_bursts):
@@ -364,24 +367,44 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         current_wait: float = last_read 
     
         # Wait for the subcontrollers to be ready for the next chunk
-        while(True):
-            # Check to see if we have received all signals 
-            with ready_sig_lock:
-                # Break if we are ready to go again
-                if(controllers_ready == len(component_controllers)):
-                    # Reset to zero to wait for next iteration 
-                    controllers_ready = 0
-                    break
+        try:
+            while(True):
+                # Check to see if we have received all signals 
+                with ready_sig_lock:
+                    # Break if we are ready to go again
+                    if(controllers_ready == len(component_controllers)):
+                        # Reset to zero to wait for next iteration 
+                        controllers_ready = 0
+                        break
 
-            # If we waited N seconds without all sensors being ready, throw an error
-            if((current_wait - start_wait) >= sensor_initialization_timeout):
-                raise Exception('ERROR: Master process did not receive enough READY signals by timeout')
+                # If we waited N seconds without all sensors being ready, throw an error
+                if((current_wait - start_wait) >= sensor_initialization_timeout):
+                    raise Exception('ERROR: Master process did not receive enough READY signals by timeout')
 
-            # Capture the current time since we begun waiting
-            current_wait: float = time.time()
-            if((current_wait - last_read) >= 2):
-                print(f'Master Process: Waiting for sensors to be ready... {controllers_ready}/{len(component_controllers)}')
-                last_read = current_wait
+                # Capture the current time since we begun waiting
+                current_wait: float = time.time()
+                if((current_wait - last_read) >= 2):
+                    print(f'Master Process: Waiting for sensors to be ready... {controllers_ready}/{len(component_controllers)}')
+                    last_read = current_wait
+
+        # If we didn't receive enough ready signals, something has gone wrong. Likely, the signal 
+        # just disappeared, but could be other reasons. We are going to safely exit, then begin the program again
+        except:
+            # Record the time of this crash
+            crash_time: datetime.datetime = datetime.datetime.now()
+
+            print(f'ERROR:  Master process did not receive enough READY signals by timeout. TIMESTAMP {crash_time}')
+            print(f'Restarting process...')
+
+            # Command to activate the environment used to run the script
+            env_activation_cmd: str = "source ~/.python_environment/bin/activate"
+            script_execution_cmd: str = ""
+
+            # Recall the 
+            os.system( python3 &')
+
+            # Exit with error code
+            sys.exit(1)
 
         print(f'Master Process: Sensors ready!')
 
@@ -399,11 +422,6 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     for process in processes:
         process.wait()
 
-    # Record the time the processes ready signals 
-    # were received as well as the go time sent
-    #chunk_signal_info: str = ",".join([str(time) for (state, time) in controllers_ready] + [str(time_sent)])
-    #info_file.write(chunk_signal_info + "\n")
-
     return
 
 def main():
@@ -415,7 +433,7 @@ def main():
                                 'Camera_com.py', 'Pupil_com.py'])
 
     # Parse the file containing the processes to run and their args
-    config_path, n_bursts, burst_seconds, shell_output = parse_args()
+    config_path, n_bursts, burst_seconds, shell_output, starting_chunk_number = parse_args()
 
     # Parse the controllers and their arguments
     print('Parsing processes and args...')
@@ -435,7 +453,7 @@ def main():
     # Initialize a .csv to track when sensors report ready 
     # and when go signals are sent 
     experiment_info_file: str = open(os.path.join(experiment_name, 'info_file.csv'), 'a')
-    experiment_info_file.write('READY0,READY1,READY2,READY3,GO\n')
+    experiment_info_file.write('CHUNK_START,CHUNK_END,CRASH\n')
 
     # Assign max priority to all processes
     cores_and_priorities: list = [(process_num, -20) for process_num in range(len(component_controllers))]
@@ -461,7 +479,7 @@ def main():
 
     # Iterate over the number of bursts
     capture_burst_single_init(experiment_info_file, component_controllers, cores_and_priorities,
-                              burst_seconds, n_bursts, shell_output=True)
+                              burst_seconds, n_bursts, shell_output=True, burst_num=starting_chunk_number)
     
     # Close the info file
     experiment_info_file.close()
