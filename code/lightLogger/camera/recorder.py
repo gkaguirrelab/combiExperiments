@@ -209,7 +209,7 @@ def capture_helper(cam: object, duration: float, write_queue: queue.Queue,
                   gain_change_interval: float,
                   frame_buffer: np.ndarray, settings_buffer: np.ndarray,
                   filename: str, settings_file: object, 
-                  burst_num: int):
+                  burst_num: int) -> None:
     print('World Cam: Beginning capture')
 
     # Begin timing capture

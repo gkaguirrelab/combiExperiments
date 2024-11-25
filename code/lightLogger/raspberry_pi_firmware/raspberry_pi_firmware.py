@@ -19,16 +19,20 @@ sensor_initialization_timeout: float = 45
 sensor_initialization_time: float = 1.5
 
 # Initialize an int to track how many sensors are ready at a given point
-controllers_ready: mp.Queue = mp.Queue()
+controllers_ready: int = 0 
+
+# Initialize a lock for when we access controllers ready 
+ready_sig_lock: threading.Lock = threading.Lock()
 
 """Define a function to receive signals when the processes are ready"""
 def handle_readysig(signum, frame, siginfo=None):
+    global controllers_ready
     #print(f'Master process: Received a sensor ready signal!')
     os.write(sys.stdout.fileno(), b"Master process: Received a READY signal\n")
 
-
     # Note that we have received a sigready, preventing race conditions from handlers
-    controllers_ready.put(True)
+    with ready_sig_lock:
+        controllers_ready += 1
 
 signal.signal(signal.SIGUSR1, handle_readysig)
 
@@ -251,6 +255,8 @@ def capture_burst_multi_init(info_file: object, component_controllers: list, CPU
 def capture_burst_single_init(info_file: object, component_controllers: list, CPU_priorities: list, 
                               burst_seconds: float, n_bursts: int, shell_output: bool= True) -> None:
 
+    global controllers_ready
+
     # Determine the current pid of this master process
     master_pid: int = os.getpid()
 
@@ -277,7 +283,14 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     try:
         start_wait: float = time.time()
         last_read: float = time.time()
-        while(controllers_ready.qsize() != len(component_controllers)):
+        while(True):
+            # Check to see if all ready signals have been received 
+            with ready_sig_lock:
+                # If we have received all ready signals reset to 0 and break
+                if(controllers_ready == len(component_controllers)):
+                    controllers_ready = 0
+                    break 
+
             # Capture the current time
             current_wait: float = time.time()
 
@@ -287,7 +300,7 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
             
             # Every 2 seconds, output a messag
             if((current_wait - last_read) >= 2):
-                print(f'Waiting for all controllers to initialize: {controllers_ready.qsize()}/{len(component_controllers)}')
+                print(f'Waiting for all controllers to initialize: {controllers_ready}/{len(component_controllers)}')
                 last_read = current_wait
     
     # Catch and safely handle when the sensors error in their initialization
@@ -298,25 +311,12 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         print('Master Process: Did not receive sensors ready signal in time. Exiting...')
         sys.exit(1)
 
-
-    print('CLEARING!!!')
-
-    # Clear the history of ready sensors
-    for _ in range(len(component_controllers)):
-        controllers_ready.get()
-
-    print("PAST THE CLEARING PART")
-    #controllers_ready.clear()
-
     # Retrieve the pids of the actual process (most recent PID, per my working theory, thus last in sorted list)
     # for each of the component controllers 
-    print('GETTING THE PID')
     pids: dict = {controller: pid 
                  for controller, pid 
                  in zip(component_controllers.keys(), [find_pid(key)[-1] 
                                                       for key in component_controllers.keys()])}
-
-    print('GOT THE PID')
 
     # Now, we are going to set the priorities and CPU cores 
     for (controller, pid), (core, priority) in zip(pids.items(), CPU_priorities):
@@ -364,26 +364,29 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         current_wait: float = last_read 
     
         # Wait for the subcontrollers to be ready for the next chunk
-        while(controllers_ready.qsize() != len(component_controllers)):
+        while(True):
+            # Check to see if we have received all signals 
+            with ready_sig_lock:
+                # Break if we are ready to go again
+                if(controllers_ready == len(component_controllers)):
+                    # Reset to zero to wait for next iteration 
+                    controllers_ready = 0
+                    break
+
+            # If we waited N seconds without all sensors being ready, throw an error
+            if((current_wait - start_wait) >= sensor_initialization_timeout):
+                raise Exception('ERROR: Master process did not receive enough READY signals by timeout')
+
             # Capture the current time since we begun waiting
             current_wait: float = time.time()
             if((current_wait - last_read) >= 2):
-                print(f'Master Process: Waiting for sensors to be ready... {controllers_ready.qsize()}/{len(component_controllers)}')
+                print(f'Master Process: Waiting for sensors to be ready... {controllers_ready}/{len(component_controllers)}')
                 last_read = current_wait
 
-        print(f'Master Process: Sensors ready! {controllers_ready.qsize()}/{len(component_controllers)}')
+        print(f'Master Process: Sensors ready!')
 
-        # Clear the controllers ready variable 
-        # Clear the history of ready sensors
-        for _ in range(len(component_controllers)):
-            controllers_ready.get()
-            
         # Increment the burst number 
         burst_num += 1
-        
-        # Sleep for a short moment before sending a go-ahead 
-        #time.sleep(0.5)
-        
     
     # If we have recorded the desired bursts, 
     # send a stop signal 
