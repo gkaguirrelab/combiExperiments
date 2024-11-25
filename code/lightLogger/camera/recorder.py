@@ -388,14 +388,14 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     cam.close() 
 
     ## If the last dir we made never got used, remove it
-    if(len(os.listdir(filename)) == 0): os.rmdir(filename)
+    if(os.path.exists(filename) and len(os.listdir(filename)) == 0): os.rmdir(filename)
 
     # Close the settings file if it was never used for a burst
     # and thus wasn't closed in writing
     if(not settings_file.closed): settings_file.close()
 
     # Remove it as well if it is empty
-    if(os.path.getsize(settings_file.name) == 0): os.remove(settings_file.name)
+    if(os.path.exists(settings_file.name) and os.path.getsize(settings_file.name) == 0): os.remove(settings_file.name)
 
     print(f'World cam: Finishing recording')
     

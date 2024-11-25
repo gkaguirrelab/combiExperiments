@@ -316,7 +316,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     cam.close() 
 
     ## If the last dir we made never got used, remove it
-    if(len(os.listdir(filename)) == 0): os.rmdir(filename)
+    if(os.path.exists(filename) and len(os.listdir(filename)) == 0): os.rmdir(filename)
 
     print(f'Pupil cam: Finishing recording')
 

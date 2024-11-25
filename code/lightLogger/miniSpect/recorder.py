@@ -224,7 +224,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
 
     
     # Now check to see if the directory for the files is empty 
-    if(len(os.listdir(filename) == 0)): os.rmdir(filename)
+    if(os.path.exists(filename) and len(os.listdir(filename) == 0)): os.rmdir(filename)
 
     return 
 
