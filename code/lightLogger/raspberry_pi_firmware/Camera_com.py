@@ -29,10 +29,11 @@ def parse_args() -> tuple:
     parser.add_argument('--is_subprocess', default=0, type=int, help='A flag to tell this process if it has been run as a subprocess or not')
     parser.add_argument('--parent_pid', default=0, type=int, help='A flag to tell this process what the pid is of the parent process which called it')
     parser.add_argument('--signal_communication', default=0, type=int, help='A flag to tell this process to use signal communication with a master process when it is run as a subprocess')
+    parser.add_argument('--starting_chunk_number', default=0, type=int, help='A flag to use when the main controller script crashes and it needs to resume where it left off')
 
     args = parser.parse_args()
     
-    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames), bool(args.is_subprocess), args.parent_pid, bool(args.signal_communication)
+    return args.output_path, args.duration, args.initial_gain, args.initial_exposure, bool(args.save_video), bool(args.save_frames), bool(args.preview), bool(args.unpack_frames), bool(args.is_subprocess), args.parent_pid, bool(args.signal_communication), args.starting_chunk_number
 
 """If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
 def handle_sigterm(signum, frame):
@@ -70,7 +71,7 @@ def main():
     # Set the program title so we can see what it is in TOP 
     setproctitle.setproctitle(os.path.basename(__file__))
 
-    output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview, unpack_frames, is_subprocess, parent_pid, use_signalcom = parse_args()
+    output_path, duration, initial_gain, initial_exposure, save_video, save_frames, preview, unpack_frames, is_subprocess, parent_pid, use_signalcom, starting_chunk_number = parse_args()
     
     # If the preview flag is true, first display a preview of the camera 
     # until it is in position
@@ -92,7 +93,8 @@ def main():
                                                                                stop_flag,
                                                                                is_subprocess,
                                                                                parent_pid,
-                                                                               go_flag))
+                                                                               go_flag,
+                                                                               starting_chunk_number))
     write_thread: threading.Thread = threading.Thread(target=write_frame, args=(write_queue, filename, 
                                                                                 not use_signalcom))
     

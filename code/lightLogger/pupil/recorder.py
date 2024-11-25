@@ -214,7 +214,8 @@ def capture_helper(cam: object, duration: float, write_queue: queue.Queue,
 def record_video_signalcom(duration: float, write_queue: queue.Queue, 
                            filename: str, stop_flag: threading.Event,
                            is_subprocess: bool, parent_pid: int,
-                           go_flag: threading.Event): 
+                           go_flag: threading.Event,
+                           burst_num: int=0): 
     # Import the necessary library (causes conflict on other machines, so just do it locally)
     import uvc
 
@@ -273,7 +274,6 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     # Define the starting burst number
     # and the thus the initial filename
     # and settings file
-    burst_num: float = 0 
     filename : str = filename.replace('burstX', f"burst{burst_num}") 
     settings_file: object = None # None because we are currently not tracking any settings
 

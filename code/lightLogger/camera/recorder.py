@@ -279,7 +279,8 @@ def capture_helper(cam: object, duration: float, write_queue: queue.Queue,
 def record_video_signalcom(duration: float, write_queue: queue.Queue, 
                            filename: str, initial_gain: float, initial_exposure: int,
                            stop_flag: threading.Event, is_subprocess: bool,
-                           parent_pid: int, go_flag: threading.Event) -> None:
+                           parent_pid: int, go_flag: threading.Event,
+                           burst_num: int=0) -> None:
 
     # Connect to and set up camera
     print(f"Initializing World camera")
@@ -341,7 +342,6 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     # Define the starting burst number
     # and the thus the initial filename
     # settings file
-    burst_num: float = 0 
     filename : str = filename.replace('burstX', f"burst{burst_num}") 
     settings_file: object = open(f'{filename}_settingsHistory.csv', 'a')
 
