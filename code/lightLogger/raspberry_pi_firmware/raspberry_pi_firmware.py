@@ -7,6 +7,7 @@ import os
 import signal
 import traceback
 import queue
+import io
 import setproctitle
 import threading
 import datetime
@@ -14,22 +15,19 @@ import multiprocessing as mp
 
 # Define the time in seconds to wait before 
 # raising a timeout error
-sensor_initialization_timeout: float = 60
+sensor_initialization_timeout: float = 30
 
 # The time in seconds to allow for sensors to start up
 sensor_initialization_time: float = 1.5
 
-# Initialize an int to track how many sensors are ready at a given point
-controllers_ready: mp.Queue = mp.Queue(maxsize=3)
-
 """Define a function to receive signals when the processes are ready"""
 def handle_readysig(signum, frame, siginfo=None):
-    global controllers_ready
+    #global controllers_ready
     #print(f'Master process: Received a sensor ready signal!')
-    os.write(sys.stdout.fileno(), b"Master process: Received a READY signal\n")
-
+    #os.write(sys.stdout.fileno(), b"Master process: Received a READY signal\n")
+    pass
     # Note that we have received a sigready, preventing race conditions from handlers
-    controllers_ready.put(True)
+    #controllers_ready.put(True)
 
 signal.signal(signal.SIGUSR1, handle_readysig)
 
@@ -71,6 +69,7 @@ def find_pid(target_name: tuple) -> list:
             pass
     
     return pids
+
 
 """Parse the arguments for each subprocess from the main commandline run file"""
 def parse_process_args(config_path: str) -> tuple:
@@ -188,7 +187,7 @@ def capture_burst_multi_init(info_file: object, component_controllers: list, CPU
     try:
         start_wait: float = time.time()
         last_read: float = time.time()
-        while(len(controllers_ready) != len(component_controllers)):
+        while(len(controllers_ready) < len(component_controllers)):
             # Capture the current time
             current_wait: float = time.time()
 
@@ -268,13 +267,18 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
                               burst_seconds: float, n_bursts: int, shell_output: bool= True,
                               burst_num: int=0) -> None:
 
-    global controllers_ready
-
     # Determine the current pid of this master process
     master_pid: int = os.getpid()
 
     # List to keep track of process objects
     processes: list = []
+
+    # Initialize a dictionary of all of the controller names and if they are ready 
+    controllers_ready: dict = {controller: False
+                              for controller in component_controllers}
+    
+    # Define the directory to look for the READY signal files in
+    READY_file_dir: str = os.path.join(os.path.dirname(__file__), 'READY_files')
 
     # Iterate over the other scripts and start them with their associated arguments
     for script, args in component_controllers.items():
@@ -286,23 +290,19 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         p = subprocess.Popen(args,
                              stdout=sys.stdout,
                              stderr=sys.stderr,
+                             text=True,
                              shell=shell_output)
 
         # Append this process to the list of processes 
         # and its pid to the list of pids
         processes.append(p)
+    
 
-    # Wait for all of the sensors to initialize by waiting for their signals
+    # Wait for all of the sensors to initialize by waiting for their signals (which wi)
     try:
         start_wait: float = time.time()
         last_read: float = time.time()
-        while(True):
-            # Check to see if all ready signals have been received 
-            # If we have received all ready signals reset to 0 and break
-            if(controllers_ready.qsize() == len(component_controllers)):
-                for _ in range(len(component_controllers)): controllers_ready.get()
-                break 
-
+        while(True):    
             # Capture the current time
             current_wait: float = time.time()
 
@@ -310,9 +310,22 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
             if((current_wait - start_wait) >= sensor_initialization_timeout):
                 raise Exception('ERROR: Master process did not receive enough READY signals by timeout')
             
-            # Every 2 seconds, output a messag
+            # Every 2 seconds, output a message
             if((current_wait - last_read) >= 2):
-                print(f'Waiting for all controllers to initialize: {controllers_ready}/{len(component_controllers)}')
+                # Scan the READY flag directory for which controllers are ready
+                ready_files: list = os.listdir(READY_file_dir)
+
+                # Update the controllers_ready dict to include those that are now ready we haven't seen 
+                for ready_file in ready_files:
+                    # Retrieve the name of this controller
+                    controller_name: str = ready_file.split('|')[0].strip()
+
+                    # Update it to be ready if it's not already
+                    if(controllers_ready[controller_name] is not True): 
+                        controllers_ready[controller_name] = True
+
+
+                print(f'Waiting for all controllers to initialize: {controllers_ready}')
                 last_read = current_wait
     
     # Catch and safely handle when the sensors error in their initialization
@@ -381,7 +394,9 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
                 # Break if we are ready to go again
                 if(controllers_ready.qsize() == len(component_controllers)):
                     # Reset to zero to wait for next iteration 
-                    for _ in range(len(component_controllers)): controllers_ready.get()
+                    for _ in range(len(component_controllers)): 
+                        controllers_ready.get()
+                    
                     break
 
                 # If we waited N seconds without all sensors being ready, throw an error
@@ -426,7 +441,8 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     # Return the burst num. If this is equal to n bursts, we executed successfully. 
     return burst_num
 
-def main():
+"""The main program that will run all of the control software"""
+def run_control_software():
     # Set the program title so we can see what it is in TOP 
     setproctitle.setproctitle(os.path.basename(__file__))
 
@@ -504,6 +520,11 @@ def main():
     # Close the info file
     experiment_info_file.close()
 
+
+def main():
+
+    run_control_software()
+    
 
 if(__name__ == '__main__'):
     main()

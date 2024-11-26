@@ -219,6 +219,15 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     # Import the necessary library (causes conflict on other machines, so just do it locally)
     import uvc
 
+    # Retrieve the name of the controller this recorder is operating out of
+    controller_name: str = setproctitle.getproctitle()
+    
+    # Define the path to the controller READY files
+    READY_file_dir: str = "/home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/READY_files"
+
+    # Define the name of this controller's READY file 
+    READY_file_name: str = os.path.join(path, f"{controller_name}|READY")
+
     # Connect to and set up camera
     try:
         print(f"Initializing pupil camera")
@@ -240,9 +249,11 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     # If we were run as a subprocess, send a message to the parent 
     # process that we are ready to go
     try:
-        if(is_subprocess): 
+        if(is_subprocess is True): 
             print(f'Pupil Cam: Initialized. Sending ready signal to parent: {parent_pid}')
-            os.kill(parent_pid, signal.SIGUSR1)
+            
+            # Add a READY file for this controller
+            with open(READY_file_name, 'w') as f: pass
 
             # While we have not receieved the GO signal, wait 
             start_wait: float = time.time()

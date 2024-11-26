@@ -13,6 +13,7 @@ import multiprocessing as mp
 import psutil
 import signal
 import traceback
+import setproctitle
 
 
 """Import the custom AGC library"""
@@ -282,6 +283,15 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
                            parent_pid: int, go_flag: threading.Event,
                            burst_num: int=0) -> None:
 
+    # Retrieve the name of the controller this recorder is operating out of
+    controller_name: str = setproctitle.getproctitle()
+    
+    # Define the path to the controller READY files
+    READY_file_dir: str = "/home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/READY_files"
+
+    # Define the name of this controller's READY file 
+    READY_file_name: str = os.path.join(path, f"{controller_name}|READY")
+
     # Connect to and set up camera
     print(f"Initializing World camera")
     cam: Picamera2 = initialize_camera(initial_gain, initial_exposure)
@@ -303,27 +313,31 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     settings_buffer: np.array = np.zeros((CAM_FPS, 2), dtype=np.float16)
 
     # If we were run as a subprocess, send a message to the parent 
-    # process that we are ready to go
+    # process that we are ready to go via creating a file with the name of 
+    # this controller
     try:
-        print(f'World Cam: Initialized. Sending ready signal to parent: {parent_pid}')
-        os.kill(parent_pid, signal.SIGUSR1)
+        if(is_subprocess is True):
+            print(f'World Cam: Initialized. Generating READY flag file for parent: {parent_pid}')
 
-        # While we have not receieved the GO signal wait 
-        start_wait: float = time.time()
-        last_read: float = time.time()
-        while(not go_flag.is_set()):
-            # Capture the current time
-            current_wait: float = time.time()
+            # Add a READY file for this controller
+            with open(READY_file_name, 'w') as f: pass
 
-            # If the parent process is no longer existent, something has gone wrong
-            # and we should quit 
-            if(not psutil.pid_exists(parent_pid)):
-                raise Exception('ERROR: Parent process was killed')
-            
-            # Every 2 seconds, output a message
-            if((current_wait - last_read) >= 2):
-                print('World Cam: Waiting for GO signal...')
-                last_read = current_wait
+            # While we have not receieved the GO signal wait 
+            start_wait: float = time.time()
+            last_read: float = time.time()
+            while(not go_flag.is_set()):
+                # Capture the current time
+                current_wait: float = time.time()
+
+                # If the parent process is no longer existent, something has gone wrong
+                # and we should quit 
+                if(not psutil.pid_exists(parent_pid)):
+                    raise Exception('ERROR: Parent process was killed')
+                
+                # Every 2 seconds, output a message
+                if((current_wait - last_read) >= 2):
+                    print('World Cam: Waiting for GO signal...')
+                    last_read = current_wait
     
     # Catch if there was an error in some part of the pipeline and we did not receive 
     # a go signal in the appropriate amount of time
@@ -351,6 +365,8 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
         # Use the milliseconds of time gaps between GO signals to generate files and hopefully not add 
         # any delay in the start of a burst capture
         # Akin to racing the beam on ATARI 2600, pretty cool! 
+
+        #if(not os.path.exists(READY_file_name)): with open(READY_file_name, 'w') as f: pass
 
         # Generate the directory for this burst if it does not already exist
         if(not os.path.exists(filename)): os.mkdir(filename)
