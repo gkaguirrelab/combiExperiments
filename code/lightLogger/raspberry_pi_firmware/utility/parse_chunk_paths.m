@@ -18,10 +18,9 @@ function sorted_chunks = parse_chunk_paths(path_to_experiment)
 %
 % Outputs:
 %
-%   sorted_chunks         - 2D Cell. A cell containing cells
-%                           of each of the paths to 
-%                           sensors' information for each chunk 
-%                           sorted by chunk number. 
+%   sorted_chunks         - Cell. A cell containing structs with 
+%                           paths to each of the sensors' info 
+%                           for that chunk.
 %
 % Examples:
 %{

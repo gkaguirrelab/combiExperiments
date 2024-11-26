@@ -5,10 +5,7 @@ from natsort import natsorted
 """Function for filtering out BAD chunks (dropped frames and thus poor fit)
    from a recording. Given """
 def filter_good_chunks(fps_measured: np.ndarray, frames_captured: np.ndarray) -> np.ndarray:
-
-
-
-    pass
+    raise NotImplementedError
 
 
 """Group chunks' information together from a recording file and return them 

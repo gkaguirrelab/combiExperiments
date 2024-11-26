@@ -5,7 +5,7 @@ function measurement_matrix = filterGoodChunks(fps_measurements, frames_captured
 
     % Select GOOD chunks based on the rule
     % 1. Frame count 2406 (regardless of fps)
-    % 2. fps 200.5 (regardless of frame count)
+    % 2. fps 200.5 (regardl ess of frame count)
     % 3. framecount * fps == XX (which is the slope line of that set of blue skyscrapers aka good points), as long as fps is not < YY, or count is not < ZZ
     XX = 8.8509; 
     YY = 200;
