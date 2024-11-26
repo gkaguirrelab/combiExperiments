@@ -55,7 +55,8 @@ function sorted_chunks_parsed = parse_chunks(path_to_experiment)
 
         % Read in the MS path as a cell of tables from each of the sensors
         if(ms_path ~= "")
-            chunk_info_struct.MS = readInMSDataFiles(ms_path);
+            [AS_t, TS_t, LS_t, temp_t] = readInMSDataFiles(ms_path);
+            chunk_info_struct.MS = {AS_t ; TS_t ; LS_t ; temp_t ;};
         end 
 
         % Read in the pupil camera as a numpy array
