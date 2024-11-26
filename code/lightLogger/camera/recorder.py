@@ -290,7 +290,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     READY_file_dir: str = "/home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/READY_files"
 
     # Define the name of this controller's READY file 
-    READY_file_name: str = os.path.join(path, f"{controller_name}|READY")
+    READY_file_name: str = os.path.join(READY_file_dir, f"{controller_name}|READY")
 
     # Connect to and set up camera
     print(f"Initializing World camera")

@@ -11,6 +11,7 @@ from natsort import natsorted
 import matplotlib.pyplot as plt
 import signal
 import traceback
+import setproctitle
 import sys
 
 # The FPS we have locked the camera to
@@ -226,7 +227,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     READY_file_dir: str = "/home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/READY_files"
 
     # Define the name of this controller's READY file 
-    READY_file_name: str = os.path.join(path, f"{controller_name}|READY")
+    READY_file_name: str = os.path.join(READY_file_dir, f"{controller_name}|READY")
 
     # Connect to and set up camera
     try:
@@ -249,27 +250,26 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     # If we were run as a subprocess, send a message to the parent 
     # process that we are ready to go
     try:
-        if(is_subprocess is True): 
-            print(f'Pupil Cam: Initialized. Sending ready signal to parent: {parent_pid}')
+        print(f'Pupil Cam: Initialized. Sending ready signal to parent: {parent_pid}')
+        
+        # Add a READY file for this controller
+        with open(READY_file_name, 'w') as f: pass
+
+        # While we have not receieved the GO signal, wait 
+        start_wait: float = time.time()
+        last_read: float = time.time()
+        while(not go_flag.is_set()):
+            # Capture the current time
+            current_wait: float = time.time()
+
+            # If the parent process is no longer existent, something has gone wrong
+            # and we should quit 
+            if(not psutil.pid_exists(parent_pid)):
+                raise Exception('ERROR: Parent process was killed')
             
-            # Add a READY file for this controller
-            with open(READY_file_name, 'w') as f: pass
-
-            # While we have not receieved the GO signal, wait 
-            start_wait: float = time.time()
-            last_read: float = time.time()
-            while(not go_flag.is_set()):
-                # Capture the current time
-                current_wait: float = time.time()
-
-                # If the parent process is no longer existent, something has gone wrong
-                # and we should quit 
-                if(not psutil.pid_exists(parent_pid)):
-                    raise Exception('ERROR: Parent process was killed')
-                
-                if((current_wait - last_read) >= 2):
-                    print('Pupil Cam: Waiting for GO signal...')
-                    last_read = current_wait
+            if((current_wait - last_read) >= 2):
+                print('Pupil Cam: Waiting for GO signal...')
+                last_read = current_wait
     
     # Catch if there was an error in some part of the pipeline and we did not receive 
     # a GO signal (parent process was killed)

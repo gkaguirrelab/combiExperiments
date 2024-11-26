@@ -258,6 +258,9 @@ def stop_subprocesses(pids: dict, master_pid: int, processes: list):
     for process in processes:
         process.wait()
 
+def clear_READY_dir(READY_dir_path: str):
+    for file in os.listdir(READY_dir_path):
+        os.remove(os.path.join(READY_dir_path, file))
 
 """Capture a burst of length burst_seconds
    from all of the sensors by calling the controllers 
@@ -303,6 +306,18 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         start_wait: float = time.time()
         last_read: float = time.time()
         while(True):    
+            if(all(controllers_ready[controller] is True for controller in controllers_ready)):
+                print('Master Process: All sensors initialized')
+
+                # Clear the READY file dir
+                clear_READY_dir(READY_file_dir)
+
+                # Reset component controllers to False
+                for controller in controllers_ready:
+                    controllers_ready[controller] = False
+
+                break 
+
             # Capture the current time
             current_wait: float = time.time()
 

@@ -9,6 +9,7 @@ import sys
 import signal
 from MS_util import reading_to_string, parse_SERIAL
 import traceback
+import setproctitle
 
 """Write MS readings taken from the serial connection"""
 def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory: str, generate_readingfiles: bool=True):
@@ -116,6 +117,15 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
                            go_flag: threading.Event,
                            burst_num: int = 0) -> None:
 
+    # Retrieve the name of the controller this recorder is operating out of
+    controller_name: str = setproctitle.getproctitle()
+    
+    # Define the path to the controller READY files
+    READY_file_dir: str = "/home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/READY_files"
+
+    # Define the name of this controller's READY file 
+    READY_file_name: str = os.path.join(READY_file_dir, f"{controller_name}|READY")
+
     # Initialize a serial connection to the Minispect 
     # and how many bytes it will be transfering
     try:
@@ -134,7 +144,11 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     try:
         if(is_subprocess): 
             print('MS: Initialized. Sending ready signal...')
-            os.kill(parent_pid, signal.SIGUSR1)
+            
+            # Add a READY file for this controller
+            with open(READY_file_name, 'w') as f: pass
+
+            #os.kill(parent_pid, signal.SIGUSR1)
 
             # While we have not receieved the GO signal wait 
             start_wait: float = time.time()
