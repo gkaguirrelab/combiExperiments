@@ -1,5 +1,6 @@
 import os 
 import re
+import numpy as np
 from natsort import natsorted
 
 """Function for filtering out BAD chunks (dropped frames and thus poor fit)
