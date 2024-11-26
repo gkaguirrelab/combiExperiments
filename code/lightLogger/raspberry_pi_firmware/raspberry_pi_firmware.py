@@ -16,7 +16,7 @@ import multiprocessing as mp
 
 # Define the time in seconds to wait before 
 # raising a timeout error
-sensor_initialization_timeout: float = 120
+sensor_initialization_timeout: float = 30 # 120 was pretty good
 
 # The time in seconds to allow for sensors to start up
 sensor_initialization_time: float = 1.5
@@ -439,13 +439,23 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
             traceback.print_exc()
             print(e)
 
+            # Cancel from keyboard interrupt
+            if(isinstance(e, KeyboardInterrupt)):
+                return -1
+
             # Clear the READY signals
             clear_READY_dir(READY_file_dir, controllers_ready)
+
+            # Clear the other signals. Less work because we don't need 
+            # to wait on processes or reset the controllers_ready variable to None 
+            for dir_ in (GO_file_dir, STOP_file_dir):
+                for file in os.listdir(dir_):
+                    os.remove(os.path.join(dir_, file))
 
             # Kill the subprocesses (allow for devices to be freed and so on)
             stop_subprocesses(pids, master_pid, processes, STOP_file_dir)
 
-            return False
+            return burst_num
 
         print(f'Master Process: Sensors ready!')
         #time.sleep(sensor_initialization_time)
@@ -460,7 +470,7 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     for dir_ in (READY_file_dir, GO_file_dir, STOP_file_dir):
         shutil.rmtree(dir_)
 
-    return True
+    return burst_num
 
 """The main program that will run all of the control software"""
 def run_control_software():
@@ -516,13 +526,17 @@ def run_control_software():
     for name, args in component_controllers.items():
         print(f'\tProgram: {name} | Args: {args}')   
 
-   
-    capture_burst_single_init(experiment_info_file, component_controllers, cores_and_priorities,
-                              burst_seconds, n_bursts, shell_output=True)
-
+    # Record + restart if needed (on error) until we hit the desired number of bursts
+    burst_num_reached: int = 0 
+    while(burst_num_reached < n_bursts):
+        burst_num_reached = capture_burst_single_init(experiment_info_file, component_controllers, cores_and_priorities,
+                                burst_seconds, n_bursts, shell_output=True, burst_num=burst_num_reached)
+        
+        # Exit on keyboard interrupt
+        if(burst_num_reached < 0):
+            return 
     
 
-    
     # Close the info file
     experiment_info_file.close()
 
