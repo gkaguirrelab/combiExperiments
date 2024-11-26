@@ -16,7 +16,7 @@ import multiprocessing as mp
 
 # Define the time in seconds to wait before 
 # raising a timeout error
-sensor_initialization_timeout: float = 30 # 120 was pretty good
+sensor_initialization_timeout: float = 15 # 120 was pretty good
 
 # The time in seconds to allow for sensors to start up
 sensor_initialization_time: float = 1.5
@@ -455,7 +455,7 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
             # Kill the subprocesses (allow for devices to be freed and so on)
             stop_subprocesses(pids, master_pid, processes, STOP_file_dir)
 
-            return burst_num
+            return burst_num+1
 
         print(f'Master Process: Sensors ready!')
         #time.sleep(sensor_initialization_time)
@@ -528,10 +528,16 @@ def run_control_software():
 
     # Record + restart if needed (on error) until we hit the desired number of bursts
     burst_num_reached: int = 0 
+    attempt: int = 0
     while(burst_num_reached < n_bursts):
+        print(f"Starting attempt: {attempt}")
+
         burst_num_reached = capture_burst_single_init(experiment_info_file, component_controllers, cores_and_priorities,
                                 burst_seconds, n_bursts, shell_output=True, burst_num=burst_num_reached)
         
+
+        time.speep(sensor_initialization_time)
+
         # Exit on keyboard interrupt
         if(burst_num_reached < 0):
             return 

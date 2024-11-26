@@ -129,7 +129,7 @@ def write_frame(write_queue: queue.Queue, filename: str, generate_settingsfile: 
         np.savetxt(current_settingsfile, settings_buffer, delimiter=',', fmt='%d')
 
     # Close the settings and frame timings files (if needed)
-    if(not current_settingsfile.closed): current_settingsfile.close()
+    if(current_settingsfile is not None and not current_settingsfile.closed): current_settingsfile.close()
 
 """Unpack chunks of n captured frames. This is used 
    to reformat the memory-limitation required capture 
