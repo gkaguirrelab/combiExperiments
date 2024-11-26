@@ -9,27 +9,17 @@ import traceback
 import queue
 import io
 import setproctitle
+import shutil
 import threading
 import datetime
 import multiprocessing as mp
 
 # Define the time in seconds to wait before 
 # raising a timeout error
-sensor_initialization_timeout: float = 30
+sensor_initialization_timeout: float = 120
 
 # The time in seconds to allow for sensors to start up
 sensor_initialization_time: float = 1.5
-
-"""Define a function to receive signals when the processes are ready"""
-def handle_readysig(signum, frame, siginfo=None):
-    #global controllers_ready
-    #print(f'Master process: Received a sensor ready signal!')
-    #os.write(sys.stdout.fileno(), b"Master process: Received a READY signal\n")
-    pass
-    # Note that we have received a sigready, preventing race conditions from handlers
-    #controllers_ready.put(True)
-
-signal.signal(signal.SIGUSR1, handle_readysig)
 
 """Parse the command line arguments"""
 def parse_args() -> tuple:
@@ -246,21 +236,38 @@ def capture_burst_multi_init(info_file: object, component_controllers: list, CPU
     return
 
 """Helper function to send STOP signals to the subprocesses"""
-def stop_subprocesses(pids: dict, master_pid: int, processes: list):
-    # If we have recorded the desired bursts, 
-    # send a stop signal 
-    for controller, pid in pids.items():        
-        # Send the signal to STOP recording
-        print(f'\tMaster process: {master_pid} | Sending STOP to {controller}: {pid}')
-        os.kill(pid, signal.SIGUSR2)
+def stop_subprocesses(pids: dict, master_pid: int, processes: list, STOP_file_dir: str):
+    print(f'Master process: Sending STOP signals')
+
+    # Send the STOP signal by creating a file
+    with open(os.path.join(STOP_file_dir, 'STOP.txt'), 'w') as f: pass
     
     # Close the processes after recording 
     for process in processes:
         process.wait()
 
-def clear_READY_dir(READY_dir_path: str):
+""""""
+def monitor_READY_dir(ready_dir_path: str, controllers_ready: dict):
+    # Scan the READY flag directory for which controllers are ready
+    ready_files: list = os.listdir(ready_dir_path)
+
+    # Update the controllers_ready dict to include those that are now ready we haven't seen 
+    for ready_file in ready_files:
+        # Retrieve the name of this controller
+        controller_name: str = ready_file.split('|')[0].strip()
+
+        # Update it to be ready if it's not already
+        if(controllers_ready[controller_name] is not True): 
+            controllers_ready[controller_name] = True
+
+"""Helper function to clear the READY folder of READY files"""
+def clear_READY_dir(READY_dir_path: str, controllers_ready: dict):
     for file in os.listdir(READY_dir_path):
         os.remove(os.path.join(READY_dir_path, file))
+
+    # Reset component controllers to False
+    for controller in controllers_ready:
+        controllers_ready[controller] = False
 
 """Capture a burst of length burst_seconds
    from all of the sensors by calling the controllers 
@@ -273,6 +280,9 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     # Determine the current pid of this master process
     master_pid: int = os.getpid()
 
+    # Give it max priority 
+    os.system(f"sudo renice -n -20 -p {master_pid}")
+
     # List to keep track of process objects
     processes: list = []
 
@@ -280,8 +290,14 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
     controllers_ready: dict = {controller: False
                               for controller in component_controllers}
     
-    # Define the directory to look for the READY signal files in
+    # Define the directory to look for the READY, GO, and STOP signal files in
     READY_file_dir: str = os.path.join(os.path.dirname(__file__), 'READY_files')
+    GO_file_dir: str =  os.path.join(os.path.dirname(__file__), 'GO_files')
+    STOP_file_dir: str = os.path.join(os.path.dirname(__file__), 'STOP_files')
+
+    # Initialize the directories if they do not exist 
+    for dir_ in (READY_file_dir, GO_file_dir, STOP_file_dir):
+        if(not os.path.exists(dir_)): os.mkdir(dir_)
 
     # Iterate over the other scripts and start them with their associated arguments
     for script, args in component_controllers.items():
@@ -299,23 +315,20 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         # Append this process to the list of processes 
         # and its pid to the list of pids
         processes.append(p)
-    
 
     # Wait for all of the sensors to initialize by waiting for their signals (which wi)
     try:
         start_wait: float = time.time()
         last_read: float = time.time()
-        while(True):    
+        while(True):
+            # If all controllers initialized, proceed    
             if(all(controllers_ready[controller] is True for controller in controllers_ready)):
                 print('Master Process: All sensors initialized')
 
                 # Clear the READY file dir
-                clear_READY_dir(READY_file_dir)
+                clear_READY_dir(READY_file_dir, controllers_ready)
 
-                # Reset component controllers to False
-                for controller in controllers_ready:
-                    controllers_ready[controller] = False
-
+                # Break out of initialization while loop
                 break 
 
             # Capture the current time
@@ -327,20 +340,12 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
             
             # Every 2 seconds, output a message
             if((current_wait - last_read) >= 2):
-                # Scan the READY flag directory for which controllers are ready
-                ready_files: list = os.listdir(READY_file_dir)
-
-                # Update the controllers_ready dict to include those that are now ready we haven't seen 
-                for ready_file in ready_files:
-                    # Retrieve the name of this controller
-                    controller_name: str = ready_file.split('|')[0].strip()
-
-                    # Update it to be ready if it's not already
-                    if(controllers_ready[controller_name] is not True): 
-                        controllers_ready[controller_name] = True
-
+                # Monitor the READY dir for incoming signals
+                monitor_READY_dir(READY_file_dir, controllers_ready)
 
                 print(f'Waiting for all controllers to initialize: {controllers_ready}')
+                
+                # Update the last read time
                 last_read = current_wait
     
     # Catch and safely handle when the sensors error in their initialization
@@ -391,28 +396,27 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
         # Once all sensors are initialized, send a go signal to them
         print(f'Master process: {master_pid} sending GO signals...')
 
-        # Capture when the GO signal is sent to the controllers
-        #time_sent: float = time.time()
-        for controller, pid in pids.items():        
-            # Send the signal to begin/continue recording
-            print(f'\tMaster Process | Sending GO to: {controller} pid: {pid}')
-            os.kill(pid, signal.SIGUSR1)
-        
+        # Make a file in the GO directory to signify a GO 
+        with open(os.path.join(GO_file_dir, 'GO.txt'), 'w') as f: pass
+
         # Wait until we have received all of the sensors have finished 
         # this chunk before saying go to the next one
         last_read: float = time.time()
+        start_wait: float = time.time()
         current_wait: float = last_read 
     
         # Wait for the subcontrollers to be ready for the next chunk
         try:
             while(True):
-                # Break if we are ready to go again
-                if(controllers_ready.qsize() == len(component_controllers)):
-                    # Reset to zero to wait for next iteration 
-                    for _ in range(len(component_controllers)): 
-                        controllers_ready.get()
-                    
-                    break
+                 # If all controllers initialized, proceed    
+                if(all(controllers_ready[controller] is True for controller in controllers_ready)):
+                    print('Master Process: All sensors initialized')
+
+                    # Clear the READY file dir
+                    clear_READY_dir(READY_file_dir, controllers_ready)
+
+                    # Break out of inter-burst while loop
+                    break 
 
                 # If we waited N seconds without all sensors being ready, throw an error
                 if((current_wait - start_wait) >= sensor_initialization_timeout):
@@ -421,7 +425,12 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
                 # Capture the current time since we begun waiting
                 current_wait: float = time.time()
                 if((current_wait - last_read) >= 2):
-                    print(f'Master Process: Waiting for sensors to be ready... {controllers_ready.qsize()}/{len(component_controllers)}')
+                    # Monitor the READY dir for READY signals 
+                    monitor_READY_dir(READY_file_dir, controllers_ready)
+
+                    print(f'Master Process: Waiting for sensors to be ready... {controllers_ready}')
+                    
+                    # Update the last read time
                     last_read = current_wait
 
         # If we didn't receive enough ready signals, something has gone wrong. Likely, the signal 
@@ -430,31 +439,28 @@ def capture_burst_single_init(info_file: object, component_controllers: list, CP
             traceback.print_exc()
             print(e)
 
-            # Empty the ready queue 
-            for _ in range(len(component_controllers)): controllers_ready.get()
+            # Clear the READY signals
+            clear_READY_dir(READY_file_dir, controllers_ready)
 
             # Kill the subprocesses (allow for devices to be freed and so on)
-            stop_subprocesses(pids, master_pid, processes)
+            stop_subprocesses(pids, master_pid, processes, STOP_file_dir)
 
-            # If it's a control C, simply just exit 
-            if(isinstance(e, KeyboardInterrupt)):
-                sys.exit(0)
-
-            # Otherwise, return the burst number. This 
-            # is not going to be equal to the n_bursts and is therefore 
-            # an error signal
-            return burst_num 
+            return False
 
         print(f'Master Process: Sensors ready!')
+        #time.sleep(sensor_initialization_time)
 
         # Increment the burst number 
         burst_num += 1
 
     # Stop the subprocesses
-    stop_subprocesses(pids, master_pid, processes)
+    stop_subprocesses(pids, master_pid, processes, STOP_file_dir)
 
-    # Return the burst num. If this is equal to n bursts, we executed successfully. 
-    return burst_num
+    # Clear the signal directories 
+    for dir_ in (READY_file_dir, GO_file_dir, STOP_file_dir):
+        shutil.rmtree(dir_)
+
+    return True
 
 """The main program that will run all of the control software"""
 def run_control_software():
@@ -510,26 +516,11 @@ def run_control_software():
     for name, args in component_controllers.items():
         print(f'\tProgram: {name} | Args: {args}')   
 
-    # Iterate over the number of bursts
-    try:
-        burst_num_reached: int = 0
-        while(burst_num_reached < n_bursts):
-            # Attempt to carry out the experiment
-            burst_num_reached = capture_burst_single_init(experiment_info_file, component_controllers, cores_and_priorities,
-                                                        burst_seconds, n_bursts, shell_output=True, burst_num=burst_num_reached)
+   
+    capture_burst_single_init(experiment_info_file, component_controllers, cores_and_priorities,
+                              burst_seconds, n_bursts, shell_output=True)
 
-            # Detect if there was a crash in capturing the bursts
-            if(burst_num_reached != n_bursts):
-                print(f'CRASHED! Restarting after small delay')
-            
-            # Sleep for a small delay to allow for sensors to close cleanly
-            time.sleep(sensor_initialization_time)
-    # Allow for a keyboard interrupt
-    except Exception as e:
-        if(isinstance(e, KeyboardInterrupt)): pass
-        else:
-            print(e)
-            traceback.print_exc()
+    
 
     
     # Close the info file

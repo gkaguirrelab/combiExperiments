@@ -45,27 +45,9 @@ signal.signal(signal.SIGTERM, handle_sigterm)
 # when run as a subprocess
 go_flag: threading.Event = threading.Event()
 
-"""Add a handle to receive a USRSIG1 from the main process 
-   to begin capturing when all sensors have reported ready"""
-def handle_gosignal(signum, frame=None):
-    #print(f'World Cam: Received GO signal')
-    go_flag.set()
-
-signal.signal(signal.SIGUSR1, handle_gosignal)
-
 # Create a threading flag to declare when to stop capturing 
 # when run as a subprocess
 stop_flag: threading.Event = threading.Event()
-
-"""Add a handle to receive a USRSIG2 from the main process 
-   to beendgin capturing when the desired number of bursts 
-   have been captured"""
-def handle_stopsignal(signum, frame=None):
-    print(f'World Cam: Received STOP signal')
-    stop_flag.set()
-
-signal.signal(signal.SIGUSR2, handle_stopsignal)
-
 
 def main():
     # Set the program title so we can see what it is in TOP 

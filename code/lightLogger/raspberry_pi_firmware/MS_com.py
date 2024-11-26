@@ -27,23 +27,9 @@ def parse_args() -> str:
 
     return args.output_path, args.duration, bool(args.is_subprocess), args.parent_pid, bool(args.signal_communication), args.starting_chunk_number
 
-"""If we receive a SIGTERM, terminate gracefully via keyboard interrupt"""
-def handle_sigterm(signum, frame):
-    print("Received SIGTERM. Raising KeyboardInterrupt...")
-    raise KeyboardInterrupt
-signal.signal(signal.SIGTERM, handle_sigterm)
-
 # Create a threading flag to declare when to start recording 
 # when run as a subprocess
 go_flag: threading.Event = threading.Event()
-
-"""Add a handle to receive a USRSIG1 from the main process 
-   to begin capturing when all sensors have reported ready"""
-def handle_gosignal(signum, frame=None):
-    #print(f'World Cam: Received GO signal')
-    go_flag.set()
-
-signal.signal(signal.SIGUSR1, handle_gosignal)
 
 # Create a threading flag to declare when to stop capturing 
 # when run as a subprocess

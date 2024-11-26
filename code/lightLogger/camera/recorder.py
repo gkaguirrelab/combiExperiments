@@ -288,6 +288,8 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     
     # Define the path to the controller READY files
     READY_file_dir: str = "/home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/READY_files"
+    GO_file_dir: str = "/home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/GO_files"
+    STOP_file_dir: str = "/home/rpiControl/combiExperiments/code/lightLogger/raspberry_pi_firmware/STOP_files"
 
     # Define the name of this controller's READY file 
     READY_file_name: str = os.path.join(READY_file_dir, f"{controller_name}|READY")
@@ -326,6 +328,9 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
             start_wait: float = time.time()
             last_read: float = time.time()
             while(not go_flag.is_set()):
+                # Set the GO flag if we have received a GO signal
+                if(len(os.listdir(GO_file_dir)) > 0): go_flag.set()
+
                 # Capture the current time
                 current_wait: float = time.time()
 
@@ -366,7 +371,11 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
         # any delay in the start of a burst capture
         # Akin to racing the beam on ATARI 2600, pretty cool! 
 
-        #if(not os.path.exists(READY_file_name)): with open(READY_file_name, 'w') as f: pass
+        # STOP if we have received a stop signal
+        if(len(os.listdir(STOP_file_dir)) > 0): break 
+
+        # Set the GO flag if we have received a GO signal
+        if(len(os.listdir(GO_file_dir)) > 0): go_flag.set()
 
         # Generate the directory for this burst if it does not already exist
         if(not os.path.exists(filename)): os.mkdir(filename)
@@ -386,10 +395,17 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
 
             # Stop recording until we receive the GO signal again 
             go_flag.clear()
+            # Try except here because multiple controllers could be trying to remove this file at once 
+            # so it could be deleted by the time another goes to delete it
+            try:
+                for file in os.listdir(GO_file_dir): os.remove(os.path.join(GO_file_dir, file))
+            except:
+                pass
 
             # Report to the parent process we are ready to go for the next burst 
-            os.kill(parent_pid, signal.SIGUSR1)
-            print(f'World cam: Finished burst: {burst_num+1} | Sending ready signal to parent: {parent_pid}!')
+            assert(not os.path.exists(READY_file_name))
+            with open(READY_file_name, 'w') as f: pass
+            print(f'World cam: Finished burst: {burst_num+1} | Generating READY signal for parent: {parent_pid}!')
         
             # Increment the burst number += 1 
             burst_num += 1
@@ -412,6 +428,9 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
 
     # Remove it as well if it is empty
     if(os.path.exists(settings_file.name) and os.path.getsize(settings_file.name) == 0): os.remove(settings_file.name)
+
+    # Remove any left over READY file if it is empty 
+    if(os.path.exists(READY_file_name)): os.remove(READY_file_name)
 
     print(f'World cam: Finishing recording')
     
