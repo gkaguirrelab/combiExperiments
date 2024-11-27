@@ -8,7 +8,7 @@ subjectIDs = {'FLIC_0001','FLIC_0002','FLIC_0003','FLIC_0004','FLIC_0005'};
 
 % How many bins to use when calculating the variance across frequency?
 nBins = 10;
-binOverlap = 0.25;
+binOverlap = 0;
 
 % The light levels and directions
 NDlabelsAll = {'0x5','3x5'};
@@ -98,13 +98,14 @@ for nn = 1:length(NDlabelsAll)
         yData = pow2db(testFreq./refFreq);
         mdl = fitlm(xData,yData,'RobustOpts','on');
         [yFitDb,yCI] = predict(mdl,xFitLog);
-        plot(xFit,yFitDb,'-b','LineWidth',2);
-        plot(xFit,yCI,':b','LineWidth',2);
+ %       plot(xFit,yFitDb,'-b','LineWidth',2);
+ %       plot(xFit,yCI,':b','LineWidth',2);
         
         % Add the title
         bounds = coefCI(mdl,0.2)-mdl.Coefficients.Estimate;
         bounds = bounds(:,2);
         title([modDirectionLabels{dd} ' ND' NDlabelsAll{nn} sprintf(' [%2.1f, %2.1f]',mdl.Coefficients.Estimate)],'Interpreter','none');
+        mdl.coefCI
 
         % Add a plot line to indicate the variance of the residuals
         residuals = mdl.Residuals.Raw;
@@ -114,9 +115,11 @@ for nn = 1:length(NDlabelsAll)
             binStart = max([min(E),E(rr)-E(rr)*(binOverlap/2)]);
             binEnd = min([max(E),E(rr+1)+E(rr+1)*(binOverlap/2)]);
             idx = find(and(log10(refFreq)>=binStart,log10(refFreq)<=binEnd));
+            meanVals(rr) = mean(yData(idx));
             varVals(rr) = std(residuals(idx)).^2;
         end
         plot(10.^binCenters,varVals,'o-m','LineWidth',2);
+        plot(10.^binCenters,meanVals,'o-b','LineWidth',2);
 
     end
 end
