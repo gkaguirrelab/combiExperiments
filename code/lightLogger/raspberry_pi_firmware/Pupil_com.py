@@ -11,7 +11,7 @@ import setproctitle
 """Import utility functions from the pupil recorder"""
 recorder_lib_path = os.path.join(os.path.dirname(__file__), '..', 'pupil')
 sys.path.append(os.path.abspath(recorder_lib_path))
-from recorder import preview_capture, record_live, record_video, record_video_signalcom, write_frame, vid_array_from_npy_folder, reconstruct_video,  unpack_capture_chunks
+from pupil_recorder import preview_capture, record_live, record_video, record_video_signalcom, write_frame, vid_array_from_npy_folder, reconstruct_video,  unpack_capture_chunks
 
 """Parse arguments via the command line"""
 def parse_args() -> tuple:

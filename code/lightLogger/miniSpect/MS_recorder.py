@@ -11,6 +11,9 @@ from MS_util import reading_to_string, parse_SERIAL
 import traceback
 import setproctitle
 
+"""Define the length of a given communication from the MS in bytes"""
+MSG_LENGTH: int = 150
+
 """Write MS readings taken from the serial connection"""
 def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory: str, generate_readingfiles: bool=True):
     # Open the reading file handles (if we are not using signals to communicate)
@@ -93,7 +96,7 @@ def capture_helper(ms: serial.Serial, duration: float,
         #Check if the token is equal to the starting delimeter
         if(token == b'<'):                 
             # Read the buffer over the serial port (- 2 for the begin/end delimeters)
-            reading_buffer: bytes = ms.read(msg_length - 2)
+            reading_buffer: bytes = ms.read(MSG_LENGTH - 2)
 
             # Assert we didn't overread the buffer by reading the next byte and ensuring
             # it's the ending delimeter 
@@ -132,7 +135,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
     # and how many bytes it will be transfering
     try:
         print('Initializing MS')
-        ms, msg_length = initialize_ms()
+        ms: serial.Serial = initialize_ms()
     except Exception as e:
         # Print the traceback to stderr for this exception 
         traceback.print_exc()
@@ -218,7 +221,7 @@ def record_video_signalcom(duration: float, write_queue: queue.Queue,
         while(go_flag.is_set()):
             # Capture duration worth of frames
             capture_helper(ms, duration, write_queue, 
-                          msg_length, reading_filehandles)
+                          MSG_LENGTH, reading_filehandles)
 
             # Stop recording until we receive the GO signal again 
             go_flag.clear()
@@ -276,7 +279,7 @@ def record_video(duration: float, write_queue: queue.Queue,
         # and how many bytes it will be transfering
         try:
             print('Initializing MS')
-            ms, msg_length = initialize_ms()
+            ms: serial.Serial = initialize_ms()
         except Exception as e:
             # Print the traceback to stderr for this exception 
             traceback.print_exc()
@@ -341,7 +344,7 @@ def record_video(duration: float, write_queue: queue.Queue,
                 #print(f'Received MS TRANSMISSION @{time.time()}')      
                 
                 # Read the buffer over the serial port (- 2 for the begin/end delimeters)
-                reading_buffer: bytes = ms.read(msg_length - 2)
+                reading_buffer: bytes = ms.read(MSG_LENGTH - 2)
 
                 # Assert we didn't overread the buffer by reading the next byte and ensuring
                 # it's the ending delimeter 
@@ -376,13 +379,11 @@ def initialize_ms() -> serial.Serial:
     # its baudrate, and the length of a message in bytes
     com_port: str = '/dev/ttyACM0' if sys.platform.startswith('linux') else '/dev/tty.usbmodem141301'
     baudrate: int = 115200
-    msg_length: int = 150
 
     # Connect to the MS device
-    print('Connecting to ms...')
     ms: serial.Serial = serial.Serial(com_port, baudrate, timeout=1)
 
-    return ms, msg_length
+    return ms
 
 
 def main():

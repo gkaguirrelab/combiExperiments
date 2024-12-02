@@ -10,7 +10,7 @@ import setproctitle
 """Import the MS recorder functions from the MS recorder file"""
 ms_lib_path = os.path.join(os.path.dirname(__file__), '..', 'miniSpect')
 sys.path.append(os.path.abspath(ms_lib_path))
-from recorder import record_video, record_live, record_video_signalcom, write_SERIAL
+from MS_recorder import record_video, record_live, record_video_signalcom, write_SERIAL
 
 """Parse the command line arguments"""
 def parse_args() -> str:
