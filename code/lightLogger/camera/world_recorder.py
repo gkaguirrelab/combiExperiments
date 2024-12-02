@@ -661,6 +661,94 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     
     # Stop recording and close the picam object 
     cam.close() 
+
+""""""
+def lean_capture(write_queue: mp.Queue, duration: float,
+                 initial_gain: float = 1, initial_exposure=100):
+
+    # Connect to and initialize the camera
+    current_gain, current_exposure = initial_gain, initial_exposure
+    cam: object = initialize_camera(initial_gain, initial_exposure)
+    
+    # Start video capture and capture the first frames metadata
+    # Note: These MUST be here before other computation, as it takes 
+    # time to really start the capture
+    cam.start('video')
+    cam.capture_metadata()
+
+    # Define a buffer of one second worth of frames to capture
+    frame_buffer: np.array = np.empty((CAM_FPS, *CAM_IMG_DIMS), dtype=np.uint8)
+    
+    # Create a contiguous memory buffer for to store downsampled images
+    downsampled_image_shape: tuple = CAM_IMG_DIMS >> downsample_factor
+    downsampled_buffer = np.empty((CAM_FPS, *downsampled_image_shape), dtype=np.uint8)
+
+    # Define the time between AGC measurements
+    gain_change_interval: float = 0.250 
+
+    # Define the start time and last gain change
+    start_time: float = time.time()
+    last_gain_change: float = start_time
+
+    # Capture duration worth of frames 
+    frame_num: int = 0 
+    while(True):
+        # Retrieve the current time
+        current_time: float = time.time()
+
+        # If reached desired duration, stop recording
+        if((current_time - start_time) >= duration):
+            break  
+
+        # Capture the frame and splice only the odd cols (even cols have junk content)
+        frame: np.array = cam.capture_array('raw')[:, 1::2]
+
+        # Save the frame into the buffer
+        frame_buffer[frame_num % CAM_FPS] = frame
+
+         # Change gain every N ms
+        if((current_time - last_gain_change) > gain_change_interval):
+            # Take the mean intensity of the frame
+            mean_intensity = np.mean(frame, axis=(0,1))
+            
+            # Feed the settings into the the AGC 
+            ret = AGC(mean_intensity, current_gain, current_exposure, 0.95, AGC_lib)
+
+            # Retrieve and set the new gain and exposure from our custom AGC
+            #new_gain, new_exposure = ret['adjusted_gain'], int(ret['adjusted_exposure'])
+            new_gain, new_exposure = 2, 4839
+            
+            cam.set_controls({'AnalogueGain': new_gain, 'ExposureTime': new_exposure}) 
+            
+            # Update the current_gain and current_exposure, 
+            # wait for next gain change time
+            last_gain_change = current_time
+            current_gain, current_exposure = new_gain, new_exposure
+        
+        # Record the next frame number
+        frame_num += 1 
+
+        # If we have now captured one second worth of frames, send the frame buffer 
+        # to be written 
+        if(frame_num % CAM_FPS == 0):
+            for i in range(frame_buffer.shape[0]):
+                downsample(frame_buffer[i], downsample_factor, downsampled_buffer[i], downsample_lib)
+
+            write_queue.put(downsampled_buffer)
+
+    # Record timing of end of capture 
+    end_time: float = time.time()
+    
+    # Signal the end of the write queue
+    write_queue.put(None) 
+    
+    # Calculate the approximate FPS the frames were taken at 
+    # (approximate due to time taken for other computation)
+    observed_fps: float = (frame_num)/(end_time-start_time)
+    print(f'World Camera captured {frame_num} at ~{observed_fps} fps')
+
+    # Close the camera
+    cam.close()
     
 """View a preview view of what the camera currently sees from the main stream"""
 def preview_capture():

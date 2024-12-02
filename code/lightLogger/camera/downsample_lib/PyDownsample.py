@@ -92,9 +92,7 @@ def downsample(img: np.ndarray, factor: int, output_memory_buffer: np.ndarray, l
    dimension. Populates output_memory_buffer with a buffer of downsampled images. 
    Should be the the number of frames, then the size of the image downsampled by 
    the factor and an np.empty of dtype np.uint8"""
-def downsample_buffer(img_buffer: np.ndarray, buffer_size: int, factor: int, output_memory_buffer: np.ndarray, lib: ctypes.CDLL=None) -> None:
-    # TODO: Currently broken, causes a seg fault
-    
+def downsample_buffer(img_buffer: np.ndarray, buffer_size: int, factor: int, output_memory_buffer: np.ndarray, lib: ctypes.CDLL=None) -> None:    
     # Import the downsample library if we need to. Note, this is very time consuming
     if(lib is None): lib = import_downsample_lib()
     

@@ -9,6 +9,7 @@ import sys
 import signal
 from MS_util import reading_to_string, parse_SERIAL
 import traceback
+import multiprocessing as mp
 import setproctitle
 
 """Define the length of a given communication from the MS in bytes"""
@@ -371,6 +372,67 @@ def record_video(duration: float, write_queue: queue.Queue,
         ms.close()
 
         return 
+
+def lean_capture(write_queue: mp.Queue, duration: float):
+    # Connect to and initialize the MS
+    ms = initialize_ms()
+
+    # Capture the start time of recording 
+    start_time: float = time.time()
+
+    # Define a buffer for 5 readings at a time
+    reading_buffer: np.ndarray = np.empty((5, MSG_LENGTH), dtype=np.uint8)
+
+    # Capture duration worth of frames 
+    frame_num: int = 0 
+    while(True):
+        # Retrieve the current time
+        current_time: float = time.time()
+
+        # If reached desired duration, stop recording
+        if((current_time - start_time) >= duration):
+            break  
+
+        # Read a token from the MS 
+        token: bytes = ms.read(1)
+
+        #Check if the token is equal to the starting delimeter
+        if(token == b'<'):    
+            # Read the buffer over the serial port (- 2 for the begin/end delimeters)
+            reading_bytes: bytes = ms.read(MSG_LENGTH - 2)
+
+            # Assert we didn't overread the buffer by reading the next byte and ensuring
+            # it's the ending delimeter 
+            assert(ms.read(1) == b'>')
+
+            # Append it to the write queue
+            reading_buffer[frame_num % 5] == np.frombuffer(reading_bytes, dtype=np.uint8)
+
+            # Flush the reading buffer 
+            reading_bytes = None
+            
+            
+            # Append the frame number
+            frame_num += 1 
+
+            # Append to the write queue when we have received a desired amount of messages
+            if(frame_num % 5 == 0):
+                write_queue.put(reading_buffer)
+
+
+    # Record timing of end of capture 
+    end_time: float = time.time()
+    
+    # Signal the end of the write queue
+    write_queue.put(None) 
+    
+    # Calculate the approximate FPS the frames were taken at 
+    # (approximate due to time taken for other computation)
+    observed_fps: float = (frame_num)/(end_time-start_time)
+    print(f'MS captured {frame_num} at ~{observed_fps} fps')
+
+    # Close the camera
+    ms.close()
 
 """Initialize a connection with the minispect over the serial port
    and return the MS serial object"""
