@@ -8,6 +8,8 @@ from picamera2 import Picamera2
 import serial
 import time
 import queue
+import collections
+import pickle
 
 """Import custom libraries"""
 # First generate the path to the lightLogger dir and Pi utility file
@@ -30,7 +32,7 @@ import MS_recorder
 
 def write_process(names: tuple, data_queues: tuple):
     # Create a dictionary of things to write per sensor
-    write_dict: dict = {name: []
+    write_dict: dict = {name: collections.deque()
                        for name in names}
 
     # Initialize a counter to determine when all subprocesses are finished
@@ -63,10 +65,14 @@ def write_process(names: tuple, data_queues: tuple):
                 write_dict[name].append(ret)
                 
                 # If all sensors have at least one item to write, write it out 
-                if(all(len(write_queue) > 1 for sensor, write_queue in write_dict.items())):
-                    value_to_write
+                if(all(len(write_queue) > 0 for sensor, write_queue in write_dict.items())):
+                    # Gather the tuple to write as the tuple 
+                    tuple_to_write: tuple = tuple(write_queue.popleft() for sensor, write_queue in write_dict.items())
 
+                    with open(f"/media/rpiControl/FF5E-7541/completelyNew/{chunk_num}.pkl", 'wb') as f:
+                        pickle.dump(tuple_to_write, f)
 
+                    chunk_num += 1
 
             # If all subprocesses are done capturing, finish outputting
             if(finished_counter == len(names)):
@@ -80,9 +86,9 @@ def main():
     # Initialize tuples of names, devices, and their respective recording function
     names: tuple = ('Output', 'World Cam', 'MS')
     recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture)
-    data_queues: tuple = tuple([mp.Queue() for _ in range(len(names[1:]))])
+    data_queues: tuple = tuple(mp.Queue() for _ in range(len(names[1:])))
     process_args: tuple = tuple([ (names[1:], data_queues) ] + [ (data_queues[i], 10) for i in range(len(names[1:])) ])
-    CPU_and_priorities: tuple = tuple([i, -20] for i in range(len(names[1:])))
+    CPU_and_priorities: tuple = tuple((i, -20) for i in range(len(names[1:])))
 
 
     # Generate the process objects
