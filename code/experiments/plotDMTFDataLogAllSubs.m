@@ -64,7 +64,7 @@ for nn = 1:length(NDlabelsAll)
             goodJobCriterionDb = psychObj.goodJobCriterionDb;
             goodJobVec = [goodJobVec, [psychObj.trialData.goodJob]];
             proportionGoodjob = sum(goodJobVec)/length(goodJobVec);
-            fprintf(['Proportion good job ' modDirections{dd} ' ND' NDlabelsAll{nn} ': %2.2f\n'],proportionGoodjob)
+%            fprintf(['Proportion good job ' modDirections{dd} ' ND' NDlabelsAll{nn} ': %2.2f\n'],proportionGoodjob)
 
         end
 
@@ -98,14 +98,13 @@ for nn = 1:length(NDlabelsAll)
         yData = pow2db(testFreq./refFreq);
         mdl = fitlm(xData,yData,'RobustOpts','on');
         [yFitDb,yCI] = predict(mdl,xFitLog);
- %       plot(xFit,yFitDb,'-b','LineWidth',2);
+        plot(xFit,yFitDb,':b','LineWidth',2);
  %       plot(xFit,yCI,':b','LineWidth',2);
         
         % Add the title
         bounds = coefCI(mdl,0.2)-mdl.Coefficients.Estimate;
         bounds = bounds(:,2);
         title([modDirectionLabels{dd} ' ND' NDlabelsAll{nn} sprintf(' [%2.1f, %2.1f]',mdl.Coefficients.Estimate)],'Interpreter','none');
-        mdl.coefCI
 
         % Add a plot line to indicate the variance of the residuals
         residuals = mdl.Residuals.Raw;
@@ -120,6 +119,11 @@ for nn = 1:length(NDlabelsAll)
         end
         plot(10.^binCenters,varVals,'o-m','LineWidth',2);
         plot(10.^binCenters,meanVals,'o-b','LineWidth',2);
+
+        % Report the model fit and CIs
+        CIs = coefCI(mdl,0.05);
+        fprintf([modDirectionLabels{dd} ' ND' NDlabelsAll{nn} ' intercept: %2.2f [%2.2f : %2.2f]; slope: %2.2f [%2.2f : %2.2f]\n' ],mdl.Coefficients.Estimate(1),CIs(1,:),mdl.Coefficients.Estimate(2),CIs(2,:));
+
 
     end
 end
