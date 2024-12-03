@@ -30,54 +30,102 @@ import MS_recorder
 
 
 """"""
-def write_process(names: tuple, data_queue: mp.Queue):
-    # Create a dictionary of things to write per sensor
-    write_dict: dict = {name: collections.deque()
-                       for name in names}
+def write_process(names: tuple, receive_queue: mp.Queue, 
+                 send_queue: mp.Queue, n_chunks: int):
+    
+    ready_dict: dict = {name[0]: False 
+                        for name in names}
+    
+    finished_dict: dict = {name[0]: False 
+                        for name in names}
 
-    # Initialize a counter to determine when all subprocesses are finished
-    finished_counter: int = 0
+    # Initialize a counter to determine when each sensor is finished
+    # recording its chunk
+    recording_finished_counter: int = 0
+
+    # Initialize a counter to determine when each subprocess is completely finished
+    process_finished_counter: int = 0
 
     # While true, monitor the ready queue
+    chunks_completed: int = 0
     waiting_for_values: bool = True
-
-    chunk_num: int = 0 
     while(waiting_for_values is True):
-            ret = data_queue.get()
+            # Retrieve an item from the received data queue
+            ret = receive_queue.get()
             
-            # If we received a signal that this queue is done, 
-            # increment the done counter
-            if(ret is None):
-                finished_counter += 1 
+            # Extract the name of the sensor sending us this information 
+            # as well as the potential values it is sending us
+            name, *vals = ret
+
+            print(f'Main Process | Received a message from: {name} | Number of Vals: {len(vals)} | Queue size: {receive_queue.qsize()}')
+            
+            # If we have sent only one val, it is either None or False
+            if(len(vals) == 1):
+                # Assert that this is true
+                program_code, = vals 
+
+                assert(program_code is None or program_code is False)
+                
+                # Determine who we have received a CHUNK-DONE signal from 
+                if(program_code is None):
+                    # Note that this sensor is ready for the next round
+                    ready_dict[name] = True
+                    print(f'READY Dict: {ready_dict}')
+                
+                # Determine who we have received an END-OF-RECORDING signal from 
+                elif(program_code is False):
+                    # Note that this sensor is completely finished recording 
+                    finished_dict[name] = True 
+                    print(f'FINISHED Dict: {finished_dict}')    
+
+                # Determine whether to send GO or STOP signals (if all sensors are ready)
+                if(all(state is True for name, state in ready_dict.items())):
+                    # Incrememnt the finished chunks container 
+                    chunks_completed += 1 
+
+                    # Determine whether to send GO or STOP based on if we have captured 
+                    # the desired number of chunks 
+                    signal: bool = True if chunks_completed < n_chunks else False
+
+                    # Clear the READY dict 
+                    for name, state in ready_dict.items():
+                        ready_dict[name] = not state
+
+                    # Populate the queue with one of these GO signals for each sensor
+                    for _ in range(len(names)): send_queue.put(signal)
+
+                # Determine whether to STOP waiting for values (if all sensors have finished)
+                if(all(state is True for name, state in finished_dict.items())):
+                    # Stop waiting for values and break out of the while loop 
+                    waiting_for_values = not waiting_for_values
+                    break
+                     
+            # Otherwise, we have received some data to handle
             else:
-                # Extract the name of the sensor sending us this information 
-                # as well as the values it is sending us
-                name, *vals = ret
-
-                print(f'Sender: {name} | Number of Vals: {len(vals)} | Queue size: {data_queue.qsize()}')
-
-            # If all subprocesses are done capturing, finish outputting
-            if(finished_counter == len(names)):
-                print('RECEIVED ALL END SIGNALS')
-                waiting_for_values = False
-                break
+                pass 
 
 def main():
     # Initailize a list to hold process objects and wait for their execution to finish
     processes: list = []
 
-    # Initialize a multiprocessing-safe queue to store data 
-    # from the sensors
-    data_queue: mp.Queue = mp.Queue()
-
     # Define the number of recording bursts and duration (s) of a recording burst 
-    burst_numbers: int = 5
+    n_bursts: int = 5
     burst_duration: int = 10
 
     # Initialize tuples of names, recording functions, and their respective arguments
-    names: tuple = ('Output', 'World Cam', 'MS')
-    recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture)
-    process_args: tuple = tuple([ (names[1:], data_queue) ] + [ (data_queue, burst_duration) for i in range(len(names[1:])) ])
+    names: tuple = ('Output', 'World Cam', 'MS') #('Output', 'World Cam') ('Output', 'World Cam', 'MS')
+
+    # Initialize a multiprocessing-safe queue to store data 
+    # from the sensors
+    receive_data_queue: mp.Queue = mp.Queue(maxsize=len(names[1:]))
+    
+    # Initialze a multiprocessing-safe queue to send GO signals 
+    # to the sensors 
+    send_data_queue: mp.Queue = mp.Queue(maxsize=len(names[1:]))
+
+
+    recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture) # (write_process, world_recorder.lean_capture) #(write_process, world_recorder.lean_capture, MS_recorder.lean_capture)
+    process_args: tuple = tuple([ (names[1:], receive_data_queue, send_data_queue, n_bursts) ] + [ (receive_data_queue, send_data_queue, burst_duration) for i in range(len(names[1:])) ])
 
     # Generate the process objects
     for p_num, (name, recorder, args) in enumerate(zip(names, recorders, process_args)):
@@ -91,6 +139,11 @@ def main():
 
         # Start the process 
         process.start()
+
+    # Sleep for 2 seconds to allow for initialization, then send GO signals 
+    # for the first time
+    time.sleep(2)
+    for _ in range(len(names[1:])): send_data_queue.put(True)
 
     # Wait for the processes to finish 
     for process in processes:

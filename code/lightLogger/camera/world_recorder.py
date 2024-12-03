@@ -662,39 +662,20 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     # Stop recording and close the picam object 
     cam.close() 
 
-""""""
-def lean_capture(write_queue: mp.Queue, duration: int,
-                 initial_gain: float = 1, initial_exposure=100):
 
-    # Connect to and initialize the camera
-    current_gain, current_exposure = initial_gain, initial_exposure
-    cam: object = initialize_camera(initial_gain, initial_exposure)
-    
-    # Start video capture and capture the first frames metadata
-    # Note: These MUST be here before other computation, as it takes 
-    # time to really start the capture
-    cam.start('video')
-    cam.capture_metadata()
-
-    # Define a buffer of duration * second worth of frames to capture and 
-    # their respective settings
-    frame_buffer: np.array = np.empty((duration, CAM_FPS, *CAM_IMG_DIMS), dtype=np.uint8)
-    settings_buffer: np.array = np.zeros((duration, CAM_FPS, 2), dtype=np.float16)
-    
-    # Create a contiguous memory buffer for to store downsampled images
-    downsampled_image_shape: tuple = CAM_IMG_DIMS >> downsample_factor
-    downsampled_buffer = np.empty((duration, CAM_FPS, *downsampled_image_shape), dtype=np.uint8)
-
-    # Define the time between AGC measurements
-    gain_change_interval: float = 0.250 
+def lean_capture_helper(cam: object, duration: int, current_gain: float, current_exposure: int,
+                        gain_change_interval: float, frame_buffer: np.ndarray, 
+                        downsampled_buffer: np.ndarray, settings_buffer: np.ndarray,
+                        write_queue: mp.Queue):
+    # Define indices to place frames/settings into the 
+    # provided buffers
+    second_num: int = 0
+    frame_num: int = 0 
 
     # Define the start time and last gain change
     start_time: float = time.time()
     last_gain_change: float = start_time
 
-    # Capture duration worth of frames 
-    second_num: int = 0
-    frame_num: int = 0 
     while(True):
         # Retrieve the current time
         current_time: float = time.time()
@@ -703,7 +684,7 @@ def lean_capture(write_queue: mp.Queue, duration: int,
         elapsed_time: float = current_time - start_time
 
         # Calculate the elapsed_time as int (used for placing into the buffer)
-        elapsed_time_int: float = int(elapsed_time)
+        second_num: float = int(elapsed_time)
 
         # If reached desired duration, stop recording
         if(elapsed_time >= duration):
@@ -713,13 +694,13 @@ def lean_capture(write_queue: mp.Queue, duration: int,
         frame: np.array = cam.capture_array('raw')[:, 1::2]
 
         # Save the frame into the buffer
-        frame_buffer[elapsed_time_int, frame_num % CAM_FPS] = frame
-        settings_buffer[elapsed_time_int, frame_num % CAM_FPS] = (current_gain, current_exposure)
+        frame_buffer[second_num, frame_num % CAM_FPS] = frame
+        settings_buffer[second_num, frame_num % CAM_FPS] = (current_gain, current_exposure)
 
-         # Change gain every N ms
+        # Change gain every N ms
         if((current_time - last_gain_change) > gain_change_interval):
             # Take the mean intensity of the frame
-            mean_intensity = np.mean(frame, axis=(0,1))
+            mean_intensity: int = np.mean(frame, axis=(0,1), dtype=np.uint8)
             
             # Feed the settings into the the AGC 
             ret = AGC(mean_intensity, current_gain, current_exposure, 0.95, AGC_lib)
@@ -754,11 +735,68 @@ def lean_capture(write_queue: mp.Queue, duration: int,
 
     write_queue.put(('W', downsampled_buffer, settings_buffer, frame_num, observed_fps))
 
-    # Signal the end of the write queue
-    write_queue.put(None) 
+    # Signal the end of the write queue for this chunk
+    write_queue.put(('W', None)) 
 
+
+""""""
+def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int,
+                 initial_gain: float = 1, initial_exposure=100):
+
+    # Connect to and initialize the camera
+    current_gain, current_exposure = initial_gain, initial_exposure
+    cam: object = initialize_camera(initial_gain, initial_exposure)
+    
+    # Start video capture and capture the first frames metadata
+    # Note: These MUST be here before other computation, as it takes 
+    # time to really start the capture
+    cam.start('video')
+    cam.capture_metadata()
+
+    # Define a buffer of duration * second worth of frames to capture and 
+    # their respective settings
+    frame_buffer: np.array = np.empty((duration, CAM_FPS, *CAM_IMG_DIMS), dtype=np.uint8)
+    settings_buffer: np.array = np.zeros((duration, CAM_FPS, 2), dtype=np.float16)
+    
+    # Create a contiguous memory buffer for to store downsampled images
+    downsampled_image_shape: tuple = CAM_IMG_DIMS >> downsample_factor
+    downsampled_buffer = np.empty((duration, CAM_FPS, *downsampled_image_shape), dtype=np.uint8)
+
+    # Define the time between AGC measurements
+    gain_change_interval: float = 0.250 
+    
+    print('World Cam | Initialized')
+
+    # Remain initialized and ready to capture until we have received a STOP
+    STOP: bool = False
+    while(STOP is False):
+        print('World Cam | Awaiting GO')
+        # Retrieve whether we should go or not from 
+        # the main process 
+        GO: bool | int = receive_queue.get()
+
+        # If GO received special flag, we end completely
+        if(GO is False):
+            print('World Cam | Received STOP')
+            STOP = True
+            break    
+
+        # Otherwise, we capture a burst of duration long 
+        while(GO is True):
+            print(f'World Cam | Capturing chunk')
+            # Capture a burst of frames
+            lean_capture_helper(cam, duration, current_gain, current_exposure, gain_change_interval,
+                                frame_buffer, downsampled_buffer, settings_buffer, 
+                                write_queue)
+
+            # Set GO back to False 
+            GO = False
+
+    # Append to the main process queue and let it know we are really done 
+    write_queue.put(('W', False))
 
     # Close the camera
+    print(f'World Cam | Closing')
     cam.close()
     
 """View a preview view of what the camera currently sees from the main stream"""

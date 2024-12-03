@@ -373,17 +373,14 @@ def record_video(duration: float, write_queue: queue.Queue,
 
         return 
 
-def lean_capture(write_queue: mp.Queue, duration: float):
-    # Connect to and initialize the MS
-    ms = initialize_ms()
+def lean_capture_helper(ms: serial.Serial, duration: int, reading_buffer: np.ndarray, 
+                        write_queue: mp.Queue):
 
     # Capture the start time of recording 
     start_time: float = time.time()
 
-    # Define a buffer for 5 readings at a time
-    reading_buffer: np.ndarray = np.empty((duration, MSG_LENGTH), dtype=np.uint8)
-
     # Capture duration worth of frames 
+    second_num: int = 0
     frame_num: int = 0 
     while(True):
         # Retrieve the current time
@@ -393,7 +390,7 @@ def lean_capture(write_queue: mp.Queue, duration: float):
         elapsed_time: float = current_time - start_time
 
         # Calculate the elapsed_time as int (used for placing into the buffer)
-        elapsed_time_int: float = int(elapsed_time)
+        second_num: float = int(elapsed_time)
 
         # If reached desired duration, stop recording
         if(elapsed_time >= duration):
@@ -412,7 +409,7 @@ def lean_capture(write_queue: mp.Queue, duration: float):
             assert(ms.read(1) == b'>')
 
             # Append it to the write queue
-            reading_buffer[elapsed_time_int, frame_num % 5] == np.frombuffer(reading_bytes, dtype=np.uint8)
+            reading_buffer[second_num] == np.frombuffer(reading_bytes, dtype=np.uint8)
 
             # Flush the reading buffer 
             reading_bytes = None
@@ -420,26 +417,56 @@ def lean_capture(write_queue: mp.Queue, duration: float):
             # Append the frame number
             frame_num += 1 
 
-            # Append to the write queue when we have received a desired amount of messages
-            #if(frame_num % 5 == 0):
-            #    write_queue.put(reading_buffer)
-
-
     # Record timing of end of capture 
     end_time: float = time.time()
-    
-    # Send this info to the write queue 
-    write_queue.put(('M', reading_buffer))
 
-    # Signal the end of the write queue
-    write_queue.put(None) 
-    
     # Calculate the approximate FPS the frames were taken at 
     # (approximate due to time taken for other computation)
     observed_fps: float = (frame_num)/(end_time-start_time)
     print(f'MS captured {frame_num} at ~{observed_fps} fps')
+    
+    # Send this info to the write queue 
+    write_queue.put(('M', reading_buffer, frame_num, observed_fps))
+
+    # Signal the end of the write queue
+    write_queue.put(('M', None)) 
+
+def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int):
+    # Connect to and initialize the MS
+    ms = initialize_ms()
+
+    # Define a buffer for 5 readings at a time
+    reading_buffer: np.ndarray = np.empty((duration, MSG_LENGTH), dtype=np.uint8)
+
+    print('MS | Initialized')
+    STOP: bool = False
+    while(STOP is False):
+        print('MS | Awaiting GO')
+        # Retrieve whether we should go or not from 
+        # the main process 
+        GO: bool | int = receive_queue.get()
+
+        # If GO received special flag, we end completely
+        if(GO is False):
+            print('MS | Received STOP.')
+            STOP = True
+            break    
+
+        # Otherwise, we capture a burst of duration long 
+        while(GO is True):
+            print('MS | Capturing chunk')
+
+            # Capture a burst of frames
+            lean_capture_helper(ms, duration, reading_buffer, write_queue)
+
+            # Set GO back to False 
+            GO = False
+    
+    # Append to the main process queue and let it know we are really done 
+    write_queue.put(('M', False))
 
     # Close the camera
+    print(f'MS | Closing')
     ms.close()
 
 """Initialize a connection with the minispect over the serial port
