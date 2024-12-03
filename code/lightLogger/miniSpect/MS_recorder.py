@@ -436,6 +436,8 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int):
     ms = initialize_ms()
 
     # Define a buffer for 5 readings at a time
+    # TODO: Usually the FPS of this is < 1, however I have seen it be 1 one time. This means this buffer 
+    # may have to be changed to be like the other one which has another FPS dimension 
     reading_buffer: np.ndarray = np.empty((duration, MSG_LENGTH), dtype=np.uint8)
 
     print('MS | Initialized')

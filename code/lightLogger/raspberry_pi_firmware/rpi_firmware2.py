@@ -19,14 +19,16 @@ pi_util_path: str = os.path.join(os.path.dirname(__file__), 'utility')
 # Then generate the paths to all of the recorders
 world_cam_recorder_path: str = os.path.join(light_logger_dir_path, 'camera') 
 MS_recorder_path: str = os.path.join(light_logger_dir_path, 'miniSpect')
+pupil_recorder_path: str = os.path.join(light_logger_dir_path, 'pupil')
 
 # Append these paths to the current path
-for path in (world_cam_recorder_path, MS_recorder_path):
+for path in (world_cam_recorder_path, MS_recorder_path, pupil_recorder_path):
     sys.path.append(path)
 
 # Import the libraries 
 import world_recorder 
 import MS_recorder
+import pupil_recorder
 
 
 """"""
@@ -63,7 +65,6 @@ def write_process(names: tuple, receive_queue: mp.Queue,
             if(len(vals) == 1):
                 # Assert that this is true
                 program_code, = vals 
-
                 assert(program_code is None or program_code is False)
                 
                 # Determine who we have received a CHUNK-DONE signal from 
@@ -100,7 +101,7 @@ def write_process(names: tuple, receive_queue: mp.Queue,
                     waiting_for_values = not waiting_for_values
                     break
                      
-            # Otherwise, we have received some data to handle
+            # Otherwise, we have received some data to write out
             else:
                 pass 
 
@@ -113,18 +114,18 @@ def main():
     burst_duration: int = 10
 
     # Initialize tuples of names, recording functions, and their respective arguments
-    names: tuple = ('Output', 'World Cam', 'MS') #('Output', 'World Cam') ('Output', 'World Cam', 'MS')
+    names: tuple = ('Output', 'World', 'MS' )
 
     # Initialize a multiprocessing-safe queue to store data 
     # from the sensors
-    receive_data_queue: mp.Queue = mp.Queue(maxsize=len(names[1:]))
+    receive_data_queue: mp.Queue = mp.Queue()
     
     # Initialze a multiprocessing-safe queue to send GO signals 
     # to the sensors 
-    send_data_queue: mp.Queue = mp.Queue(maxsize=len(names[1:]))
+    send_data_queue: mp.Queue = mp.Queue()
 
 
-    recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture) # (write_process, world_recorder.lean_capture) #(write_process, world_recorder.lean_capture, MS_recorder.lean_capture)
+    recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture ) # (write_process, world_recorder.lean_capture) #(write_process, world_recorder.lean_capture, MS_recorder.lean_capture)
     process_args: tuple = tuple([ (names[1:], receive_data_queue, send_data_queue, n_bursts) ] + [ (receive_data_queue, send_data_queue, burst_duration) for i in range(len(names[1:])) ])
 
     # Generate the process objects
