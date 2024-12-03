@@ -13,9 +13,14 @@ import signal
 import traceback
 import setproctitle
 import sys
+import uvc
+import multiprocessing as mp
 
 # The FPS we have locked the camera to
 CAM_FPS: int = 120
+
+# The origial dimensions of the camera before downsampling 
+CAM_IMG_DIMS: np.ndarray = np.array((400, 400))
 
 """Unpack chunks of n captured frames. This is used 
    to reformat the memory-limitation required capture 
@@ -459,6 +464,103 @@ def record_video(duration: float, write_queue: queue.Queue,
     cam.close()
     
     print('Pupil cam: Finishing recording')
+
+
+def lean_capture_helper(cam: object, duration: int, 
+                       frame_buffer: np.ndarray, 
+                       write_queue: mp.Queue):
+
+    # Begin timing capture
+    start_time = time.time() 
+    
+    # Define indices to place frames/settings into the 
+    # provided buffers
+    second_nm: int = 0 
+    frame_num: int = 0
+
+    # Capture duration of frames
+    while(True):
+        # Capture the current time
+        current_time: float = time.time()
+
+        # Calculate the elapsed time from the start 
+        elapsed_time: float = current_time - start_time
+
+        # Calculate the elapsed_time as int (used for placing into the buffer)
+        second_num: float = int(elapsed_time)
+
+        # If reached desired duration, stop recording
+        if(elapsed_time >= duration):
+            break  
+
+        # Capture the frame
+        frame_obj: uvc_bindings.MJPEGFrame = cam.get_frame_robust()
+
+        # Store the grayscale frame + settings into the allocated memory buffers
+        frame_buffer[second_num, frame_num % CAM_FPS] = frame_obj.gray
+
+        # Record the next frame number
+        frame_num += 1 
+            
+    # Record timing of end of capture 
+    end_time: float = time.time()
+
+    # Calculate the approximate FPS the frames were taken at 
+    # (approximate due to time taken for other computation)
+    observed_fps: float = frame_num/(end_time-start_time)
+    print(f'Pupil cam captured {frame_num} at {observed_fps} fps')
+
+    # Append the chunk to the write queue 
+    write_queue.put(('P', frame_buffer, frame_num, observed_fps))
+    
+    # Signal the end of the write queue
+    write_queue.put(('P', None)) 
+
+
+def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, 
+                 duration: int):
+    # Initialize the camera
+    cam: uvc.Capture = initialize_camera()
+
+    # Define a buffer of duration * second worth of frames to capture and 
+    # their respective settings
+    frame_buffer: np.array = np.empty((duration, CAM_FPS, *CAM_IMG_DIMS), dtype=np.uint8)
+
+    print('Pupil Cam | Initialized')
+
+    # Remain initialized and ready to capture until we have received a STOP
+    STOP: bool = False
+    while(STOP is False):
+        print('Pupil Cam | Awaiting GO')
+        # Retrieve whether we should go or not from 
+        # the main process 
+        GO: bool | int = receive_queue.get()
+
+        # If GO received special flag, we end completely
+        if(GO is False):
+            print('Pupil Cam | Received STOP')
+            STOP = True
+            break    
+
+        # Otherwise, we capture a burst of duration long 
+        while(GO is True):
+            print(f'Pupil Cam | Capturing chunk')
+            # Capture a burst of frames
+            lean_capture_helper(cam, duration,
+                                frame_buffer, 
+                                write_queue)
+
+            # Set GO back to False 
+            GO = False
+
+    # Append to the main process queue and let it know we are really done 
+    write_queue.put(('P', False))
+
+    # Close the camera
+    print(f'Pupil Cam | Closing')
+    cam.close()
+
+
 
 # TODO: This does not yet work because no display method seems to work on RPI
 """Preview the camera feed"""

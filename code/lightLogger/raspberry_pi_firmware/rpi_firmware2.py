@@ -113,8 +113,8 @@ def main():
     n_bursts: int = 5
     burst_duration: int = 10
 
-    # Initialize tuples of names, recording functions, and their respective arguments
-    names: tuple = ('Output', 'World', 'MS' )
+    # Initialize tuples of names for the processes we will use
+    names: tuple = ('Output', 'World', 'MS', 'Pupil')
 
     # Initialize a multiprocessing-safe queue to store data 
     # from the sensors
@@ -124,8 +124,8 @@ def main():
     # to the sensors 
     send_data_queue: mp.Queue = mp.Queue()
 
-
-    recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture ) # (write_process, world_recorder.lean_capture) #(write_process, world_recorder.lean_capture, MS_recorder.lean_capture)
+    # Define the recorders used by the processes as well as their respective arguments
+    recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture, pupil_recorder.lean_capture)
     process_args: tuple = tuple([ (names[1:], receive_data_queue, send_data_queue, n_bursts) ] + [ (receive_data_queue, send_data_queue, burst_duration) for i in range(len(names[1:])) ])
 
     # Generate the process objects
