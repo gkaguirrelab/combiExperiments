@@ -30,11 +30,20 @@ import world_recorder
 import MS_recorder
 import pupil_recorder
 
+# Placeholder for testing purposes
+test_filepath: str = "/media/rpiControl/FF5E-7541/queue_5hz_0NDF"
+
 
 """"""
 def write_process(names: tuple, receive_queue: mp.Queue, 
                  send_queue: mp.Queue, n_chunks: int):
+
+    # Define a dictionary to hold the chunk information for each sensor
+    write_dict: dict = {name[0]: None
+                        for name in names}
     
+    # Define two boolean dictionares to hold the states of the sensors
+    # as READY to record next chunk and FINISHED recording all chunks
     ready_dict: dict = {name[0]: False 
                         for name in names}
     
@@ -50,6 +59,7 @@ def write_process(names: tuple, receive_queue: mp.Queue,
 
     # While true, monitor the ready queue
     chunks_completed: int = 0
+    chunk_filecounter: int = 0 
     waiting_for_values: bool = True
     while(waiting_for_values is True):
             # Retrieve an item from the received data queue
@@ -101,16 +111,41 @@ def write_process(names: tuple, receive_queue: mp.Queue,
                     waiting_for_values = not waiting_for_values
                     break
                      
-            # Otherwise, we have received some data to write out
+            # Otherwise, we have received some sensor data
             else:
-                pass 
+                # Assert there is not any data left for this sensor in the dict
+                # to make sure we are not overwriting any data
+                assert(write_dict[name] is None)
+
+                # Place this sensor's data into the dictionary, 
+                write_dict[name] = tuple(vals)
+
+                # If all sensors have something to write from a chunk, we are ready to write
+                if(all(value is not None for sensor, value in write_dict.items())):
+                    # Generate the path to this file
+                    filepath: str = os.path.join(test_filepath, f"{chunk_filecounter}.pkl")
+
+                    # Dump the object to the file
+                    with open(filepath, 'wb') as f:
+                        pickle.dump(write_dict, f, protocol=5)
+
+                    # Clear the write dict
+                    for name in write_dict.keys():
+                        write_dict[name] = None
+
+                    # Increment the chunk file this is 
+                    chunk_filecounter += 1 
+
+
+
+
 
 def main():
     # Initailize a list to hold process objects and wait for their execution to finish
     processes: list = []
 
     # Define the number of recording bursts and duration (s) of a recording burst 
-    n_bursts: int = 5
+    n_bursts: int = 6 * 60
     burst_duration: int = 10
 
     # Initialize tuples of names for the processes we will use
