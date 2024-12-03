@@ -162,6 +162,7 @@ def main():
     process_args: tuple = tuple([ (names[1:], receive_data_queue, send_data_queue, n_bursts) ] + [ (receive_data_queue, send_data_queue, burst_duration) for i in range(len(names[1:])) ])
 
     # Generate the process objects
+    start_time: float = time.time()
     for p_num, (name, recorder, args) in enumerate(zip(names, recorders, process_args)):
         print(f'Beginning process: {name}')
 
@@ -182,6 +183,12 @@ def main():
     # Wait for the processes to finish 
     for process in processes:
         process.join()
+
+    end_time: float = time.time()
+
+    elapsed_time: float = end_time - start_time
+
+    print(f'Took {elapsed_time} seconds to record {n_bursts} chunks of {burst_duration} seconds')
 
     return 
 
