@@ -381,7 +381,7 @@ def lean_capture(write_queue: mp.Queue, duration: float):
     start_time: float = time.time()
 
     # Define a buffer for 5 readings at a time
-    reading_buffer: np.ndarray = np.empty((5, MSG_LENGTH), dtype=np.uint8)
+    reading_buffer: np.ndarray = np.empty((duration, MSG_LENGTH), dtype=np.uint8)
 
     # Capture duration worth of frames 
     frame_num: int = 0 
@@ -389,8 +389,14 @@ def lean_capture(write_queue: mp.Queue, duration: float):
         # Retrieve the current time
         current_time: float = time.time()
 
+        # Calculate the elapsed time from the start 
+        elapsed_time: float = current_time - start_time
+
+        # Calculate the elapsed_time as int (used for placing into the buffer)
+        elapsed_time_int: float = int(elapsed_time)
+
         # If reached desired duration, stop recording
-        if((current_time - start_time) >= duration):
+        if(elapsed_time >= duration):
             break  
 
         # Read a token from the MS 
@@ -406,23 +412,25 @@ def lean_capture(write_queue: mp.Queue, duration: float):
             assert(ms.read(1) == b'>')
 
             # Append it to the write queue
-            reading_buffer[frame_num % 5] == np.frombuffer(reading_bytes, dtype=np.uint8)
+            reading_buffer[elapsed_time_int, frame_num % 5] == np.frombuffer(reading_bytes, dtype=np.uint8)
 
             # Flush the reading buffer 
             reading_bytes = None
-            
             
             # Append the frame number
             frame_num += 1 
 
             # Append to the write queue when we have received a desired amount of messages
-            if(frame_num % 5 == 0):
-                write_queue.put(reading_buffer)
+            #if(frame_num % 5 == 0):
+            #    write_queue.put(reading_buffer)
 
 
     # Record timing of end of capture 
     end_time: float = time.time()
     
+    # Send this info to the write queue 
+    write_queue.put(('M', reading_buffer))
+
     # Signal the end of the write queue
     write_queue.put(None) 
     

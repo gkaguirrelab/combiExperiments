@@ -29,8 +29,8 @@ import world_recorder
 import MS_recorder
 
 
-
-def write_process(names: tuple, data_queues: tuple):
+""""""
+def write_process(names: tuple, data_queue: mp.Queue):
     # Create a dictionary of things to write per sensor
     write_dict: dict = {name: collections.deque()
                        for name in names}
@@ -43,39 +43,22 @@ def write_process(names: tuple, data_queues: tuple):
 
     chunk_num: int = 0 
     while(waiting_for_values is True):
-        for name, mpqueue in zip(names, data_queues):
-            # Try to retrieve something from this queue
-            # very quickly (so it doesn't build up)
-            try:
-                ret = mpqueue.get(timeout=0.1)
-            
-            # If the queue is empty, don't wait for it to arrive, just 
-            # keep going blazing fast
-            except queue.Empty:
-                continue
+            ret = data_queue.get()
             
             # If we received a signal that this queue is done, 
             # increment the done counter
             if(ret is None):
                 finished_counter += 1 
             else:
-                print(f'Sender: {name} | Value shape: {ret.shape} | Queue size: {mpqueue.qsize()}')
+                # Extract the name of the sensor sending us this information 
+                # as well as the values it is sending us
+                name, *vals = ret
 
-                # Append this value to the write dict for this sensor
-                write_dict[name].append(ret)
-                
-                # If all sensors have at least one item to write, write it out 
-                if(all(len(write_queue) > 0 for sensor, write_queue in write_dict.items())):
-                    # Gather the tuple to write as the tuple 
-                    tuple_to_write: tuple = tuple(write_queue.popleft() for sensor, write_queue in write_dict.items())
-
-                    with open(f"/media/rpiControl/FF5E-7541/completelyNew/{chunk_num}.pkl", 'wb') as f:
-                        pickle.dump(tuple_to_write, f)
-
-                    chunk_num += 1
+                print(f'Sender: {name} | Number of Vals: {len(vals)} | Queue size: {data_queue.qsize()}')
 
             # If all subprocesses are done capturing, finish outputting
             if(finished_counter == len(names)):
+                print('RECEIVED ALL END SIGNALS')
                 waiting_for_values = False
                 break
 
@@ -83,13 +66,18 @@ def main():
     # Initailize a list to hold process objects and wait for their execution to finish
     processes: list = []
 
-    # Initialize tuples of names, devices, and their respective recording function
+    # Initialize a multiprocessing-safe queue to store data 
+    # from the sensors
+    data_queue: mp.Queue = mp.Queue()
+
+    # Define the number of recording bursts and duration (s) of a recording burst 
+    burst_numbers: int = 5
+    burst_duration: int = 10
+
+    # Initialize tuples of names, recording functions, and their respective arguments
     names: tuple = ('Output', 'World Cam', 'MS')
     recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture)
-    data_queues: tuple = tuple(mp.Queue() for _ in range(len(names[1:])))
-    process_args: tuple = tuple([ (names[1:], data_queues) ] + [ (data_queues[i], 10) for i in range(len(names[1:])) ])
-    CPU_and_priorities: tuple = tuple((i, -20) for i in range(len(names[1:])))
-
+    process_args: tuple = tuple([ (names[1:], data_queue) ] + [ (data_queue, burst_duration) for i in range(len(names[1:])) ])
 
     # Generate the process objects
     for p_num, (name, recorder, args) in enumerate(zip(names, recorders, process_args)):
