@@ -94,6 +94,8 @@ def write_process(names: tuple, receive_queue: mp.Queue,
                     # Incrememnt the finished chunks container 
                     chunks_completed += 1 
 
+                    print(f'Chunks completed: {chunks_completed}/{n_chunks}')
+
                     # Determine whether to send GO or STOP based on if we have captured 
                     # the desired number of chunks 
                     signal: bool = True if chunks_completed < n_chunks else False
@@ -135,10 +137,6 @@ def write_process(names: tuple, receive_queue: mp.Queue,
 
                     # Increment the chunk file this is 
                     chunk_filecounter += 1 
-
-
-
-
 
 def main():
     # Initailize a list to hold process objects and wait for their execution to finish
