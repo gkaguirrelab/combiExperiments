@@ -33,7 +33,7 @@ tiledlayout(length(NDlabelsAll),length(modDirections),"TileSpacing","tight","Pad
 for nn = 1:length(NDlabelsAll)
     for dd = 1:length(modDirections)
 
-        refFreq = []; testFreq = []; goodJobVec = [];
+        refFreq = []; testFreq = []; testFreqInitial = []; goodJobVec = [];
 
         for ss = 1:length(subjectIDs)
 
@@ -58,6 +58,7 @@ for nn = 1:length(NDlabelsAll)
             % Add to the entire set
             refFreq = [refFreq, [psychObj.trialData.refFreq]];
             testFreq = [testFreq, [psychObj.trialData.testFreq]];
+            testFreqInitial = [testFreqInitial, [psychObj.trialData.testFreqInitial]];
 
             % Get the goodjobVec and boundary
             testRangedB = psychObj.testRangeDecibels;
@@ -99,7 +100,6 @@ for nn = 1:length(NDlabelsAll)
         mdl = fitlm(xData,yData,'RobustOpts','on');
         [yFitDb,yCI] = predict(mdl,xFitLog);
         plot(xFit,yFitDb,':b','LineWidth',2);
- %       plot(xFit,yCI,':b','LineWidth',2);
         
         % Add the title
         bounds = coefCI(mdl,0.2)-mdl.Coefficients.Estimate;
@@ -113,12 +113,21 @@ for nn = 1:length(NDlabelsAll)
         for rr = 1:nBins
             binStart = max([min(E),E(rr)-E(rr)*(binOverlap/2)]);
             binEnd = min([max(E),E(rr+1)+E(rr+1)*(binOverlap/2)]);
-            idx = find(and(log10(refFreq)>=binStart,log10(refFreq)<=binEnd));
-            meanVals(rr) = mean(yData(idx));
-            varVals(rr) = std(residuals(idx)).^2;
+            for kk = 1:2
+                switch kk
+                    case 1
+                        idx = find(and(and(log10(refFreq)>=binStart,log10(refFreq)<=binEnd),testFreqInitial>refFreq));
+                    case 2
+                        idx = find(and(and(log10(refFreq)>=binStart,log10(refFreq)<=binEnd),testFreqInitial<=refFreq));
+                end
+                meanVals(rr,kk) = mean(yData(idx));
+            end
+                        idx = find(and(log10(refFreq)>=binStart,log10(refFreq)<=binEnd));
+                varVals(rr) = std(residuals(idx)).^2;
         end
-        plot(10.^binCenters,varVals,'o-m','LineWidth',2);
-        plot(10.^binCenters,meanVals,'o-b','LineWidth',2);
+        plot(10.^binCenters,varVals,'o-m','LineWidth',2);        
+        plot(10.^binCenters,meanVals(:,1),'o-b','LineWidth',2);
+        plot(10.^binCenters,meanVals(:,2),'x-b','LineWidth',2);
 
         % Report the model fit and CIs
         CIs = coefCI(mdl,0.05);
