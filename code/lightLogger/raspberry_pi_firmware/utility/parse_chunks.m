@@ -3,7 +3,7 @@ function sorted_chunks_parsed = parse_chunks(path_to_experiment)
 % and converting it all to native MATLAB types. 
 %
 % Syntax:
-%   [AS_t, TS_t, LS_t, temp_t] = readInMSDataFiles(path_to_readings)
+%   sorted_chunks_parsed = parse_chunks(path_to_experiment)
 %
 % Description:
 %   Reads in the chunks from an experiment and all of their

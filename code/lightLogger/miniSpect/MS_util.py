@@ -278,12 +278,28 @@ def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory
         file_handle.close()
 
 """Parse a MS reading from the serial connection (or broadly), e.g., no async operations necessary"""
-def parse_SERIAL(serial_bytes: bytes) -> tuple:
-    # Splice and convert the channels to their respective types 
-    AS_channels: np.array = np.frombuffer(serial_bytes[0:20],dtype=np.uint16)
-    TS_channels: np.array = np.frombuffer(serial_bytes[20:24],dtype=np.uint16)
-    LS_channels = np.array = np.frombuffer(serial_bytes[24:144],dtype=np.int16)
-    LS_temp: np.array = np.frombuffer(serial_bytes[144:148],dtype=np.float32)
+def parse_SERIAL(serial_bytes: bytes | np.ndarray) -> tuple:
+    # Splice out the portion of the bytes/np.ndarray of bytes for each sensor
+    AS_bytes: bytes | np.ndarray = serial_bytes[0:20]
+    TS_bytes: bytes | np.ndarray = serial_bytes[20:24]
+    LS_bytes: bytes | np.ndarray = serial_bytes[24:144]
+    LS_temp_bytes: bytes | np.ndarray = serial_bytes[144:148]
+    
+    # If we already read the bytes from a buffer but have not parsed them
+    # into respective datatypes 
+    if(isinstance(serial_bytes, np.ndarray)):
+        AS_channels: np.ndarray = AS_bytes.view(dtype=np.uint16)
+        TS_channels: np.ndarray = TS_bytes.view(dtype=np.uint16)
+        LS_channels: np.ndarray = LS_bytes.view(dtype=np.int16)
+        LS_temp: np.float32 = LS_temp_byres.view(dtype=np.float32)
+
+    # Otherwise, we will read them into numpy arrays from the bytes
+    else:
+        # Splice and convert the channels to their respective types 
+        AS_channels: np.array = np.frombuffer(AS_bytes, dtype=np.uint16)
+        TS_channels: np.array = np.frombuffer(TS_bytes, dtype=np.uint16)
+        LS_channels = np.array = np.frombuffer(LS_bytes, dtype=np.int16)
+        LS_temp: np.array = np.frombuffer(LS_temp_bytes, dtype=np.float32)
 
     return AS_channels, TS_channels, LS_channels, LS_temp 
 

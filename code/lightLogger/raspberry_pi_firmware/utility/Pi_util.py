@@ -2,6 +2,115 @@ import os
 import re
 import numpy as np
 from natsort import natsorted
+import pickle
+
+"""Parse chunks that are stored in .pkl format, instead of broken down 
+   into folders and cleanly stored"""
+def parse_chunks_pkl(experiment_path: str) -> list:
+
+    # First, define some helper functions
+    """Parser for the raw World data per chunk"""
+    def world_parser(val_tuple: tuple):
+        print(f'Length of world vals: {len(val_tuple)}')
+
+        # First value is always the frame buffer for this chunk 
+        frame_buffer: np.ndarray = val_tuple[0].astype(np.uint8)
+
+        # Second value is always the settings buffer for this chunk
+        # The settings are in the format [duration, FPS gain, exposure] TODO: The FPS dimension does not currently exist, but going to add it
+        settings_buffer: np.ndarray = val_tuple[1].astype(np.float64)
+
+        # Third and Fourth values are always the num_captured_frames and observed FPS 
+        num_captured_frames, observed_fps = val_tuple[2:]
+
+        print(f'Frame Buffer Shape: {frame_buffer.shape}')
+        print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
+                                                    # Make this a float for MATLAB use later
+        return {'frame_buffer': frame_buffer, 'settings_buffer': settings_buffer, 'num_frames_captured': float(num_captured_frames), 'FPS': observed_fps}
+
+    """Parser for the raw Pupil data per chunk"""
+    def pupil_parser(val_tuple: tuple):
+        print(f'Length of Pupil vals: {len(val_tuple)}')
+
+        # First value is always the frame buffer for this chunk
+        frame_buffer: np.ndarray = val_tuple[0].astype(np.uint8)
+
+        # Second value and third value are always num_captured_frames and observed FPS
+        num_captured_frames, observed_fps = val_tuple[1:]
+
+        print(f'Frame Buffer Shape: {frame_buffer.shape}')
+        print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
+                                                # Make this a float for MATLAB use later
+        return {'frame_buffer': frame_buffer, 'num_frames_captured': float(num_captured_frames), 'FPS': observed_fps}
+
+
+    """Parser for the raw MS data per chunk"""
+    def ms_parser(val_tuple: tuple):    
+        print(f'Length of MS Vals: {len(val_tuple)}')
+        
+        # First value is always the unparsed byte buffer 
+        bytes_buffer: np.ndarray = val_tuple[0]
+
+        # Use the MS util parsing library to unpack these bytes
+        #AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_SERIAL(bytes_buffer)
+
+        # TODO: Still need to parse this fully (like, unpack the buffer of accelerometer values, for instance, and make into DFs)
+
+        # Second and third values are always the num_captured_frames and observed FPS 
+        num_captured_frames, observed_fps = val_tuple[1:]
+        print(f'Reading Buffer Shape: {bytes_buffer.shape}')
+        print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
+
+        return {'readings_buffer': float(0)}
+
+
+    # Define a dictionary of sensor initials and their respective parsers 
+    sensor_parsers: dict = {'W': world_parser, 
+                        'P': pupil_parser,
+                        'M': ms_parser}
+
+    # First, we must find the gather the sorted paths to the chunks
+    # which are stored in .pkl files
+    chunk_paths: list = natsorted([os.path.join(experiment_path, file) 
+                                    for file in os.listdir(experiment_path)
+                                    if '.pkl' in file])
+
+    # Initialize a list to hold the sorted chunks after 
+    # they have been loaded in
+    sorted_chunks: list = []
+
+    # Next, we will iterate over the chunk files and load them in 
+    for chunk_num, path in enumerate(chunk_paths):
+        print(f'Loading chunk: {chunk_num+1}/{len(chunk_paths)}')
+
+        # Read in the file and append it to the sorted chunks 
+        # list
+        with open(path, 'rb') as f:
+            # Read in the dictionary of values from this chunk
+            chunk_dict: dict = pickle.load(f)
+
+            # Append it to the sorted chunk list 
+            sorted_chunks.append(chunk_dict)
+
+    # Next, we will iterate over the chunks and their sensors and their respective data in the chunk and parse them 
+    parsed_chunks: list = []
+    for chunk_num, chunk in enumerate(sorted_chunks):
+        print(f'Parsing chunk: {chunk_num+1}/{len(sorted_chunks)}')
+        # initialize a new dictionary to hold sensors' parsed information
+        parsed_chunk: dict = {}
+
+        for key, val in chunk.items():
+            # Parse this sensor's data with its appropriate sensor
+            parsed_data: dict = sensor_parsers[key](val)
+
+            # Note this sensor's parsed info for this chunk 
+            parsed_chunk[key] = parsed_data
+        
+        # Append this parsed chunk to the growing list of parsed chunks 
+        parsed_chunks.append(parsed_chunk)
+
+
+    return parsed_chunks
 
 
 """Function for filtering out BAD chunks (dropped frames and thus poor fit)
@@ -12,7 +121,7 @@ def filter_good_chunks(fps_measured: np.ndarray, frames_captured: np.ndarray) ->
 
 """Group chunks' information together from a recording file and return them 
    as a list of tuples"""
-def parse_chunk_paths(experiment_path: str) -> list:
+def parse_chunks_paths(experiment_path: str) -> list:
     # Define a container for the sorted chunks 
     sorted_chunks: list = []
 
