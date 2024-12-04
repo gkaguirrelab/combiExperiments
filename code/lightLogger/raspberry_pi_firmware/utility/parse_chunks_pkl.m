@@ -1,4 +1,4 @@
-function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment)
+function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment, use_mean_frame)
 % Parse the chunks of a chunked recording by reading in each chunk's pkl file data 
 % and converting it all to native MATLAB types. 
 %
@@ -30,7 +30,7 @@ function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment)
     % Parse and validate the input arguments
     arguments 
         path_to_experiment {mustBeText}; % The path to the suprafolder for this experiment
-
+        use_mean_frame {mustBeNumericOrLogical}; % Bool (true/false) for whether to return the full frames or mean of each frame
     end
 
 
@@ -50,7 +50,7 @@ function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment)
     cd(cwd);
 
     % Now, we will read in the files by calling the appropriate Python function 
-    chunks_as_py = cell(Pi_util.parse_chunks_pkl(path_to_experiment));
+    chunks_as_py = cell(Pi_util.parse_chunks_pkl(path_to_experiment, use_mean_frame));
 
     % Now let's iterate over the chunks and convert them to MATLAB type 
     for cc = 1:numel(chunks_as_py)

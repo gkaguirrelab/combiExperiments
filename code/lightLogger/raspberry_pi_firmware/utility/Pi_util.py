@@ -6,7 +6,7 @@ import pickle
 
 """Parse chunks that are stored in .pkl format, instead of broken down 
    into folders and cleanly stored"""
-def parse_chunks_pkl(experiment_path: str) -> list:
+def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
 
     # First, define some helper functions
     """Parser for the raw World data per chunk"""
@@ -15,6 +15,13 @@ def parse_chunks_pkl(experiment_path: str) -> list:
 
         # First value is always the frame buffer for this chunk 
         frame_buffer: np.ndarray = val_tuple[0].astype(np.uint8)
+        
+        # If we want to only use the mean of each frame, not the entire frame
+        if(use_mean_frame):
+            frame_buffer = np.mean(frame_buffer, axis=(2,3))
+
+        # Flatten the frame buffer into one chunks worth of frames, instead of per second 
+        frame_buffer = frame_buffer.reshape((frame_buffer.shape[0] * frame_buffer.shape[1], *frame_buffer.shape[2:]))
 
         # Second value is always the settings buffer for this chunk
         # The settings are in the format [duration, FPS gain, exposure] TODO: The FPS dimension does not currently exist, but going to add it
@@ -34,6 +41,13 @@ def parse_chunks_pkl(experiment_path: str) -> list:
 
         # First value is always the frame buffer for this chunk
         frame_buffer: np.ndarray = val_tuple[0].astype(np.uint8)
+        
+        # If we want to only use the mean of each frame, not the entire frame
+        if(use_mean_frame):
+            frame_buffer = np.mean(frame_buffer, axis=(2,3))
+
+        # Flatten the frame buffer into one chunks worth of frames, instead of per second 
+        frame_buffer = frame_buffer.reshape((frame_buffer.shape[0] * frame_buffer.shape[1], *frame_buffer.shape[2:]))
 
         # Second value and third value are always num_captured_frames and observed FPS
         num_captured_frames, observed_fps = val_tuple[1:]
