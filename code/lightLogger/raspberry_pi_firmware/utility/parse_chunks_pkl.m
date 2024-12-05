@@ -29,7 +29,7 @@ function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment, use_mean_fr
 % Examples:
 %{
     path_to_readings = './results';
-    sorted_chunks_parsed = parse_chunks(path_to_experiment)
+    sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment) 
 %}
 
     % Parse and validate the input arguments
@@ -77,7 +77,6 @@ function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment, use_mean_fr
             field_struct = struct(chunk_struct.(field_names{ff}));
 
             fprintf('Converting field: %s\n', field_names{ff});
-
             disp(field_struct)
 
             % However, this is not all. We now need to iterate over THAT dict
@@ -86,11 +85,18 @@ function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment, use_mean_fr
             for sf = 1: numel(subfields)
                 fprintf('Converting subfield: %s\n', subfields{sf});
 
-                % Convert the subfield to double
-                subfield_as_double = double(field_struct.(subfields{sf}));
+                % Convert the subfield to MATLAB type, double for 
+                % Python numeric types and numpy arrays, table for pd.DataFrames
+                % used for the MS
+                if(field_names{ff} == 'M')       
+                    subfield_converted = table(field_struct.(subfields{sf}));
+
+                else 
+                    subfield_converted = double(field_struct.(subfields{sf}));
+                end
 
                 % Save this subfield into the field struct 
-                field_struct.(subfields{sf}) = subfield_as_double;
+                field_struct.(subfields{sf}) = subfield_converted;
             end
 
             % Save this field in the chunk struct 

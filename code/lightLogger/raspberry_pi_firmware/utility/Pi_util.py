@@ -73,8 +73,6 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
         # First value is always the unparsed byte buffer 
         bytes_buffer: np.ndarray = val_tuple[0]
 
-        print(f'BUFFER TYPE: {type(bytes_buffer)}')
-
         # Use the MS util parsing library to unpack these bytes
         AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_readings(bytes_buffer)
    
