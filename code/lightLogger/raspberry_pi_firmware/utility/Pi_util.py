@@ -81,8 +81,7 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
         print(f'Reading Buffer Shape: {bytes_buffer.shape}')
         print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
 
-        return {name: readings_df for readings_df, name in zip((AS_channels, TS_channels, LS_channels, LS_temp), ('A', 'T', 'L', 'c'))}
-
+        return {name: readings_df for readings_df, name in zip((AS_channels, TS_channels, LS_channels, LS_temp), ('A', 'T', 'L', 'c'))} | {'num_frames_captured': float(num_captured_frames), 'FPS':observed_fps}
 
     # Define a dictionary of sensor initials and their respective parsers 
     sensor_parsers: dict = {'W': world_parser, 

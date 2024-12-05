@@ -88,7 +88,7 @@ function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment, use_mean_fr
                 % Convert the subfield to MATLAB type, double for 
                 % Python numeric types and numpy arrays, table for pd.DataFrames
                 % used for the MS
-                if(field_names{ff} == 'M')       
+                if(isa(field_struct.(subfields{sf}), 'py.pandas.core.frame.DataFrame'))       
                     subfield_converted = table(field_struct.(subfields{sf}));
 
                 else 
