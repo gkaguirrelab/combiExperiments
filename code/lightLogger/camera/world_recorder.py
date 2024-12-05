@@ -773,7 +773,7 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int,
         print('World Cam | Awaiting GO')
         # Retrieve whether we should go or not from 
         # the main process 
-        GO: bool | int = receive_queue.get()
+        GO: bool = receive_queue.get()
 
         # If GO received special flag, we end completely
         if(GO is False):
