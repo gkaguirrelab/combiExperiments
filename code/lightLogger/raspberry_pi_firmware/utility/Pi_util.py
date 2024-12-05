@@ -24,24 +24,28 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
 
         # First value is always the frame buffer for this chunk 
         frame_buffer: np.ndarray = val_tuple[0].astype(np.uint8)
-        
-        # If we want to only use the mean of each frame, not the entire frame
-        if(use_mean_frame):
-            frame_buffer = np.mean(frame_buffer, axis=(2,3))
-
-        # Flatten the frame buffer into one chunks worth of frames, instead of per second 
-        frame_buffer = frame_buffer.reshape((frame_buffer.shape[0] * frame_buffer.shape[1], *frame_buffer.shape[2:]))
-
-        # Second value is always the settings buffer for this chunk
-        # The settings are in the format [duration, FPS gain, exposure] TODO: The FPS dimension does not currently exist, but going to add it
-        settings_buffer: np.ndarray = val_tuple[1].astype(np.float64)
 
         # Third and Fourth values are always the num_captured_frames and observed FPS 
         num_captured_frames, observed_fps = val_tuple[2:]
 
+        # Splice only the captured frames from the buffer 
+        frame_buffer = frame_buffer[:num_captured_frames]
+        
+        #If we want to only use the mean of each frame, not the entire frame
+        if(use_mean_frame):
+            frame_buffer = np.mean(frame_buffer, axis=(1,2))
+
+        # Second value is always the settings buffer for this chunk
+        # The settings are in the format [duration, FPS gain, exposure]
+        settings_buffer: np.ndarray = val_tuple[1].astype(np.float64)
+
+        # Now splice only the captured frames from the settings buffer 
+        settings_buffer = settings_buffer[:num_captured_frames]
+ 
         print(f'Frame Buffer Shape: {frame_buffer.shape}')
         print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
-                                                    # Make this a float for MATLAB use later
+                                     
+                                                                                     # Make this a float for MATLAB use later
         return {'frame_buffer': frame_buffer, 'settings_buffer': settings_buffer, 'num_frames_captured': float(num_captured_frames), 'FPS': observed_fps}
 
     """Parser for the raw Pupil data per chunk"""
@@ -50,19 +54,20 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
 
         # First value is always the frame buffer for this chunk
         frame_buffer: np.ndarray = val_tuple[0].astype(np.uint8)
-        
-        # If we want to only use the mean of each frame, not the entire frame
-        if(use_mean_frame):
-            frame_buffer = np.mean(frame_buffer, axis=(2,3))
-
-        # Flatten the frame buffer into one chunks worth of frames, instead of per second 
-        frame_buffer = frame_buffer.reshape((frame_buffer.shape[0] * frame_buffer.shape[1], *frame_buffer.shape[2:]))
 
         # Second value and third value are always num_captured_frames and observed FPS
         num_captured_frames, observed_fps = val_tuple[1:]
 
+        # Splice out only the frames we captured from the buffer 
+        frame_buffer = frame_buffer[:num_captured_frames]
+        
+        # If we want to only use the mean of each frame, not the entire frame
+        if(use_mean_frame):
+            frame_buffer = np.mean(frame_buffer, axis=(1,2))
+
         print(f'Frame Buffer Shape: {frame_buffer.shape}')
         print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
+         
                                                 # Make this a float for MATLAB use later
         return {'frame_buffer': frame_buffer, 'num_frames_captured': float(num_captured_frames), 'FPS': observed_fps}
 
@@ -71,22 +76,27 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
         print(f'Length of MS Vals: {len(val_tuple)}')
         
         # First value is always the unparsed byte buffer 
-        bytes_buffer: np.ndarray = val_tuple[0]
+        bytes_buffer: bytearray = val_tuple[0]
 
-        # Use the MS util parsing library to unpack these bytes
-        AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_readings(bytes_buffer)
-   
         # Second and third values are always the num_captured_frames and observed FPS
         num_captured_frames, observed_fps = val_tuple[1:]
-        print(f'Reading Buffer Shape: {bytes_buffer.shape}')
+
+        # Splice out only the frames we captured 
+        bytes_buffer: bytearray = bytes_buffer[num_captured_frames * MS_util.MSG_LENGTH]
+
+        # Use the MS util parsing library to unpack these bytes
+        #AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_readings(bytes_buffer)
+   
+
+        print(f'Reading Buffer Shape: {len(bytes_buffer)}')
         print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
 
-        return {name: readings_df for readings_df, name in zip((AS_channels, TS_channels, LS_channels, LS_temp), ('A', 'T', 'L', 'c'))} | {'num_frames_captured': float(num_captured_frames), 'FPS':observed_fps}
+        #return {name: readings_df for readings_df, name in zip((AS_channels, TS_channels, LS_channels, LS_temp), ('A', 'T', 'L', 'c'))} | {'num_frames_captured': float(num_captured_frames), 'FPS':observed_fps}
 
     # Define a dictionary of sensor initials and their respective parsers 
     sensor_parsers: dict = {'W': world_parser, 
-                        'P': pupil_parser,
-                        'M': ms_parser}
+                            'P': pupil_parser,
+                            'M': ms_parser}
 
     # First, we must find the gather the sorted paths to the chunks
     # which are stored in .pkl files

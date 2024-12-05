@@ -25,7 +25,7 @@ from MS_recorder import COM_PORT, BAUDRATE, MSG_LENGTH
 def parse_readings(readings: str | np.ndarray) -> tuple:
     # If we have the readings stored in their packed view in .npy format
     # we need to do ALL of the parsing and unpacking 
-    if(isinstance(readings, np.ndarray)):
+    if(isinstance(readings, bytearray)):
         # First, we must parse the np.array of bytes into the respective sensors' bytes
         AS_channels, TS_channels, LS_channels, LS_temp = parse_SERIAL(readings)
     
@@ -266,12 +266,34 @@ def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory
 
 """Parse a MS reading from the serial connection (or broadly), e.g., no async operations necessary"""
 def parse_SERIAL(serial_bytes: np.ndarray) -> tuple:
+    # Define the start and end of each sensors' bytes as well as the 
+    # data type to interpret them as
+    AS_bytes_info: np.ndarray = np.array([0, 20]) # np.uint16 
+    TS_bytes_info: np.ndarray = np.array((20, 24))  # np.uint16
+    LS_bytes_info: np.ndarray = np.array([24, 144]) # np.int16
+    LS_temp_bytes_info: np.ndarray = np.array([144, 148,]) # np.float32
+
+    # Iterate over how many readings we have 
+    for reading_num in range(0, len(serial_bytes), MSG_LENGTH):
+        # Calculate the start and end values for this reading for all of the sensors' 
+        AS_start, AS_end = reading_num * AS_bytes_info
+        TS_start, TS_end = reading_num * TS_bytes_info
+        LS_start, LS_end = reading_num * LS_bytes_info
+        LS_temp_start, LS_temp_end = reading_num * LS_temp_bytes_info
+        
+
+
+        AS_channels: np.ndarray = serial_bytes[0:20]
+        TS_channels: np.ndarray = serial_bytes[20:24]
+        LS_channels: np.ndarray = serial_bytes[24:144]
+        LS_temp: np.ndarray = serial_bytes[144:148]
+    
+    
+    
+    
     # Splice out the portion of the bytes/np.ndarray of bytes for each sensor
     # during this bursts' recording length (all rows)
-    AS_channels: np.ndarray = serial_bytes[:, 0:20].view(dtype=np.uint16)
-    TS_channels: np.ndarray = serial_bytes[:, 20:24].view(np.uint16)
-    LS_channels: np.ndarray = serial_bytes[:, 24:144].view(dtype=np.int16)
-    LS_temp: np.ndarray = serial_bytes[:, 144:148].view(np.float32)
+    AS_channel
 
     return AS_channels, TS_channels, LS_channels, LS_temp 
 
