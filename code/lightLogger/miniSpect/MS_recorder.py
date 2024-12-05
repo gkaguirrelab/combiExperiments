@@ -382,6 +382,7 @@ def record_video(duration: float, write_queue: queue.Queue,
 
         return 
 
+"""Perform the bulk of the work of a capture burst using the LEAN capture method"""
 def lean_capture_helper(ms: serial.Serial, duration: int, reading_buffer: np.ndarray, 
                         write_queue: mp.Queue):
 
@@ -389,7 +390,6 @@ def lean_capture_helper(ms: serial.Serial, duration: int, reading_buffer: np.nda
     start_time: float = time.time()
 
     # Capture duration worth of frames 
-    second_num: int = 0
     frame_num: int = 0 
     while(True):
         # Retrieve the current time
@@ -397,9 +397,6 @@ def lean_capture_helper(ms: serial.Serial, duration: int, reading_buffer: np.nda
 
         # Calculate the elapsed time from the start 
         elapsed_time: float = current_time - start_time
-
-        # Calculate the elapsed_time as int (used for placing into the buffer)
-        second_num: float = int(elapsed_time)
 
         # If reached desired duration, stop recording
         if(elapsed_time >= duration):
@@ -417,11 +414,8 @@ def lean_capture_helper(ms: serial.Serial, duration: int, reading_buffer: np.nda
             # it's the ending delimeter 
             assert(ms.read(1) == b'>')
 
-            # Append it to the write queue
-            reading_buffer[second_num] == np.frombuffer(reading_bytes, dtype=np.uint8)
-
-            # Flush the reading buffer 
-            reading_bytes = None
+            # Append these bytes to the bytearray for this recording
+            reading_buffer[frame_num*MSG_LENGTH:frame_num*MSG_LENGTH + MSG_LENGTH] = reading_bytes
             
             # Append the frame number
             frame_num += 1 
@@ -444,10 +438,9 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int):
     # Connect to and initialize the MS
     ms = initialize_ms()
 
-    # Define a buffer for 5 readings at a time
-    # TODO: Usually the FPS of this is < 1, however I have seen it be 1 one time. This means this buffer 
-    # may have to be changed to be like the other one which has another FPS dimension 
-    reading_buffer: np.ndarray = np.empty((duration, MSG_LENGTH), dtype=np.uint8)
+    # Pre-allocate a bytearray in memory for this reading with a little extra in case 
+    # we start going over (like, say, we capture at 1.05 FPS)
+    reading_buffer: bytearray = bytearray((duration + 1) * MSG_LENGTH)
 
     print('MS | Initialized')
     STOP: bool = False

@@ -662,14 +662,13 @@ def record_video(duration: float, write_queue: queue.Queue, filename: str,
     # Stop recording and close the picam object 
     cam.close() 
 
-
+"""Perform the bulk of the work of a capture burst using the LEAN capture method"""
 def lean_capture_helper(cam: object, duration: int, current_gain: float, current_exposure: int,
                         gain_change_interval: float, frame_buffer: np.ndarray, 
                         downsampled_buffer: np.ndarray, settings_buffer: np.ndarray,
                         write_queue: mp.Queue):
     # Define indices to place frames/settings into the 
     # provided buffers
-    second_num: int = 0
     frame_num: int = 0 
 
     # Define the start time and last gain change
@@ -683,9 +682,6 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
         # Calculate the elapsed time from the start 
         elapsed_time: float = current_time - start_time
 
-        # Calculate the elapsed_time as int (used for placing into the buffer)
-        second_num: float = int(elapsed_time)
-
         # If reached desired duration, stop recording
         if(elapsed_time >= duration):
             break  
@@ -694,8 +690,8 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
         frame: np.array = cam.capture_array('raw')[:, 1::2]
 
         # Save the frame into the buffer
-        frame_buffer[second_num, frame_num % CAM_FPS] = frame
-        settings_buffer[second_num, frame_num % CAM_FPS] = (current_gain, current_exposure)
+        frame_buffer[frame_num] = frame
+        settings_buffer[frame_num] = (current_gain, current_exposure)
 
         # Change gain every N ms
         if((current_time - last_gain_change) > gain_change_interval):
@@ -728,10 +724,9 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
     print(f'World Camera captured {frame_num} at ~{observed_fps} fps')
 
     # Downsample and append info to the write queue
-    for sec in range(frame_buffer.shape[0]): # Iterate over the seconds in the frame buffer
-        # Downsample this second and populate it into the downsampled buffer
-        for frame in range(frame_buffer.shape[1]):
-            downsample(frame_buffer[sec, frame], downsample_factor, downsampled_buffer[sec, frame], downsample_lib) 
+    for frame in range(frame_buffer.shape[0]): # Iterate over each frame captured
+            # Downsample the frame and populate the downsampled buffer with this value
+            downsample(frame_buffer[frame], downsample_factor, downsampled_buffer[frame], downsample_lib) 
 
     write_queue.put(('W', downsampled_buffer, settings_buffer, frame_num, observed_fps))
 
@@ -754,14 +749,15 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int,
     cam.capture_metadata()
 
     # Define a buffer of duration * second worth of frames to capture and 
-    # their respective settings
-    frame_buffer: np.array = np.empty((duration, CAM_FPS, *CAM_IMG_DIMS), dtype=np.uint8)
-    settings_buffer: np.array = np.zeros((duration, CAM_FPS, 2), dtype=np.float16)
+    # their respective settings. Allocate an additional second worth of frames in case we 
+    # capture above the desired FPS (say, 200.5 FPS)
+    frame_buffer: np.array = np.empty(((duration + 1) * CAM_FPS , *CAM_IMG_DIMS), dtype=np.uint8)
+    settings_buffer: np.array = np.empty(((duration + 1) * CAM_FPS, 2), dtype=np.float16)
     
     # Create a contiguous memory buffer for to store downsampled images
     downsampled_image_shape: tuple = CAM_IMG_DIMS >> downsample_factor
-    downsampled_buffer = np.empty((duration, CAM_FPS, *downsampled_image_shape), dtype=np.uint8)
-
+    downsampled_buffer = np.empty(((duration + 1) * CAM_FPS, *downsampled_image_shape), dtype=np.uint8)
+ 
     # Define the time between AGC measurements
     gain_change_interval: float = 0.250 
     

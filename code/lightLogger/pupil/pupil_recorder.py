@@ -475,7 +475,6 @@ def lean_capture_helper(cam: object, duration: int,
     
     # Define indices to place frames/settings into the 
     # provided buffers
-    second_nm: int = 0 
     frame_num: int = 0
 
     # Capture duration of frames
@@ -486,9 +485,6 @@ def lean_capture_helper(cam: object, duration: int,
         # Calculate the elapsed time from the start 
         elapsed_time: float = current_time - start_time
 
-        # Calculate the elapsed_time as int (used for placing into the buffer)
-        second_num: float = int(elapsed_time)
-
         # If reached desired duration, stop recording
         if(elapsed_time >= duration):
             break  
@@ -497,7 +493,7 @@ def lean_capture_helper(cam: object, duration: int,
         frame_obj: uvc_bindings.MJPEGFrame = cam.get_frame_robust()
 
         # Store the grayscale frame + settings into the allocated memory buffers
-        frame_buffer[second_num, frame_num % CAM_FPS] = frame_obj.gray
+        frame_buffer[frame_num] = frame_obj.gray
 
         # Record the next frame number
         frame_num += 1 
@@ -523,8 +519,9 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue,
     cam: uvc.Capture = initialize_camera()
 
     # Define a buffer of duration * second worth of frames to capture and 
-    # their respective settings
-    frame_buffer: np.array = np.empty((duration, CAM_FPS, *CAM_IMG_DIMS), dtype=np.uint8)
+    # their respective settings. Allocate an additioanl second worth of frames 
+    # in case we capture more than the target FPS (like 120.1) for instance
+    frame_buffer: np.array = np.empty(((duration + 1) * CAM_FPS, *CAM_IMG_DIMS), dtype=np.uint8)
 
     print('Pupil Cam | Initialized')
 
@@ -559,8 +556,6 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue,
     # Close the camera
     print(f'Pupil Cam | Closing')
     cam.close()
-
-
 
 # TODO: This does not yet work because no display method seems to work on RPI
 """Preview the camera feed"""
