@@ -17,16 +17,32 @@ import threading
 import time
 import collections
 
+# Import the recorder library to find out things like the COM port, baudrate, and MSG length 
+sys.path.append(os.path.dirname(__file__))
+from MS_recorder import COM_PORT, BAUDRATE, MSG_LENGTH
 
 """Parse the MS readings and return them as a tuple of pd.DataFrames"""
-def parse_readings(path_to_readings: str) -> tuple:
-    # Gather and parse the reading files
-    AS_df = reading_to_df(os.path.join(path_to_readings, 'AS_channels.csv'), np.uint16)
-    TS_df = reading_to_df(os.path.join(path_to_readings, 'TS_channels.csv'), np.uint16)
-    LS_df = reading_to_df(os.path.join(path_to_readings, 'LS_channels.csv'), np.int16)
-    LS_temp_df = reading_to_df(os.path.join(path_to_readings, 'LS_temp.csv'), np.float32)
+def parse_readings(readings: str | np.ndarray) -> tuple:
+    # If we have the readings stored in their packed view in .npy format
+    # we need to do ALL of the parsing and unpacking 
+    if(isinstance(readings, np.ndarray)):
+        # First, we must parse the np.array of bytes into the respective sensors' bytes
+        AS_channels, TS_channels, LS_channels, LS_temp = parse_SERIAL(readings)
+    
+    else: # Otherwise, we can simply parse a reading from a csv file and add some formatting + unpacking
+          # for the accelerometer
+        AS_channels: str = os.path.join(readings, 'AS_channels.csv')
+        TS_channels: str = os.path.join(readings, AS_channels.replace('AS', 'TS'))
+        LS_channels: str = os.path.join(readings, AS_channels.replace('AS', 'LS'))
+        LS_temp: str = os.path.join(readings, LS_channels.replace('channels', 'temp'))
 
-    return (AS_df, TS_df, LS_df, LS_temp_df)
+    # Parse the readings into dataframes and return them
+    AS_df: pd.DataFrame = reading_to_df(AS_channels, np.uint16, sensor_name='A')
+    TS_df: pd.DataFrame = reading_to_df(TS_channels, np.uint16, sensor_name='T')
+    LS_df: pd.DataFrame = reading_to_df(LS_channels, np.int16, sensor_name='L')
+    LS_temp_df: pd.DataFrame = reading_to_df(LS_temp, np.float32, sensor_name='c')
+
+    return AS_df, TS_df, LS_df, LS_temp_df
 
 
 """Generate plots of the readings from the different sensors"""
@@ -75,14 +91,13 @@ def plot_readings(path_to_readings: str):
 
 """Reformat the accelerometer DF to be one reading per row of X,Y,Z values
 instead of each line having a buffer of values"""
-def unpack_accel_df(df) -> pd.DataFrame:
+def unpack_accel_df(df: pd.DataFrame) -> pd.DataFrame:
     # Find the buffer size (how many pairs of 3 X,Y,Z values are read for each chip)
     buffer_size: int = collections.Counter([col[0] for col in df.columns])['X'] // 2 
 
     # Define the names of accelerometer and angle measure axis 
     accelerometer_axes_names: list = ['X', 'Y', 'Z']
     angle_axes_names: list = ['X-ANG', 'Y-ANG', 'Z-ANG']
-
 
     # Define the columns and their types for the new dataframe 
     # with accel buffer unpacked
@@ -95,15 +110,10 @@ def unpack_accel_df(df) -> pd.DataFrame:
                          for i in range(buffer_size)}
 
     # Construct the column names of the new dataframe
-    columns: list = ['Timestamp'] + accelerometer_axes_names + angle_axes_names
+    columns: list = accelerometer_axes_names + angle_axes_names
 
     # Define the types for each column
-    types: list = ['datetime64[ns]'] + [np.int16 for col in columns]
-
-    # Extract the times we actually measured,
-    # and prepare new col for unpacked times 
-    measured_times: list = df['Timestamp'].tolist()
-    unpacked_times: list = []
+    types: list = [np.int16 for col in columns]
 
     # Retrieve all of the cols for a given axis
     X_accel_cols: list = [col for col in df.columns 
@@ -139,35 +149,16 @@ def unpack_accel_df(df) -> pd.DataFrame:
     Z_accel: np.ndarray = df[Z_accel_cols].to_numpy().flatten()
     Z_angle: np.ndarray = df[Z_angle_cols].to_numpy().flatten()
 
-    # Define the container to hold the new data frame data
-    reformated_measurements: np.ndarray = None
-
-    # If the timestamps are not NA, we need to reconstruct the timestamps to match the 
-    # reformatted data
-    if(not df['Timestamp'].isna().any()):
-        # Unpack the first buffer, the one which we do not have a start_time for 
-        unpacked_times.extend(pd.date_range(end=measured_times[0], periods=buffer_size, inclusive='both'))
-
-        # Otherwise, fill the gaps in the time with linearly spaced values
-        for i in range(1,len(measured_times)):
-            start_time = measured_times[i-1]
-            end_time = measured_times[i]
-                                                                # there should be BUFFER_SIZE values between existing points
-            unpacked_times.extend(pd.date_range(start=start_time, end=end_time, periods=buffer_size+1,inclusive='right'))
-
-        # Package the reformatted measurements 
-        reformatted_measurements = [unpacked_times, X_accel, X_angle, Y_accel, Y_angle, Z_accel, Z_angle]
-
-    # Otherwise, simply generate discrete values for the timestamps that are the same length as the df
-    else:
-        unpacked_times = [pd.NaT] * X_accel.shape[0]
-        
-        reformatted_measurements = [unpacked_times, X_accel, X_angle, Y_accel, Y_angle, Z_accel, Z_angle ]
+    # Package all of the measurements together nicely
+    measurements: tuple = (X_accel, X_angle, Y_accel, Y_angle, Z_accel, Z_angle)
+    
+    # Assert measurements all have the same shape
+    assert(all(measurements[i].shape == measurements[i+1].shape for i in range(len(measurements) - 1)))
 
     # Format data into column labeled dataframe shape
     data_dict: dict = {col: measurement
                       for col, measurement
-                      in zip(columns, reformatted_measurements)}
+                      in zip(columns, measurements)}
 
     # Create the new dataframe
     new_df: pd.DataFrame = pd.DataFrame(data_dict)
@@ -182,43 +173,43 @@ def plot_channel(x: pd.Series, channel : pd.Series, label: str, ax: plt.Axes):
     ax.plot(x, channel, marker='o', markersize=2, label=label)
 
 """Parse a reading csv and return the resulting dataframe with labeled cols"""
-def reading_to_df(reading_path: str, channel_type : type) -> pd.DataFrame:
+def reading_to_df(readings: str | np.ndarray, channel_type : type, sensor_name: str=None) -> pd.DataFrame:
     # Determine if this is the accelerometer readings or not 
-    is_accelerometer: bool = os.path.basename(reading_path) == 'LS_channels.csv'
+    is_accelerometer: bool = (sensor_name is not None and sensor_name[0] == 'L') or (type(readings) is str and os.path.basename(readings) == 'LS_channels.csv')
 
     # Read in the csv from the given path
-    df: pd.DataFrame = pd.read_csv(reading_path, sep=',',header=None)
+    df: pd.DataFrame = pd.DataFrame(readings) if isinstance(readings, np.ndarray) else pd.read_csv(readings, sep=',',header=None)
 
     # Create an axis mapping for the indices of a given accelerometer
     # reading
-    LS_accel_mapping = {i:let 
-                        for i, let in 
-                        zip([0,1,2],['X','Y','Z'])}
+    LS_accel_mapping: dict = {i:let 
+                             for i, let in 
+                             zip([0,1,2],['X','Y','Z'])}
     
-    LS_angle_mapping = {i:let 
-                        for i, let in 
-                        zip([0,1,2],['X-ANG','Y-ANG','Z-ANG'])}
+    LS_angle_mapping: dict = {i:let 
+                              for i, let in 
+                              zip([0,1,2],['X-ANG','Y-ANG','Z-ANG'])}
     
     # Calculate the size of each of the accelerometer's buffers
     # which is the total number of readings divided by the two buffers
     # divided by the 3 channels
-    accel_buffer_size: int = (df.shape[1] - 1) // (2 * 3)
+    accel_buffer_size: int = (df.shape[1]) // (2 * 3)
     
     # Form column names and their associated types              # col_i if not accelerometer, 
     #                                                           otherwise use the mapping to parse  
     #                                                           Note: first half of accelerometer cols are accel
     #                                                           other half are angle 
     #                                                                         
-    columns : list = ['Timestamp'] + [str(i) 
-                                      if is_accelerometer is False
-                                      else 
-                                        f"{LS_accel_mapping[i%3]}{int(i/3)}" 
-                                        if i < (df.shape[1] - 1)/2 
-                                            else f"{LS_angle_mapping[i%3]}{int((i/3)-accel_buffer_size)}" 
+    columns : list =  [str(i) 
+                        if is_accelerometer is False
+                        else 
+                        f"{LS_accel_mapping[i%3]}{int(i/3)}" 
+                        if i < (df.shape[1] - 1)/2 
+                            else f"{LS_angle_mapping[i%3]}{int((i/3)-accel_buffer_size)}" 
 
-                                      for i in range(df.shape[1]-1)]
+                        for i in range(df.shape[1])]
 
-    types :list = ['datetime64[ns]'] + [channel_type for i in range(df.shape[1]-1)]
+    types :list = [channel_type for i in range(df.shape[1])]
     
     # Reformat the DataFrame with col names and types
     df.columns = columns 
@@ -226,10 +217,6 @@ def reading_to_df(reading_path: str, channel_type : type) -> pd.DataFrame:
 
     # Parse further if necessary 
     df = df if is_accelerometer is False else unpack_accel_df(df)
-
-    # Replace NaN timestamps if necessary 
-    if(df['Timestamp'].isna().any()): 
-        df['Timestamp'] = list(range(df.shape[0]))
 
     # Return the DF
     return df 
@@ -278,42 +265,21 @@ def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory
         file_handle.close()
 
 """Parse a MS reading from the serial connection (or broadly), e.g., no async operations necessary"""
-def parse_SERIAL(serial_bytes: bytes | np.ndarray) -> tuple:
+def parse_SERIAL(serial_bytes: np.ndarray) -> tuple:
     # Splice out the portion of the bytes/np.ndarray of bytes for each sensor
-    AS_bytes: bytes | np.ndarray = serial_bytes[0:20]
-    TS_bytes: bytes | np.ndarray = serial_bytes[20:24]
-    LS_bytes: bytes | np.ndarray = serial_bytes[24:144]
-    LS_temp_bytes: bytes | np.ndarray = serial_bytes[144:148]
-    
-    # If we already read the bytes from a buffer but have not parsed them
-    # into respective datatypes 
-    if(isinstance(serial_bytes, np.ndarray)):
-        AS_channels: np.ndarray = AS_bytes.view(dtype=np.uint16)
-        TS_channels: np.ndarray = TS_bytes.view(dtype=np.uint16)
-        LS_channels: np.ndarray = LS_bytes.view(dtype=np.int16)
-        LS_temp: np.float32 = LS_temp_byres.view(dtype=np.float32)
-
-    # Otherwise, we will read them into numpy arrays from the bytes
-    else:
-        # Splice and convert the channels to their respective types 
-        AS_channels: np.array = np.frombuffer(AS_bytes, dtype=np.uint16)
-        TS_channels: np.array = np.frombuffer(TS_bytes, dtype=np.uint16)
-        LS_channels = np.array = np.frombuffer(LS_bytes, dtype=np.int16)
-        LS_temp: np.array = np.frombuffer(LS_temp_bytes, dtype=np.float32)
+    # during this bursts' recording length (all rows)
+    AS_channels: np.ndarray = serial_bytes[:, 0:20].view(dtype=np.uint16)
+    TS_channels: np.ndarray = serial_bytes[:, 20:24].view(np.uint16)
+    LS_channels: np.ndarray = serial_bytes[:, 24:144].view(dtype=np.int16)
+    LS_temp: np.ndarray = serial_bytes[:, 144:148].view(np.float32)
 
     return AS_channels, TS_channels, LS_channels, LS_temp 
 
 """Read packets of data from the MS over Serial Connection"""
 def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
-    # Hard Code the port the MS connects to for Linux and MAC
-    # its baudrate, and the length of a message in bytes
-    com_port: str = '/dev/ttyACM0' if sys.platform.startswith('linux') else '/dev/tty.usbmodem141301'
-    baudrate: int = 115200
-    msg_length: int = 150
-
     # Connect to the MS device
     print('Connecting to ms...')
-    ms: serial.Serial = serial.Serial(com_port, baudrate, timeout=1)
+    ms: serial.Serial = serial.Serial(COM_PORT, BAUDRATE, timeout=1)
 
     # Read until we hit the start delimeter of the MS message 
     while(not stop_flag.is_set()):
@@ -324,7 +290,7 @@ def read_SERIAL(write_queue: queue.Queue, stop_flag: threading.Event):
             #print(f'Received MS TRANSMISSION @{time.time()}')      
             
             # Read the buffer over the serial port (- 2 for the begin/end delimeters)
-            reading_buffer: bytes = ms.read(msg_length - 2)
+            reading_buffer: bytes = ms.read(MSG_LENGTH - 2)
 
             # Assert we didn't overread the buffer by reading the next byte and ensuring
             # it's the ending delimeter 

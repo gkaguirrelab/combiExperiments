@@ -3,6 +3,15 @@ import re
 import numpy as np
 from natsort import natsorted
 import pickle
+import pathlib
+import sys
+
+# Import the MS utility library 
+light_logger_dir_path: str = str(pathlib.Path(__file__).parents[2]) 
+MS_recorder_path: str = os.path.join(light_logger_dir_path, 'miniSpect')
+sys.path.append(MS_recorder_path)
+import MS_util
+
 
 """Parse chunks that are stored in .pkl format, instead of broken down 
    into folders and cleanly stored"""
@@ -10,7 +19,7 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
 
     # First, define some helper functions
     """Parser for the raw World data per chunk"""
-    def world_parser(val_tuple: tuple):
+    def world_parser(val_tuple: tuple) -> dict:
         print(f'Length of world vals: {len(val_tuple)}')
 
         # First value is always the frame buffer for this chunk 
@@ -36,7 +45,7 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
         return {'frame_buffer': frame_buffer, 'settings_buffer': settings_buffer, 'num_frames_captured': float(num_captured_frames), 'FPS': observed_fps}
 
     """Parser for the raw Pupil data per chunk"""
-    def pupil_parser(val_tuple: tuple):
+    def pupil_parser(val_tuple: tuple) -> dict:
         print(f'Length of Pupil vals: {len(val_tuple)}')
 
         # First value is always the frame buffer for this chunk
@@ -57,25 +66,24 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
                                                 # Make this a float for MATLAB use later
         return {'frame_buffer': frame_buffer, 'num_frames_captured': float(num_captured_frames), 'FPS': observed_fps}
 
-
     """Parser for the raw MS data per chunk"""
-    def ms_parser(val_tuple: tuple):    
+    def ms_parser(val_tuple: tuple) -> dict:    
         print(f'Length of MS Vals: {len(val_tuple)}')
         
         # First value is always the unparsed byte buffer 
         bytes_buffer: np.ndarray = val_tuple[0]
 
+        print(f'BUFFER TYPE: {type(bytes_buffer)}')
+
         # Use the MS util parsing library to unpack these bytes
-        #AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_SERIAL(bytes_buffer)
-
-        # TODO: Still need to parse this fully (like, unpack the buffer of accelerometer values, for instance, and make into DFs)
-
-        # Second and third values are always the num_captured_frames and observed FPS 
+        AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_readings(bytes_buffer)
+   
+        # Second and third values are always the num_captured_frames and observed FPS
         num_captured_frames, observed_fps = val_tuple[1:]
         print(f'Reading Buffer Shape: {bytes_buffer.shape}')
         print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
 
-        return {'readings_buffer': float(0)}
+        return {name: readings_df for readings_df, name in zip((AS_channels, TS_channels, LS_channels, LS_temp), ('A', 'T', 'L', 'c'))}
 
 
     # Define a dictionary of sensor initials and their respective parsers 

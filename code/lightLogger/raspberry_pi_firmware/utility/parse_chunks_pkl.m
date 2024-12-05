@@ -15,6 +15,11 @@ function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment, use_mean_fr
 %   path_to_experiment    - String. The path to the suprafile 
 %                           containing all of the chunks.
 %
+%   path_to_experiment    - Boolean. Whether to return mean
+%                           values for each frame instead of 
+%                           the full frame for each 
+%                           video sensor. 
+%
 %
 % Outputs:
 %
@@ -30,7 +35,7 @@ function sorted_chunks_parsed = parse_chunks_pkl(path_to_experiment, use_mean_fr
     % Parse and validate the input arguments
     arguments 
         path_to_experiment {mustBeText}; % The path to the suprafolder for this experiment
-        use_mean_frame {mustBeNumericOrLogical}; % Bool (true/false) for whether to return the full frames or mean of each frame
+        use_mean_frame {mustBeNumericOrLogical} = false; % Bool (true/false) for whether to return the full frames or mean of each frame
     end
 
 

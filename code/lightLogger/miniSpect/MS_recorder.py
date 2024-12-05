@@ -7,16 +7,23 @@ import os
 import psutil
 import sys
 import signal
-from MS_util import reading_to_string, parse_SERIAL
 import traceback
 import multiprocessing as mp
 import setproctitle
+
+"""Define the COM port to communicate with the device over, based on OS"""
+COM_PORT: str = '/dev/ttyACM0' if sys.platform.startswith('linux') else '/dev/tty.usbmodem141301'
+    
+"""Define the baudrate at which to communicate with the MS"""
+BAUDRATE: int = 115200
 
 """Define the length of a given communication from the MS in bytes"""
 MSG_LENGTH: int = 150
 
 """Write MS readings taken from the serial connection"""
 def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory: str, generate_readingfiles: bool=True):
+    pass
+    """
     # Open the reading file handles (if we are not using signals to communicate)
     reading_file_handles: list = [open(os.path.join(output_directory, reading_name + '.csv'), 'a')
                                   for reading_name in reading_names] if generate_readingfiles else []
@@ -56,9 +63,11 @@ def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory
         for reading_file, reading in zip(reading_file_handles, readings):
             reading_file.write(reading_to_string(read_time, reading))
     
+    
     # Close all of the file handles (if not closed already)
     for file_handle in reading_file_handles:
         if(not file_handle.closed): file_handle.close()
+    """
 
 """Record from all of the MS sensors for an unspecified amount of time"""
 def record_live(duration: float, write_queue: queue.Queue,
@@ -102,7 +111,7 @@ def capture_helper(ms: serial.Serial, duration: float,
             # Assert we didn't overread the buffer by reading the next byte and ensuring
             # it's the ending delimeter 
             assert(ms.read(1) == b'>')
-            AS, TS, LI, temp = parse_SERIAL(reading_buffer)
+            #AS, TS, LI, temp = parse_SERIAL(reading_buffer)
 
             # Append it to the write queue
             write_queue.put(['NA',  reading_buffer, reading_filehandles])
@@ -352,7 +361,7 @@ def record_video(duration: float, write_queue: queue.Queue,
                 assert(ms.read(1) == b'>')
 
                 #print(f"Size of reading buffer: {len(reading_buffer)}")
-                AS, TS, LI, temp = parse_SERIAL(reading_buffer)
+                #AS, TS, LI, temp = parse_SERIAL(reading_buffer)
 
                 #print(f'AS CHANNELS: {AS}')
                 #print(f'TS CHANNELS: {TS}')
@@ -474,13 +483,8 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int):
 """Initialize a connection with the minispect over the serial port
    and return the MS serial object"""
 def initialize_ms() -> serial.Serial:
-    # Hard Code the port the MS connects to for Linux and MAC
-    # its baudrate, and the length of a message in bytes
-    com_port: str = '/dev/ttyACM0' if sys.platform.startswith('linux') else '/dev/tty.usbmodem141301'
-    baudrate: int = 115200
-
     # Connect to the MS device
-    ms: serial.Serial = serial.Serial(com_port, baudrate, timeout=1)
+    ms: serial.Serial = serial.Serial(COM_PORT, BAUDRATE, timeout=1)
 
     return ms
 
