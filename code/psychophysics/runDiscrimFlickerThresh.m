@@ -21,6 +21,7 @@ p.addParameter('stimParamsHi',{linspace(0,1,51),linspace(0,1,51)},@isnumeric);
 p.addParameter('stimParamsLow',{linspace(-1,0,51),linspace(-1,0,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',30,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
+p.addParameter('useStaircase',false,@islogical);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.parse(varargin{:})
@@ -28,6 +29,7 @@ p.parse(varargin{:})
 %  Pull out of the p.Results structure
 nTrialsPerBlock = p.Results.nTrialsPerBlock;
 nBlocks = p.Results.nBlocks;
+useStaircase = p.Results.useStaircase;
 modDirections = p.Results.modDirections;
 targetPhotoreceptorContrast = p.Results.targetPhotoreceptorContrast;
 verboseCombiLED = p.Results.verboseCombiLED;
@@ -123,11 +125,14 @@ for bb=1:nBlocks
             % Increment blockIdx
             psychObj.blockIdx = psychObj.blockIdx+1;
             psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
+             % Update the useStaircase flag in case this has changed
+            psychObj.useStaircase = useStaircase;
         else
             % Create the object
             psychObj = PsychDiscrimFlickerThreshold(CombiLEDObj,modResult,refFreqHz,...
                 'refContrast',testContrast,'testContrast',testContrast,...
-                'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj);
+                'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
+                'useStaircase', useStaircase);
             % Store the filename
             psychObj.filename = filename;
         end
