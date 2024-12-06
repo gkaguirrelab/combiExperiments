@@ -128,10 +128,11 @@ for nn = 1:length(NDlabelsAll)
         plot(10.^binCenters,varVals,'o-m','LineWidth',2);        
         plot(10.^binCenters,meanVals(:,1),'o-b','LineWidth',2);
         plot(10.^binCenters,meanVals(:,2),'x-b','LineWidth',2);
+        plot(10.^binCenters,mean(meanVals,2),'*-b','LineWidth',2);
 
         % Report the model fit and CIs
         CIs = coefCI(mdl,0.05);
-        fprintf([modDirectionLabels{dd} ' ND' NDlabelsAll{nn} ' intercept: %2.2f [%2.2f : %2.2f]; slope: %2.2f [%2.2f : %2.2f]\n' ],mdl.Coefficients.Estimate(1),CIs(1,:),mdl.Coefficients.Estimate(2),CIs(2,:));
+        fprintf([modDirectionLabels{dd} ' ND' NDlabelsAll{nn} ' mean variance: %2.2f, intercept: %2.2f [%2.2f : %2.2f]; slope: %2.2f [%2.2f : %2.2f]\n' ],mean(varVals),mdl.Coefficients.Estimate(1),CIs(1,:),mdl.Coefficients.Estimate(2),CIs(2,:));
 
 
     end
