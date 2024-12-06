@@ -81,12 +81,12 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
         # Second and third values are always the num_captured_frames and observed FPS
         num_captured_frames, observed_fps = val_tuple[1:]
 
-        print(f'Reading Buffer Shape Before: {len(bytes_buffer)} | Num readings: {len(bytes_buffer)/MS_util.MSG_LENGTH}')
+        print(f'Reading Buffer Shape Before: {len(bytes_buffer)} | Num readings: {len(bytes_buffer)/MS_util.DATA_LENGTH}')
 
         # Splice out only the frames we captured 
-        bytes_buffer: bytearray = bytes_buffer[:num_captured_frames * MS_util.MSG_LENGTH]
+        bytes_buffer: bytearray = bytes_buffer[:num_captured_frames * MS_util.DATA_LENGTH]
 
-        print(f'Reading Buffer Shape After: {len(bytes_buffer)} | Num readings: {len(bytes_buffer)/MS_util.MSG_LENGTH}')
+        print(f'Reading Buffer Shape After: {len(bytes_buffer)} | Num readings: {len(bytes_buffer)/MS_util.DATA_LENGTH}')
 
         # Use the MS util parsing library to unpack these bytes
         AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_readings(bytes_buffer)
