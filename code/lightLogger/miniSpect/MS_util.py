@@ -19,7 +19,7 @@ import collections
 
 # Import the recorder library to find out things like the COM port, baudrate, and MSG length 
 sys.path.append(os.path.dirname(__file__))
-from MS_recorder import COM_PORT, BAUDRATE, MSG_LENGTH
+from MS_recorder import COM_PORT, BAUDRATE, MSG_LENGTH, DATA_LENGTH
 
 """Parse the MS readings and return them as a tuple of pd.DataFrames"""
 def parse_readings(readings: str | np.ndarray) -> tuple:
@@ -266,34 +266,53 @@ def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory
 
 """Parse a MS reading from the serial connection (or broadly), e.g., no async operations necessary"""
 def parse_SERIAL(serial_bytes: np.ndarray) -> tuple:
-    # Define the start and end of each sensors' bytes as well as the 
-    # data type to interpret them as
-    AS_bytes_info: np.ndarray = np.array([0, 20]) # np.uint16 
-    TS_bytes_info: np.ndarray = np.array((20, 24))  # np.uint16
-    LS_bytes_info: np.ndarray = np.array([24, 144]) # np.int16
-    LS_temp_bytes_info: np.ndarray = np.array([144, 148,]) # np.float32
+    # Define containers for all of the channels across the many readings
+    # They are lists now but will be converted to numpy array later, because I don't
+    # know exactly how many channels by a given sensor, and this may change in the future
+    AS_channels: list = []
+    TS_channels: list = [] 
+    LS_channels: list = [] 
+    LS_temp: list = []
+
+    # Define the start and end of each sensors' bytes
+    # for the first reading 
+    AS_start, AS_end = 0, 20
+    TS_start, TS_end = 20, 24
+    LS_start, LS_end = 24, 144
+    LS_temp_start, LS_temp_end = 144, 148 
+
+    # Define these start/ends as vectors for easy vector math
+    AS_bytes_info: np.ndarray = np.array([AS_start, AS_end]) # np.uint16 
+    TS_bytes_info: np.ndarray = np.array((TS_start, TS_end))  # np.uint16
+    LS_bytes_info: np.ndarray = np.array([LS_start, LS_end]) # np.int16
+    LS_temp_bytes_info: np.ndarray = np.array([LS_temp_start, LS_temp_end]) # np.float32
 
     # Iterate over how many readings we have 
-    for reading_num in range(0, len(serial_bytes), MSG_LENGTH):
-        # Calculate the start and end values for this reading for all of the sensors' 
-        AS_start, AS_end = reading_num * AS_bytes_info
-        TS_start, TS_end = reading_num * TS_bytes_info
-        LS_start, LS_end = reading_num * LS_bytes_info
-        LS_temp_start, LS_temp_end = reading_num * LS_temp_bytes_info
-        
+    for reading_num, _ in enumerate(range(0, len(serial_bytes), DATA_LENGTH)):
+        print(f'Reading num: {reading_num}/{len(serial_bytes)/DATA_LENGTH}')
 
+        AS_start, AS_end = AS_bytes_info + (reading_num * DATA_LENGTH)
+        TS_start, TS_end = TS_bytes_info + (reading_num * DATA_LENGTH)
+        LS_start, LS_end = LS_bytes_info + (reading_num * DATA_LENGTH)
+        LS_temp_start, LS_temp_end = LS_temp_bytes_info + (reading_num * DATA_LENGTH)
+            
+        # Read in the bytes as np.ndarrays and interpret them
+        this_reading_AS_channels: np.ndarray = np.frombuffer(serial_bytes[AS_start:AS_end], dtype=np.uint16)
+        this_reading_TS_channels: np.ndarray = np.frombuffer(serial_bytes[TS_start:TS_end], dtype=np.uint16)
+        this_reading_LS_channels: np.ndarray = np.frombuffer(serial_bytes[LS_start:LS_end], dtype=np.int16)
+        this_reading_LS_temp: np.ndarray = np.frombuffer(serial_bytes[LS_temp_start:LS_temp_end], dtype=np.float32)
 
-        AS_channels: np.ndarray = serial_bytes[0:20]
-        TS_channels: np.ndarray = serial_bytes[20:24]
-        LS_channels: np.ndarray = serial_bytes[24:144]
-        LS_temp: np.ndarray = serial_bytes[144:148]
-    
-    
-    
-    
-    # Splice out the portion of the bytes/np.ndarray of bytes for each sensor
-    # during this bursts' recording length (all rows)
-    AS_channel
+        # Append them to the growing list
+        AS_channels.append(this_reading_AS_channels)
+        TS_channels.append(this_reading_TS_channels)
+        LS_channels.append(this_reading_LS_channels)
+        LS_temp.append(this_reading_LS_temp)
+
+    # Convert all of the reading containers to a numpy array
+    AS_channels: np.ndarray = np.array(AS_channels, dtype=np.uint16)
+    TS_channels: np.ndarray = np.array(TS_channels, dtype=np.uint16)
+    LS_channels: np.ndarray = np.array(LS_channels, dtype=np.int16)
+    LS_temp: np.ndarray = np.array(LS_temp, dtype=np.float32)
 
     return AS_channels, TS_channels, LS_channels, LS_temp 
 

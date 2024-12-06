@@ -20,6 +20,9 @@ BAUDRATE: int = 115200
 """Define the length of a given communication from the MS in bytes"""
 MSG_LENGTH: int = 150
 
+"""Define how long the data portion of the message is in bytes"""
+DATA_LENGTH: int = MSG_LENGTH - 2
+
 """Write MS readings taken from the serial connection"""
 def write_SERIAL(write_queue: queue.Queue, reading_names: list, output_directory: str, generate_readingfiles: bool=True):
     pass
@@ -106,7 +109,7 @@ def capture_helper(ms: serial.Serial, duration: float,
         #Check if the token is equal to the starting delimeter
         if(token == b'<'):                 
             # Read the buffer over the serial port (- 2 for the begin/end delimeters)
-            reading_buffer: bytes = ms.read(MSG_LENGTH - 2)
+            reading_buffer: bytes = ms.read(DATA_LENGTH)
 
             # Assert we didn't overread the buffer by reading the next byte and ensuring
             # it's the ending delimeter 
@@ -408,14 +411,14 @@ def lean_capture_helper(ms: serial.Serial, duration: int, reading_buffer: np.nda
         #Check if the token is equal to the starting delimeter
         if(token == b'<'):    
             # Read the buffer over the serial port (- 2 for the begin/end delimeters)
-            reading_bytes: bytes = ms.read(MSG_LENGTH - 2)
+            reading_bytes: bytes = ms.read(DATA_LENGTH)
 
             # Assert we didn't overread the buffer by reading the next byte and ensuring
             # it's the ending delimeter 
             assert(ms.read(1) == b'>')
 
             # Append these bytes to the bytearray for this recording
-            reading_buffer[frame_num*MSG_LENGTH:frame_num*MSG_LENGTH + MSG_LENGTH] = reading_bytes
+            reading_buffer[frame_num*DATA_LENGTH:frame_num*DATA_LENGTH + DATA_LENGTH] = reading_bytes
             
             # Append the frame number
             frame_num += 1 
@@ -440,7 +443,7 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int):
 
     # Pre-allocate a bytearray in memory for this reading with a little extra in case 
     # we start going over (like, say, we capture at 1.05 FPS)
-    reading_buffer: bytearray = bytearray((duration + 1) * MSG_LENGTH)
+    reading_buffer: bytearray = bytearray((duration + 1) * DATA_LENGTH)
 
     print('MS | Initialized')
     STOP: bool = False
