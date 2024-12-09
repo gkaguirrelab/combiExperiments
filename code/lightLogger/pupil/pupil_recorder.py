@@ -20,7 +20,7 @@ import multiprocessing as mp
 CAM_FPS: int = 120
 
 # The origial dimensions of the camera before downsampling 
-CAM_IMG_DIMS: np.ndarray = np.array((400, 400))
+CAM_IMG_DIMS: np.ndarray = np.array((192, 192))
 
 """Unpack chunks of n captured frames. This is used 
    to reformat the memory-limitation required capture 
@@ -491,6 +491,7 @@ def lean_capture_helper(cam: object, duration: int,
 
         # Capture the frame
         frame_obj: uvc_bindings.MJPEGFrame = cam.get_frame_robust()
+        #frame = np.empty((400,400), dtype=np.uint8)
 
         # Store the grayscale frame + settings into the allocated memory buffers
         frame_buffer[frame_num] = frame_obj.gray
@@ -517,11 +518,13 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue,
                  duration: int):
     # Initialize the camera
     cam: uvc.Capture = initialize_camera()
+    #cam = None
 
     # Define a buffer of duration * second worth of frames to capture and 
     # their respective settings. Allocate an additioanl second worth of frames 
     # in case we capture more than the target FPS (like 120.1) for instance
     frame_buffer: np.array = np.empty(((duration + 1) * CAM_FPS, *CAM_IMG_DIMS), dtype=np.uint8)
+    #dummy_buffer: np.array = np.empty(((duration + 1) * CAM_FPS, *(CAM_IMG_DIMS//2)), dtype=np.uint8)
 
     print('Pupil Cam | Initialized')
 
@@ -593,8 +596,8 @@ def initialize_camera() -> object:
     # Open a connection to the camera
     cam: uvc.Capture = uvc.Capture(device["uid"])
 
-    # Set the camera to be 400x400 @ 120 FPS
-    cam.frame_mode = cam.available_modes[-1]
+    # Set the camera to be 192x192 @ 120 FPS
+    cam.frame_mode = cam.available_modes[3]
 
     # Retrieve the controls dict
     controls_dict: dict = {c.display_name: c for c in cam.controls}

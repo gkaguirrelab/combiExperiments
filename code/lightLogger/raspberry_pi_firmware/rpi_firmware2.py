@@ -31,7 +31,7 @@ import MS_recorder
 import pupil_recorder
 
 # Placeholder for testing purposes
-test_filepath: str = "/media/rpiControl/FF5E-7541/fixBufferIssue_0.1hz_0NDF"
+test_filepath: str = "/media/rpiControl/FF5E-7541/testWorldMSPupilBehavior12mins_5hz_0NDF"
 
 """"""
 def write_process(names: tuple, receive_queue: mp.Queue, 
@@ -142,11 +142,8 @@ def main():
     processes: list = []
 
     # Define the number of recording bursts and duration (s) of a recording burst 
-    n_bursts: int = 6 * 15 # 45 minutes
+    n_bursts: int = 6 * 12 # 2 minutes
     burst_duration: int = 10
-
-    # Initialize tuples of names for the processes we will use
-    names: tuple = ('Output', 'World', 'MS', 'Pupil')
 
     # Initialize a multiprocessing-safe queue to store data 
     # from the sensors
@@ -156,8 +153,11 @@ def main():
     # to the sensors 
     send_data_queue: mp.Queue = mp.Queue()
 
+    # Initialize tuples of names for the processes we will use
+    names: tuple = ('Output', 'World', 'MS', 'Pupil') #'MS', 'Pupil')
+
     # Define the recorders used by the processes as well as their respective arguments
-    recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture, pupil_recorder.lean_capture)
+    recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture, pupil_recorder.lean_capture) #MS_recorder.lean_capture, pupil_recorder.lean_capture)
     process_args: tuple = tuple([ (names[1:], receive_data_queue, send_data_queue, n_bursts) ] + [ (receive_data_queue, send_data_queue, burst_duration) for i in range(len(names[1:])) ])
 
     # Generate the process objects
