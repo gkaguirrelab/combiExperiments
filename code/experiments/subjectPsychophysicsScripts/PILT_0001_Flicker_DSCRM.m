@@ -3,21 +3,22 @@
 subjectID = 'PILT_0001';
 flickerFreqSetHz = [30,15,7.5,3.75,1.875];
 nLevels = length(flickerFreqSetHz);
+NDlabel = '0x5';
 
 [~,stimOrderIdx] = sort(rand(1,nLevels));
 
 for ii = 1:nLevels
-    thisStim = stimPressureSetPSI(stimOrderIdx(ii));
+    refFreqHz = flickerFreqSetHz(stimOrderIdx(ii));
 
     % Run two blocks using a staircase
-    runDiscrimFlickerThresh(subjectID,thisStim,'nBlocks',2,'useStairCase',true);
+    runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',2,'useStaircase',true);
 
 end
 
 for ii = 1:nLevels
-    thisStim = flickerFreqSetHz(stimOrderIdx(ii));
+    refFreqHz = flickerFreqSetHz(stimOrderIdx(ii));
 
     % Switch to Quest+ for another 5 blocks
-    runDiscrimFlickerThresh(subjectID,thisStim,'nBlocks',5,'useStairCase',false);
+    runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',5,'useStaircase',false);
 
 end
