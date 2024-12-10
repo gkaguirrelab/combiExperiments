@@ -70,7 +70,7 @@ classdef PsychDiscrimFlickerThreshold < handle
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',true,@islogical);            
-            p.addParameter('staircaseRule',[1,3],@isnumeric);
+            p.addParameter('staircaseRule',[1,1],@isnumeric);
             p.addParameter('simulatePsiParams',[0,0.3],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...

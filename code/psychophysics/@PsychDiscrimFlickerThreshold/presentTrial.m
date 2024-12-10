@@ -109,7 +109,7 @@ end
 if ~simulateStimuli
 
     % Alert the subject the trial is about to start
-    audioObjs.ready.play;
+    % audioObjs.ready.play; % Removed ready tone
     stopTimeSeconds = cputime() + 1;
     obj.waitUntil(stopTimeSeconds);
 
@@ -133,11 +133,7 @@ if ~simulateStimuli
             stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
         end
         obj.CombiLEDObj.startModulation;
-        if ii==1
-            audioObjs.low.play;
-        else
-            audioObjs.high.play;
-        end
+        audioObjs.low.play;
         obj.waitUntil(stopTime);
     end
 end
