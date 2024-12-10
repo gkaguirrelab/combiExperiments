@@ -164,7 +164,8 @@ for bb=1:nBlocks
         psychObjArray{ss}.blockStartTimes(psychObjArray{ss}.blockIdx) = blockStartTime;
     end
 
-    % Present nTrials.
+    % Present nTrials, alternating between the high and low sides of the
+    % psychometric function
     for ii = 1:nTrialsPerBlock
         psychObjIdx = mod(ii,2)+1;
         psychObjArray{psychObjIdx}.presentTrial
