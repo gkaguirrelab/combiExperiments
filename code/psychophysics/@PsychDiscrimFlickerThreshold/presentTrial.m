@@ -121,7 +121,7 @@ if ~simulateStimuli
         % 1/4 of the stimulus and then move on to the response, thus
         % allowing the subject to respond during the second stimulus.
         if ii == 1
-            stopTime = cputime() + obj.stimulusDurationSecs + obj.interStimulusIntervalSecs;
+            stopTime = cputime() + obj.stimulusDurationSecs;
         else
             stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
         end

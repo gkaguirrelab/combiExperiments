@@ -10,15 +10,18 @@ NDlabel = '0x5';
 for ii = 1:nLevels
     refFreqHz = flickerFreqSetHz(stimOrderIdx(ii));
 
-    % Run two blocks using a staircase
-    runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',2,'useStaircase',true);
+    % Run two blocks using a staircase, which will be one of each of the
+    % two mod directions (LightFlux and L–M).
+    runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',2,'useStaircase',true,...
+        'simulateResponse',true,'simulateStimuli',true);
 
 end
 
 for ii = 1:nLevels
     refFreqHz = flickerFreqSetHz(stimOrderIdx(ii));
 
-    % Switch to Quest+ for another 5 blocks
-    runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',5,'useStaircase',false);
+    % Switch to Quest+ for another 6 blocks
+    runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',6,'useStaircase',false, ...
+        'simulateResponse',true,'simulateStimuli',true);
 
 end
