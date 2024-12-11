@@ -38,7 +38,7 @@ CAM_FPS: float = 200
 CAM_IMG_DIMS: np.ndarray = np.array((480, 640))
 
 # The power of 2 to downsample the recorded image by 
-downsample_factor: int = 4
+downsample_factor: int = 3 # 4 worked well
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
@@ -675,6 +675,9 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
     start_time: float = time.time()
     last_gain_change: float = start_time
 
+    # Define a container for when the first frame was captured
+    first_frame_capture: float = None
+
     while(True):
         # Retrieve the current time
         current_time: float = time.time()
@@ -688,6 +691,10 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
 
         # Capture the frame and splice only the odd cols (even cols have junk content)
         frame: np.array = cam.capture_array('raw')[:, 1::2]
+
+        # Capture when the first frame for this chunk was captured. We will use this for 
+        # detected phase lags 
+        if(frame_num == 0): first_frame_capture = time.time()
 
         # Save the frame into the buffer
         frame_buffer[frame_num] = frame
@@ -728,7 +735,7 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
             # Downsample the frame and populate the downsampled buffer with this value
             downsample(frame_buffer[frame], downsample_factor, downsampled_buffer[frame], downsample_lib) 
 
-    write_queue.put(('W', downsampled_buffer, settings_buffer, frame_num, observed_fps))
+    write_queue.put(('W', downsampled_buffer, settings_buffer, frame_num, observed_fps, first_frame_capture))
 
     # Signal the end of the write queue for this chunk
     write_queue.put(('W', None)) 
