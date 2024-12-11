@@ -72,20 +72,27 @@ end
 Fs = 8192; % Sampling Frequency
 dur = 0.1; % Duration in seconds
 t  = linspace(0, dur, round(Fs*dur));
+
+% Set a longer time for incorrect tone
+longerDur = 0.30;
+longerTime = linspace(0, longerDur, round(Fs*longerDur));
+
 lowTone = sin(2*pi*500*t);
 midTone = sin(2*pi*750*t);
 highTone = sin(2*pi*1000*t);
-readySound = [lowTone midTone highTone];
-correctSound = sin(2*pi*750*t);
-incorrectSound = sin(2*pi*250*t);
-badSound = [sin(2*pi*250*t) sin(2*pi*250*t)];
+incorrectTone1 = sin(2*pi*250*longerTime);
+incorrectTone2 = sin(2*pi*425*longerTime);
+
+readySound = [highTone highTone highTone];
+correctSound = [lowTone midTone highTone];
+incorrectSound = incorrectTone1 + incorrectTone2;
+
 audioObjs.low = audioplayer(lowTone,Fs);
 audioObjs.mid = audioplayer(midTone,Fs);
 audioObjs.high = audioplayer(highTone,Fs);
 audioObjs.ready = audioplayer(readySound,Fs);
 audioObjs.correct = audioplayer(correctSound,Fs);
 audioObjs.incorrect = audioplayer(incorrectSound,Fs);
-audioObjs.bad = audioplayer(badSound,Fs);
 
 % Create a figure that will be used to collect key presses
 if ~simulateResponse
@@ -102,7 +109,7 @@ end
 if ~simulateStimuli
 
     % Alert the subject the trial is about to start
-    audioObjs.ready.play;
+    % audioObjs.ready.play; % Removed ready tone
     stopTimeSeconds = cputime() + 1;
     obj.waitUntil(stopTimeSeconds);
 
@@ -121,16 +128,12 @@ if ~simulateStimuli
         % 1/4 of the stimulus and then move on to the response, thus
         % allowing the subject to respond during the second stimulus.
         if ii == 1
-            stopTime = cputime() + obj.stimulusDurationSecs + obj.interStimulusIntervalSecs;
+            stopTime = cputime() + obj.stimulusDurationSecs;
         else
             stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
         end
         obj.CombiLEDObj.startModulation;
-        if ii==1
-            audioObjs.low.play;
-        else
-            audioObjs.high.play;
-        end
+        audioObjs.low.play;
         obj.waitUntil(stopTime);
     end
 end
@@ -175,7 +178,7 @@ if intervalChoice==fasterInterval
         % Regardless of whether we are giving feedback or not, we will
         % play the "correct" tone
         audioObjs.correct.play;
-        obj.waitUntil(cputime()+0.5);
+        obj.waitUntil(cputime()+1);
     end
 else
     % incorrect
@@ -193,7 +196,7 @@ else
             % tone that is played for correct responses
             audioObjs.correct.play;
         end
-        obj.waitUntil(cputime()+0.5);
+        obj.waitUntil(cputime()+1);
     end
 end
 

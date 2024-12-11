@@ -17,13 +17,15 @@ p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
 p.addParameter('targetPhotoreceptorContrast',[0.075,0.333],@isnumeric);
-p.addParameter('stimParamsHi',{linspace(0,1,51),linspace(0,1,51)},@isnumeric);
-p.addParameter('stimParamsLow',{linspace(-1,0,51),linspace(-1,0,51)},@isnumeric);
+p.addParameter('stimParamsHi',{linspace(0,2,51),linspace(0,2,51)},@isnumeric);
+p.addParameter('stimParamsLow',{linspace(-2,0,51),linspace(-2,0,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',30,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
+p.addParameter('simulateResponse',false,@islogical);
+p.addParameter('simulateStimuli',false,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
@@ -34,6 +36,10 @@ modDirections = p.Results.modDirections;
 targetPhotoreceptorContrast = p.Results.targetPhotoreceptorContrast;
 verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
+simulateResponse = p.Results.simulateResponse;
+simulateStimuli = p.Results.simulateStimuli;
+
+
 
 % Set our experimentName
 experimentName = 'DSCM';
@@ -60,18 +66,20 @@ load(modResultFile,'modResult');
 cal = modResult.meta.cal;
 
 % Set up the CombiLED
+if simulateStimuli
+    CombiLEDObj = [];
+else
+    % Open the CombiLED and update the gamma table
 CombiLEDObj = CombiLEDcontrol('verbose',verboseCombiLED);
-
-% Update the gamma table
 CombiLEDObj.setGamma(cal.processedData.gammaTable);
+end
 
 % Provide instructions
 fprintf('**********************************\n');
 fprintf('On each of many trials you will be presented with 2 seconds of flicker\n');
 fprintf('during each of two intervals. Your job is to indicate which interval\n');
 fprintf('had the faster flickering stimulus by pressing the 1 or 2 key on the\n');
-fprintf('numeric key pad. Press any other key (e.g., enter) when you are ready\n');
-fprintf('to go on to the next trial. Each block has %d trials in a row after\n',nTrialsPerBlock);
+fprintf('numeric key pad. Each block has %d trials in a row after\n',nTrialsPerBlock);
 fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
 fprintf('**********************************\n\n');
 
@@ -132,6 +140,7 @@ for bb=1:nBlocks
             psychObj = PsychDiscrimFlickerThreshold(CombiLEDObj,modResult,refFreqHz,...
                 'refContrast',testContrast,'testContrast',testContrast,...
                 'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
+                'simulateResponse',simulateResponse,'simulateStimuli',simulateStimuli,...                
                 'useStaircase', useStaircase);
             % Store the filename
             psychObj.filename = filename;
@@ -155,7 +164,8 @@ for bb=1:nBlocks
         psychObjArray{ss}.blockStartTimes(psychObjArray{ss}.blockIdx) = blockStartTime;
     end
 
-    % Present nTrials.
+    % Present nTrials, alternating between the high and low sides of the
+    % psychometric function
     for ii = 1:nTrialsPerBlock
         psychObjIdx = mod(ii,2)+1;
         psychObjArray{psychObjIdx}.presentTrial
@@ -176,8 +186,10 @@ for bb=1:nBlocks
 end % block loop
 
 % Clean up
-CombiLEDObj.goDark;
-CombiLEDObj.serialClose;
+if ~simulateStimuli
+    CombiLEDObj.goDark;
+    CombiLEDObj.serialClose;
+end
 clear CombiLEDObj
 
 end % function
