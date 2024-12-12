@@ -78,7 +78,7 @@ classdef PsychDiscrimFlickerThreshold < handle
             p.addParameter('simulatePsiParams',[0,0.3,0.05],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,2,51),linspace(0,0.1,11)},@isnumeric);
+                {linspace(0,0,1),linspace(0,3,51),linspace(0,0.1,11)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
