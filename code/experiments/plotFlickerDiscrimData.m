@@ -42,60 +42,60 @@ for ii = 1:length(modDirections)
         for ss = 1:2
 
             % Load this measure
-        psychFileStem = [subjectID '_' modDirections{ii} ...
-                         '_' experimentName '_' ...
-                 strrep(num2str(targetPhotoreceptorContrast(ii)),'.','x') ...
+            psychFileStem = [subjectID '_' modDirections{ii} ...
+                '_' experimentName '_' ...
+                strrep(num2str(targetPhotoreceptorContrast(ii)),'.','x') ...
                 '_refFreq-' num2str(flickerFreqSetHz(rr)) 'Hz' ...
-                 '_' stimParamLabels{ss}];
-        filename = fullfile(dataDir,psychFileStem);
-        load(filename,'psychObj');
+                '_' stimParamLabels{ss}];
+            filename = fullfile(dataDir,psychFileStem);
+            load(filename,'psychObj');
 
-        % Store some of these parameters
-        questData = psychObj.questData;
-        stimParamsDomainList = psychObj.stimParamsDomainList;
-        psiParamsDomainList = psychObj.psiParamsDomainList;
-        nTrials = length(psychObj.questData.trialData);
+            % Store some of these parameters
+            questData = psychObj.questData;
+            stimParamsDomainList = psychObj.stimParamsDomainList;
+            psiParamsDomainList = psychObj.psiParamsDomainList;
+            nTrials = length(psychObj.questData.trialData);
 
-        % Get the Max Likelihood psi params, temporarily turning off verbosity.
-        lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
-        ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
-        storeVerbose = psychObj.verbose;
-        psychObj.verbose = false;
-        [~, psiParamsFit] = psychObj.reportParams('lb',lb,'ub',ub);
-        psychObj.verbose = storeVerbose;
+            % Get the Max Likelihood psi params, temporarily turning off verbosity.
+            lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
+            ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
+            storeVerbose = psychObj.verbose;
+            psychObj.verbose = false;
+            [~, psiParamsFit] = psychObj.reportParams('lb',lb,'ub',ub);
+            psychObj.verbose = storeVerbose;
 
-        % Get the proportion selected "test" for each stimulus
-        stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
-        stim = zeros(length(stimCounts),questData.nStimParams);
-        for cc = 1:length(stimCounts)
-            stim(cc) = stimCounts(cc).stim;
-            nTrials(cc) = sum(stimCounts(cc).outcomeCounts);
-            pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
-        end
+            % Get the proportion selected "test" for each stimulus
+            stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
+            stim = zeros(length(stimCounts),questData.nStimParams);
+            for cc = 1:length(stimCounts)
+                stim(cc) = stimCounts(cc).stim;
+                nTrials(cc) = sum(stimCounts(cc).outcomeCounts);
+                pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+            end
 
-        % Plot these
-        markerSizeIdx = discretize(nTrials,3);
-        markerSizeSet = [25,50,100];
-        for cc = 1:length(stimCounts)
-            scatter(stim(cc),pSelectTest(cc),markerSizeSet(markerSizeIdx(cc)),'o', ...
-                'MarkerFaceColor',[pSelectTest(cc) 0 1-pSelectTest(cc)], ...
-                'MarkerEdgeColor','k', ...
-                'MarkerFaceAlpha',nTrials(cc)/max(nTrials));
-            hold on
-        end
+            % Plot these
+            markerSizeIdx = discretize(nTrials,3);
+            markerSizeSet = [25,50,100];
+            for cc = 1:length(stimCounts)
+                scatter(stim(cc),pSelectTest(cc),markerSizeSet(markerSizeIdx(cc)),'o', ...
+                    'MarkerFaceColor',[pSelectTest(cc) 0 1-pSelectTest(cc)], ...
+                    'MarkerEdgeColor','k', ...
+                    'MarkerFaceAlpha',nTrials(cc)/max(nTrials));
+                hold on
+            end
 
-        % Add the psychometric function for this side
-        for cc = 1:length(stimParamsDomainList)
-            outcomes = psychObj.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
-            fitCorrect(cc) = outcomes(2);
-        end
-        plot(stimParamsDomainList,fitCorrect,'-k')
+            % Add the psychometric function for this side
+            for cc = 1:length(stimParamsDomainList)
+                outcomes = psychObj.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
+                fitCorrect(cc) = outcomes(2);
+            end
+            plot(stimParamsDomainList,fitCorrect,'-k')
         end
 
         % Add a marker for the 50% point
-%        outcomes = psychObj.questData.qpPF(psiParamsFit(1),psiParamsFit);
-%        plot([psiParamsFit(1), psiParamsFit(1)],[0, outcomes(2)],':k')
-%        plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
+        %        outcomes = psychObj.questData.qpPF(psiParamsFit(1),psiParamsFit);
+        %        plot([psiParamsFit(1), psiParamsFit(1)],[0, outcomes(2)],':k')
+        %        plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 
         % Labels and range
         xlim([-3.0 3.0]);
@@ -114,15 +114,15 @@ for ii = 1:length(modDirections)
 
         % Store the slope of the psychometric function
         slopeVals(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
-%        slopeValCI(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
-%        slopeValCI(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+        %        slopeValCI(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+        %        slopeValCI(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
 
     end
 end
 
 % figure
 % figuresize(250,250,'units','pt');
-% 
+%
 % yvals = [mean(slopeVals(3:4)) mean(slopeVals(3:4)) mean(slopeVals([4 6])) mean(slopeVals(6:7)) mean(slopeVals(6:7))];
 % semilogx(flickerFreqSetHz(3:7),yvals,'-k');
 % hold on
@@ -131,9 +131,9 @@ end
 %         slopeValCI(rr,:),'-k' );
 %     hold on
 %     semilogx(flickerFreqSetHz(rr),slopeVals(rr),'or','MarkerSize',15);
-% 
+%
 % end
-% 
+%
 % ylim([0,1.5]);
 % ylabel('discrimination slope [% response / dB]');
 % a = gca();
