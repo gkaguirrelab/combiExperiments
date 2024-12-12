@@ -24,6 +24,8 @@ classdef PsychDiscrimFlickerThreshold < handle
         simulateStimuli
         giveFeedback
         staircaseRule
+        psychometricFuncHandle
+        psiParamLabels
         stimParamsDomainList
         psiParamsDomainList
         randomizePhase = false;
@@ -71,10 +73,12 @@ classdef PsychDiscrimFlickerThreshold < handle
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',true,@islogical);            
             p.addParameter('staircaseRule',[1,1],@isnumeric);
-            p.addParameter('simulatePsiParams',[0,0.3],@isnumeric);
+            p.addParameter('psychometricFuncHandle',@qpCumulativeNormalLapse,@ishandle);
+            p.addParameter('psiParamLabels',{'μ','σ','λ'},@iscell);
+            p.addParameter('simulatePsiParams',[0,0.3,0.05],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,2,51)},@isnumeric);
+                {linspace(0,0,1),linspace(0,3,51),linspace(0,0.1,11)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -90,6 +94,8 @@ classdef PsychDiscrimFlickerThreshold < handle
             obj.giveFeedback = p.Results.giveFeedback;
             obj.useStaircase = p.Results.useStaircase;
             obj.staircaseRule = p.Results.staircaseRule;
+            obj.psychometricFuncHandle = p.Results.psychometricFuncHandle;
+            obj.psiParamLabels = p.Results.psiParamLabels;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
             obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;

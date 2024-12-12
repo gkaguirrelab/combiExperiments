@@ -1,10 +1,10 @@
 % Run through the set of reference flicker frequencies
 
-subjectID = 'PILT_0002';
-flickerFreqSetHz = [2];
+subjectID = 'PILT_0003';
+flickerFreqSetHz = [8];
 nLevels = length(flickerFreqSetHz);
 NDlabel = '0x5';
-simulateFlag = false;
+simulateFlag = true;
 
 [~,stimOrderIdx] = sort(rand(1,nLevels));
 

@@ -17,8 +17,8 @@ p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
 p.addParameter('targetPhotoreceptorContrast',[0.075,0.333],@isnumeric);
-p.addParameter('stimParamsHi',{linspace(0,2,51),linspace(0,2,51)},@isnumeric);
-p.addParameter('stimParamsLow',{linspace(-2,0,51),linspace(-2,0,51)},@isnumeric);
+p.addParameter('stimParamsHi',{linspace(0,3,51),linspace(0,3,51)},@isnumeric);
+p.addParameter('stimParamsLow',{linspace(-3,0,51),linspace(-3,0,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',30,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
@@ -164,10 +164,10 @@ for bb=1:nBlocks
         psychObjArray{ss}.blockStartTimes(psychObjArray{ss}.blockIdx) = blockStartTime;
     end
 
-    % Present nTrials, alternating between the high and low sides of the
+    % Present nTrials, randomly choosing the high or low side of the
     % psychometric function
     for ii = 1:nTrialsPerBlock
-        psychObjIdx = mod(ii,2)+1;
+        psychObjIdx = randi([1,2]); 
         psychObjArray{psychObjIdx}.presentTrial
     end
 

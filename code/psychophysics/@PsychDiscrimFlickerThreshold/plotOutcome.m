@@ -12,9 +12,8 @@ stimParamsDomainList = obj.stimParamsDomainList;
 nTrials = length(obj.questData.trialData);
 
 % Get the Max Likelihood psi params, temporarily turning off verbosity.
-% Also, lock the mu parameter to be zero.
-lb = [0,min(obj.psiParamsDomainList{2})];
-ub = [0,max(obj.psiParamsDomainList{2})];
+lb = cellfun(@(x) min(x),obj.psiParamsDomainList);
+ub = cellfun(@(x) max(x),obj.psiParamsDomainList);
 storeVerbose = obj.verbose;
 obj.verbose = false;
 [~, psiParamsFit] = obj.reportParams('lb',lb,'ub',ub);
@@ -86,7 +85,7 @@ ylabel('entropy');
 title('Entropy by trial number')
 
 % Add a supertitle
-str = sprintf('Ref freq = %d Hz; [mu, sigma] = [%2.3f,%2.3f]',...
+str = sprintf('Ref freq = %d Hz; [μ,σ,λ] = [%2.3f,%2.3f,%2.3f]',...
     obj.refFreqHz,psiParamsFit);
 sgtitle(str);
 
