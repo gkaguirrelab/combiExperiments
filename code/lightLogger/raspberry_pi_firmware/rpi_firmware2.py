@@ -31,7 +31,7 @@ import MS_recorder
 import pupil_recorder
 
 # Placeholder for testing purposes
-test_filepath: str = "/media/rpiControl/FF5E-7541/timeFirstFrame_5hz_0NDF"
+test_filepath: str = "/media/rpiControl/FF5E-7541/measurePupilTimings_5hz_0NDF"
 
 """"""
 def write_process(names: tuple, receive_queue: mp.Queue, 
@@ -112,7 +112,9 @@ def write_process(names: tuple, receive_queue: mp.Queue,
                     waiting_for_values = not waiting_for_values
                     break
                      
-            # Otherwise, we have received some sensor data
+            # Otherwise, we have received some sensor data. We absolutely MUST make this writing step 
+            # as fast as possible. If it takes too long, the world camera builds its buffer, and, ironically, 
+            # it drops more frames with a full buffer because it is inefficient. 
             else:
                 # Assert there is not any data left for this sensor in the dict
                 # to make sure we are not overwriting any data
