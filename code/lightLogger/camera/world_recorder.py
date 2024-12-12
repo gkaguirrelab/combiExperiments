@@ -35,10 +35,10 @@ downsample_lib = import_downsample_lib()
 CAM_FPS: float = 200
 
 # The origial dimensions of the camera before downsampling 
-CAM_IMG_DIMS: np.ndarray = np.array((480, 640))
+CAM_IMG_DIMS: np.ndarray = np.array((480, 640), dtype=np.uint16)
 
 # The power of 2 to downsample the recorded image by 
-downsample_factor: int = 3 # 4 worked well
+downsample_factor: int = 4 # 4 worked well
 
 """Write a frame and its info in the write queue to disk 
 in the output_path directory and to the settings file"""
@@ -692,10 +692,6 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
         # Capture the frame and splice only the odd cols (even cols have junk content)
         frame: np.array = cam.capture_array('raw')[:, 1::2]
 
-        # Capture when the first frame for this chunk was captured. We will use this for 
-        # detected phase lags 
-        if(frame_num == 0): first_frame_capture = time.time()
-
         # Save the frame into the buffer
         frame_buffer[frame_num] = frame
         settings_buffer[frame_num] = (current_gain, current_exposure)
@@ -731,11 +727,11 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
     print(f'World Camera captured {frame_num} at ~{observed_fps} fps')
 
     # Downsample and append info to the write queue
-    for frame in range(frame_buffer.shape[0]): # Iterate over each frame captured
+    for frame in range(frame_num): # Iterate over each frame captured
             # Downsample the frame and populate the downsampled buffer with this value
             downsample(frame_buffer[frame], downsample_factor, downsampled_buffer[frame], downsample_lib) 
 
-    write_queue.put(('W', downsampled_buffer, settings_buffer, frame_num, observed_fps, first_frame_capture))
+    write_queue.put(('W', downsampled_buffer[:frame_num], frame_num))
 
     # Signal the end of the write queue for this chunk
     write_queue.put(('W', None)) 
@@ -847,7 +843,7 @@ def initialize_camera(initial_gain: float=1, initial_exposure: int=100) -> objec
     # FPS = 1,000,000 / FrameDurationLimits 
     # e.g. 206.65 = 1000000/FDL => FDL = 1000000/206.65
     # 200 = 
-    frame_duration_limit = int(np.ceil(1000000/CAM_FPS))
+    frame_duration_limit = 1000000//CAM_FPS # Should output an integer 5000 for 200 FPS
     cam.video_configuration.controls['NoiseReductionMode'] = 0
     cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # for lower,upper bound equal
     
