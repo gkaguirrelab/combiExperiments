@@ -1,7 +1,7 @@
 % Run through the set of reference flicker frequencies
 
-subjectID = 'PILT_0001';
-flickerFreqSetHz = [8];
+subjectID = 'PILT_0002';
+flickerFreqSetHz = [2];
 nLevels = length(flickerFreqSetHz);
 NDlabel = '0x5';
 simulateFlag = false;
@@ -22,7 +22,7 @@ for ii = 1:nLevels
     refFreqHz = flickerFreqSetHz(stimOrderIdx(ii));
 
     % Switch to Quest+ for another 6 blocks
-    runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',6,'useStaircase',false, ...
+    runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',10,'useStaircase',false, ...
         'simulateResponse',simulateFlag,'simulateStimuli',simulateFlag);
 
 end
