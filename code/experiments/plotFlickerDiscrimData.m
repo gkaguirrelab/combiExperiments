@@ -1,8 +1,9 @@
 
 close all
+clear
 
 subjectID = 'PILT_0003';
-flickerFreqSetHz = [24,12,6,3,1.5];
+flickerFreqSetHz = [1.5,3,6,12,24];
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir='FLIC_data';
@@ -29,19 +30,23 @@ slopeValCI = [];
 % Set up a figure
 figHandle = figure();
 figuresize(750,250,'units','pt');
-tiledlayout(1,5,"TileSpacing","compact",'Padding','tight');
+tiledlayout(length(modDirections),length(flickerFreqSetHz),"TileSpacing","compact",'Padding','tight');
 
 for ii = 1:length(modDirections)
     for rr = 1:length(flickerFreqSetHz)
 
         dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabelsAll{1}],experimentName);
+        nexttile
+        hold on
 
-        % Load the low-side measurements
+        for ss = 1:2
+
+            % Load this measure
         psychFileStem = [subjectID '_' modDirections{ii} ...
                          '_' experimentName '_' ...
                  strrep(num2str(targetPhotoreceptorContrast(ii)),'.','x') ...
                 '_refFreq-' num2str(flickerFreqSetHz(rr)) 'Hz' ...
-                 '_' stimParamLabels{1}];
+                 '_' stimParamLabels{ss}];
         filename = fullfile(dataDir,psychFileStem);
         load(filename,'psychObj');
 
@@ -49,19 +54,6 @@ for ii = 1:length(modDirections)
         questData = psychObj.questData;
         stimParamsDomainList = psychObj.stimParamsDomainList;
         psiParamsDomainList = psychObj.psiParamsDomainList;
-
-        % Load the high side measurements
-         psychFileStem = [subjectID '_' modDirections{ii} ...
-                         '_' experimentName '_' ...
-                 strrep(num2str(targetPhotoreceptorContrast(ii)),'.','x') ...
-                '_refFreq-' num2str(flickerFreqSetHz(rr)) 'Hz' ...
-                 '_' stimParamLabels{2}];
-        filename = fullfile(dataDir,psychFileStem);
-        load(filename,'psychObj');
-
-        % Combine the two measurement sets
-        questData.trialData = [questData.trialData; psychObj.questData.trialData];
-        stimParamsDomainList = unique([stimParamsDomainList, psychObj.stimParamsDomainList]);
         nTrials = length(psychObj.questData.trialData);
 
         % Get the Max Likelihood psi params, temporarily turning off verbosity.
@@ -71,13 +63,6 @@ for ii = 1:length(modDirections)
         psychObj.verbose = false;
         [~, psiParamsFit] = psychObj.reportParams('lb',lb,'ub',ub);
         psychObj.verbose = storeVerbose;
-
-        % Now the proportion correct for each stimulus type, and the psychometric
-        % function fit. Marker transparancy (and size) visualizes number of trials
-        % (more opaque -> more trials), while marker color visualizes percent
-        % correct (more red -> more correct).
-        nexttile
-        hold on
 
         % Get the proportion selected "test" for each stimulus
         stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
@@ -99,60 +84,61 @@ for ii = 1:length(modDirections)
             hold on
         end
 
-        % Add the psychometric function
+        % Add the psychometric function for this side
         for cc = 1:length(stimParamsDomainList)
-            outcomes = obj.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
+            outcomes = psychObj.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
             fitCorrect(cc) = outcomes(2);
         end
         plot(stimParamsDomainList,fitCorrect,'-k')
+        end
 
         % Add a marker for the 50% point
-        outcomes = obj.questData.qpPF(psiParamsFit(1),psiParamsFit);
-        plot([psiParamsFit(1), psiParamsFit(1)],[0, outcomes(2)],':k')
-        plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
+%        outcomes = psychObj.questData.qpPF(psiParamsFit(1),psiParamsFit);
+%        plot([psiParamsFit(1), psiParamsFit(1)],[0, outcomes(2)],':k')
+%        plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 
         % Labels and range
-        xlim([-1.5 1.5]);
+        xlim([-3.0 3.0]);
         ylim([-0.1 1.1]);
-        if rr == 5
+        if rr == 6
             xlabel('stimulus difference [dB]')
         end
-        if rr == 3
+        if rr == 1
             ylabel('proportion pick test as faster');
         end
 
         % Add a title
-        % str = sprintf('%2.1f PSI',psychObj.refPuffPSI);
-        % title(str);
-        % box off
+        str = sprintf('%2.1f Hz',psychObj.refFreqHz);
+        title(str);
+        box off
 
         % Store the slope of the psychometric function
         slopeVals(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
-        slopeValCI(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
-        slopeValCI(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+%        slopeValCI(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+%        slopeValCI(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
 
     end
 end
 
-figure
-figuresize(250,250,'units','pt');
-
-yvals = [mean(slopeVals(3:4)) mean(slopeVals(3:4)) mean(slopeVals([4 6])) mean(slopeVals(6:7)) mean(slopeVals(6:7))];
-semilogx(flickerFreqSetHz(3:7),yvals,'-k');
-hold on
-for rr = 3:length(flickerFreqSetHz)
-    semilogx([flickerFreqSetHz(rr) flickerFreqSetHz(rr)],...
-        slopeValCI(rr,:),'-k' );
-    hold on
-    semilogx(flickerFreqSetHz(rr),slopeVals(rr),'or','MarkerSize',15);
-
-end
-
-ylim([0,1.5]);
-ylabel('discrimination slope [% response / dB]');
-a = gca();
-a.XTick = flickerFreqSetHz(3:end);
-a.XTickLabel = {'4.5','6.6','9.7','14.1','20.6'};
-xlim([3.7,24.9]);
-xlabel('Reference stimulus intensity [PSI]')
-box off
+% figure
+% figuresize(250,250,'units','pt');
+% 
+% yvals = [mean(slopeVals(3:4)) mean(slopeVals(3:4)) mean(slopeVals([4 6])) mean(slopeVals(6:7)) mean(slopeVals(6:7))];
+% semilogx(flickerFreqSetHz(3:7),yvals,'-k');
+% hold on
+% for rr = 3:length(flickerFreqSetHz)
+%     semilogx([flickerFreqSetHz(rr) flickerFreqSetHz(rr)],...
+%         slopeValCI(rr,:),'-k' );
+%     hold on
+%     semilogx(flickerFreqSetHz(rr),slopeVals(rr),'or','MarkerSize',15);
+% 
+% end
+% 
+% ylim([0,1.5]);
+% ylabel('discrimination slope [% response / dB]');
+% a = gca();
+% a.XTick = flickerFreqSetHz(3:end);
+% a.XTickLabel = {'4.5','6.6','9.7','14.1','20.6'};
+% xlim([3.7,24.9]);
+% xlabel('Reference stimulus intensity [PSI]')
+% box off
