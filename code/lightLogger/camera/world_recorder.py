@@ -14,6 +14,7 @@ import psutil
 import signal
 import traceback
 import setproctitle
+import gc
 
 
 """Import the custom AGC library"""
@@ -727,9 +728,9 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
     print(f'World Camera captured {frame_num} at ~{observed_fps} fps')
 
     # Downsample and append info to the write queue
-    for frame in range(frame_num): # Iterate over each frame captured
+    for i in range(frame_num): # Iterate over each frame captured
             # Downsample the frame and populate the downsampled buffer with this value
-            downsample(frame_buffer[frame], downsample_factor, downsampled_buffer[frame], downsample_lib) 
+            downsample(frame_buffer[i], downsample_factor, downsampled_buffer[i], downsample_lib) 
 
     write_queue.put(('W', downsampled_buffer[:frame_num], frame_num))
 
@@ -783,6 +784,7 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int,
         # Otherwise, we capture a burst of duration long 
         while(GO is True):
             print(f'World Cam | Capturing chunk')
+            #gc.disable()
             # Capture a burst of frames
             lean_capture_helper(cam, duration, current_gain, current_exposure, gain_change_interval,
                                 frame_buffer, downsampled_buffer, settings_buffer, 
@@ -790,6 +792,8 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int,
 
             # Set GO back to False 
             GO = False
+            #gc.collect()
+            #gc.enable()
 
     # Append to the main process queue and let it know we are really done 
     write_queue.put(('W', False))

@@ -31,7 +31,7 @@ import MS_recorder
 import pupil_recorder
 
 # Placeholder for testing purposes
-test_filepath: str = "/media/rpiControl/FF5E-7541/measurePupilTimings_5hz_0NDF"
+test_filepath: str = "/media/rpiControl/FF5E-7541/bufferTest5_5hz_0NDF"
 
 """"""
 def write_process(names: tuple, receive_queue: mp.Queue, 
@@ -144,7 +144,7 @@ def main():
     processes: list = []
 
     # Define the number of recording bursts and duration (s) of a recording burst 
-    n_bursts: int = 6 * 30 # 2 minutes
+    n_bursts: int = 6 * 20 # 2 minutes
     burst_duration: int = 10
 
     # Initialize a multiprocessing-safe queue to store data 
