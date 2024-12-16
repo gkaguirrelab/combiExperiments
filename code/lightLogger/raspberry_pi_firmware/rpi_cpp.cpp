@@ -112,7 +112,6 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-
     // Now let's check to make sure we have at LEAST one controller to record with and nothing 
     // went wrong in our counting
     const int num_active_sensors = std::count(controller_flags.begin(), controller_flags.end(), true);
@@ -121,19 +120,18 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-
     // Output information about where this recording's data will be output, as well as 
     // the controllers we will use
     std::cout << "----ARGPARSE AND FILE SETUP SUCCESSFUL---" << std::endl;
 
     std::cout << "Output Directory: " << output_dir << std::endl;
-    std::cout << "Controllers used: " << std::endl;
+    std::cout << "Duration: " << duration << " seconds" << std::endl;
+    std::cout << "Controllers to use: " << std::endl;
     for(size_t i = 0; i < controller_names.size(); i++) {
         std::cout << '\t' << controller_names[i] << " | " << controller_flags[i] << std::endl;
     }
 
     // Begin recording
-
     minispect_recorder(duration);
 
 
