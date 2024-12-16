@@ -1,6 +1,8 @@
 #include <iostream>
 #include <filesystem>
 #include "CLI11.hpp"
+#include <algorithm>
+#include <cassert>
 #include <cstdint>
 
 namespace fs = std::filesystem;
@@ -16,12 +18,17 @@ Parse the command line arguments to the program
 @Ret: 
 @Mod: 
 */
-int parse_args(const int argc, const char** argv, fs::path& output_dir, std::array<bool, 4>& controller_flags) {
+int parse_args(const int argc, const char** argv, 
+               fs::path& output_dir, std::array<bool, 4>& controller_flags,
+               int64_t& duration) {
     // Initialize the argparser class
     CLI::App app{"Control Firmware for GKA Lab Integrated Personal Light Logger Wearable Device"};
     
-    // Add the required output path variable and populat the output_dir variable
+    // Add the required output path variable and populate the output_dir variable
     app.add_option("-o,--output_dir", output_dir, "The directory in which to output files. Does not need to exist.")->required();
+
+    // Add the required duration variable and populate it with the number of seconds to record for. if it is negative, it is INF
+    app.add_option("-d,--duration", duration, "Duration of the recording to make")->required();
     
     // Populate the controller flags for the controllers we will use
     app.add_option("-m,--minispect", controller_flags[0], "0/1 boolean flag to denote whether we will use the MS in recording.");
@@ -41,9 +48,25 @@ int parse_args(const int argc, const char** argv, fs::path& output_dir, std::arr
     return 0; // Returns 0 on success
 }
 
+
+/*
+Continous recorder for the MS. Records either INF or for a set duration
+
+*/
+int minispect_recorder() {
+
+
+    return 0;
+}
+
+
 int main(int argc, char **argv) {
     // Initialize variable to hold output directory path. Path need not exist
     fs::path output_dir;
+
+    // Initialization container for the duration (in seconds) of the video to record. If this is 
+    // negative, then it will be for infinity
+    int64_t duration; 
 
     // Initialize controller flags as entirely false. This is because we will denote which controllers 
     // to use based on arguments passed. 
@@ -51,7 +74,7 @@ int main(int argc, char **argv) {
     std::array<bool, 4> controller_flags = {false, false, false, false}; 
 
     // Parse the commandline arguments.
-    if(parse_args(argc, (const char**) argv, output_dir, controller_flags)) {
+    if(parse_args(argc, (const char**) argv, output_dir, controller_flags, duration)) {
         std::cerr << "ERROR: Could not properly parse args." << std::endl; 
         exit(1);
     }; 
@@ -63,6 +86,11 @@ int main(int argc, char **argv) {
         std::cerr << "ERROR: Could not create output directory: " << output_dir << std::endl; 
         exit(1);
     }
+
+    // Now let's check to make sure we have at LEAST one controller to record with
+    int num_active_sensors = std::count(controller_flags.begin(), controller_flags.end(), true);
+    assert(num_active_sensors > 0 && (size_t) num_active_sensors <= controller_flags.size());
+
 
     // Output information about where this recording's data will be output, as well as 
     // the controllers we will use
