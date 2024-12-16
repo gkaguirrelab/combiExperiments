@@ -5,6 +5,10 @@
 #include <boost/asio.hpp>
 #include <chrono>
 #include <cstdint>
+#include <iomanip>
+#include <memory>
+#include <thread>
+#include <libcamera/libcamera.h>
 
 namespace fs = std::filesystem;
 
@@ -56,9 +60,9 @@ int parse_args(const int argc, const char** argv,
 
 /*
 Continous recorder for the MS. Records either INF or for a set duration
-@Param:
-@Ret:
-@Mod:
+@Param: duration. Time in seconds to record for. -1 for INF. 
+@Ret: 0 on success, errors and quits otherwise. 
+@Mod: N/A
 */
 int minispect_recorder(int64_t duration) {
     // Create a boost io_service object to manage the IO objects
@@ -78,7 +82,7 @@ int minispect_recorder(int64_t duration) {
     std::array<char, data_length> data_buffer; 
 
     // Attempt to connect to the MS
-    std::cout << "MS | Initializating..." << std::endl; 
+    std::cout << "MS | Initializating..." << '\n'; 
     try {
         // Connect to the MS
         ms.open("/dev/ttyACM0");
@@ -87,6 +91,7 @@ int minispect_recorder(int64_t duration) {
     catch(const std::exception& e) {
         std::cerr << "ERROR: " << e.what() << std::endl;
 
+        // Close the MS and safely exit from the error
         if(ms.is_open()) { ms.close();}
         exit(1);
     }
@@ -103,13 +108,14 @@ int minispect_recorder(int64_t duration) {
     catch(const std::exception& e) {
         std::cerr << "ERROR: " << e.what() << std::endl;
 
+        // Close the MS and safely exit from the error
         if(ms.is_open()) { ms.close();}
         exit(1);
     }
-    std::cout << "MS | Initialized." << std::endl;
+    std::cout << "MS | Initialized." << '\n';
 
     // Begin recording
-    std::cout << "MS | Beginning recording..." << std::endl;
+    std::cout << "MS | Beginning recording..." << '\n';
     auto start_time = std::chrono::steady_clock::now(); // Capture the start time 
     while(true) {
         // Capture the elapsed time and ensure it is in the units of seconds
@@ -127,7 +133,7 @@ int minispect_recorder(int64_t duration) {
 
         // If this byte is the start buffer, note that we have received a reading
         if (byte_read[0] == start_delim) {
-            std::cout << "RECEIVED A READING" << std::endl; 
+            std::cout << "RECEIVED A READING" << '\n'; 
             
             // Now we can read the correct amount of data
             boost::asio::read(ms, boost::asio::buffer(data_buffer, data_length));
@@ -138,8 +144,9 @@ int minispect_recorder(int64_t duration) {
             boost::asio::read(ms, boost::asio::buffer(byte_read));
 
             if(byte_read[0] != end_delim) {
-                std::cerr << "MS | ERROR: Start delimeter not closed by end delimeter." << std::endl; 
+                std::cerr << "MS | ERROR: Start delimeter not closed by end delimeter." << '\n'; 
 
+                // Close the MS and safely exit from the error
                 if(ms.is_open()) { ms.close();}
                 exit(1);
 
@@ -150,13 +157,25 @@ int minispect_recorder(int64_t duration) {
     }
 
     // Close the connection to the MS device
-    std::cout << "MS | Closing..." << std::endl; 
+    std::cout << "MS | Closing..." << '\n'; 
     ms.close(); 
-    std::cout << "MS | Closed." << std::endl; 
+    std::cout << "MS | Closed." << '\n'; 
 
     return 0;
 }
 
+/*
+Continous recorder for the World Camera. Records either INF or for a set duration
+@Param:
+@Ret:
+@Mod:
+*/
+int world_recorder(int64_t duration) {
+    // Initialize libcamera
+    libcamera::CameraManager cameraManager;
+
+
+}
 
 int main(int argc, char **argv) {
     // Initialize variable to hold output directory path. Path need not exist
@@ -211,8 +230,9 @@ int main(int argc, char **argv) {
     }
 
     // Begin recording
-    minispect_recorder(duration);
+    //minispect_recorder(duration);
 
+    world_recorder(duration);
 
 
     return 0; 
