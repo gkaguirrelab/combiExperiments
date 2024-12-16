@@ -2,8 +2,9 @@
 #include <filesystem>
 #include "CLI11.hpp"
 #include <algorithm>
-#include <cassert>
 #include <cstdint>
+//#include <SerialPort.h>
+//#include <SerialStream.h>
 
 namespace fs = std::filesystem;
 
@@ -51,9 +52,23 @@ int parse_args(const int argc, const char** argv,
 
 /*
 Continous recorder for the MS. Records either INF or for a set duration
-
+@Param:
+@Ret:
+@Mod:
 */
-int minispect_recorder() {
+int minispect_recorder(int64_t duration) {
+    /*
+    // Connect to the MS device via the serial port
+    LibSerial::SerialStream serial('/dev/ttyACM0');
+
+    // Initialize information about the connection to the MS
+    serial.SetBaudRate(LibSerial::BaudRate::BAUD_9600);
+    serial.SetCharacterSize(LibSerial::CharacterSize::CHAR_SIZE_8);
+    serial.SetParity(LibSerial::Parity::PARITY_NONE);
+    serial.SetStopBits(LibSerial::StopBits::STOP_BITS_1);
+    serial.SetFlowControl(LibSerial::FlowControl::FLOW_CONTROL_NONE);
+    */ 
+
 
 
     return 0;
@@ -87,9 +102,13 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    // Now let's check to make sure we have at LEAST one controller to record with
-    int num_active_sensors = std::count(controller_flags.begin(), controller_flags.end(), true);
-    assert(num_active_sensors > 0 && (size_t) num_active_sensors <= controller_flags.size());
+    // Now let's check to make sure we have at LEAST one controller to record with and nothing 
+    // went wrong in our counting
+    const int num_active_sensors = std::count(controller_flags.begin(), controller_flags.end(), true);
+    if(num_active_sensors < 0 || ( (size_t) num_active_sensors > controller_flags.size() )) {
+        std::cerr << "ERROR: Invalid number of active sensors: " << num_active_sensors << std::endl; 
+        exit(1);
+    }
 
 
     // Output information about where this recording's data will be output, as well as 
@@ -101,6 +120,11 @@ int main(int argc, char **argv) {
     for(size_t i = 0; i < controller_names.size(); i++) {
         std::cout << '\t' << controller_names[i] << " | " << controller_flags[i] << std::endl;
     }
+
+    // Begin recording
+
+    minispect_recorder(duration);
+
 
 
     return 0; 
