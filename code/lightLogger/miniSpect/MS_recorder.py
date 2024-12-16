@@ -437,7 +437,7 @@ def lean_capture_helper(ms: serial.Serial, duration: int, reading_buffer: np.nda
     # Signal the end of the write queue
     write_queue.put(('M', None)) 
 
-def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int):
+def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int, world_queue):
     # Connect to and initialize the MS
     ms = initialize_ms()
 

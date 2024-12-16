@@ -470,7 +470,8 @@ def record_video(duration: float, write_queue: queue.Queue,
 def lean_capture_helper(cam: object, duration: int, 
                        downsampled_buffer,
                        frame_buffer: np.ndarray,
-                       write_queue: mp.Queue):
+                       write_queue: mp.Queue,
+                       world_queue):
 
     # Begin timing capture
     start_time = time.time() 
@@ -493,6 +494,7 @@ def lean_capture_helper(cam: object, duration: int,
 
         # Capture the frame
         frame_obj: uvc_bindings.MJPEGFrame = cam.get_frame_robust()
+        if(frame_num == 0): world_queue.put(True)
 
         # Store the grayscale frame + settings into the allocated memory buffers
         frame_buffer[frame_num] = frame_obj.gray
@@ -519,7 +521,7 @@ def lean_capture_helper(cam: object, duration: int,
 
 
 def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, 
-                 duration: int):
+                 duration: int, world_queue):
     # Initialize the camera
     cam: uvc.Capture = initialize_camera()
     #cam = None
@@ -559,13 +561,14 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue,
             lean_capture_helper(cam, duration,
                                 downsampled_buffer,
                                 frame_buffer, 
-                                write_queue)
+                                write_queue,
+                                world_queue)
 
             # Set GO back to False 
             GO = False
             interchunk_frames = 0 
             #gc.collect()
-            #gc.enable()
+            #gc.enale()
 
     # Append to the main process queue and let it know we are really done 
     write_queue.put(('P', False))
