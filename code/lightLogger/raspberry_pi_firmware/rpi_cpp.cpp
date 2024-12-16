@@ -2,9 +2,9 @@
 #include <filesystem>
 #include "CLI11.hpp"
 #include <algorithm>
+#include <boost/asio.hpp>
+#include <chrono>
 #include <cstdint>
-//#include <SerialPort.h>
-//#include <SerialStream.h>
 
 namespace fs = std::filesystem;
 
@@ -61,19 +61,98 @@ Continous recorder for the MS. Records either INF or for a set duration
 @Mod:
 */
 int minispect_recorder(int64_t duration) {
-    /*
-    // Connect to the MS device via the serial port
-    LibSerial::SerialStream serial('/dev/ttyACM0');
+    // Create a boost io_service object to manage the IO objects
+    // and initialize serial port variable
+    boost::asio::io_service io;
+    boost::asio::serial_port ms(io);
 
-    // Initialize information about the connection to the MS
-    serial.SetBaudRate(LibSerial::BaudRate::BAUD_9600);
-    serial.SetCharacterSize(LibSerial::CharacterSize::CHAR_SIZE_8);
-    serial.SetParity(LibSerial::Parity::PARITY_NONE);
-    serial.SetStopBits(LibSerial::StopBits::STOP_BITS_1);
-    serial.SetFlowControl(LibSerial::FlowControl::FLOW_CONTROL_NONE);
-    */ 
+    // Define the data length and the start delimeter. Therefore, 
+    // each transmission is actually 2 + the data length 
+    char start_delim = '<';
+    char end_delim = '>';
+    const size_t data_length = 148; 
 
+    // Define variables we will use to probe the serial stream and read individual 
+    // bytes to look for delimeters, as well as the buffer to read data 
+    std::array<char, 1> byte_read; 
+    std::array<char, data_length> data_buffer; 
 
+    // Attempt to connect to the MS
+    std::cout << "MS | Initializating..." << std::endl; 
+    try {
+        // Connect to the MS
+        ms.open("/dev/ttyACM0");
+
+    }
+    catch(const std::exception& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+
+        if(ms.is_open()) { ms.close();}
+        exit(1);
+    }
+    
+    // Attempt to set options for the serial connection to the MS
+    try{ 
+        // Set serial port configuration options
+        ms.set_option(boost::asio::serial_port_base::baud_rate(115200));
+        ms.set_option(boost::asio::serial_port_base::character_size(8));
+        ms.set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
+        ms.set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
+        ms.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::none));
+    }
+    catch(const std::exception& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+
+        if(ms.is_open()) { ms.close();}
+        exit(1);
+    }
+    std::cout << "MS | Initialized." << std::endl;
+
+    // Begin recording
+    std::cout << "MS | Beginning recording..." << std::endl;
+    auto start_time = std::chrono::steady_clock::now(); // Capture the start time 
+    while(true) {
+        // Capture the elapsed time and ensure it is in the units of seconds
+        auto elapsed_time = std::chrono::steady_clock::now() - start_time;
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
+
+        // End recording if we have reached the desired duration. If it is INF 
+        // duration, we will never end
+        if (duration != -1 && elapsed_seconds >= duration) {
+            break;
+        }
+
+        // Read a byte from the serial stream
+        boost::asio::read(ms, boost::asio::buffer(byte_read));
+
+        // If this byte is the start buffer, note that we have received a reading
+        if (byte_read[0] == start_delim) {
+            std::cout << "RECEIVED A READING" << std::endl; 
+            
+            // Now we can read the correct amount of data
+            boost::asio::read(ms, boost::asio::buffer(data_buffer, data_length));
+
+            // Read one more byte. This essentially serves to ensure we read the correct amount of data 
+            // as well as reset the byte_read buffer to not the starting delimeter. It should ALWAYS be the end 
+            // delimeter
+            boost::asio::read(ms, boost::asio::buffer(byte_read));
+
+            if(byte_read[0] != end_delim) {
+                std::cerr << "MS | ERROR: Start delimeter not closed by end delimeter." << std::endl; 
+
+                if(ms.is_open()) { ms.close();}
+                exit(1);
+
+            }
+
+        } 
+
+    }
+
+    // Close the connection to the MS device
+    std::cout << "MS | Closing..." << std::endl; 
+    ms.close(); 
+    std::cout << "MS | Closed." << std::endl; 
 
     return 0;
 }
