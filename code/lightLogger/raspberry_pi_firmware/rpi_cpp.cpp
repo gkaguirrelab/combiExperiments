@@ -8,7 +8,6 @@
 #include <iomanip>
 #include <memory>
 #include <thread>
-#include <libcamera/libcamera.h>
 
 namespace fs = std::filesystem;
 
@@ -172,9 +171,9 @@ Continous recorder for the World Camera. Records either INF or for a set duratio
 */
 int world_recorder(int64_t duration) {
     // Initialize libcamera
-    libcamera::CameraManager cameraManager;
+    //libcamera::CameraManager cameraManager;
 
-
+    return 0;
 }
 
 int main(int argc, char **argv) {
@@ -213,7 +212,7 @@ int main(int argc, char **argv) {
     // Now let's check to make sure we have at LEAST one controller to record with and nothing 
     // went wrong in our counting
     const int num_active_sensors = std::count(controller_flags.begin(), controller_flags.end(), true);
-    if(num_active_sensors < 0 || ( (size_t) num_active_sensors > controller_flags.size() )) {
+    if(num_active_sensors < 0 || (num_active_sensors > (int64_t) controller_flags.size() )) {
         std::cerr << "ERROR: Invalid number of active sensors: " << num_active_sensors << std::endl; 
         exit(1);
     }
