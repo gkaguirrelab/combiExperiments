@@ -229,7 +229,9 @@ int main(int argc, char **argv) {
         std::cout << '\t' << controller_names[i] << " | " << controller_flags[i] << std::endl;
     }
 
-    // Begin recording
+    // Begin recording and enter performance critical section. All print statements below 
+    // this point MUST use \n as a terminator instead of std::endl, and all code should be 
+    // absolutely optimally written in regards to time efficency. 
     //minispect_recorder(duration);
 
     world_recorder(duration);

@@ -1,7 +1,7 @@
 # Compiler and compiler flags
 CXX = g++
 CXXFLAGS = -Wall -Wextra -shared -O2 -fPIC -std=c++17
-CXXFLAGS_firmware = -Wall -Wextra -lcamera -pthread -O2 -std=c++17 -I./libraries 
+CXXFLAGS_firmware = -Wall -Wextra -L/usr/lib/aarch64-linux-gnu/ -L/usr/local/lib/aarch64-linux-gnu/ -lcamera -pthread -O2 -std=c++17 -I./libraries -I/usr/include/libcamera
 LDFLAGS = -shared  # Linker flag to create a shared library
 
 # Directories
