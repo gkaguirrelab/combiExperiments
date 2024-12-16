@@ -26,10 +26,14 @@ int parse_args(const int argc, const char** argv,
     CLI::App app{"Control Firmware for GKA Lab Integrated Personal Light Logger Wearable Device"};
     
     // Add the required output path variable and populate the output_dir variable
-    app.add_option("-o,--output_dir", output_dir, "The directory in which to output files. Does not need to exist.")->required();
+    app.add_option("-o,--output_dir", output_dir, "The directory in which to output files. Does not need to exist.")
+        ->required();
 
     // Add the required duration variable and populate it with the number of seconds to record for. if it is negative, it is INF
-    app.add_option("-d,--duration", duration, "Duration of the recording to make")->required();
+    // Ensure also that the duration is within -1 and the number of seconds in a day.
+    app.add_option("-d,--duration", duration, "Duration of the recording to make")
+        ->required()
+        ->check(CLI::Range(-1, 86400));
     
     // Populate the controller flags for the controllers we will use
     app.add_option("-m,--minispect", controller_flags[0], "0/1 boolean flag to denote whether we will use the MS in recording.");
@@ -101,6 +105,13 @@ int main(int argc, char **argv) {
         std::cerr << "ERROR: Could not create output directory: " << output_dir << std::endl; 
         exit(1);
     }
+
+    // Now let's assure the duration is not 0
+    if(duration == 0) {
+        std::cerr << "ERROR: Duration cannot be 0 seconds." << std::endl; 
+        exit(1);
+    }
+
 
     // Now let's check to make sure we have at LEAST one controller to record with and nothing 
     // went wrong in our counting
