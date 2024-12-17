@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <memory>
 #include <thread>
-#include <libcamera.h>
+#include <libcamera/libcamera.h>
 
 
 namespace fs = std::filesystem;
@@ -170,7 +170,7 @@ Continous recorder for the World Camera. Records either INF or for a set duratio
 */
 int world_recorder(int64_t duration) {
     // Initialize libcamera
-    //libcamera::CameraManager cameraManager;
+    libcamera::CameraManager cameraManager;
 
     return 0;
 }
