@@ -55,6 +55,12 @@ int parse_args(const int argc, const char** argv,
         app.exit(e); //Returns non 0 error code on failure
     }
 
+    // Now let's assure the duration is not 0
+    if(duration == 0) {
+        std::cerr << "ERROR: Duration cannot be 0 seconds." << '\n'; 
+        exit(1);
+    }
+
     return 0; // Returns 0 on success
 }
 
@@ -73,14 +79,17 @@ int minispect_recorder(int64_t duration) {
 
     // Define the data length and the start delimeter. Therefore, 
     // each transmission is actually 2 + the data length 
-    char start_delim = '<';
-    char end_delim = '>';
-    const size_t data_length = 148; 
+    constexpr char start_delim = '<';
+    constexpr char end_delim = '>';
+    constexpr size_t data_length = 148; 
 
     // Define variables we will use to probe the serial stream and read individual 
     // bytes to look for delimeters, as well as the buffer to read data 
     std::array<char, 1> byte_read; 
     std::array<char, data_length> data_buffer; 
+
+    // Initialize a counter for how many frames we are going to capture 
+    size_t frame_num = 0; 
 
     // Attempt to connect to the MS
     std::cout << "MS | Initializating..." << '\n'; 
@@ -151,8 +160,14 @@ int minispect_recorder(int64_t duration) {
                 if(ms.is_open()) { ms.close();}
                 exit(1);
             }
+
+            // Increment the number of captured frames 
+            frame_num++; 
         } 
     }
+    
+    // Output information about how much data we captured 
+    std::cout << "MS | Capture Frames: " << frame_num << '\n';
 
     // Close the connection to the MS device
     std::cout << "MS | Closing..." << '\n'; 
@@ -170,7 +185,53 @@ Continous recorder for the World Camera. Records either INF or for a set duratio
 */
 int world_recorder(int64_t duration) {
     // Initialize libcamera
-    libcamera::CameraManager cameraManager;
+    //libcamera::CameraManager cameraManager;
+
+    // Initialize a counter for how many frames we are going to capture 
+    size_t frame_num = 0; 
+    
+    std::cout << "World | Initialized." << '\n';
+
+    // Begin recording
+    std::cout << "World | Beginning recording..." << '\n';
+    auto start_time = std::chrono::steady_clock::now(); // Capture the start time
+    auto last_gain_change = start_time;
+    while(true) {
+        // Capture the elapsed time since start and ensure it is in the units of seconds
+        auto current_time = std::chrono::steady_clock::now();
+        auto elapsed_time = current_time - start_time;
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
+
+        // End recording if we have reached the desired duration. If it is INF 
+        // duration, we will never end
+        if (duration != -1 && elapsed_seconds >= duration) {
+            break;
+        }
+
+        // Capture the desired frame
+        int frame = 0;
+
+        // Adjust the AGC every 250MS
+        auto time_since_last_agc = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_gain_change).count();
+        if(time_since_last_agc >= 250) {
+
+            // Update the last gain change if we just changed the gain
+            last_gain_change = current_time;
+
+        }
+
+        // Increment the number of captured frames
+        frame_num++;
+    }
+
+    // Output information about how much data we captured 
+    std::cout << "World | Capture Frames: " << frame_num << '\n';
+
+    // Close the connection to the Camera device
+    std::cout << "World | Closing..." << '\n'; 
+
+    std::cout << "MS | Closed." << '\n'; 
+
 
     return 0;
 }
@@ -199,12 +260,6 @@ int main(int argc, char **argv) {
     // Then, we must check if that was succesful. If it was not successful, we output an error
     if(!fs::exists(output_dir) && !fs::create_directories(output_dir)) {
         std::cerr << "ERROR: Could not create output directory: " << output_dir << '\n'; 
-        exit(1);
-    }
-
-    // Now let's assure the duration is not 0
-    if(duration == 0) {
-        std::cerr << "ERROR: Duration cannot be 0 seconds." << '\n'; 
         exit(1);
     }
 
