@@ -12,6 +12,7 @@
 #include <AGC.cpp>
 #include <thread>
 #include <vector>
+#include <libuvc/libuvc.h>
 
 namespace fs = std::filesystem;
 
@@ -252,6 +253,61 @@ int world_recorder(int64_t duration) {
     return 0;
 }
 
+
+/*
+Continous recorder for the World Camera. Records either INF or for a set duration
+@Param:
+@Ret:
+@Mod:
+*/
+/*
+int pupil_recorder(int64_t duration) {
+    // Initialize UVC required variables
+    uvc_context_t *context;
+    uvc_device_t *device;
+    uvc_device_t **device_list;
+    uvc_device_handle_t *device_handle;
+    uvc_error_t res;
+    
+    // Initialize libuvc
+    res = uvc_init(&context, NULL);
+    if (res < 0) {
+        std::cerr << "Error initializing libuvc: " << uvc_strerror(res) << '\n';
+        exit(1);
+    }
+
+    // Retrieve a list of the available devices
+    res = uvc_get_device_list(context, &device_list);
+    if (res < 0) {
+        std::cerr << "Error getting device list: " << uvc_strerror(res) << std::endl;
+        uvc_exit(context);
+        exit(1);
+    }   
+
+    size_t num_cams;
+    for(int i = 0; i < 5; i++) {
+        if(device_list[i] == NULL) {
+            num_cams = i;
+            break; 
+        }
+    }
+
+    std::cout << "Num Cams: " << '\n';
+    std::cout << num_cams << '\n';
+
+    // Free device list
+    uvc_free_device_list(device_list, 1);
+
+    // Clean up
+    uvc_exit(context);
+
+
+    return 0;
+
+}
+
+*/
+
 int main(int argc, char **argv) {
     // Initialize variable to hold output directory path. Path need not exist
     fs::path output_dir;
@@ -316,8 +372,11 @@ int main(int argc, char **argv) {
     // Output to the user that we are going to spawn the threads 
     std::cout << "----SPAWNING THREADS---" << '\n';
 
+    pupil_recorder(duration);
+
     // We will spawn only threads for those controllers that we are going to use. 
     // Spawn them, with the duration of recording as an argument
+    /*
     for (const auto& sensor_idx : used_controller_indices) {
         threads.emplace_back(controller_functions[sensor_idx], duration);
     }
@@ -329,6 +388,7 @@ int main(int argc, char **argv) {
 
     // Output end of program message to alert the user that things closed successfully
     std::cout << "----THREADS CLOSED SUCCESSFULLY---" << '\n';
+    */ 
 
     return 0; 
 }
