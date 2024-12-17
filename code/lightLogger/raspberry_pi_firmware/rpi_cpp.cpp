@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <memory>
 #include <thread>
-#include <libcamera/libcamera.h>
+#include <libcamera.h>
 
 
 namespace fs = std::filesystem;
