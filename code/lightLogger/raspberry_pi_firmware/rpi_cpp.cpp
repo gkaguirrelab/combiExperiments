@@ -187,7 +187,7 @@ Continous recorder for the World Camera. Records either INF or for a set duratio
 int world_recorder(int64_t duration) {
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
-    //libcamera::CameraManager cameraManager;
+    libcamera::CameraManager cameraManager;
 
     // Initialize a counter for how many frames we are going to capture 
     size_t frame_num = 0; 
@@ -372,7 +372,8 @@ int main(int argc, char **argv) {
     // Output to the user that we are going to spawn the threads 
     std::cout << "----SPAWNING THREADS---" << '\n';
 
-    pupil_recorder(duration);
+    world_recorder(duration);
+    //pupil_recorder(duration);
 
     // We will spawn only threads for those controllers that we are going to use. 
     // Spawn them, with the duration of recording as an argument

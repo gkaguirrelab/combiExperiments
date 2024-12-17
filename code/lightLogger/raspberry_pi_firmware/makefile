@@ -1,8 +1,9 @@
 # Compiler and compiler flags
 CXX = g++
 CXXFLAGS = -Wall -Wextra -shared -O2 -fPIC -std=c++17
-CXXFLAGS_firmware = -Wall -Wextra -v -pthread -O3 -lcamera -std=c++17 -lcamera -luv -I../camera/AGC_lib -I./libraries/ -I./libraries/libcamera/build/include/libcamera/ -I./libraries/libcamera/build/include/ -I./libraries/libcamera/include/ -I/libraries/libcamera/build/src/libcamera/ -L./libraries/libcamera/build/src/libcamera/ -L./libraries/libcamera/build/src/libcamera/base/
+CXXFLAGS_firmware = -Wall -Wextra -v -O3 -std=c++17 
 LDFLAGS = -shared  # Linker flag to create a shared library
+LDFLAGS_firmware = -pthread -lcamera -lcamera -luv -I../camera/AGC_lib -I./libraries/ -I./libraries/libcamera/build/include/libcamera/ -I./libraries/libcamera/build/include/ -I./libraries/libcamera/include/ -I./libraries/libcamera/build/src/libcamera/ -L./libraries/libcamera/build/src/libcamera/ -L./libraries/libcamera/build/src/libcamera/base/
 
 # Directories
 SRC_DIR1 = ../camera/AGC_lib
@@ -57,7 +58,7 @@ $(FIRMWARE_TARGET): $(FIRMWARE_OBJ)
 # Compile Firmware.cpp
 $(FIRMWARE_OBJ): $(FIRMWARE_SRC)
 	mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS_firmware) -c $< -o $@
+	$(CXX) $(CXXFLAGS_firmware) $(LDFLAGS_firmware) -c $< -o $@
 
 # Clean build files
 clean:
