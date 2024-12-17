@@ -10,6 +10,8 @@
 #include <thread>
 #include <libcamera/libcamera.h>
 #include <AGC.cpp>
+#include <thread>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -183,6 +185,7 @@ Continous recorder for the World Camera. Records either INF or for a set duratio
 */
 int world_recorder(int64_t duration) {
     // Initialize libcamera
+    std::cout << "World | Initializating..." << '\n'; 
     //libcamera::CameraManager cameraManager;
 
     // Initialize a counter for how many frames we are going to capture 
@@ -231,7 +234,6 @@ int world_recorder(int64_t duration) {
 
             // Update the last gain change if we just changed the gain
             last_gain_change = current_time;
-
         }
 
         // Increment the number of captured frames
@@ -244,7 +246,7 @@ int world_recorder(int64_t duration) {
     // Close the connection to the Camera device
     std::cout << "World | Closing..." << '\n'; 
 
-    std::cout << "MS | Closed." << '\n'; 
+    std::cout << "World | Closed." << '\n'; 
 
 
     return 0;
@@ -261,8 +263,9 @@ int main(int argc, char **argv) {
     // Initialize controller flags as entirely false. This is because we will denote which controllers 
     // to use based on arguments passed. 
     constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
+    std::vector<std::function<int(int64_t)>> controller_functions = {world_recorder, minispect_recorder}; // this CANNOT be constexpr because function stubs are dynamic
     std::array<bool, 4> controller_flags = {false, false, false, false}; // this CANNOT be constexpr because values will change 
-
+    
     // Parse the commandline arguments.
     if(parse_args(argc, (const char**) argv, output_dir, controller_flags, duration)) {
         std::cerr << "ERROR: Could not properly parse args." << '\n'; 
@@ -277,9 +280,17 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    // Now let's check to make sure we have at LEAST one controller to record with and nothing 
-    // went wrong in our counting
-    const int num_active_sensors = std::count(controller_flags.begin(), controller_flags.end(), true);
+    // Find only the indices of sensors we are to use
+    std::vector<size_t> used_controller_indices;
+    for(size_t i = 0; i < controller_flags.size(); i++) {
+        if(controller_flags[i] == true) {
+            used_controller_indices.push_back(i);
+        }
+    }
+
+    // Retrieve the number of sensors we are to use and ensure it is both greater than 0 
+    // and within the range of sensors we have available
+    const int num_active_sensors = used_controller_indices.size();
     if(num_active_sensors == 0 || (num_active_sensors > (int64_t) controller_flags.size() )) {
         std::cerr << "ERROR: Invalid number of active sensors: " << num_active_sensors << '\n'; 
         exit(1);
@@ -291,18 +302,33 @@ int main(int argc, char **argv) {
 
     std::cout << "Output Directory: " << output_dir << '\n';
     std::cout << "Duration: " << duration << " seconds" << '\n';
+    std::cout << "Num Active Controllers: " << num_active_sensors << '\n';
     std::cout << "Controllers to use: " << '\n';
     for(size_t i = 0; i < controller_names.size(); i++) {
         std::cout << '\t' << controller_names[i] << " | " << controller_flags[i] << '\n';
     }
 
-    // Begin recording and enter performance critical section. All print statements below 
+    // Begin parallel recording and enter performance critical section. All print statements below 
     // this point MUST use \n as a terminator instead of '\n', which is significantly slower, and all code should be 
     // absolutely optimally written in regards to time efficency. 
-    //minispect_recorder(duration);
+    std::vector<std::thread> threads;
 
-    world_recorder(duration);
+    // Output to the user that we are going to spawn the threads 
+    std::cout << "----SPAWNING THREADS---" << '\n';
 
+    // We will spawn only threads for those controllers that we are going to use. 
+    // Spawn them, with the duration of recording as an argument
+    for (const auto& sensor_idx : used_controller_indices) {
+        threads.emplace_back(controller_functions[sensor_idx], duration);
+    }
+
+    // Join threads to ensure they complete before the program ends
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    // Output end of program message to alert the user that things closed successfully
+    std::cout << "----THREADS CLOSED SUCCESSFULLY---" << '\n';
 
     return 0; 
 }
