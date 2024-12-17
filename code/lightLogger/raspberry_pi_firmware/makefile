@@ -1,7 +1,7 @@
 # Compiler and compiler flags
 CXX = g++
 CXXFLAGS = -Wall -Wextra -shared -O2 -fPIC -std=c++17
-CXXFLAGS_firmware = -Wall -Wextra -v -pthread -O3 -lcamera -std=c++17 -lcamera -I./libraries/ -I./libraries/libcamera/build/include/libcamera/ -I./libraries/libcamera/build/include/ -I./libraries/libcamera/include/ -I/libraries/libcamera/build/src/libcamera/ -L./libraries/libcamera/build/src/libcamera/ -L./libraries/libcamera/build/src/libcamera/base/
+CXXFLAGS_firmware = -Wall -Wextra -v -pthread -O3 -lcamera -std=c++17 -lcamera -I../camera/AGC_lib -I./libraries/ -I./libraries/libcamera/build/include/libcamera/ -I./libraries/libcamera/build/include/ -I./libraries/libcamera/include/ -I/libraries/libcamera/build/src/libcamera/ -L./libraries/libcamera/build/src/libcamera/ -L./libraries/libcamera/build/src/libcamera/base/
 LDFLAGS = -shared  # Linker flag to create a shared library
 
 # Directories
@@ -11,32 +11,33 @@ BUILD_DIR = ../build
 BIN_DIR = ../bin
 
 # Output names
-AGC_TARGET = $(SRC_DIR1)/AGC.so
-DOWNSAMPLE_TARGET = $(SRC_DIR2)/downsample.so
+#AGC_TARGET = $(SRC_DIR1)/AGC.so
+#DOWNSAMPLE_TARGET = $(SRC_DIR2)/downsample.so
 FIRMWARE_TARGET = rpi_firmware
 
 # Source files
-AGC_SRC = $(SRC_DIR1)/AGC.cpp
-DOWNSAMPLE_SRC = $(SRC_DIR2)/downsample.cpp
+#AGC_SRC = $(SRC_DIR1)/AGC.cpp
+#DOWNSAMPLE_SRC = $(SRC_DIR2)/downsample.cpp
 FIRMWARE_SRC = rpi_cpp.cpp
 
 # Object files
-AGC_OBJ = $(BUILD_DIR)/AGC.o
-DOWNSAMPLE_OBJ = $(BUILD_DIR)/downsample.o
+#AGC_OBJ = $(BUILD_DIR)/AGC.o
+#DOWNSAMPLE_OBJ = $(BUILD_DIR)/downsample.o
 FIRMWARE_OBJ = $(BUILD_DIR)/rpi_cpp.o
 
 # Default rule: Build both programs
-all: $(AGC_TARGET) $(DOWNSAMPLE_TARGET) $(FIRMWARE_TARGET)
+#all: $(AGC_TARGET) $(DOWNSAMPLE_TARGET) $(FIRMWARE_TARGET)
+all: $(FIRMWARE_TARGET)
 
 # Build AGC program
-$(AGC_TARGET): $(AGC_OBJ)
-	mkdir -p $(BIN_DIR)
-	$(CXX) $(LDFLAGS) $(AGC_OBJ) -o $@
+#$(AGC_TARGET): $(AGC_OBJ)
+#	mkdir -p $(BIN_DIR)
+#	#$(CXX) $(LDFLAGS) $(AGC_OBJ) -o $@
 
 # Build Downsample program
-$(DOWNSAMPLE_TARGET): $(DOWNSAMPLE_OBJ)
-	mkdir -p $(BIN_DIR)
-	$(CXX) $(LDFLAGS) $(DOWNSAMPLE_OBJ) -o $@
+#$(DOWNSAMPLE_TARGET): $(DOWNSAMPLE_OBJ)
+#	mkdir -p $(BIN_DIR)
+#	$(CXX) $(LDFLAGS) $(DOWNSAMPLE_OBJ) -o $@
 
 # Build Firmware program
 $(FIRMWARE_TARGET): $(FIRMWARE_OBJ)
@@ -44,14 +45,14 @@ $(FIRMWARE_TARGET): $(FIRMWARE_OBJ)
 	$(CXX) $(FIRMWARE_OBJ) -o $@
 
 # Compile AGC.cpp
-$(AGC_OBJ): $(AGC_SRC)
-	mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+#$(AGC_OBJ): $(AGC_SRC)
+#	mkdir -p $(BUILD_DIR)
+#	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Compile Downsample.cpp
-$(DOWNSAMPLE_OBJ): $(DOWNSAMPLE_SRC)
-	mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+#$(DOWNSAMPLE_OBJ): $(DOWNSAMPLE_SRC)
+#	mkdir -p $(BUILD_DIR)
+#	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Compile Firmware.cpp
 $(FIRMWARE_OBJ): $(FIRMWARE_SRC)
@@ -60,7 +61,8 @@ $(FIRMWARE_OBJ): $(FIRMWARE_SRC)
 
 # Clean build files
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR) $(AGC_TARGET) $(DOWNSAMPLE_TARGET) $(FIRMWARE_TARGET)
+#	rm -rf $(BUILD_DIR) $(BIN_DIR) $(AGC_TARGET) $(DOWNSAMPLE_TARGET) $(FIRMWARE_TARGET)
+	rm -rf $(BUILD_DIR) $(BIN_DIR) $(FIRMWARE_TARGET)
 
 # Phony targets
 .PHONY: all clean

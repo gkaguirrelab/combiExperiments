@@ -9,7 +9,7 @@
 #include <memory>
 #include <thread>
 #include <libcamera/libcamera.h>
-
+#include <AGC.cpp>
 
 namespace fs = std::filesystem;
 
@@ -142,9 +142,7 @@ int minispect_recorder(int64_t duration) {
         boost::asio::read(ms, boost::asio::buffer(byte_read));
 
         // If this byte is the start buffer, note that we have received a reading
-        if (byte_read[0] == start_delim) {
-            std::cout << "RECEIVED A READING" << '\n'; 
-            
+        if (byte_read[0] == start_delim) {            
             // Now we can read the correct amount of data
             boost::asio::read(ms, boost::asio::buffer(data_buffer, data_length));
 
@@ -189,6 +187,13 @@ int world_recorder(int64_t duration) {
 
     // Initialize a counter for how many frames we are going to capture 
     size_t frame_num = 0; 
+
+    // Initialize a variable we will use to hold the mean of certain frames when we do AGC
+    uint8_t frame_mean;
+
+    // Initialize variables for the initial gain and exposure of the camera 
+    float_t current_gain = 1;
+    float_t current_exposure = 100; 
     
     std::cout << "World | Initialized." << '\n';
 
@@ -214,6 +219,15 @@ int world_recorder(int64_t duration) {
         // Adjust the AGC every 250MS
         auto time_since_last_agc = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_gain_change).count();
         if(time_since_last_agc >= 250) {
+            // Calculate the mean of the frame
+            frame_mean = frame; 
+
+            // Use the mean as an input and current settings to calculate the new gain/exposure 
+            RetVal adjusted_camera_info = AGC(frame_mean, current_gain, current_exposure, 0.95);
+
+            // Set the camera to use the new gain/exposure settings
+            current_gain = adjusted_camera_info.adjusted_gain;
+            current_exposure = adjusted_camera_info.adjusted_exposure; 
 
             // Update the last gain change if we just changed the gain
             last_gain_change = current_time;

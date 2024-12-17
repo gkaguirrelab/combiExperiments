@@ -3,33 +3,35 @@
 #include <cstdint>
 #include <cmath> 
 #include <algorithm>
-#include <iostream> 
+#include <iostream>
+#include <array> 
 
-extern "C" {
-    struct RetVal {
+// Define the struct of the return value of the AGC
+struct RetVal {
         double adjusted_gain; 
         double adjusted_exposure; 
-    }; 
+}; 
 
-    RetVal AGC(double signal, double gain, double exposure,
-                                double speed_setting) 
-    {   
+// Define these all as constexpr so that they are evaluated at compile time as opposed to runtime
+// and their values never change
+constexpr double signal_target = 127.0; //target value for the signal at any given light source 
+constexpr std::array<double, 2> gain_range = {1.0, 10.666}; // The range of possible gain values
+constexpr std::array<double, 2> exposure_range = {37, 4839}; // The range of possible exposure values, second val is equal to std::floor(1e6/206.65)
+constexpr std::array<double, 2> signal_range = {0, 255}; // The range of possible signal values
+constexpr double precision_error_margin = 0.025; // the allowable margin of floating point error between calculations
+enum class Correction_Direction {
+    TURN_DOWN, // 0 
+    TURN_UP,   // 1
+};
+
+RetVal AGC(double signal, double gain, 
+          double exposure, double speed_setting) {   
 
         // Initialize a struct of return values
         RetVal ret_val; 
         ret_val.adjusted_gain = gain; 
         ret_val.adjusted_exposure = exposure;
         
-        double signal_target = 127.0; //target value for the signal at any given light source 
-        std::vector<double> gain_range = {1.0, 10.666}; // The range of possible gain values
-        std::vector<double> exposure_range = {37, std::floor(1e6/206.65)}; // The range of possible exposure values
-        std::vector<double> signal_range = {0,255}; // The range of possible signal values
-        const double precision_error_margin = 0.025; // the allowable margin of floating point error between calculations
-        enum class Correction_Direction {
-            TURN_DOWN, // 0 
-            TURN_UP,   // 1
-        };
-
         // Calculate the adjustment
         double correction = 1+(signal_target - signal) / signal_target;
 
@@ -108,21 +110,4 @@ extern "C" {
 
         //Return the new gain and exposure
         return ret_val;
-    }
-
-}
-
-int main() {
-    double gain = 1.0; 
-    double exposure = 37.0; 
-    double speed_setting = 0.99; 
-
-    RetVal test = AGC(255, gain, exposure, speed_setting);
-
-    std::cout << test.adjusted_gain << std::endl; 
-    std::cout << test.adjusted_exposure << std::endl; 
-
-    
-    return 0 ; 
-    
 }
