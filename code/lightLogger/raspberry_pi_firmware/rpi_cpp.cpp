@@ -8,6 +8,8 @@
 #include <iomanip>
 #include <memory>
 #include <thread>
+#include <libcamera/libcamera.h>
+
 
 namespace fs = std::filesystem;
 
@@ -18,7 +20,7 @@ FOLDER FROM CURRENT DIRECTORY INCLUDED
 
 /*
 Parse the command line arguments to the program 
-@Param: 
+@Param:     
 @Ret: 
 @Mod: 
 */
@@ -88,7 +90,7 @@ int minispect_recorder(int64_t duration) {
 
     }
     catch(const std::exception& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl;
+        std::cerr << "ERROR: " << e.what() << '\n';
 
         // Close the MS and safely exit from the error
         if(ms.is_open()) { ms.close();}
@@ -105,7 +107,7 @@ int minispect_recorder(int64_t duration) {
         ms.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::none));
     }
     catch(const std::exception& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl;
+        std::cerr << "ERROR: " << e.what() << '\n';
 
         // Close the MS and safely exit from the error
         if(ms.is_open()) { ms.close();}
@@ -148,11 +150,8 @@ int minispect_recorder(int64_t duration) {
                 // Close the MS and safely exit from the error
                 if(ms.is_open()) { ms.close();}
                 exit(1);
-
             }
-
         } 
-
     }
 
     // Close the connection to the MS device
@@ -186,12 +185,12 @@ int main(int argc, char **argv) {
 
     // Initialize controller flags as entirely false. This is because we will denote which controllers 
     // to use based on arguments passed. 
-    std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'}; 
-    std::array<bool, 4> controller_flags = {false, false, false, false}; 
+    constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
+    std::array<bool, 4> controller_flags = {false, false, false, false}; // this CANNOT be constexpr because values will change 
 
     // Parse the commandline arguments.
     if(parse_args(argc, (const char**) argv, output_dir, controller_flags, duration)) {
-        std::cerr << "ERROR: Could not properly parse args." << std::endl; 
+        std::cerr << "ERROR: Could not properly parse args." << '\n'; 
         exit(1);
     }; 
 
@@ -199,37 +198,37 @@ int main(int argc, char **argv) {
     // First check to see if it does not already exist. If that is true, then we will make it. 
     // Then, we must check if that was succesful. If it was not successful, we output an error
     if(!fs::exists(output_dir) && !fs::create_directories(output_dir)) {
-        std::cerr << "ERROR: Could not create output directory: " << output_dir << std::endl; 
+        std::cerr << "ERROR: Could not create output directory: " << output_dir << '\n'; 
         exit(1);
     }
 
     // Now let's assure the duration is not 0
     if(duration == 0) {
-        std::cerr << "ERROR: Duration cannot be 0 seconds." << std::endl; 
+        std::cerr << "ERROR: Duration cannot be 0 seconds." << '\n'; 
         exit(1);
     }
 
     // Now let's check to make sure we have at LEAST one controller to record with and nothing 
     // went wrong in our counting
     const int num_active_sensors = std::count(controller_flags.begin(), controller_flags.end(), true);
-    if(num_active_sensors < 0 || (num_active_sensors > (int64_t) controller_flags.size() )) {
-        std::cerr << "ERROR: Invalid number of active sensors: " << num_active_sensors << std::endl; 
+    if(num_active_sensors == 0 || (num_active_sensors > (int64_t) controller_flags.size() )) {
+        std::cerr << "ERROR: Invalid number of active sensors: " << num_active_sensors << '\n'; 
         exit(1);
     }
 
     // Output information about where this recording's data will be output, as well as 
     // the controllers we will use
-    std::cout << "----ARGPARSE AND FILE SETUP SUCCESSFUL---" << std::endl;
+    std::cout << "----ARGPARSE AND FILE SETUP SUCCESSFUL---" << '\n';
 
-    std::cout << "Output Directory: " << output_dir << std::endl;
-    std::cout << "Duration: " << duration << " seconds" << std::endl;
-    std::cout << "Controllers to use: " << std::endl;
+    std::cout << "Output Directory: " << output_dir << '\n';
+    std::cout << "Duration: " << duration << " seconds" << '\n';
+    std::cout << "Controllers to use: " << '\n';
     for(size_t i = 0; i < controller_names.size(); i++) {
-        std::cout << '\t' << controller_names[i] << " | " << controller_flags[i] << std::endl;
+        std::cout << '\t' << controller_names[i] << " | " << controller_flags[i] << '\n';
     }
 
     // Begin recording and enter performance critical section. All print statements below 
-    // this point MUST use \n as a terminator instead of std::endl, and all code should be 
+    // this point MUST use \n as a terminator instead of '\n', which is significantly slower, and all code should be 
     // absolutely optimally written in regards to time efficency. 
     //minispect_recorder(duration);
 
