@@ -3,7 +3,7 @@ CXX = g++
 CXXFLAGS = -Wall -Wextra -shared -O2 -fPIC -std=c++17
 CXXFLAGS_firmware = -Wall -Wextra -v -O3 -std=c++17 
 LDFLAGS = -shared  # Linker flag to create a shared library
-LDFLAGS_firmware = -I./libraries/ -I./libraries/libcamera/build/include -I./libraries/libcamera/include/ -L./libraries/libcamera/src/libcamera/ -lcamera -I../camera/AGC_lib -lboost_serialization -lboost_system -lboost_filesystem
+LDFLAGS_firmware = -I./libraries/ -I./libraries/libcamera/build/include -I./libraries/libcamera/include/ -L./libraries/libcamera/src/libcamera/ -lcamera -I../camera/AGC_lib -I./libraries/cereal-1.3.2/include
 
 # Directories
 SRC_DIR1 = ../camera/AGC_lib

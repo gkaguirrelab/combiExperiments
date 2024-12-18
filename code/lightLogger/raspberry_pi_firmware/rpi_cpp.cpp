@@ -13,9 +13,8 @@
 #include <thread>
 #include <vector>
 #include <fstream>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/serialization/vector.hpp>
+#include <cereal/types/vector.hpp>
+#include <cereal/archives/binary.hpp>
 
 
 //#include <libuvc/libuvc.h>
@@ -89,20 +88,39 @@ int write_process(fs::path& output_dir, std::vector<std::vector<uint8_t>>& buffe
     fs::path filename = "out.bin";
 
     // Open a file in the output directory for writing 
-    std::ofstream outFile(output_dir / filename, std::ios::binary);
+    std::ofstream out_file(output_dir / filename, std::ios::binary);
 
     // Ensure the file was opened correctly 
-    if(!outFile) {
+    if(!out_file.is_open()) {
         std::cerr << "ERROR: Failed to open outfile: " << output_dir / filename << '\n';
         exit(1);
     }
 
-    // Create a binary archive
-    //boost::archive::text_oarchive out_archive(outFile);
-    //out_archive << buffers;
-
+    { // Must force archive to go out of scope, ensuring all contents are flushed
+        cereal::BinaryOutputArchive out_archive(out_file);
+        out_archive(buffers);
+    } // Source: https://uscilab.github.io/cereal/quickstart.html under Serialize your data
+    
     // Close the output file
-    outFile.close();
+    out_file.close();
+
+    
+    // Open a file for reading
+    std::ifstream in_file(output_dir / filename, std::ios::binary); 
+
+    if(!in_file.is_open()) {
+        std::cerr << "ERROR: Failed to open infile: " << output_dir / filename << '\n';
+        exit(1);
+    }
+    
+    std::vector<std::vector<uint8_t>> myData; 
+    {   // Read the data in to make sure it was properly serialized
+        cereal::BinaryInputArchive archive(in_file);  // Create an input archive
+        archive(myData);
+    }
+
+    std::cout << "Size of my data: " << myData.size() << '\n';
+
 
     return 0; 
 }
@@ -449,7 +467,12 @@ int main(int argc, char **argv) {
     std::cout << "----THREADS CLOSED SUCCESSFULLY---" << '\n'; 
 
     // Sequential write out just for testing 
+    auto start_write_time = std::chrono::steady_clock::now();
     write_process(output_dir, buffers);
+    auto elapsed_time = std::chrono::steady_clock::now() - start_write_time;
+
+   std::cout << "----WRITING COMPLETE---" << '\n'; 
+   std::cout << "Write time(ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time).count() << '\n';
 
 
     return 0; 
