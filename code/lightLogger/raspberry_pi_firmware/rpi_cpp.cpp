@@ -12,7 +12,8 @@
 #include <AGC.cpp>
 #include <thread>
 #include <vector>
-#include <libuvc/libuvc.h>
+//#include <libuvc/libuvc.h>
+//#include <libcamera/camera_manager.h>
 
 namespace fs = std::filesystem;
 
@@ -23,13 +24,22 @@ FOLDER FROM CURRENT DIRECTORY INCLUDED
 
 /*
 Parse the command line arguments to the program 
-@Param:     
-@Ret: 
-@Mod: 
+@Param: argc: int - commandline argument count, 
+        argv: char** - commandline argument values, 
+        output_dir: filesystem:path - path to folder to output values in,
+        controller_flags: std::array - array of bools to denote which controllers to use 
+                          for recording, 
+        duration: uint32_t - duration of the recording in seconds. 
+
+@Ret: 0 on success, non-zero on failure
+@Mod: output_dir - populates the variable with a filesystem path,
+      duration - populates the variable with an int64_t representing the duration 
+                 of recording in seconds 
+      controller_flags - populates indices of sensors to activate
 */
 int parse_args(const int argc, const char** argv, 
                fs::path& output_dir, std::array<bool, 4>& controller_flags,
-               int64_t& duration) {
+               uint32_t& duration) {
     // Initialize the argparser class
     CLI::App app{"Control Firmware for GKA Lab Integrated Personal Light Logger Wearable Device"};
     
@@ -37,11 +47,11 @@ int parse_args(const int argc, const char** argv,
     app.add_option("-o,--output_dir", output_dir, "The directory in which to output files. Does not need to exist.")
         ->required();
 
-    // Add the required duration variable and populate it with the number of seconds to record for. if it is negative, it is INF
-    // Ensure also that the duration is within -1 and the number of seconds in a day.
+    // Add the required duration variable and populate it with the number of seconds to record for. The range is between 
+    // 1 second and the number of seconds in 24 hours. 
     app.add_option("-d,--duration", duration, "Duration of the recording to make")
         ->required()
-        ->check(CLI::Range(-1, 86400));
+        ->check(CLI::Range(1, 86400));
     
     // Populate the controller flags for the controllers we will use
     app.add_option("-m,--minispect", controller_flags[0], "0/1 boolean flag to denote whether we will use the MS in recording.");
@@ -58,23 +68,17 @@ int parse_args(const int argc, const char** argv,
         app.exit(e); //Returns non 0 error code on failure
     }
 
-    // Now let's assure the duration is not 0
-    if(duration == 0) {
-        std::cerr << "ERROR: Duration cannot be 0 seconds." << '\n'; 
-        exit(1);
-    }
-
     return 0; // Returns 0 on success
 }
 
 
 /*
 Continous recorder for the MS. Records either INF or for a set duration
-@Param: duration. Time in seconds to record for. -1 for INF. 
+@Param: duration: uint32_t - Time in seconds to record for. 
 @Ret: 0 on success, errors and quits otherwise. 
 @Mod: N/A
 */
-int minispect_recorder(int64_t duration) {
+int minispect_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
     // Create a boost io_service object to manage the IO objects
     // and initialize serial port variable
     boost::asio::io_service io;
@@ -135,9 +139,8 @@ int minispect_recorder(int64_t duration) {
         auto elapsed_time = std::chrono::steady_clock::now() - start_time;
         auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
 
-        // End recording if we have reached the desired duration. If it is INF 
-        // duration, we will never end
-        if (duration != -1 && elapsed_seconds >= duration) {
+        // End recording if we have reached the desired duration.
+        if ((uint32_t) elapsed_seconds >= duration) {
             break;
         }
 
@@ -180,14 +183,14 @@ int minispect_recorder(int64_t duration) {
 
 /*
 Continous recorder for the World Camera. Records either INF or for a set duration
-@Param:
-@Ret:
-@Mod:
+@Param: duration: uint32_t - Duration of the recording in seconds.
+@Ret: 0 on success
+@Mod: N/A
 */
-int world_recorder(int64_t duration) {
+int world_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
-    libcamera::CameraManager cameraManager;
+    //libcamera::CameraManager cameraManager;
 
     // Initialize a counter for how many frames we are going to capture 
     size_t frame_num = 0; 
@@ -211,14 +214,16 @@ int world_recorder(int64_t duration) {
         auto elapsed_time = current_time - start_time;
         auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
 
-        // End recording if we have reached the desired duration. If it is INF 
-        // duration, we will never end
-        if (duration != -1 && elapsed_seconds >= duration) {
+        // End recording if we have reached the desired duration. 
+        if ((uint32_t) elapsed_seconds >= duration) {
             break;
         }
 
         // Capture the desired frame
         int frame = 0;
+
+        // Save the desired frame into the buffer
+
 
         // Adjust the AGC every 250MS
         auto time_since_last_agc = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_gain_change).count();
@@ -314,12 +319,12 @@ int main(int argc, char **argv) {
 
     // Initialization container for the duration (in seconds) of the video to record. If this is 
     // negative, then it will be for infinity
-    int64_t duration; 
+    uint32_t duration; 
 
     // Initialize controller flags as entirely false. This is because we will denote which controllers 
     // to use based on arguments passed. 
     constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
-    std::vector<std::function<int(int64_t)>> controller_functions = {world_recorder, minispect_recorder}; // this CANNOT be constexpr because function stubs are dynamic
+    std::vector<std::function<int(int32_t, std::vector<uint8_t>*)>> controller_functions = {world_recorder, minispect_recorder}; // this CANNOT be constexpr because function stubs are dynamic
     std::array<bool, 4> controller_flags = {false, false, false, false}; // this CANNOT be constexpr because values will change 
     
     // Parse the commandline arguments.
@@ -347,7 +352,7 @@ int main(int argc, char **argv) {
     // Retrieve the number of sensors we are to use and ensure it is both greater than 0 
     // and within the range of sensors we have available
     const int num_active_sensors = used_controller_indices.size();
-    if(num_active_sensors == 0 || (num_active_sensors > (int64_t) controller_flags.size() )) {
+    if(num_active_sensors == 0 || (num_active_sensors > (int) controller_flags.size() )) {
         std::cerr << "ERROR: Invalid number of active sensors: " << num_active_sensors << '\n'; 
         exit(1);
     }
@@ -364,6 +369,19 @@ int main(int argc, char **argv) {
         std::cout << '\t' << controller_names[i] << " | " << controller_flags[i] << '\n';
     }
 
+    // Once we know the duration and the number of sensors we are using, we are going to dynamically 
+    // allocate a buffer of duration seconds per sensor of 8bit values 
+    std::vector<std::vector<uint8_t>> buffers(num_active_sensors); // First, allocate an outer vector of num_active_sensors. 
+    for(auto& buffer: buffers) { // Iterate over the inner buffers and reserve enough memory + fill in dummy values for all of the readings.
+        buffer.resize(duration); 
+    }
+
+    // Output information about how the buffer allocation process went
+    std::cout << "----BUFFER ALLOCATIONS SUCCESSFUL---" << '\n';
+    std::cout << "Num buffers: " << num_active_sensors << '\n';
+    std::cout << "Buffer capacity: " << buffers[0].capacity() << '\n';
+
+
     // Begin parallel recording and enter performance critical section. All print statements below 
     // this point MUST use \n as a terminator instead of '\n', which is significantly slower, and all code should be 
     // absolutely optimally written in regards to time efficency. 
@@ -372,14 +390,10 @@ int main(int argc, char **argv) {
     // Output to the user that we are going to spawn the threads 
     std::cout << "----SPAWNING THREADS---" << '\n';
 
-    world_recorder(duration);
-    //pupil_recorder(duration);
-
     // We will spawn only threads for those controllers that we are going to use. 
     // Spawn them, with the duration of recording as an argument
-    /*
-    for (const auto& sensor_idx : used_controller_indices) {
-        threads.emplace_back(controller_functions[sensor_idx], duration);
+    for (size_t i = 0; i < used_controller_indices.size(); i++) {
+        threads.emplace_back(std::thread(controller_functions[used_controller_indices[i]], duration, &buffers[i]));
     }
 
     // Join threads to ensure they complete before the program ends
@@ -388,8 +402,7 @@ int main(int argc, char **argv) {
     }
 
     // Output end of program message to alert the user that things closed successfully
-    std::cout << "----THREADS CLOSED SUCCESSFULLY---" << '\n';
-    */ 
+    std::cout << "----THREADS CLOSED SUCCESSFULLY---" << '\n'; 
 
     return 0; 
 }
