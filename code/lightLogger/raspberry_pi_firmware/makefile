@@ -1,69 +1,28 @@
+# Paths to libraries we will use
+AGC_DIR = ../camera/AGC_lib
+
 # Compiler and compiler flags
 CXX = g++
-CXXFLAGS = -Wall -Wextra -shared -O2 -fPIC -std=c++17
-CXXFLAGS_firmware = -Wall -Wextra -v -O3 -std=c++17 
-LDFLAGS = -shared  # Linker flag to create a shared library
-LDFLAGS_firmware = -I./libraries/ -I./libraries/libcamera/build/include -I./libraries/libcamera/include/ -L./libraries/libcamera/src/libcamera/ -lcamera -I../camera/AGC_lib -I./libraries/cereal-1.3.2/include
+CXXFLAGS = -Wall -Wextra -v -O3 -std=c++17  -I./libraries/ -I./libraries/libcamera/include/ -I$(AGC_DIR) -I./libraries/cereal-1.3.2/include
 
-# Directories
-SRC_DIR1 = ../camera/AGC_lib
-SRC_DIR2 = ../camera/downsample_lib
-BUILD_DIR = ../build
-BIN_DIR = ../bin
+# Define the name of the output executable
+OUTPUT_EXECUTABLE_NAME = FIRMWARE 
 
-# Output names
-#AGC_TARGET = $(SRC_DIR1)/AGC.so
-#DOWNSAMPLE_TARGET = $(SRC_DIR2)/downsample.so
-FIRMWARE_TARGET = rpi_firmware
+all: $(OUTPUT_EXECUTABLE_NAME)
 
-# Source files
-#AGC_SRC = $(SRC_DIR1)/AGC.cpp
-#DOWNSAMPLE_SRC = $(SRC_DIR2)/downsample.cpp
-FIRMWARE_SRC = rpi_cpp.cpp
+# Target: Dependencies | Combine the .o files to make the firmware file
+$(OUTPUT_EXECUTABLE_NAME): rpi_cpp.o AGC.o 
+	$(CXX) $(CXXFLAGS) rpi_cpp.o AGC.o -o $(OUTPUT_EXECUTABLE_NAME)
 
-# Object files
-#AGC_OBJ = $(BUILD_DIR)/AGC.o
-#DOWNSAMPLE_OBJ = $(BUILD_DIR)/downsample.o
-FIRMWARE_OBJ = $(BUILD_DIR)/rpi_cpp.o
+# Target: Dependencies | Make the RPI firmware into its .o file  
+rpi_cpp.o: rpi_cpp.cpp 
+	$(CXX) $(CXXFLAGS) -c rpi_cpp.cpp 
 
-# Default rule: Build both programs
-#all: $(AGC_TARGET) $(DOWNSAMPLE_TARGET) $(FIRMWARE_TARGET)
-all: $(FIRMWARE_TARGET)
+# Target: Dependencies | Make the Automatic Gain Control into its .o file
+AGC.o: $(AGC_DIR)/AGC.cpp $(AGC_DIR)/AGC.h
+	$(CXX) $(CXXFLAGS) -c $(AGC_DIR)/AGC.cpp
 
-# Build AGC program
-#$(AGC_TARGET): $(AGC_OBJ)
-#	mkdir -p $(BIN_DIR)
-#	#$(CXX) $(LDFLAGS) $(AGC_OBJ) -o $@
+clean: 
+	rm -rf *.o FIRMWARE
 
-# Build Downsample program
-#$(DOWNSAMPLE_TARGET): $(DOWNSAMPLE_OBJ)
-#	mkdir -p $(BIN_DIR)
-#	$(CXX) $(LDFLAGS) $(DOWNSAMPLE_OBJ) -o $@
-
-# Build Firmware program
-$(FIRMWARE_TARGET): $(FIRMWARE_OBJ)
-	mkdir -p $(BIN_DIR)
-	$(CXX) $(FIRMWARE_OBJ) -o $@
-
-# Compile AGC.cpp
-#$(AGC_OBJ): $(AGC_SRC)
-#	mkdir -p $(BUILD_DIR)
-#	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# Compile Downsample.cpp
-#$(DOWNSAMPLE_OBJ): $(DOWNSAMPLE_SRC)
-#	mkdir -p $(BUILD_DIR)
-#	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# Compile Firmware.cpp
-$(FIRMWARE_OBJ): $(FIRMWARE_SRC)
-	mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS_firmware) $(LDFLAGS_firmware) -c $< -o $@
-
-# Clean build files
-clean:
-#	rm -rf $(BUILD_DIR) $(BIN_DIR) $(AGC_TARGET) $(DOWNSAMPLE_TARGET) $(FIRMWARE_TARGET)
-	rm -rf $(BUILD_DIR) $(BIN_DIR) $(FIRMWARE_TARGET)
-
-# Phony targets
 .PHONY: all clean

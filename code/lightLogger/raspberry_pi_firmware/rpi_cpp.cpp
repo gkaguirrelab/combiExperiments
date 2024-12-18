@@ -8,8 +8,8 @@
 #include <iomanip>
 #include <memory>
 #include <thread>
-#include <libcamera/libcamera.h>
-#include <AGC.cpp>
+//#include <libcamera/libcamera.h>
+#include <AGC.h>
 #include <thread>
 #include <vector>
 #include <fstream>
