@@ -1,9 +1,14 @@
 # Paths to libraries we will use
 AGC_DIR = ../camera/AGC_lib
+LIBRARIES_DIR = ./libraries
+CEREAL_DIR = ./libraries/cereal-1.3.2/include
+LIBCAMERA_DIR = ./libraries/libcamera/include
+RPICAM_DIR = ./libraries/rpicam-apps/
 
 # Compiler and compiler flags
 CXX = g++
-CXXFLAGS = -Wall -Wextra -v -O3 -std=c++17  -I./libraries/ -I./libraries/libcamera/include/ -I$(AGC_DIR) -I./libraries/cereal-1.3.2/include
+CXXFLAGS = -Wall -Wextra -v -O3 -std=c++17  -I$(LIBRARIES_DIR) -I$(LIBCAMERA_DIR) -I$(AGC_DIR) -I$(CEREAL_DIR) -I$(RPICAM_DIR)
+LDFLAGS = -L 
 
 # Define the name of the output executable
 OUTPUT_EXECUTABLE_NAME = FIRMWARE 

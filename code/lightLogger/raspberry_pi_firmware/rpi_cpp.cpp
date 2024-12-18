@@ -8,14 +8,14 @@
 #include <iomanip>
 #include <memory>
 #include <thread>
-//#include <libcamera/libcamera.h>
 #include <AGC.h>
 #include <thread>
 #include <vector>
 #include <fstream>
 #include <cereal/types/vector.hpp>
 #include <cereal/archives/binary.hpp>
-
+#include "core/rpicam_app.hpp"
+#include "core/options.hpp"
 
 //#include <libuvc/libuvc.h>
 //#include <libcamera/camera_manager.h>
