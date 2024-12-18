@@ -12,6 +12,12 @@
 #include <AGC.cpp>
 #include <thread>
 #include <vector>
+#include <fstream>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/serialization/vector.hpp>
+
+
 //#include <libuvc/libuvc.h>
 //#include <libcamera/camera_manager.h>
 
@@ -73,6 +79,36 @@ int parse_args(const int argc, const char** argv,
 
 
 /*
+Continous monitor for all of the process. Oversees the write queue and writes when necessary
+@Param:
+@Ret:
+@Mod:
+*/
+int write_process(fs::path& output_dir, std::vector<std::vector<uint8_t>>& buffers) {
+    // Generate the filename for this outfile
+    fs::path filename = "out.bin";
+
+    // Open a file in the output directory for writing 
+    std::ofstream outFile(output_dir / filename, std::ios::binary);
+
+    // Ensure the file was opened correctly 
+    if(!outFile) {
+        std::cerr << "ERROR: Failed to open outfile: " << output_dir / filename << '\n';
+        exit(1);
+    }
+
+    // Create a binary archive
+    //boost::archive::text_oarchive out_archive(outFile);
+    //out_archive << buffers;
+
+    // Close the output file
+    outFile.close();
+
+    return 0; 
+}
+
+
+/*
 Continous recorder for the MS. Records either INF or for a set duration
 @Param: duration: uint32_t - Time in seconds to record for. 
 @Ret: 0 on success, errors and quits otherwise. 
@@ -93,7 +129,7 @@ int minispect_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
     // Define variables we will use to probe the serial stream and read individual 
     // bytes to look for delimeters, as well as the buffer to read data 
     std::array<char, 1> byte_read; 
-    std::array<char, data_length> data_buffer; 
+    std::array<char, data_length> reading_buffer; 
 
     // Initialize a counter for how many frames we are going to capture 
     size_t frame_num = 0; 
@@ -150,7 +186,7 @@ int minispect_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
         // If this byte is the start buffer, note that we have received a reading
         if (byte_read[0] == start_delim) {            
             // Now we can read the correct amount of data
-            boost::asio::read(ms, boost::asio::buffer(data_buffer, data_length));
+            boost::asio::read(ms, boost::asio::buffer(reading_buffer, data_length));
 
             // Read one more byte. This essentially serves to ensure we read the correct amount of data 
             // as well as reset the byte_read buffer to not the starting delimeter. It should ALWAYS be the end 
@@ -164,6 +200,9 @@ int minispect_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
                 if(ms.is_open()) { ms.close();}
                 exit(1);
             }
+
+            // Append these bytes to the buffer for the duration of the video
+            buffer->insert(buffer->end(), reading_buffer.begin(), reading_buffer.end()); 
 
             // Increment the number of captured frames 
             frame_num++; 
@@ -220,9 +259,10 @@ int world_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
         }
 
         // Capture the desired frame
-        int frame = 0;
+        int frame = 100;
 
-        // Save the desired frame into the buffer
+        // Save the desired frame into the buffer (TODO: This is a kludge method just for now. ideally we will not be overwriting)
+        (*buffer)[frame_num % duration] = frame; 
 
 
         // Adjust the AGC every 250MS
@@ -326,6 +366,7 @@ int main(int argc, char **argv) {
     constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
     std::vector<std::function<int(int32_t, std::vector<uint8_t>*)>> controller_functions = {world_recorder, minispect_recorder}; // this CANNOT be constexpr because function stubs are dynamic
     std::array<bool, 4> controller_flags = {false, false, false, false}; // this CANNOT be constexpr because values will change 
+    constexpr std::array<uint16_t, 4> data_size_multiplers = {148, 1, 1, 1}; // this can be constexpr because values will never change
     
     // Parse the commandline arguments.
     if(parse_args(argc, (const char**) argv, output_dir, controller_flags, duration)) {
@@ -372,26 +413,29 @@ int main(int argc, char **argv) {
     // Once we know the duration and the number of sensors we are using, we are going to dynamically 
     // allocate a buffer of duration seconds per sensor of 8bit values 
     std::vector<std::vector<uint8_t>> buffers(num_active_sensors); // First, allocate an outer vector of num_active_sensors. 
-    for(auto& buffer: buffers) { // Iterate over the inner buffers and reserve enough memory + fill in dummy values for all of the readings.
-        buffer.resize(duration); 
+    
+    // Iterate over the inner buffers and reserve enough memory + fill in dummy values for all of the readings.
+    for(size_t i = 0; i < buffers.size(); i++) { 
+        // Mutiply the duration times the data size. For instance, the MS reads 148 bytes per second. 
+        buffers[i].resize((duration + 1) * data_size_multiplers[i]);  // Allocate duration + 1 in case things read a little faster than normal
     }
 
     // Output information about how the buffer allocation process went
     std::cout << "----BUFFER ALLOCATIONS SUCCESSFUL---" << '\n';
     std::cout << "Num buffers: " << num_active_sensors << '\n';
-    std::cout << "Buffer capacity: " << buffers[0].capacity() << '\n';
-
+    std::cout << "Buffer capacities: " << num_active_sensors << '\n';
+    for(size_t i = 0; i < buffers.size(); i++) {
+        std::cout << '\t' << controller_names[used_controller_indices[i]] << ": " << buffers[i].capacity() << '\n';
+    }
 
     // Begin parallel recording and enter performance critical section. All print statements below 
     // this point MUST use \n as a terminator instead of '\n', which is significantly slower, and all code should be 
     // absolutely optimally written in regards to time efficency. 
     std::vector<std::thread> threads;
 
-    // Output to the user that we are going to spawn the threads 
-    std::cout << "----SPAWNING THREADS---" << '\n';
-
     // We will spawn only threads for those controllers that we are going to use. 
     // Spawn them, with the duration of recording as an argument
+    std::cout << "----SPAWNING THREADS---" << '\n';
     for (size_t i = 0; i < used_controller_indices.size(); i++) {
         threads.emplace_back(std::thread(controller_functions[used_controller_indices[i]], duration, &buffers[i]));
     }
@@ -401,8 +445,12 @@ int main(int argc, char **argv) {
         t.join();
     }
 
-    // Output end of program message to alert the user that things closed successfully
+    // Signal to the user that the threads has successfully closed their operation
     std::cout << "----THREADS CLOSED SUCCESSFULLY---" << '\n'; 
+
+    // Sequential write out just for testing 
+    write_process(output_dir, buffers);
+
 
     return 0; 
 }
