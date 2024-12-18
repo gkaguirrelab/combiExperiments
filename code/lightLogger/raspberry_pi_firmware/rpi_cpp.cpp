@@ -104,30 +104,12 @@ int write_process(fs::path& output_dir, std::vector<std::vector<uint8_t>>& buffe
     // Close the output file
     out_file.close();
 
-    
-    // Open a file for reading
-    std::ifstream in_file(output_dir / filename, std::ios::binary); 
-
-    if(!in_file.is_open()) {
-        std::cerr << "ERROR: Failed to open infile: " << output_dir / filename << '\n';
-        exit(1);
-    }
-    
-    std::vector<std::vector<uint8_t>> myData; 
-    {   // Read the data in to make sure it was properly serialized
-        cereal::BinaryInputArchive archive(in_file);  // Create an input archive
-        archive(myData);
-    }
-
-    std::cout << "Size of my data: " << myData.size() << '\n';
-
-
     return 0; 
 }
 
 
 /*
-Continous recorder for the MS. Records either INF or for a set duration
+Continous recorder for the MS. 
 @Param: duration: uint32_t - Time in seconds to record for. 
 @Ret: 0 on success, errors and quits otherwise. 
 @Mod: N/A
@@ -239,7 +221,7 @@ int minispect_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
 }
 
 /*
-Continous recorder for the World Camera. Records either INF or for a set duration
+Continous recorder for the World Camera.
 @Param: duration: uint32_t - Duration of the recording in seconds.
 @Ret: 0 on success
 @Mod: N/A
@@ -305,7 +287,7 @@ int world_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
     }
 
     // Output information about how much data we captured 
-    std::cout << "World | Capture Frames: " << frame_num << '\n';
+    std::cout << "World | Captured Frames: " << frame_num << '\n';
 
     // Close the connection to the Camera device
     std::cout << "World | Closing..." << '\n'; 
@@ -318,58 +300,55 @@ int world_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
 
 
 /*
-Continous recorder for the World Camera. Records either INF or for a set duration
-@Param:
-@Ret:
-@Mod:
+Continous recorder for the Pupil Camera.
+@Param: duration: uint32_t - Duration of the recording in seconds.
+@Ret: 0 on success
+@Mod: N/A
 */
-/*
-int pupil_recorder(int64_t duration) {
-    // Initialize UVC required variables
-    uvc_context_t *context;
-    uvc_device_t *device;
-    uvc_device_t **device_list;
-    uvc_device_handle_t *device_handle;
-    uvc_error_t res;
+int pupil_recorder(uint32_t duration, std::vector<uint8_t>* buffer) {
+    // Initialize libUVC 
+    std::cout << "Pupil | Initializating..." << '\n'; 
+
+    // Initialize a counter for how many frames we are going to capture 
+    size_t frame_num = 0; 
     
-    // Initialize libuvc
-    res = uvc_init(&context, NULL);
-    if (res < 0) {
-        std::cerr << "Error initializing libuvc: " << uvc_strerror(res) << '\n';
-        exit(1);
-    }
+    std::cout << "Pupil | Initialized." << '\n';
 
-    // Retrieve a list of the available devices
-    res = uvc_get_device_list(context, &device_list);
-    if (res < 0) {
-        std::cerr << "Error getting device list: " << uvc_strerror(res) << std::endl;
-        uvc_exit(context);
-        exit(1);
-    }   
+    // Begin recording
+    std::cout << "Pupil | Beginning recording..." << '\n';
+    auto start_time = std::chrono::steady_clock::now(); // Capture the start time
+    while(true) {
+        // Capture the elapsed time since start and ensure it is in the units of seconds
+        auto current_time = std::chrono::steady_clock::now();
+        auto elapsed_time = current_time - start_time;
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
 
-    size_t num_cams;
-    for(int i = 0; i < 5; i++) {
-        if(device_list[i] == NULL) {
-            num_cams = i;
-            break; 
+        // End recording if we have reached the desired duration. 
+        if ((uint32_t) elapsed_seconds >= duration) {
+            break;
         }
+
+        // Capture the desired frame
+        int frame = 100;
+
+        // Save the desired frame into the buffer (TODO: This is a kludge method just for now. ideally we will not be overwriting)
+        (*buffer)[frame_num % duration] = frame; 
+
+        // Increment the number of captured frames
+        frame_num++;
     }
 
-    std::cout << "Num Cams: " << '\n';
-    std::cout << num_cams << '\n';
+    // Output information about how much data we captured 
+    std::cout << "Pupil | Captured Frames: " << frame_num << '\n';
 
-    // Free device list
-    uvc_free_device_list(device_list, 1);
+    // Close the connection to the Camera device
+    std::cout << "Pupil | Closing..." << '\n'; 
 
-    // Clean up
-    uvc_exit(context);
-
+    std::cout << "Pupil | Closed." << '\n'; 
 
     return 0;
-
 }
 
-*/
 
 int main(int argc, char **argv) {
     // Initialize variable to hold output directory path. Path need not exist
@@ -382,9 +361,9 @@ int main(int argc, char **argv) {
     // Initialize controller flags as entirely false. This is because we will denote which controllers 
     // to use based on arguments passed. 
     constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
-    std::vector<std::function<int(int32_t, std::vector<uint8_t>*)>> controller_functions = {world_recorder, minispect_recorder}; // this CANNOT be constexpr because function stubs are dynamic
+    std::vector<std::function<int(int32_t, std::vector<uint8_t>*)>> controller_functions = {minispect_recorder, world_recorder, pupil_recorder}; // this CANNOT be constexpr because function stubs are dynamic
     std::array<bool, 4> controller_flags = {false, false, false, false}; // this CANNOT be constexpr because values will change 
-    constexpr std::array<uint16_t, 4> data_size_multiplers = {148, 1, 1, 1}; // this can be constexpr because values will never change
+    constexpr std::array<uint64_t, 4> data_size_multiplers = {148, 200*60*80, 120*192*192, 1}; // this can be constexpr because values will never change
     
     // Parse the commandline arguments.
     if(parse_args(argc, (const char**) argv, output_dir, controller_flags, duration)) {
@@ -472,7 +451,7 @@ int main(int argc, char **argv) {
     auto elapsed_time = std::chrono::steady_clock::now() - start_write_time;
 
    std::cout << "----WRITING COMPLETE---" << '\n'; 
-   std::cout << "Write time(ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time).count() << '\n';
+   std::cout << "Write time(ms): " << std::chrono::duration<float_t, std::milli>(elapsed_time).count() << '\n';
 
 
     return 0; 
