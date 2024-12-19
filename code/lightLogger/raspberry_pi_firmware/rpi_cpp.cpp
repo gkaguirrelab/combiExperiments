@@ -14,8 +14,8 @@
 #include <fstream>
 #include <cereal/types/vector.hpp>
 #include <cereal/archives/binary.hpp>
-#include "core/rpicam_app.hpp"
-#include "core/options.hpp"
+//#include "core/rpicam_app.hpp"
+//#include "core/options.hpp"
 
 //#include <libuvc/libuvc.h>
 //#include <libcamera/camera_manager.h>
@@ -363,7 +363,7 @@ int main(int argc, char **argv) {
     constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
     std::vector<std::function<int(int32_t, std::vector<uint8_t>*)>> controller_functions = {minispect_recorder, world_recorder, pupil_recorder}; // this CANNOT be constexpr because function stubs are dynamic
     std::array<bool, 4> controller_flags = {false, false, false, false}; // this CANNOT be constexpr because values will change 
-    constexpr std::array<uint64_t, 4> data_size_multiplers = {148, 200*60*80, 120*192*192, 1}; // this can be constexpr because values will never change
+    constexpr std::array<uint64_t, 4> data_size_multiplers = {148, 200*60*80, 120*400*400, 1}; // this can be constexpr because values will never change
     
     // Parse the commandline arguments.
     if(parse_args(argc, (const char**) argv, output_dir, controller_flags, duration)) {
@@ -407,22 +407,25 @@ int main(int argc, char **argv) {
         std::cout << '\t' << controller_names[i] << " | " << controller_flags[i] << '\n';
     }
 
-    // Once we know the duration and the number of sensors we are using, we are going to dynamically 
+    // Once we know the duration and the sensors we are using, we are going to dynamically 
     // allocate a buffer of duration seconds per sensor of 8bit values 
-    std::vector<std::vector<uint8_t>> buffers(num_active_sensors); // First, allocate an outer vector of num_active_sensors. 
+    std::vector<std::vector<uint8_t>> buffers(controller_names.size()); // First, allocate an outer vector for all of the potential sensors
     
     // Iterate over the inner buffers and reserve enough memory + fill in dummy values for all of the readings.
-    for(size_t i = 0; i < buffers.size(); i++) { 
-        // Mutiply the duration times the data size. For instance, the MS reads 148 bytes per second. 
-        buffers[i].resize((duration + 1) * data_size_multiplers[i]);  // Allocate duration + 1 in case things read a little faster than normal
+    // Only do this for the sensors we are actually using
+    for(const auto& controller_idx: used_controller_indices) { 
+        // Mutiply the duration times the data size. 
+        // For instance, the MS reads 148 bytes per second. 
+        // The Pupil cam reads at 120x400x400
+        buffers[controller_idx].resize((duration + 1) * data_size_multiplers[controller_idx]);  // Allocate duration + 1 in case things read a little faster than normal
     }
 
     // Output information about how the buffer allocation process went
     std::cout << "----BUFFER ALLOCATIONS SUCCESSFUL---" << '\n';
-    std::cout << "Num buffers: " << num_active_sensors << '\n';
-    std::cout << "Buffer capacities: " << num_active_sensors << '\n';
+    std::cout << "Num buffers: " << buffers.size() << '\n';
+    std::cout << "Buffer capacities: " << '\n';
     for(size_t i = 0; i < buffers.size(); i++) {
-        std::cout << '\t' << controller_names[used_controller_indices[i]] << ": " << buffers[i].capacity() << '\n';
+        std::cout << '\t' << controller_names[i] << ": " << buffers[i].size() << '\n';
     }
 
     // Begin parallel recording and enter performance critical section. All print statements below 
