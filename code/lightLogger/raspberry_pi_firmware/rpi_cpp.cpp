@@ -78,35 +78,12 @@ int parse_args(const int argc, const char** argv,
 
 
 /*
-Continous monitor for all of the process. Oversees the write queue and writes when necessary
+Continous writing monitor for all of the process. 
+Writes buffers when they are full (after a small grace period).
 @Param:
 @Ret:
 @Mod:
 */
-int write_process(fs::path& output_dir, std::vector<std::vector<uint8_t>>& buffers) {
-    // Generate the filename for this outfile
-    fs::path filename = "out.bin";
-
-    // Open a file in the output directory for writing 
-    std::ofstream out_file(output_dir / filename, std::ios::binary);
-
-    // Ensure the file was opened correctly 
-    if(!out_file.is_open()) {
-        std::cerr << "ERROR: Failed to open outfile: " << output_dir / filename << '\n';
-        exit(1);
-    }
-
-    { // Must force archive to go out of scope, ensuring all contents are flushed
-        cereal::BinaryOutputArchive out_archive(out_file);
-        out_archive(buffers);
-    } // Source: https://uscilab.github.io/cereal/quickstart.html under Serialize your data
-    
-    // Close the output file
-    out_file.close();
-
-    return 0; 
-}
-
 int write_process_parallel(const fs::path* output_dir, 
                            const uint32_t duration, 
                            const uint8_t buffer_size_s,
@@ -126,6 +103,12 @@ int write_process_parallel(const fs::path* output_dir,
     // Define a buffer pointer to use to switch between the buffers when writing.
     // Initialize it as buffers one
     std::vector<std::vector<uint8_t>>* buffer = buffers_one; 
+
+    // Define the variables we will use to keep track of filenames and their open files. 
+    fs::path filename = "";
+    std::ofstream out_file; 
+
+    // Define timing variables we will use later
 
     // Write at regular intervals until the end of the recording 
     std::cout << "Write | Beginning waiting for writes..." << '\n';
@@ -148,18 +131,6 @@ int write_process_parallel(const fs::path* output_dir,
             auto start_write_time = std::chrono::steady_clock::now();
             std::cout << "Write | Writing buffer: " << write_num << '\n';  
 
-            // Generate the filename for this chunk's output
-            fs::path filename = "chunk_" + std::to_string(write_num) + ".bin";
-
-            // Open a file in the output directory for writing 
-            std::ofstream out_file(*output_dir / filename, std::ios::binary);
-
-            // Ensure the file was opened correctly 
-            if(!out_file.is_open()) {
-                std::cerr << "ERROR: Failed to open outfile: " << *output_dir / filename << '\n';
-                exit(1);
-            }
-
             // Retrieve the buffer to be written 
             if(write_num % 2 == 0) {
                 buffer = buffers_two;
@@ -173,8 +144,9 @@ int write_process_parallel(const fs::path* output_dir,
                 out_archive(*buffer);
             } // Source: https://uscilab.github.io/cereal/quickstart.html under Serialize your data
             
-            // Close the output file
+            // Close the output file and reset the filename to ""
             out_file.close();
+            filename = "";
             
             // Output how long writing this chunk took
             auto elapsed_time_writing = std::chrono::steady_clock::now() - start_write_time;
@@ -187,8 +159,55 @@ int write_process_parallel(const fs::path* output_dir,
             // Incremement the write num
             write_num++;
         }
+        // Otherwise, let's create the file for the next buffer
+        else {  
+            // Generate the filename for the next chunk's output
+            if(filename == "") {
+                filename = "chunk_" + std::to_string(write_num) + ".bin";
+            }
 
+            // Open the file for the next chunk
+            if(!out_file.is_open()) {
+                // Open a file in the output directory for writing 
+                out_file.open(*output_dir / filename, std::ios::binary);
+
+                // Ensure the file was opened correctly 
+                if(!out_file.is_open()) {
+                    std::cerr << "ERROR: Failed to open outfile: " << *output_dir / filename << '\n';
+                    exit(1);
+                }
+            }
+        }
     }
+
+    // When we break out of this loop, because need to write out one final buffer. This is because we wait until 
+    // after the next buffer to start to write in the loop. At the end, the next buffer will never start, therefore 
+    // it will never be written
+    
+    // Begin timing how long writing this chunk took
+    auto start_write_time = std::chrono::steady_clock::now();
+    std::cout << "Write | Writing buffer: " << write_num << '\n';  
+
+    // Retrieve the buffer to be written 
+    if(write_num % 2 == 0) {
+        buffer = buffers_two;
+    }
+    else {
+        buffer = buffers_one; 
+    }
+
+    { // Must force archive to go out of scope, ensuring all contents are flushed
+        cereal::BinaryOutputArchive out_archive(out_file);
+        out_archive(*buffer);
+    } // Source: https://uscilab.github.io/cereal/quickstart.html under Serialize your data
+    
+    // Close the output file and reset the filename to ""
+    out_file.close();
+    filename = "";
+    
+    // Output how long writing this chunk took
+    auto elapsed_time_writing = std::chrono::steady_clock::now() - start_write_time;
+    std::cout << "Write | Writing buffer: " << write_num << " Took(ms): " << std::chrono::duration<float_t, std::milli>(elapsed_time_writing).count() << '\n';  
 
     return 0; 
 }
@@ -561,7 +580,7 @@ int main(int argc, char **argv) {
 
     std::cout << "Output Directory: " << output_dir << '\n';
     std::cout << "Duration: " << duration << " seconds" << '\n';
-    std::cout << "Buffer size: " << sensor_buffer_size << " seconds" << '\n';
+    std::cout << "Buffer size: " << std::to_string(sensor_buffer_size) << " seconds" << '\n'; // Not sure why but I had to use std::to_string to get this to show
     std::cout << "Num Active Controllers: " << num_active_sensors << '\n';
     std::cout << "Controllers to use: " << '\n';
     for(size_t i = 0; i < controller_names.size(); i++) {
