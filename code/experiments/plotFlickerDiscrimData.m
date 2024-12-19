@@ -24,11 +24,8 @@ subjectDir = fullfile(...
     projectName,...
     subjectID);
 
-slopeVals = [];
-slopeValCI = [];
-
 % Set up a figure
-figHandle = figure();
+figHandle = figure(1);
 figuresize(750,250,'units','pt');
 tiledlayout(length(modDirections),length(flickerFreqSetHz),"TileSpacing","compact",'Padding','tight');
 
@@ -61,7 +58,7 @@ for ii = 1:length(modDirections)
             ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
             storeVerbose = psychObj.verbose;
             psychObj.verbose = false;
-            [~, psiParamsFit] = psychObj.reportParams('lb',lb,'ub',ub);
+            [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObj.reportParams('lb',lb,'ub',ub,'nBoots',100);
             psychObj.verbose = storeVerbose;
 
             % Get the proportion selected "test" for each stimulus
@@ -113,32 +110,128 @@ for ii = 1:length(modDirections)
         box off
 
         % Store the slope of the psychometric function
-        slopeVals(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
-        %        slopeValCI(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
-        %        slopeValCI(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+        if ii == 1
+            slopeVals(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+            slopeValCI(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+            slopeValCI(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+                     
+        end
+
+        if ii == 2
+            slopeVals2(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+            slopeValCI2(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+            slopeValCI2(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+        end
 
     end
+
 end
 
-% figure
-% figuresize(250,250,'units','pt');
-%
-% yvals = [mean(slopeVals(3:4)) mean(slopeVals(3:4)) mean(slopeVals([4 6])) mean(slopeVals(6:7)) mean(slopeVals(6:7))];
-% semilogx(flickerFreqSetHz(3:7),yvals,'-k');
-% hold on
-% for rr = 3:length(flickerFreqSetHz)
-%     semilogx([flickerFreqSetHz(rr) flickerFreqSetHz(rr)],...
-%         slopeValCI(rr,:),'-k' );
-%     hold on
-%     semilogx(flickerFreqSetHz(rr),slopeVals(rr),'or','MarkerSize',15);
-%
-% end
-%
-% ylim([0,1.5]);
-% ylabel('discrimination slope [% response / dB]');
-% a = gca();
-% a.XTick = flickerFreqSetHz(3:end);
-% a.XTickLabel = {'4.5','6.6','9.7','14.1','20.6'};
-% xlim([3.7,24.9]);
-% xlabel('Reference stimulus intensity [PSI]')
-% box off
+% Plotting the slopes with CIs
+% Set up a second figure
+figHandle2 = figure(2);
+figuresize(750,250,'units','pt');
+tiledlayout(length(modDirections),1,"TileSpacing","compact",'Padding','tight');
+
+for ii = 1:length(modDirections)
+    for rr = 1:length(flickerFreqSetHz)
+
+        dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabelsAll{1}],experimentName);
+
+        xData = log10(flickerFreqSetHz);
+
+        for ss = 1:2 % High and low side estimates
+
+            % Load this measure
+            psychFileStem = [subjectID '_' modDirections{ii} ...
+                '_' experimentName '_' ...
+                strrep(num2str(targetPhotoreceptorContrast(ii)),'.','x') ...
+                '_refFreq-' num2str(flickerFreqSetHz(rr)) 'Hz' ...
+                '_' stimParamLabels{ss}];
+            filename = fullfile(dataDir,psychFileStem);
+            load(filename,'psychObj');
+
+            % Get params
+            [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObj.reportParams('lb',lb,'ub',ub,'nBoots',100);
+
+            % Calculate slopes and CIs for the current mod direction and
+            % estimate type
+            if ii == 1
+                if ss == 1
+                    slopeVals_LminusM_LowTest(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                    slopeValCI_LminusM_LowTest(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                    slopeValCI_LminusM_LowTest(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+                elseif ss == 2
+                    slopeVals_LminusM_HiTest(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                    slopeValCI_LminusM_HiTest(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                    slopeValCI_LminusM_HiTest(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+                end               
+            end
+
+            if ii == 2
+                if ss == 1
+                    slopeVals_LightFlux_LowTest(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                    slopeValCI_LightFlux_LowTest(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                    slopeValCI_LightFlux_LowTest(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+                elseif ss == 2
+                    slopeVals_LightFlux_HiTest(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                    slopeValCI_LightFlux_HiTest(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                    slopeValCI_LightFlux_HiTest(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+                end
+            end
+
+        end
+
+    end
+
+    if ii == 1 % L minus M
+
+        nexttile;
+        hold on;
+
+        plot(xData, slopeVals_LminusM_LowTest, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
+        plot(xData,  slopeVals_LminusM_HiTest, '-o', 'LineWidth', 2, 'Color', [0, 0.5, 0]);
+
+        for rr = 1:length(flickerFreqSetHz)
+            % Plot the confidence interval for each slope value
+            plot([xData(rr), xData(rr)], [slopeValCI_LminusM_LowTest(rr, 1), slopeValCI_LminusM_LowTest(rr, 2)], '-', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
+            plot([xData(rr), xData(rr)], [slopeValCI_LminusM_HiTest(rr, 1), slopeValCI_LminusM_HiTest(rr, 2)], '-g', 'LineWidth', 3, 'Color', [0, 0.5, 0]); % vertical line for CI
+        end
+
+        title('L minus M');
+
+    elseif ii == 2 % LightFlux
+
+        nexttile;
+        hold on;
+
+        plot(xData, slopeVals_LightFlux_LowTest, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
+        plot(xData, slopeVals_LightFlux_HiTest, '-o', 'LineWidth', 2, 'Color', [0, 0.5, 0]);
+
+        for rr = 1:length(flickerFreqSetHz)
+            % Plot the confidence interval for each slope value
+            plot([xData(rr), xData(rr)], [slopeValCI_LightFlux_LowTest(rr, 1), slopeValCI_LightFlux_LowTest(rr, 2)], '-b', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
+            plot([xData(rr), xData(rr)], [slopeValCI_LightFlux_HiTest(rr, 1), slopeValCI_LightFlux_HiTest(rr, 2)], '-g', 'LineWidth', 3, 'Color', [0, 0.5, 0]); % vertical line for CI
+        end
+
+        title('Light Flux');
+
+    end
+
+    xlabel('log reference frequency (Hz)');
+    ylabel('slope of psychometric function');
+    legend('Low Test', 'High Test');
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
