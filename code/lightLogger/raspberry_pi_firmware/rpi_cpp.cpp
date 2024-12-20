@@ -14,13 +14,8 @@
 #include <fstream>
 #include <cereal/types/vector.hpp>
 #include <cereal/archives/binary.hpp>
-//#include "core/rpicam_app.hpp"
-//#include "core/options.hpp"
 
-//#include <libuvc/libuvc.h>
-//#include <libcamera/camera_manager.h>
-
-namespace fs = std::filesystem;
+namespace fs = std::filesystem; 
 
 /*
 ALL LIBRARIES INCLUDED ABOVE HERE. MUST COMPILE WITH THE "libraries"" 
@@ -131,13 +126,8 @@ int write_process_parallel(const fs::path* output_dir,
             auto start_write_time = std::chrono::steady_clock::now();
             std::cout << "Write | Writing buffer: " << write_num << '\n';  
 
-            // Retrieve the buffer to be written 
-            if(write_num % 2 == 0) {
-                buffer = buffers_two;
-            }
-            else {
-                buffer = buffers_one; 
-            }
+            // Retrieve the correct buffer to write
+            buffer = (write_num % 2 == 0) ? buffers_two : buffers_one;
 
             { // Must force archive to go out of scope, ensuring all contents are flushed
                 cereal::BinaryOutputArchive out_archive(out_file);
@@ -188,13 +178,8 @@ int write_process_parallel(const fs::path* output_dir,
     auto start_write_time = std::chrono::steady_clock::now();
     std::cout << "Write | Writing buffer: " << write_num << '\n';  
 
-    // Retrieve the buffer to be written 
-    if(write_num % 2 == 0) {
-        buffer = buffers_two;
-    }
-    else {
-        buffer = buffers_one; 
-    }
+   // Retrieve the correct buffer to write
+    buffer = (write_num % 2 == 0) ? buffers_two : buffers_one;
 
     { // Must force archive to go out of scope, ensuring all contents are flushed
         cereal::BinaryOutputArchive out_archive(out_file);
@@ -297,14 +282,8 @@ int minispect_recorder(const uint32_t duration,
         
         // Swap buffers if we filled up this buffer
         if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
-            // If we are currently using buffer 2, swap to 1
-            if(current_buffer % 2 == 0) {
-                buffer = buffer_one;
-            }
-            // If we are currently using buffer 1, swap to buffer 2
-            else {
-                buffer = buffer_two;
-            }
+            // If we are using buffer two, switch to buffer one, otherwise vice versa
+            buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
 
             // Update the current buffer state
             current_buffer = (current_buffer % 2) + 1;
@@ -364,8 +343,7 @@ int world_recorder(const uint32_t duration,
     {
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
-    //libcamera::CameraManager cameraManager;
-
+    
     // Initialize a counter for how many frames we are going to capture, 
     // and the size of our buffers 
     size_t frame_num = 0; 
@@ -401,13 +379,9 @@ int world_recorder(const uint32_t duration,
         // Swap buffers if this one is full
         if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
             // If we are currently using buffer 2, swap to 1
-            if(current_buffer % 2 == 0) {
-                buffer = buffer_one;
-            }
-            // If we are currently using buffer 1, swap to buffer 2
-            else {
-                buffer = buffer_two;
-            }
+            
+            // If we are using buffer two, switch to buffer one, otherwise vice versa
+            buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
 
             // Update the current buffer state
             current_buffer = (current_buffer % 2) + 1;
@@ -492,15 +466,10 @@ int pupil_recorder(const uint32_t duration,
 
         // Swap buffers if this one is full
         if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
-            // If we are currently using buffer 2, swap to 1
-            if(current_buffer % 2 == 0) {
-                buffer = buffer_one;
-            }
-            // If we are currently using buffer 1, swap to buffer 2
-            else {
-                buffer = buffer_two;
-            }
 
+            // If we are using buffer two, switch to buffer one, otherwise vice versa
+            buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
+            
             // Update the current buffer state
             current_buffer = (current_buffer % 2) + 1;
         }

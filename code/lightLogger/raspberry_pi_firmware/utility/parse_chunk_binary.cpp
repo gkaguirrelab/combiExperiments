@@ -31,12 +31,12 @@ extern "C" {
         uint64_t S_size; 
     };
 
-    chunk_struct* parse_chunk_binary(const char* python_str_path) {
+    chunk_struct parse_chunk_binary(const char* python_str_path) {
         // First let's convert the Python character array to a CPP string 
         std::string path(python_str_path);
 
         // Initialize our ret value
-        chunk_struct* chunk = new chunk_struct; 
+        chunk_struct chunk;
         
         // First, convert string to fs::path object
         fs::path filepath(path); 
@@ -63,21 +63,21 @@ extern "C" {
 
         // Now we need to allocate heap memory for each of these readings and copy them over 
         // so that Python can retrieve them and free them later
-        chunk->M_size = chunk_vector[0].size(); // First retrieve the number of values in the buffer
-        chunk->M = new uint8_t[chunk->M_size]; // Allocate an array for the MS readings
-        std::copy(chunk_vector[0].begin(), chunk_vector[0].end(), chunk->M); // Copy over the memory to the return value
+        chunk.M_size = chunk_vector[0].size(); // First retrieve the number of values in the buffer
+        chunk.M = new uint8_t[chunk.M_size]; // Allocate an array for the MS readings
+        std::copy(chunk_vector[0].begin(), chunk_vector[0].end(), chunk.M); // Copy over the memory to the return value
 
-        chunk->W_size = chunk_vector[1].size(); // First retrieve the number of values in the buffer
-        chunk->W = new uint8_t[chunk->W_size]; // Allocate an array for the World Camera readings
-        std::copy(chunk_vector[0].begin(), chunk_vector[0].end(), chunk->M); // Copy over the memory to the return value
+        chunk.W_size = chunk_vector[1].size(); // First retrieve the number of values in the buffer
+        chunk.W = new uint8_t[chunk.W_size]; // Allocate an array for the World Camera readings
+        std::copy(chunk_vector[1].begin(), chunk_vector[1].end(), chunk.W); // Copy over the memory to the return value
 
-        chunk->P_size = chunk_vector[2].size(); // First retrieve the number of values in the buffer
-        chunk->P = new uint8_t[chunk->P_size]; // Allocate an array for the Pupil Camera readings
-        std::copy(chunk_vector[0].begin(), chunk_vector[0].end(), chunk->M); // Copy over the memory to the return value
+        chunk.P_size = chunk_vector[2].size(); // First retrieve the number of values in the buffer
+        chunk.P = new uint8_t[chunk.P_size]; // Allocate an array for the Pupil Camera readings
+        std::copy(chunk_vector[2].begin(), chunk_vector[2].end(), chunk.P); // Copy over the memory to the return value
 
-        chunk->P_size = chunk_vector[2].size(); // First retrieve the number of values in the buffer
-        chunk->S = new uint8_t[chunk->P_size]; // Allocate an array for the sunglasses readings
-        std::copy(chunk_vector[0].begin(), chunk_vector[0].end(), chunk->M); // Copy over the memory to the return value
+        chunk.P_size = chunk_vector[2].size(); // First retrieve the number of values in the buffer
+        chunk.S = new uint8_t[chunk.P_size]; // Allocate an array for the sunglasses readings
+        std::copy(chunk_vector[3].begin(), chunk_vector[3].end(), chunk.S); // Copy over the memory to the return value
         
         return chunk; 
     }
@@ -87,8 +87,6 @@ extern "C" {
         delete[] chunk->W;
         delete[] chunk->P;
         delete[] chunk->S;
-
-        delete chunk; 
     }
 
 }
