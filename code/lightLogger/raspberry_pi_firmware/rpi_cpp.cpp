@@ -14,6 +14,10 @@
 #include <fstream>
 #include <cereal/types/vector.hpp>
 #include <cereal/archives/binary.hpp>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/i2c-dev.h>
 
 namespace fs = std::filesystem; 
 
@@ -75,9 +79,13 @@ int parse_args(const int argc, const char** argv,
 /*
 Continous writing monitor for all of the process. 
 Writes buffers when they are full (after a small grace period).
-@Param:
-@Ret:
-@Mod:
+@Param: output_dir: fs::path* - The output directory where files will be written 
+        duration: uint32_t - The duration in seconds of the entire recording
+        buffer_size_s: uint8_t - The duration in seconds a given buffer is allocated for
+        buffers_one: std::vector<std::vector<uint8_t>>* - Pointer to the first suprabuffer holding all of the sensors subbuffers
+        buffers_two: std::vector<std::vector<uint8_t>>* - Pointer to the second suprabuffer holding all of the sensors subbuffers
+@Ret: N/A 
+@Mod: Writes binary serialized buffers to numbered files in output_dir 
 */
 int write_process_parallel(const fs::path* output_dir, 
                            const uint32_t duration, 
@@ -201,8 +209,11 @@ int write_process_parallel(const fs::path* output_dir,
 /*
 Continous recorder for the MS. 
 @Param: duration: uint32_t - Time in seconds to record for. 
-@Ret: 0 on success, errors and quits otherwise. 
-@Mod: N/A
+        buffer one: std::vector<uint8_t>* - The first of two buffers allocated for the sensor
+        buffer two: std::vector<uint8_t>* - The second of two buffers allocated for the sensor
+        buffer_size_frames: uint16_t - The amount of frames until each buffer is full and needs to swap
+@Ret: 0 on success, throws errors otherwise
+@Mod: Fills buffer_one and buffer_two with captured values. 
 */
 int minispect_recorder(const uint32_t duration, 
                        std::vector<uint8_t>* buffer_one, 
@@ -332,9 +343,12 @@ int minispect_recorder(const uint32_t duration,
 
 /*
 Continous recorder for the World Camera.
-@Param: duration: uint32_t - Duration of the recording in seconds.
-@Ret: 0 on success
-@Mod: N/A
+@Param: duration: uint32_t - Time in seconds to record for. 
+        buffer one: std::vector<uint8_t>* - The first of two buffers allocated for the sensor
+        buffer two: std::vector<uint8_t>* - The second of two buffers allocated for the sensor
+        buffer_size_frames: uint16_t - The amount of frames until each buffer is full and needs to swap
+@Ret: 0 on success, errors and quits otherwise. 
+@Mod: Fills buffer_one and buffer_two with captured values. 
 */
 int world_recorder(const uint32_t duration, 
                    std::vector<uint8_t>* buffer_one, 
@@ -429,14 +443,18 @@ int world_recorder(const uint32_t duration,
 
 /*
 Continous recorder for the Pupil Camera.
-@Param: duration: uint32_t - Duration of the recording in seconds.
-@Ret: 0 on success
-@Mod: N/A
+@Param: duration: uint32_t - Time in seconds to record for. 
+        buffer one: std::vector<uint8_t>* - The first of two buffers allocated for the sensor
+        buffer two: std::vector<uint8_t>* - The second of two buffers allocated for the sensor
+        buffer_size_frames: uint16_t - The amount of frames until each buffer is full and needs to swap
+@Ret: 0 on success, errors and quits otherwise. 
+@Mod: Fills buffer_one and buffer_two with captured values. 
 */
 int pupil_recorder(const uint32_t duration, 
                    std::vector<uint8_t>* buffer_one, 
                    std::vector<uint8_t>* buffer_two,
-                   const uint16_t buffer_size_frames) {
+                   const uint16_t buffer_size_frames) 
+    {
     // Initialize libUVC 
     std::cout << "Pupil | Initializating..." << '\n'; 
 
@@ -477,7 +495,7 @@ int pupil_recorder(const uint32_t duration,
         // Capture the desired frame
         int frame = 100;
 
-        // Save the desired frame into the buffer (TODO: This is a kludge method just for now. ideally we will not be overwriting)
+        // Save the desired frame into the buffer
         (*buffer)[frame_num % buffer_size_frames] = frame; 
 
         // Increment the number of captured frames
@@ -495,6 +513,134 @@ int pupil_recorder(const uint32_t duration,
     return 0;
 }
 
+/*
+Continous recorder for the Sunglasses Hall magnetic sensor. 
+@Param: duration: uint32_t - Time in seconds to record for. 
+        buffer one: std::vector<uint8_t>* - The first of two buffers allocated for the sensor
+        buffer two: std::vector<uint8_t>* - The second of two buffers allocated for the sensor
+        buffer_size_frames: uint16_t - The amount of frames until each buffer is full and needs to swap
+@Ret: 0 on success, errors and quits otherwise. 
+@Mod: Fills buffer_one and buffer_two with captured values. 
+*/
+int sunglasses_recorder(const uint32_t duration,
+                        std::vector<uint8_t>* buffer_one, 
+                        std::vector<uint8_t>* buffer_two,
+                        const uint16_t buffer_size_frames) 
+    {
+    // Initialize a connection to the bus to read from the sensor
+    std::cout << "Sunglasses | Initializating..." << '\n'; 
+
+    // Define details about where the connection to the device will live
+    constexpr const char* i2c_bus_number = "/dev/i2c-1";     // I2C bus number, corresponds to /dev/i2c-1
+    constexpr int device_addr = 0x6B; // Define the memory address of the device
+    constexpr uint8_t config = 0x10; // Configuration command: Continuous conversion mode, 12-bit Resolution (0x10)
+    constexpr uint8_t read_reg = 0x00;
+
+    // Initialize a counter for how many frames we are going to capture 
+    // and how big our buffer is
+    size_t frame_num = 0; 
+
+    // Set the initial buffer pointer to buffer 1
+    std::vector<uint8_t>* buffer = buffer_one;
+    uint8_t current_buffer = 1;
+
+    // Attempt to open the I2C bus
+    int i2c_bus = open(i2c_bus_number, O_RDWR);
+    if (i2c_bus < 0) {
+        std::cerr << "Sunglasses | Failed to open the I2C bus" << '\n';
+        exit(1);
+    }
+
+    // Set the I2C slave address
+    if (ioctl(i2c_bus, I2C_SLAVE, device_addr) < 0) {
+        std::cerr << "Sunglasses | Failed to set I2C address" << '\n';
+        close(i2c_bus);
+        exit(1);
+    }
+
+    // Write the configuration command
+    if (write(i2c_bus, &config, 1) != 1) {
+        std::cerr << "Sunglasses | Failed to write to the I2C device" << '\n';
+        close(i2c_bus);
+        exit(1);
+    }
+
+    // Write the register address
+    if (write(i2c_bus, &read_reg, 1) != 1) {
+        std::cerr << "Sunglasses | Failed to write to the I2C device" << '\n';
+        close(i2c_bus);
+        exit(1);
+    }
+
+    std::cout << "Sunglasses | Initialized..." << '\n'; 
+
+    // Begin recording for the given duration
+    std::cout << "Sunglasses | Beginning recording..." << '\n';
+    auto start_time = std::chrono::steady_clock::now(); // Capture the start time
+    while(true) {
+        // Capture the elapsed time since start and ensure it is in the units of seconds
+        auto current_time = std::chrono::steady_clock::now();
+        auto elapsed_time = current_time - start_time;
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
+        
+        // End recording if we have reached the desired duration. 
+        if ((uint32_t) elapsed_seconds >= duration) {
+            break;
+        }
+
+        // Swap buffers if this one is full (divide by two here since we are doing 2 writes per frame captured)
+        if(frame_num > 0 && (frame_num / 2) % buffer_size_frames == 0) {
+
+            // If we are using buffer two, switch to buffer one, otherwise vice versa
+            buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
+            
+            // Update the current buffer state
+            current_buffer = (current_buffer % 2) + 1;
+        }
+
+        // Read 2 bytes from the device
+        uint8_t data[2] = {0};
+        if (read(i2c_bus, data, 2) != 2) {
+            std::cerr << "Failed to read from the I2C device" << '\n';
+            close(i2c_bus);
+            exit(1);
+        }
+
+        // Process the data to convert it to 12 bits
+        int16_t raw_adc = ((data[0] & 0x0F) << 8) | data[1];
+        if (raw_adc > 2047) {
+            raw_adc -= 4096;
+        }
+
+        // Need to split our reading in two parts because our reading is 12 bit and 
+        // our buffer is for 8 bit values
+        uint8_t lower_byte = raw_adc & 0xFF;        // Lower 8 bits of reading
+        uint8_t upper_byte = (raw_adc >> 8) & 0xFF; // Upper 8 bits of reading
+
+        // Write the bytes from the reading to the buffer
+        (*buffer)[frame_num % buffer_size_frames] = lower_byte; 
+        (*buffer)[(frame_num + 1) % buffer_size_frames] = upper_byte; 
+
+        // Increment the captured frame number
+        frame_num+=2; 
+
+        // Sleep for a few seconds between readings, as high FPS for sunglasses 
+        // is not important
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    }
+
+    // Output information about how much data we captured 
+    std::cout << "Sunglasses | Captured Frames: " << frame_num << '\n';
+
+    // Close the connection to the i2c_bus device
+    std::cout << "Sunglasses | Closing..." << '\n'; 
+    close(i2c_bus);
+    std::cout << "Sunglasses | Closed." << '\n'; 
+
+    return 0;
+}
+
 
 int main(int argc, char **argv) {
     // Initialize variable to hold output directory path. Path need not exist
@@ -507,16 +653,16 @@ int main(int argc, char **argv) {
     // Initialize controller flags as entirely false. This is because we will denote which controllers 
     // to use based on arguments passed. 
     constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
-    std::vector<std::function<int(int32_t, std::vector<uint8_t>*, std::vector<uint8_t>*, uint16_t)>> controller_functions = {minispect_recorder, world_recorder, pupil_recorder}; // this CANNOT be constexpr because function stubs are dynamic
+    std::vector<std::function<int(int32_t, std::vector<uint8_t>*, std::vector<uint8_t>*, uint16_t)>> controller_functions = {minispect_recorder, world_recorder, pupil_recorder, sunglasses_recorder}; // this CANNOT be constexpr because function stubs are dynamic
     std::array<bool, 4> controller_flags = {false, false, false, false}; // this CANNOT be constexpr because values will change 
     constexpr std::array<uint8_t, 4> sensor_FPS = {1, 200, 120, 1};
-    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*80, sensor_FPS[2]*400*400, sensor_FPS[3]*1}; // this can be constexpr because values will never change
+    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*80, sensor_FPS[2]*400*400, sensor_FPS[3]*2}; // this can be constexpr because values will never change
     constexpr uint8_t sensor_buffer_size = 10; // Initialize a variable for the size of each sensors' buffer in seconds. This will be regularly written out and cleared
 
     // Parse the commandline arguments.
     if(parse_args(argc, (const char**) argv, output_dir, controller_flags, duration)) {
         std::cerr << "ERROR: Could not properly parse args." << '\n'; 
-        exit(1);
+        return 1; 
     }; 
 
     // If argparse was successful, we will ensure the output directory exists
@@ -524,7 +670,7 @@ int main(int argc, char **argv) {
     // Then, we must check if that was succesful. If it was not successful, we output an error
     if(!fs::exists(output_dir) && !fs::create_directories(output_dir)) {
         std::cerr << "ERROR: Could not create output directory: " << output_dir << '\n'; 
-        exit(1);
+        return 1;
     }
 
     // Find only the indices of sensors we are to use
@@ -540,7 +686,7 @@ int main(int argc, char **argv) {
     const int num_active_sensors = used_controller_indices.size();
     if(num_active_sensors == 0 || (num_active_sensors > (int) controller_flags.size() )) {
         std::cerr << "ERROR: Invalid number of active sensors: " << num_active_sensors << '\n'; 
-        exit(1);
+        return 1; 
     }
 
     // Output information about where this recording's data will be output, as well as 
@@ -568,8 +714,11 @@ int main(int argc, char **argv) {
     // Only do this for the sensors we are actually using
     for(const auto& controller_idx: used_controller_indices) { 
         // Mutiply the duration times the data size. 
-        // For instance, the MS reads 148 bytes per second. 
-        // The Pupil cam reads at 120x400x400
+        // For instance:
+            // the MS reads 148 bytes per second. 
+            // the World cam reads at 200x30x40 bytes per second 
+            // the Pupil cam reads at 120x400x400 bytes per second
+            // the sunglasses sensor reads at 1x2 bytes per second 
 
         // Allocate time + 1 in case things read a little faster than normal
         buffers_one[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx]); 
@@ -592,11 +741,14 @@ int main(int argc, char **argv) {
     // We will spawn only threads for those controllers that we are going to use. 
     // Spawn them, with the duration of recording as an argument
     std::cout << "----SPAWNING THREADS---" << '\n';
+    
+    //sunglasses_recorder(duration, &buffers_one[0], &buffers_two[0], 5);
+    
     for (const auto& used_controller_idx: used_controller_indices) {
         threads.emplace_back(std::thread(controller_functions[used_controller_idx], 
                                          duration,
                                          &buffers_one[used_controller_idx], &buffers_two[used_controller_idx],
-                                         duration*sensor_FPS[used_controller_idx]));
+                                         sensor_buffer_size*sensor_FPS[used_controller_idx]));
     }
 
     // We will also spawn the parallel write process, to monitor output from these threads
@@ -612,7 +764,6 @@ int main(int argc, char **argv) {
     // Signal to the user that the threads has successfully closed their operation
     std::cout << "----THREADS CLOSED SUCCESSFULLY---" << '\n'; 
 
-    // NEED TO ADD ONE FINAL WRITE TO CLEAR BUFFERS WHEN DURATION ENDS
 
     return 0; 
 }
