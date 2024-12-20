@@ -25,12 +25,24 @@ extern "C" {
         uint8_t* W;
         uint8_t* P; 
         uint8_t* S; 
-        uint64_t M_size;
-        uint64_t W_size; 
-        uint64_t P_size; 
-        uint64_t S_size; 
+        int64_t M_size = 0;
+        int64_t W_size = 0; 
+        int64_t P_size = 0;
+        int64_t S_size = 0;
     };
 
+    /*
+    Deserialize the data from a .bin file chunk captured from the C++ implementation 
+    of RPI_FIRMWARE and return it as a struct pointer to Python. 
+    @Param: python_str_path: char* - The path to the chunk file as a char array. 
+    @Ret: chunk: chunk_struct* -  pointer to data from the chunk per sensor 
+                                  with its associated buffer size.
+                                  Negative sizes in the returned struct 
+                                  with signify error codes, as errors 
+                                  thrown here simply crash the Python interpreter
+                                  with information. 
+    @Mod: N/A
+    */
     chunk_struct* parse_chunk_binary(const char* python_str_path) {
         // First let's convert the Python character array to a CPP string 
         std::string path(python_str_path);
@@ -41,18 +53,24 @@ extern "C" {
         // First, convert string to fs::path object
         fs::path filepath(path); 
 
-        // Ensure the file exists TODO: Change this to just return with an error code rather than 
-                                        // throw an error as it is imparasable by Python
+        // Ensure the file exists. If not, return with error code -1
         if(!fs::exists(filepath)) {
-            throw std::runtime_error("ERROR: Path does not exist: " + filepath.string());
+            chunk->M_size = -1;
+            chunk->M_size = -1;
+            chunk->M_size = -1;
+            chunk->M_size = -1;
         }
 
         // Open the file and read it as binary
         std::ifstream in_file(filepath, std::ios::binary);
 
-        // Ensure the file was properly opened 
+        // Ensure the file was properly opened. If not, return with 
+        // error code two  
         if(!in_file.is_open()) {
-            throw std::runtime_error("ERROR: Unable to open file: " + filepath.string());
+            chunk->M_size = -2;
+            chunk->M_size = -2;
+            chunk->M_size = -2;
+            chunk->M_size = -2;
         }
 
         // Create a cereal input archive for deserialization
@@ -83,6 +101,14 @@ extern "C" {
         return chunk; 
     }
 
+    /*
+    Free the dynamically allocated chunk.
+    @Param: chunk - chunk_struct*: structure containing all of the sensors'
+                    information for a given chunk. 
+    @Ret: N/A 
+    @Mod: Deletes all dynamically allocated memory in a chunk, as well as 
+          the chunk itself. 
+    */
     void free_chunk_struct(chunk_struct* chunk) {
         delete[] chunk->M;
         delete[] chunk->W;

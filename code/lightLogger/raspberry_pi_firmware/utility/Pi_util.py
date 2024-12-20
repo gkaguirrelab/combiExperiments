@@ -74,6 +74,10 @@ def parse_chunk_binary(chunk_path: str) -> dict:
                                         in chunk._fields_
                                         if '_size' in field} # Retrieve the sensor name by splicing out the _size portion of the name
         
+        # Assert that the CPP executed without error
+        assert(all(buffer_size != -1 for sensor, buffer_size in sensor_fields_and_sizes.items()))   # Error code: -1 means that the file does not exist
+        assert(all(buffer_size != -2 for sensor, buffer_size in sensor_fields_and_sizes.items()))   # Error code -2 means that the file could not be opened
+
         # Now, we will iterate over the fields and read them in as numpy arrays
         for sensor_field, buffer_size in sensor_fields_and_sizes.items():
             # Next, we will read in a numpy array of that size TODO: Will reshape to nMeasures x nFrames x nRows x nCols later
