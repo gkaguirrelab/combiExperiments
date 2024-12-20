@@ -41,7 +41,8 @@ extern "C" {
         // First, convert string to fs::path object
         fs::path filepath(path); 
 
-        // Ensure the file exists
+        // Ensure the file exists TODO: Change this to just return with an error code rather than 
+                                        // throw an error as it is imparasable by Python
         if(!fs::exists(filepath)) {
             throw std::runtime_error("ERROR: Path does not exist: " + filepath.string());
         }
@@ -75,8 +76,8 @@ extern "C" {
         chunk->P = new uint8_t[chunk->P_size]; // Allocate an array for the Pupil Camera readings
         std::copy(chunk_vector[2].begin(), chunk_vector[2].end(), chunk->P); // Copy over the memory to the return value
 
-        chunk->P_size = chunk_vector[2].size(); // First retrieve the number of values in the buffer
-        chunk->S = new uint8_t[chunk->P_size]; // Allocate an array for the sunglasses readings
+        chunk->S_size = chunk_vector[3].size(); // First retrieve the number of values in the buffer
+        chunk->S = new uint8_t[chunk->S_size]; // Allocate an array for the sunglasses readings
         std::copy(chunk_vector[3].begin(), chunk_vector[3].end(), chunk->S); // Copy over the memory to the return value
         
         return chunk; 

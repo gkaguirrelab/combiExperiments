@@ -5,6 +5,7 @@ from natsort import natsorted
 import pickle
 import pathlib
 import sys
+import ctypes
 
 # Import the MS utility library 
 light_logger_dir_path: str = str(pathlib.Path(__file__).parents[2]) 
@@ -12,6 +13,87 @@ MS_recorder_path: str = os.path.join(light_logger_dir_path, 'miniSpect')
 sys.path.append(MS_recorder_path)
 import MS_util
 
+"""Parse an entire recording captured with the C++ implementation of RPI firmware"""
+def parse_chunks_binary(recording_dir_path: str, start_chunk: int=0, end_chunk: int=None) -> list:
+    # First, let's find all of the chunks in sorted order
+    chunk_filepaths: list = [os.path.join(recording_dir_path, file)
+                            for file in natsorted(os.listdir(recording_dir_path))
+                            if 'chunk' in file][start_chunk:end_chunk]
+
+    # Now, let's read in all of the chunks
+    chunks: list = [parse_chunk_binary(chunk_path)
+                   for chunk_path in chunk_filepaths]
+
+    return chunks
+
+"""Parse an individual chunk that was captured with the C++ implementation of RPI firmware"""
+def parse_chunk_binary(chunk_path: str) -> dict:
+    # Load in the CPP deserialization library
+    cpp_parser_lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), "parse_chunk_binary.so"))
+
+    # Define the return type of the CPP deserialization function
+    class chunk_struct(ctypes.Structure):
+        _fields_ = [
+            ("M", ctypes.POINTER(ctypes.c_uint8)),
+            ("W", ctypes.POINTER(ctypes.c_uint8)),
+            ("P", ctypes.POINTER(ctypes.c_uint8)),
+            ("S", ctypes.POINTER(ctypes.c_uint8)),
+            ("M_size",ctypes.c_uint64),
+            ("W_size", ctypes.c_uint64),
+            ("P_size", ctypes.c_uint64),
+            ("S_size", ctypes.c_uint64),
+        ]
+
+    # Define argument and return type for the CPP deserialization function
+    cpp_parser_lib.parse_chunk_binary.argtypes = [ctypes.c_char_p]
+    cpp_parser_lib.parse_chunk_binary.restype = ctypes.POINTER(chunk_struct)
+
+    # Define the argument type for free_chunk_struct
+    cpp_parser_lib.free_chunk_struct.argtypes = [ctypes.POINTER(chunk_struct)]
+    cpp_parser_lib.free_chunk_struct.restype = None
+
+    """Helper function to parse chunks. Passes the path to CPP,
+       executes, and reads in the deserialized data as np.arrays.
+       Returns both the parsed chunk as a dictionary as well as its 
+       CPP memory pointer to free. """
+    def parse_chunk(path: str) -> tuple:
+        # Initialize a container to hold return values 
+        chunk_dict: dict = {}
+
+        # Convert the Python string path to a chunk binary file
+        # into a bytes object (C-compatible string)
+        c_path: bytes = path.encode('utf-8')
+
+        # Deserialize the chunk using CPP
+        chunk_ptr: ctypes.POINTER(chunk_struct) = cpp_parser_lib.parse_chunk_binary(c_path)
+        chunk: chunk_struct = chunk_ptr.contents
+
+        # Let's splice out only the fields with sensor values and their buffer sizes 
+        sensor_fields_and_sizes: list = {field.split('_')[0]: getattr(chunk, field)  
+                                        for (field, _) 
+                                        in chunk._fields_
+                                        if '_size' in field} # Retrieve the sensor name by splicing out the _size portion of the name
+        
+        # Now, we will iterate over the fields and read them in as numpy arrays
+        for sensor_field, buffer_size in sensor_fields_and_sizes.items():
+            # Next, we will read in a numpy array of that size TODO: Will reshape to nMeasures x nFrames x nRows x nCols later
+            buffer_as_np: np.ndarray = np.ctypeslib.as_array(getattr(chunk, sensor_field), shape=(buffer_size,))
+
+            # Append this buffer name and its buffer to the Python dict 
+            chunk_dict[sensor_field] = buffer_as_np
+
+        # Return the data as Python-compatible objects    
+        return chunk_ptr, chunk_dict
+
+
+    # Deserialize the binary file via CPP and read in the
+    # chunk's data into numpy arrays. 
+    cpp_chunk_pointer, chunk_dict = parse_chunk(chunk_path)
+
+    # Free the memory allocated in CPP for the chunk
+    cpp_parser_lib.free_chunk_struct(cpp_chunk_pointer)
+
+    return chunk_dict
 
 """Parse chunks that are stored in .pkl format, instead of broken down 
    into folders and cleanly stored"""
