@@ -1,52 +1,47 @@
+# Paths to libraries we will use
+UTILITY_DIR = ./utility
+AGC_DIR = ../camera/AGC_lib
+LIBRARIES_DIR = ./libraries
+CEREAL_DIR = ./libraries/cereal-1.3.2/include
+LIBCAMERA_DIR = ./libraries/libcamera/build/include
+LIBCAMERA_MISSING_HEADER_DIR = ./libraries/libcamera/include
+RPICAM_DIR = ./libraries/rpicam-apps	
+RPICAM_CORE_DIR = ./libraries/rpicam-apps/core
+RPICAM_SHARED_LIBRARY_DIR = /usr/lib/aarch64-linux-gnu
+BINARIES_DIR = ./binaries
+
 # Compiler and compiler flags
 CXX = g++
-CXXFLAGS = -Wall -Wextra -shared -O2 -fPIC -std=c++17
-LDFLAGS = -shared  # Linker flag to create a shared library
+CXXFLAGS = -Wall -Wextra -v -O3 -std=c++17  -I$(LIBRARIES_DIR) -I$(LIBCAMERA_DIR) -I$(AGC_DIR) -I$(CEREAL_DIR) -I$(RPICAM_DIR) -I$(LIBCAMERA_MISSING_HEADER_DIR) -I$(RPICAM_CORE_DIR)
+LDFLAGS = -L$(RPICAM_SHARED_LIBRARY_DIR) -lcamera
 
-# Directories
-SRC_DIR1 = ../camera/AGC_lib
-SRC_DIR2 = ../camera/downsample_lib
-BUILD_DIR = ../build
-BIN_DIR = ../bin
+# Define the name of the output executable
+OUTPUT_EXECUTABLE_NAME = FIRMWARE 
 
-# Output names
-AGC_TARGET = $(SRC_DIR1)/AGC.so
-DOWNSAMPLE_TARGET = $(SRC_DIR2)/downsample.so
+all: $(OUTPUT_EXECUTABLE_NAME) $(UTILITY_DIR)/parse_chunk_binary.so
 
-# Source files
-AGC_SRC = $(SRC_DIR1)/AGC.cpp
-DOWNSAMPLE_SRC = $(SRC_DIR2)/downsample.cpp
+# Target: Dependencies | Combine the .o files to make the firmware file
+$(OUTPUT_EXECUTABLE_NAME): $(BINARIES_DIR)/rpi_cpp.o $(BINARIES_DIR)/AGC.o 
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(BINARIES_DIR)/rpi_cpp.o $(BINARIES_DIR)/AGC.o -o $(OUTPUT_EXECUTABLE_NAME)
 
-# Object files
-AGC_OBJ = $(BUILD_DIR)/AGC.o
-DOWNSAMPLE_OBJ = $(BUILD_DIR)/downsample.o
+# Target: Dependencies | Make the RPI firmware into its .o file  
+$(BINARIES_DIR)/rpi_cpp.o: rpi_cpp.cpp 
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c rpi_cpp.cpp -o $(BINARIES_DIR)/rpi_cpp.o
 
-# Default rule: Build both programs
-all: $(AGC_TARGET) $(DOWNSAMPLE_TARGET)
+# Target: Dependencies | Make the Automatic Gain Control into its .o file
+$(BINARIES_DIR)/AGC.o: $(AGC_DIR)/AGC.cpp $(AGC_DIR)/AGC.h
+	$(CXX) $(CXXFLAGS) -c $(AGC_DIR)/AGC.cpp -o $(BINARIES_DIR)/AGC.o
 
-# Build AGC program
-$(AGC_TARGET): $(AGC_OBJ)
-	mkdir -p $(BIN_DIR)
-	$(CXX) $(LDFLAGS) $(AGC_OBJ) -o $@
 
-# Build Downsample program
-$(DOWNSAMPLE_TARGET): $(DOWNSAMPLE_OBJ)
-	mkdir -p $(BIN_DIR)
-	$(CXX) $(LDFLAGS) $(DOWNSAMPLE_OBJ) -o $@
+# Target: Dependencies | Make the parse_chunks_binary helper function a shared library so that Python can use it
+$(UTILITY_DIR)/parse_chunk_binary.so: $(UTILITY_DIR)/parse_chunk_binary.o
+	$(CXX) -shared $(UTILITY_DIR)/parse_chunk_binary.o -o $(UTILITY_DIR)/parse_chunk_binary.so
 
-# Compile AGC.cpp
-$(AGC_OBJ): $(AGC_SRC)
-	mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+# Target: Dependencies | Make the parse_chunk_binary helper function object file
+$(UTILITY_DIR)/parse_chunk_binary.o: $(UTILITY_DIR)/parse_chunk_binary.cpp 
+	$(CXX) $(CXXFLAGS) -fPIC -c $(UTILITY_DIR)/parse_chunk_binary.cpp -o $(UTILITY_DIR)/parse_chunk_binary.o
 
-# Compile Downsample.cpp
-$(DOWNSAMPLE_OBJ): $(DOWNSAMPLE_SRC)
-	mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+clean: 
+	rm -rf *.o FIRMWARE $(UTILITY_DIR)/*.o $(UTILITY_DIR)/*.so $(BINARIES_DIR)/*
 
-# Clean build files
-clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR) $(AGC_TARGET) $(DOWNSAMPLE_TARGET)
-
-# Phony targets
 .PHONY: all clean

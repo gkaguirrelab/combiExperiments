@@ -727,9 +727,9 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
     print(f'World Camera captured {frame_num} at ~{observed_fps} fps')
 
     # Downsample and append info to the write queue
-    for frame in range(frame_num): # Iterate over each frame captured
+    for i in range(frame_num): # Iterate over each frame captured
             # Downsample the frame and populate the downsampled buffer with this value
-            downsample(frame_buffer[frame], downsample_factor, downsampled_buffer[frame], downsample_lib) 
+            downsample(frame_buffer[i], downsample_factor, downsampled_buffer[i], downsample_lib) 
 
     write_queue.put(('W', downsampled_buffer[:frame_num], frame_num))
 
@@ -738,7 +738,7 @@ def lean_capture_helper(cam: object, duration: int, current_gain: float, current
 
 
 """"""
-def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int,
+def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int, world_queue,
                  initial_gain: float = 1, initial_exposure=100):
 
     # Connect to and initialize the camera
@@ -772,7 +772,7 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, duration: int,
         print('World Cam | Awaiting GO')
         # Retrieve whether we should go or not from 
         # the main process 
-        GO: bool = receive_queue.get()
+        GO: bool = world_queue.get()
 
         # If GO received special flag, we end completely
         if(GO is False):

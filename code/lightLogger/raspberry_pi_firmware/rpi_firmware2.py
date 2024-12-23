@@ -31,7 +31,7 @@ import MS_recorder
 import pupil_recorder
 
 # Placeholder for testing purposes
-test_filepath: str = "/media/rpiControl/FF5E-7541/measurePupilTimings_5hz_0NDF"
+test_filepath: str = "/media/rpiControl/FF5E-7541/bufferTest5_5hz_0NDF"
 
 """"""
 def write_process(names: tuple, receive_queue: mp.Queue, 
@@ -88,8 +88,8 @@ def write_process(names: tuple, receive_queue: mp.Queue,
                     finished_dict[name] = True 
                     print(f'FINISHED Dict: {finished_dict}')    
 
-                # Determine whether to send GO or STOP signals (if all sensors are ready)
-                if(all(state is True for name, state in ready_dict.items())):
+                # Determine whether to send GO or STOP signals (if all sensors are ready and we finished writing the last chunk)
+                if(all(state is True for name, state in ready_dict.items()) and all(val is None for name, val in write_dict.items())):
                     # Incrememnt the finished chunks container 
                     chunks_completed += 1 
 
@@ -104,7 +104,7 @@ def write_process(names: tuple, receive_queue: mp.Queue,
                         ready_dict[name] = not state
 
                     # Populate the queue with one of these GO signals for each sensor
-                    for _ in range(len(names)): send_queue.put(signal)
+                    for _ in range(len(names) - 1): send_queue.put(signal)
 
                 # Determine whether to STOP waiting for values (if all sensors have finished)
                 if(all(state is True for name, state in finished_dict.items())):
@@ -121,7 +121,7 @@ def write_process(names: tuple, receive_queue: mp.Queue,
                 assert(write_dict[name] is None)
 
                 # Place this sensor's data into the dictionary, 
-                write_dict[name] = tuple(vals)
+                write_dict[name] = vals
 
                 # If all sensors have something to write from a chunk, we are ready to write
                 if(all(value is not None for sensor, value in write_dict.items())):
@@ -144,7 +144,7 @@ def main():
     processes: list = []
 
     # Define the number of recording bursts and duration (s) of a recording burst 
-    n_bursts: int = 6 * 30 # 2 minutes
+    n_bursts: int = 6 * 20 # 2 minutes
     burst_duration: int = 10
 
     # Initialize a multiprocessing-safe queue to store data 
@@ -155,12 +155,15 @@ def main():
     # to the sensors 
     send_data_queue: mp.Queue = mp.Queue()
 
+    # World data
+    world_queue = mp.Queue()
+
     # Initialize tuples of names for the processes we will use
     names: tuple = ('Output', 'World', 'MS', 'Pupil') #'MS', 'Pupil')
 
     # Define the recorders used by the processes as well as their respective arguments
     recorders: tuple = (write_process, world_recorder.lean_capture, MS_recorder.lean_capture, pupil_recorder.lean_capture) #MS_recorder.lean_capture, pupil_recorder.lean_capture)
-    process_args: tuple = tuple([ (names[1:], receive_data_queue, send_data_queue, n_bursts) ] + [ (receive_data_queue, send_data_queue, burst_duration) for i in range(len(names[1:])) ])
+    process_args: tuple = tuple([ (names[1:], receive_data_queue, send_data_queue, n_bursts) ] + [ (receive_data_queue, send_data_queue, burst_duration, world_queue) for i in range(len(names[1:])) ])
 
     # Generate the process objects
     start_time: float = time.time()
@@ -179,7 +182,7 @@ def main():
     # Sleep for 2 seconds to allow for initialization, then send GO signals 
     # for the first time
     time.sleep(2)
-    for _ in range(len(names[1:])): send_data_queue.put(True)
+    for _ in range(len(names[1:]) - 1): send_data_queue.put(True)
 
     # Wait for the processes to finish 
     for process in processes:

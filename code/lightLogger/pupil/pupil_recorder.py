@@ -15,9 +15,10 @@ import setproctitle
 import sys
 import uvc
 import multiprocessing as mp
+import gc
 
 # The FPS we have locked the camera to
-CAM_FPS: int = 90
+CAM_FPS: int = 120
 
 # The origial dimensions of the camera before downsampling 
 CAM_IMG_DIMS: np.ndarray = np.array((400, 400), dtype=np.uint16)
@@ -467,10 +468,10 @@ def record_video(duration: float, write_queue: queue.Queue,
 
 
 def lean_capture_helper(cam: object, duration: int, 
+                       downsampled_buffer,
                        frame_buffer: np.ndarray,
-                       downsampled_buffer: np.ndarray, 
-                       timings_buffer: np.ndarray, 
-                       write_queue: mp.Queue):
+                       write_queue: mp.Queue,
+                       world_queue):
 
     # Begin timing capture
     start_time = time.time() 
@@ -478,9 +479,6 @@ def lean_capture_helper(cam: object, duration: int,
     # Define indices to place frames/settings into the 
     # provided buffers
     frame_num: int = 0
-
-    # Define a container for when the first frame was captured
-    first_frame_capture: float = None
 
     # Capture duration of frames
     while(True):
@@ -496,14 +494,10 @@ def lean_capture_helper(cam: object, duration: int,
 
         # Capture the frame
         frame_obj: uvc_bindings.MJPEGFrame = cam.get_frame_robust()
-
-        #frame = np.empty((400,400), dtype=np.uint8)
+        if(frame_num == 0): world_queue.put(True)
 
         # Store the grayscale frame + settings into the allocated memory buffers
         frame_buffer[frame_num] = frame_obj.gray
-        timings_buffer[frame_num] = frame_obj.timestamp
-
-        assert(frame_obj.data_fully_received is True)
 
         # Record the next frame number
         frame_num += 1 
@@ -516,18 +510,18 @@ def lean_capture_helper(cam: object, duration: int,
     observed_fps: float = frame_num/(end_time-start_time)
     print(f'Pupil cam captured {frame_num} at {observed_fps} fps')
 
-    for frame in range(frame_num):
-        downsampled_buffer[frame] = cv2.resize(frame_buffer[frame], downsampled_buffer.shape[1:])
+    for i in range(frame_num):
+        cv2.resize(frame_buffer[i], downsampled_buffer.shape[1:], dst=downsampled_buffer[i])
 
     # Append the chunk to the write queue 
-    write_queue.put(('P', downsampled_buffer[:frame_num], timings_buffer[:frame_num], frame_num))
+    write_queue.put(('P', downsampled_buffer[:frame_num], frame_num))
     
     # Signal the end of the write queue
     write_queue.put(('P', None)) 
 
 
 def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue, 
-                 duration: int):
+                 duration: int, world_queue):
     # Initialize the camera
     cam: uvc.Capture = initialize_camera()
     #cam = None
@@ -536,21 +530,23 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue,
     # their respective settings. Allocate an additioanl second worth of frames 
     # in case we capture more than the target FPS (like 120.1) for instance
     frame_buffer: np.array = np.empty(((duration + 1) * CAM_FPS, *CAM_IMG_DIMS), dtype=np.uint8)
-    timings_buffer: np.ndarray = np.empty(((duration + 1) * CAM_FPS,), dtype=np.float32)
 
     downsampled_image_shape: tuple = (CAM_IMG_DIMS * 0.1).astype(np.uint16)
     downsampled_buffer = np.zeros(((duration+1) * CAM_FPS, *downsampled_image_shape), dtype=np.uint8)
+
 
     print('Pupil Cam | Initialized')
 
     # Remain initialized and ready to capture until we have received a STOP
     STOP: bool = False
+    interchunk_frames = 0
     while(STOP is False):
         print('Pupil Cam | Awaiting GO')
         # Retrieve whether we should go or not from 
         # the main process 
         GO: bool | int = receive_queue.get()
 
+            
         # If GO received special flag, we end completely
         if(GO is False):
             print('Pupil Cam | Received STOP')
@@ -560,15 +556,19 @@ def lean_capture(write_queue: mp.Queue, receive_queue: mp.Queue,
         # Otherwise, we capture a burst of duration long 
         while(GO is True):
             print(f'Pupil Cam | Capturing chunk')
+            #gc.disable()
             # Capture a burst of frames
             lean_capture_helper(cam, duration,
-                                frame_buffer, 
                                 downsampled_buffer,
-                                timings_buffer,
-                                write_queue)
+                                frame_buffer, 
+                                write_queue,
+                                world_queue)
 
             # Set GO back to False 
             GO = False
+            interchunk_frames = 0 
+            #gc.collect()
+            #gc.enale()
 
     # Append to the main process queue and let it know we are really done 
     write_queue.put(('P', False))
@@ -614,7 +614,7 @@ def initialize_camera() -> object:
     cam: uvc.Capture = uvc.Capture(device["uid"])
 
     # Set the camera to be 192x192 @ 120 FPS
-    cam.frame_mode = cam.available_modes[-2] # 3 for 192x192 @ 120 -1 for 400x400 @ 120 (-2 for 90)
+    cam.frame_mode = cam.available_modes[-1] # 3 for 192x192 @ 120 -1 for 400x400 @ 120 (-2 for 90)
 
     # Retrieve the controls dict
     controls_dict: dict = {c.display_name: c for c in cam.controls}
