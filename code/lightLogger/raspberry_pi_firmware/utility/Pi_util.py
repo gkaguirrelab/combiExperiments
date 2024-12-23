@@ -26,10 +26,7 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
         frame_buffer: np.ndarray = val_tuple[0].astype(np.uint8)
 
         # Third and Fourth values are always the num_captured_frames and observed FPS 
-        num_captured_frames, observed_fps = val_tuple[2:]
-
-        # Splice only the captured frames from the buffer 
-        frame_buffer = frame_buffer[:num_captured_frames]
+        num_captured_frames = val_tuple[1]
         
         #If we want to only use the mean of each frame, not the entire frame
         if(use_mean_frame):
@@ -37,16 +34,16 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
 
         # Second value is always the settings buffer for this chunk
         # The settings are in the format [duration, FPS gain, exposure]
-        settings_buffer: np.ndarray = val_tuple[1].astype(np.float64)
+        #settings_buffer: np.ndarray = val_tuple[1].astype(np.float64)
 
         # Now splice only the captured frames from the settings buffer 
-        settings_buffer = settings_buffer[:num_captured_frames]
+        #settings_buffer = settings_buffer[:num_captured_frames]
  
         print(f'Frame Buffer Shape: {frame_buffer.shape}')
-        print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
+        print(f'Captured Frames: {num_captured_frames}')
                                      
                                                                                      # Make this a float for MATLAB use later
-        return {'frame_buffer': frame_buffer, 'settings_buffer': settings_buffer, 'num_frames_captured': float(num_captured_frames), 'FPS': observed_fps}
+        return {'frame_buffer': frame_buffer, 'settings_buffer': 0, 'num_frames_captured': float(num_captured_frames)}
 
     """Parser for the raw Pupil data per chunk"""
     def pupil_parser(val_tuple: tuple) -> dict:
@@ -55,21 +52,18 @@ def parse_chunks_pkl(experiment_path: str, use_mean_frame: bool=False) -> list:
         # First value is always the frame buffer for this chunk
         frame_buffer: np.ndarray = val_tuple[0].astype(np.uint8)
 
-        # Second value and third value are always num_captured_frames and observed FPS
-        num_captured_frames, observed_fps = val_tuple[1:]
-
-        # Splice out only the frames we captured from the buffer 
-        frame_buffer = frame_buffer[:num_captured_frames]
+        # Second value, third value are always num_captured_frames, observed FPS
+        num_captured_frames: int = val_tuple[1]
         
         # If we want to only use the mean of each frame, not the entire frame
         if(use_mean_frame):
             frame_buffer = np.mean(frame_buffer, axis=(1,2))
 
         print(f'Frame Buffer Shape: {frame_buffer.shape}')
-        print(f'Captured Frames: {num_captured_frames} | FPS: {observed_fps}')
+        print(f'Captured Frames: {num_captured_frames}')
          
                                                 # Make this a float for MATLAB use later
-        return {'frame_buffer': frame_buffer, 'num_frames_captured': float(num_captured_frames), 'FPS': observed_fps}
+        return {'frame_buffer': frame_buffer, 'num_frames_captured': float(num_captured_frames) }
 
     """Parser for the raw MS data per chunk"""
     def ms_parser(val_tuple: tuple) -> dict:    
