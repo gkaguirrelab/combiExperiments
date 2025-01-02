@@ -34,16 +34,14 @@ function [sourceSPD,detectorSPD,modelS,sourceWeights,fVal] = environmentSPDfromM
 %
 % Examples:
 %{
-    calPath = fullfile(tbLocateProjectSilent('combiExperiments'),'cal','CombiLED_shortLLG_testSphere_ND0x2.mat');
-    load(calPath,'cals');
-    cal = cals{end};
-	detectorWeights = [307, 466, 1024, 1401, 1464, 1259, 1570, 444, 3740, 228];
-    [sourceSPD,detectorSPD,modelS,sourceWeights,fVal] = environmentSPDfromMiniSpect(detectorWeights,'modelSet','CombiLED','cal',cal);  
+    % This set of detector weights corresponds to a uniform source spectrum
+	detectorWeights = [ 790   1120   1450   1900   2030   2250   1560   1900   6480    370];
+    [sourceSPD,detectorSPD,modelS,sourceWeights,fVal] = environmentSPDfromMiniSpect(detectorWeights,'modelSet','polynomial');  
 %}
 
 arguments
     detectorWeights (1,10) {isvector}
-    options.modelSet (1,:) char {mustBeMember(options.modelSet,{'CombiLED','environment'})} = 'CombiLED'
+    options.modelSet (1,:) char {mustBeMember(options.modelSet,{'CombiLED','polynomial','environment'})} = 'CombiLED'
     options.cal (1,:) struct = [];
 end
 
@@ -70,6 +68,18 @@ switch options.modelSet
         lb = [0 -Inf -Inf];
         ub = [Inf Inf Inf];
         x0 = [1 1 1];
+    case 'polynomial'
+        degree = 10;
+        modelS = detectorS;
+        shapefcn = polyBasis('chebyshev',degree);
+        modelP = zeros(modelS(3),degree+1);
+        for ii = 0:modelS(3)-1
+            idx = (ii-modelS(3)/2)/(modelS(3)/2);
+            modelP(ii+1,:) = [1 shapefcn(idx)];            
+        end
+        lb = -inf(1,degree+1);
+        ub = inf(1,degree+1);
+        x0 = zeros(1,degree+1);
     case 'CombiLED'
         modelS = options.cal.rawData.S;
         modelP = options.cal.processedData.P_device;
