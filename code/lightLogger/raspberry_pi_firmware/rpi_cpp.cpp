@@ -28,6 +28,8 @@ ALL LIBRARIES INCLUDED ABOVE HERE. MUST COMPILE WITH THE "libraries""
 FOLDER FROM CURRENT DIRECTORY INCLUDED
 */
 
+// NOTE: You MUST!!! run this program with sudo. Otherwise, the world camera will not connect
+
 /*
 Parse the command line arguments to the program 
 @Param: argc: int - commandline argument count, 
@@ -365,8 +367,34 @@ int world_recorder(const uint32_t duration,
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
     
+    // Define variables to detect the camera 
     static std::shared_ptr<libcamera::Camera> camera;
     std::unique_ptr<libcamera::CameraManager> cm = std::make_unique<libcamera::CameraManager>();
+
+    // Initialize the camera manager to begin manipulating camera devices 
+    cm->start();
+
+    // Retrieve the cameras themselves. If the world cam was not detected, throw an error
+    auto cameras = cm->cameras();
+    if (cameras.empty()) {
+        std::cout << "World Camera | Camera not found." << '\n';
+        cm->stop();
+        return EXIT_FAILURE;
+    }
+
+    // Retrieve the first available camera from the manager to be the world camera 
+    camera = cm->get(cameras[0]->id());
+
+    // Acquire the camera 
+    camera->acquire();
+
+    // Define the configuration foro the camera
+    std::unique_ptr<libcamera::CameraConfiguration> config = camera->generateConfiguration( { libcamera::StreamRole::Viewfinder } );
+
+    libcamera::StreamConfiguration &streamConfig = config->at(0);
+    std::cout << "Default viewfinder configuration is: " << streamConfig.toString() << std::endl;
+
+    
 
     // Initialize a counter for how many frames we are going to capture, 
     // and the size of our buffers 
@@ -444,6 +472,8 @@ int world_recorder(const uint32_t duration,
 
     // Close the connection to the Camera device
     std::cout << "World | Closing..." << '\n'; 
+    camera->release();
+
 
     std::cout << "World | Closed." << '\n'; 
 
