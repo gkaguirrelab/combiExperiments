@@ -95,6 +95,11 @@ int write_process_parallel(const fs::path* output_dir,
                            std::vector<std::vector<uint8_t>>* buffers_one, 
                            std::vector<std::vector<uint8_t>>* buffers_two) 
     {
+
+    // TODO: We may be able to cut down on the write time by writing only the bytes of the pupil 
+    // that have been filled (as we are using compressed MJPEG, not all 8x400x400 bytes are used. In fact, 
+    // many less than that are used)
+
     // Let the user know the write process started successfully 
     std::cout << "Write | Initialized" << '\n';
     
@@ -446,6 +451,56 @@ int world_recorder(const uint32_t duration,
     return 0;
 }
 
+
+
+/*
+Callback function for libUVC when it retrieves a frame from the pupil recorder
+@Param:
+@Ret: 
+@Mod: 
+*/
+typedef struct {
+    std::chrono::steady_clock::time_point start_time; 
+    size_t frame_num; 
+    uint16_t buffer_size_frames; 
+    uint8_t current_buffer;
+    std::vector<uint8_t>* buffer;
+    std::vector<uint8_t>* buffer_one; 
+    std::vector<uint8_t>* buffer_two; 
+    size_t buffer_offset; 
+} callback_data;
+
+void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
+    // Convert the usr_pointer to be a data struct    
+    callback_data *data = static_cast<callback_data*>(ptr);
+
+    // Retrieve information we will lookup often from the struct onto the stack 
+    size_t frame_num = data->frame_num;
+    size_t buffer_size_frames = data->buffer_size_frames;
+
+    // Swap buffers if this one is full
+    if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
+
+        // If we are using buffer two, switch to buffer one, otherwise vice versa
+        data->buffer = (data->current_buffer % 2 == 0) ? data->buffer_one : data->buffer_two;
+        
+        // Update the current buffer state
+        data->current_buffer = (data->current_buffer % 2) + 1;
+    }
+
+    // Save the desired frame into the buffer
+    // The number of bytes from the frame are not equal to the number of bytes I have calculated because MJPEG compresses data.
+    // This means it is not constant in size. Need to figure out how to do handle this
+    std::cout << "Their calculation of number of bytes: " << frame->data_bytes << '\n';
+    std::cout << "The number of rows per UVC: " << frame->height << " The number of cols per UVC: " << frame->width << '\n';
+    
+    std::memcpy(data->buffer->data() + data->buffer_offset, frame->data, frame->data_bytes);
+
+    // Increment the number of captured frames and the offset into the data buffer 
+    data->frame_num+=1;
+    data->buffer_offset += frame->data_bytes; 
+}
+
 /*
 Continous recorder for the Pupil Camera.
 @Param: duration: uint32_t - Time in seconds to record for. 
@@ -465,62 +520,92 @@ int pupil_recorder(const uint32_t duration,
     uvc_device_t *dev;
     uvc_device_handle_t *devh;
     uvc_stream_ctrl_t ctrl;
-
     uvc_error_t res;
-
-
-    // Initialize libUVC 
+    
     std::cout << "Pupil | Initializating..." << '\n'; 
 
-    // Initialize a counter for how many frames we are going to capture 
-    // and how big our buffer is
-    size_t frame_num = 0; 
-    
+    // Initialize libUVC 
+    res = uvc_init(&ctx, NULL);
+    if (res < 0) {
+        uvc_perror(res, "uvc_init");
+        return 1;
+    }
+
+    // Attempt to find the device (via VendorID and productID)
+    res = uvc_find_device(ctx, &dev, 0x0C45, 0x64AB, NULL);
+    if (res < 0) {
+        uvc_perror(res, "uvc_find_device");
+        uvc_exit(ctx);
+        return 1;
+    }
+
+    // Attempt to open the device
+    res = uvc_open(dev, &devh, 1);
+    if (res < 0) {
+        uvc_perror(res, "uvc_open");
+        uvc_unref_device(dev);
+        uvc_exit(ctx);
+        return 1;
+    }
+
+    // Attempt to set the video format
+    constexpr size_t img_rows = 400;
+    constexpr size_t img_cols = 400; 
+    constexpr size_t fps = 120;
+    res = uvc_get_stream_ctrl_format_size(devh, &ctrl, UVC_COLOR_FORMAT_MJPEG, img_rows, img_cols, fps, 1);
+    if (res < 0) {
+        std::cout << "ERROR! "<< uvc_strerror(res) << '\n';
+        uvc_close(devh);
+        uvc_unref_device(dev);
+        uvc_exit(ctx);
+        return 1;
+    }
+
     std::cout << "Pupil | Initialized." << '\n';
+
+    // Initialize a counter for how many frames we are going to capture 
+    // and how many bytes each frame is
+    size_t frame_num = 0; 
 
     // Set the initial buffer pointer to buffer 1
     std::vector<uint8_t>* buffer = buffer_one;
     uint8_t current_buffer = 1;
 
+    // Initialize a struct containing data for the callback function when frames are captured 
+    callback_data data;
+    data.frame_num = frame_num;
+    data.buffer_size_frames = buffer_size_frames; 
+    data.current_buffer = current_buffer; 
+    data.buffer = buffer; 
+    data.buffer_offset = 0; 
+    data.buffer_one = buffer_one; 
+    data.buffer_two = buffer_two; 
+    data.start_time = std::chrono::steady_clock::now(); 
+
     // Begin recording for the given duration
     std::cout << "Pupil | Beginning recording..." << '\n';
-    auto start_time = std::chrono::steady_clock::now(); // Capture the start time
-    while(true) {
-        // Capture the elapsed time since start and ensure it is in the units of seconds
-        auto current_time = std::chrono::steady_clock::now();
-        auto elapsed_time = current_time - start_time;
-        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
-
-        // End recording if we have reached the desired duration. 
-        if ((uint32_t) elapsed_seconds >= duration) {
-            break;
-        }
-
-        // Swap buffers if this one is full
-        if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
-
-            // If we are using buffer two, switch to buffer one, otherwise vice versa
-            buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
-            
-            // Update the current buffer state
-            current_buffer = (current_buffer % 2) + 1;
-        }
-
-        // Capture the desired frame
-        int frame = 100;
-
-        // Save the desired frame into the buffer
-        (*buffer)[frame_num % buffer_size_frames] = frame; 
-
-        // Increment the number of captured frames
-        frame_num++;
+    res = uvc_start_streaming(devh, &ctrl, pupil_frame_callback, &data, 0, 1);
+    if (res < 0) {
+        std::cerr << "Unable to start streaming: " << uvc_strerror(res) << std::endl;
+        uvc_close(devh);
+        uvc_unref_device(dev);
+        uvc_exit(ctx);
+        return 1;
     }
 
+    // Stop streaming after a given duration
+    std::this_thread::sleep_for(std::chrono::seconds(duration));
+    uvc_stop_streaming(devh);
+    
     // Output information about how much data we captured 
-    std::cout << "Pupil | Captured Frames: " << frame_num << '\n';
+    std::cout << "Pupil | Captured Frames: " << data.frame_num << '\n';
 
     // Close the connection to the Camera device
     std::cout << "Pupil | Closing..." << '\n'; 
+    
+    uvc_close(devh);
+    uvc_unref_device(dev);
+    uvc_exit(ctx);
 
     std::cout << "Pupil | Closed." << '\n'; 
 
