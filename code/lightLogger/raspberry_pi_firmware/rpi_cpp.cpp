@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <memory>
 #include <thread>
-#include <AGC.h>
+#include "AGC.h"
 #include <thread>
 #include <vector>
 #include <fstream>
@@ -18,6 +18,8 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
+#include <libcamera/libcamera.h>
+#include <libuvc/libuvc.h>
 
 namespace fs = std::filesystem; 
 
@@ -358,6 +360,9 @@ int world_recorder(const uint32_t duration,
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
     
+    static std::shared_ptr<libcamera::Camera> camera;
+    std::unique_ptr<libcamera::CameraManager> cm = std::make_unique<libcamera::CameraManager>();
+
     // Initialize a counter for how many frames we are going to capture, 
     // and the size of our buffers 
     size_t frame_num = 0; 
@@ -455,6 +460,15 @@ int pupil_recorder(const uint32_t duration,
                    std::vector<uint8_t>* buffer_two,
                    const uint16_t buffer_size_frames) 
     {
+    
+    uvc_context_t *ctx;
+    uvc_device_t *dev;
+    uvc_device_handle_t *devh;
+    uvc_stream_ctrl_t ctrl;
+
+    uvc_error_t res;
+
+
     // Initialize libUVC 
     std::cout << "Pupil | Initializating..." << '\n'; 
 
