@@ -369,13 +369,8 @@ typedef struct {
 } world_callback_data;
 
 static void world_frame_callback(libcamera::Request *request) {
-    std::cout << "CAPTURED A FRAME" << '\n';
-
     // Determine if we have received invalid image data (e.g. during application shutdown)
     if (request->status() == libcamera::Request::RequestCancelled) {return;}
-
-    // Retrieve a map of FrameBuffer instances associated with the Stream that produced the images.
-    //const std::map<const libcamera::Stream*, libcamera::FrameBuffer *> &buffers = request->buffers();
 
     // Define a variable to hold the arguments passed to the callback function
     world_callback_data* data; 
@@ -419,8 +414,13 @@ static void world_frame_callback(libcamera::Request *request) {
 		 * Image data can be accessed here, but the FrameBuffer
 		 * must be mapped by the application
 		 */
-	}
+	
+    
+    
+    }
 
+    // Increment the frame number
+    data->frame_num++; 
 
     // Put the frame buffer back into circulation with the camera
     request->reuse(libcamera::Request::ReuseBuffers);
@@ -632,11 +632,11 @@ int world_recorder(const uint32_t duration,
         // Increment the number of captured frames
         frame_num++;
     }
+    */
     
 
     // Output information about how much data we captured 
-    std::cout << "World | Captured Frames: " << frame_num << '\n';
-    */
+    std::cout << "World | Captured Frames: " << data.frame_num << '\n';
 
     // Close the connection to the Camera device
     std::cout << "World | Closing..." << '\n';
