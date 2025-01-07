@@ -20,6 +20,7 @@
 #include <linux/i2c-dev.h>
 #include <libcamera/libcamera.h>
 #include <libuvc/libuvc.h>
+#include <sys/mman.h>
 
 namespace fs = std::filesystem; 
 
@@ -381,47 +382,46 @@ static void world_frame_callback(libcamera::Request *request) {
     // Retrieve the current time (used to determine when we will change AGC settings)
     auto current_time = std::chrono::steady_clock::now();
 
-    //const libcamera::ControlList &requestMetadata = request->metadata();
-	//for (const auto &ctrl : requestMetadata) {
-	//	const libcamera::ControlId *id = libcamera::controls::controls.at(ctrl.first);
-	//	const libcamera::ControlValue &value = ctrl.second;
-
-		//std::cout << "\t" << id->name() << " = " << value.toString()
-		//	  << std::endl;
-	//}
-
-    // This should be 1 
+    // There should be a single buffer per capture
     const libcamera::Request::BufferMap &buffers = request->buffers();
-	for (auto bufferPair : buffers) {
-		// (Unused) Stream *stream = bufferPair.first;
-		libcamera::FrameBuffer *buffer = bufferPair.second;
-		const libcamera::FrameMetadata &metadata = buffer->metadata();
+    auto buffer_pair = *buffers.begin();
 
-        // Retrieve the arguments data for the callback function
-        data = reinterpret_cast<world_callback_data*>(buffer->cookie());
+    // (Unused) Stream *stream = bufferPair.first;
+    libcamera::FrameBuffer *buffer = buffer_pair.second;
+    const libcamera::FrameMetadata &metadata = buffer->metadata();
 
-        // RAW images have 1 plane, so retrieve the plane the data lies on
-        libcamera::FrameBuffer::Plane pixel_data_plane = buffer->planes()[0]; 
+    // Retrieve the arguments data for the callback function
+    data = reinterpret_cast<world_callback_data*>(buffer->cookie());
 
-        // Change the AGC every 250 milliseconds
-        if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
-            // Calculate the mean of the pixel data. This will be the input to the AGC
-            uint8_t mean_intensity = 127; 
-        
-            // Input the mean intensity of the current frame to the AGC. Retrieve corrected gain and exposure. 
-            RetVal adjusted_settings = AGC(mean_intensity, data->current_gain, data->current_exposure, data->speed_setting);
+    // RAW images have 1 plane, so retrieve the plane the data lies on
+    libcamera::FrameBuffer::Plane pixel_data_plane = buffer->planes()[0];
 
-            // Update the gain and exposure settings 
-            libcamera::ControlList &controls = request->controls();
-            controls.set(libcamera::controls::AnalogueGain,  static_cast<int32_t>(adjusted_settings.adjusted_gain));
-            controls.set(libcamera::controls::ExposureTime, static_cast<float>(adjusted_settings.adjusted_exposure));
+    // Retireve the plane data from the object 
+    void *memory_map = mmap(nullptr, pixel_data_plane.length + pixel_data_plane.offset, PROT_READ | PROT_WRITE, MAP_SHARED, pixel_data_plane.fd.get(), 0); 
 
-            // Update the last AGC change time 
-            data->last_agc_change = current_time;
+    // Cast to byte array 
+    uint8_t* pixel_data = static_cast<uint8_t*>(memory_map) + pixel_data_plane.offset;
 
-        }    
+    // Copy to the given buffer TODO: Need to fix this by having different offsets for the different buffers, but right now just testing
+    //std::memcpy(data->buffer->data(), pixel_data, pixel_data_plane.length); //Replace 0 with the start index of where this img should go
+
+    // Change the AGC every 250 milliseconds
+    if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
+        // Calculate the mean of the pixel data. This will be the input to the AGC
+        uint8_t mean_intensity = 127; 
     
-    }
+        // Input the mean intensity of the current frame to the AGC. Retrieve corrected gain and exposure. 
+        RetVal adjusted_settings = AGC(mean_intensity, data->current_gain, data->current_exposure, data->speed_setting);
+
+        // Update the gain and exposure settings 
+        libcamera::ControlList &controls = request->controls();
+        controls.set(libcamera::controls::AnalogueGain, static_cast<int32_t>(adjusted_settings.adjusted_gain));
+        controls.set(libcamera::controls::ExposureTime, static_cast<float>(adjusted_settings.adjusted_exposure));
+
+        // Update the last AGC change time 
+        data->last_agc_change = current_time;
+    }    
+    
 
     // Increment the frame number
     data->frame_num++; 
@@ -711,7 +711,7 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
 
     // Increment the number of captured frames and the offset into the data buffer 
     data->frame_num+=1;
-    data->buffer_offset += frame->data_bytes; 
+    data->buffer_offset += frame->data_bytes;  // TODO: THIS WILL NOT WORK CURRENTLY, NEED TWO SEPARATE OFFSETS FOR BOTH BUFFERS
 }
 
 /*
