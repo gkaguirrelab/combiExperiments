@@ -12,7 +12,7 @@ BINARIES_DIR = ./binaries
 # Compiler and compiler flags
 CXX = g++
 CXXFLAGS = -Wall -Wextra -v -O3 -std=c++17 -I$(LIBRARIES_DIR) -I$(LIBCAMERA_INCLUDE_DIR) -I$(AGC_DIR) -I$(CEREAL_DIR) -I$(LIBUVC_INCLUDE_DIR)
-LDFLAGS = -L$(LIBCAMERA_LIB_DIR) -lcamera -L$(LIBCAMERA_LIB_DIR) -luvc -lusb-1.0
+LDFLAGS = -L$(LIBCAMERA_LIB_DIR) -lcamera -lcamera-base -L$(LIBCAMERA_LIB_DIR) -luvc -lusb-1.0 -pthread
 
 # Define the name of the output executable
 OUTPUT_EXECUTABLE_NAME = FIRMWARE 

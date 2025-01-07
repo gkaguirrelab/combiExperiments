@@ -364,6 +364,11 @@ int world_recorder(const uint32_t duration,
                    std::vector<uint8_t>* buffer_two,
                    const uint16_t buffer_size_frames) 
     {
+    // Define parameters for the video stream 
+    constexpr size_t cols = 640; 
+    constexpr size_t rows = 480;
+    
+    
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
     
@@ -388,13 +393,66 @@ int world_recorder(const uint32_t duration,
     // Acquire the camera 
     camera->acquire();
 
-    // Define the configuration foro the camera
+    // Define the configuration for the camera
     std::unique_ptr<libcamera::CameraConfiguration> config = camera->generateConfiguration( { libcamera::StreamRole::Viewfinder } );
 
     libcamera::StreamConfiguration &streamConfig = config->at(0);
     std::cout << "Default viewfinder configuration is: " << streamConfig.toString() << std::endl;
 
+    streamConfig.size.width = cols;
+    streamConfig.size.height = rows;
+
+    config->validate();
+    std::cout << "Validated viewfinder configuration is: " << streamConfig.toString() << std::endl;
+
+    camera->configure(config.get());
+
+    // Allocate buffers for the frames we will capture 
+    libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator(camera);
+
+    for (libcamera::StreamConfiguration &cfg : *config) {
+        int ret = allocator->allocate(cfg.stream());
+        if (ret < 0) {
+            std::cerr << "Can't allocate buffers" << std::endl;
+            return -ENOMEM;
+        }
+
+        size_t allocated = allocator->buffers(cfg.stream()).size();
+        std::cout << "Allocated " << allocated << " buffers for stream" << std::endl;
+    }
+
+
+    // Initialize the capture stream 
+    libcamera::Stream *stream = streamConfig.stream();
+    const std::vector<std::unique_ptr<libcamera::FrameBuffer>> &buffers = allocator->buffers(stream);
+    std::vector<std::unique_ptr<libcamera::Request>> requests;
+
+
+    for (size_t i = 0; i < buffers.size(); ++i) {
+        std::unique_ptr<libcamera::Request> request = camera->createRequest();
+       
     
+        if (!request)
+        {
+            std::cerr << "Can't create request" << std::endl;
+            return 1;
+        }
+        
+        const std::unique_ptr<libcamera::FrameBuffer> &buffer = buffers[i];
+        int ret = request->addBuffer(stream, buffer.get());
+
+  
+        if (ret < 0)
+        {
+            std::cerr << "Can't set buffer for request"
+                << std::endl;
+            return 1;
+        }
+
+        requests.push_back(std::move(request));
+    }
+    
+    /*
 
     // Initialize a counter for how many frames we are going to capture, 
     // and the size of our buffers 
@@ -466,17 +524,20 @@ int world_recorder(const uint32_t duration,
         // Increment the number of captured frames
         frame_num++;
     }
+    
 
     // Output information about how much data we captured 
     std::cout << "World | Captured Frames: " << frame_num << '\n';
+    */
 
     // Close the connection to the Camera device
-    std::cout << "World | Closing..." << '\n'; 
+    std::cout << "World | Closing..." << '\n';
+    //delete allocator;  
     camera->release();
+    cm->stop();
 
 
     std::cout << "World | Closed." << '\n'; 
-
 
     return 0;
 }
@@ -551,6 +612,11 @@ int pupil_recorder(const uint32_t duration,
     uvc_device_handle_t *devh;
     uvc_stream_ctrl_t ctrl;
     uvc_error_t res;
+
+    // Define parameters for the video stream
+    constexpr size_t img_rows = 400;
+    constexpr size_t img_cols = 400; 
+    constexpr size_t fps = 120;
     
     std::cout << "Pupil | Initializating..." << '\n'; 
 
@@ -579,9 +645,6 @@ int pupil_recorder(const uint32_t duration,
     }
 
     // Attempt to set the video format
-    constexpr size_t img_rows = 400;
-    constexpr size_t img_cols = 400; 
-    constexpr size_t fps = 120;
     res = uvc_get_stream_ctrl_format_size(devh, &ctrl, UVC_COLOR_FORMAT_MJPEG, img_rows, img_cols, fps, 1);
     if (res < 0) {
         std::cout << "ERROR! "<< uvc_strerror(res) << '\n';
