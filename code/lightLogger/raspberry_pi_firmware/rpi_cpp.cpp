@@ -417,6 +417,8 @@ static void world_frame_callback(libcamera::Request *request) {
         libcamera::ControlList &controls = request->controls();
         controls.set(libcamera::controls::AnalogueGain, static_cast<int32_t>(adjusted_settings.adjusted_gain));
         controls.set(libcamera::controls::ExposureTime, static_cast<float>(adjusted_settings.adjusted_exposure));
+        data->current_gain = static_cast<float_t>(adjusted_settings.adjusted_gain);
+        data->current_exposure = static_cast<float_t>(adjusted_settings.adjusted_exposure); 
 
         // Update the last AGC change time 
         data->last_agc_change = current_time;
