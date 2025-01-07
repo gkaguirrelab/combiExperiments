@@ -376,21 +376,21 @@ static void world_frame_callback(libcamera::Request *request) {
     world_callback_data* data; 
 
 
-    const libcamera::ControlList &requestMetadata = request->metadata();
-	for (const auto &ctrl : requestMetadata) {
-		const libcamera::ControlId *id = libcamera::controls::controls.at(ctrl.first);
-		const libcamera::ControlValue &value = ctrl.second;
+    //const libcamera::ControlList &requestMetadata = request->metadata();
+	//for (const auto &ctrl : requestMetadata) {
+	//	const libcamera::ControlId *id = libcamera::controls::controls.at(ctrl.first);
+	//	const libcamera::ControlValue &value = ctrl.second;
 
 		//std::cout << "\t" << id->name() << " = " << value.toString()
 		//	  << std::endl;
-	}
+	//}
 
 
     const libcamera::Request::BufferMap &buffers = request->buffers();
 	for (auto bufferPair : buffers) {
 		// (Unused) Stream *stream = bufferPair.first;
 		libcamera::FrameBuffer *buffer = bufferPair.second;
-		const libcamera::FrameMetadata &metadata = buffer->metadata();
+		//const libcamera::FrameMetadata &metadata = buffer->metadata();
 
         // Retrieve the arguments data for the callback function
         data = reinterpret_cast<world_callback_data*>(buffer->cookie());
@@ -399,16 +399,6 @@ static void world_frame_callback(libcamera::Request *request) {
 		//std::cout << " seq: " << std::setw(6) << std::setfill('0') << metadata.sequence
 		//	  << " timestamp: " << metadata.timestamp
 		//	  << " bytesused: ";
-
-		unsigned int nplane = 0;
-		for (const libcamera::FrameMetadata::Plane &plane : metadata.planes())
-		{
-			//std::cout << plane.bytesused;
-			//if (++nplane < metadata.planes().size())
-				//std::cout << "/";
-		}
-
-		std::cout << std::endl;
 
 		/*
 		 * Image data can be accessed here, but the FrameBuffer
@@ -445,6 +435,8 @@ int world_recorder(const uint32_t duration,
     // Define parameters for the video stream 
     constexpr size_t cols = 640; 
     constexpr size_t rows = 480;
+    constexpr float_t fps = 206.65;
+    constexpr int64_t frame_duration = 1e6/200;
     
     
     // Initialize libcamera
@@ -472,7 +464,7 @@ int world_recorder(const uint32_t duration,
     camera->acquire();
 
     // Define the configuration for the camera
-    std::unique_ptr<libcamera::CameraConfiguration> config = camera->generateConfiguration( { libcamera::StreamRole::Viewfinder } );
+    std::unique_ptr<libcamera::CameraConfiguration> config = camera->generateConfiguration( { libcamera::StreamRole::VideoRecording} );
 
     libcamera::StreamConfiguration &streamConfig = config->at(0);
     std::cout << "Default viewfinder configuration is: " << streamConfig.toString() << std::endl;
@@ -537,6 +529,12 @@ int world_recorder(const uint32_t duration,
 
 
 		//controls.set(controls::Brightness, 0.5);
+        controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false));
+        controls.set(libcamera::controls::AWB_ENABLE, libcamera::ControlValue(false));
+        controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({frame_duration, frame_duration}));
+        //controls.set(libcamera::controls::DIGITAL_GAIN, libcamera::ControlValue(1));
+        
+        //controls.set(libcamera::controls::FRAME_DURATION, libcamera::ControlValue(frame_duration)); 
 
         requests.push_back(std::move(request));
     }
@@ -549,7 +547,7 @@ int world_recorder(const uint32_t duration,
      
     std::cout << "Assigned the callback " << std::endl;
 
-    camera->start();
+    camera->start(&requests[0]->controls());
 
      
     std::cout << "Started the camera" << std::endl;
@@ -559,7 +557,7 @@ int world_recorder(const uint32_t duration,
     }
     
 
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(duration));
     /*
 
     // Initialize a counter for how many frames we are going to capture, 
