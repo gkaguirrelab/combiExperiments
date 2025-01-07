@@ -358,6 +358,9 @@ Callback function for libcamera when it retrieves a frame from the world recorde
 */
 typedef struct {
     std::shared_ptr<libcamera::Camera> camera;
+    float_t current_gain;
+    float_t current_exposure; 
+    float_t speed_setting; 
     std::chrono::steady_clock::time_point last_agc_change; 
     size_t frame_num; 
     uint16_t buffer_size_frames; 
@@ -375,6 +378,8 @@ static void world_frame_callback(libcamera::Request *request) {
     // Define a variable to hold the arguments passed to the callback function
     world_callback_data* data; 
 
+    // Retrieve the current time (used to determine when we will change AGC settings)
+    auto current_time = std::chrono::steady_clock::now();
 
     //const libcamera::ControlList &requestMetadata = request->metadata();
 	//for (const auto &ctrl : requestMetadata) {
@@ -385,7 +390,7 @@ static void world_frame_callback(libcamera::Request *request) {
 		//	  << std::endl;
 	//}
 
-
+    // This should be 1 
     const libcamera::Request::BufferMap &buffers = request->buffers();
 	for (auto bufferPair : buffers) {
 		// (Unused) Stream *stream = bufferPair.first;
@@ -395,19 +400,26 @@ static void world_frame_callback(libcamera::Request *request) {
         // Retrieve the arguments data for the callback function
         data = reinterpret_cast<world_callback_data*>(buffer->cookie());
 
-        //std::cout << "PLANES: " << metadata.planes().size() << '\n';
+        // RAW images have 1 plane, so retrieve the plane the data lies on
+        libcamera::FrameBuffer::Plane pixel_data_plane = buffer->planes()[0]; 
 
-    		/* Print some information about the buffer which has completed. */
-		//std::cout << " seq: " << std::setw(6) << std::setfill('0') << metadata.sequence
-		//	  << " timestamp: " << metadata.timestamp
-		//	  << " bytesused: ";
+        // Change the AGC every 250 milliseconds
+        if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
+            // Calculate the mean of the pixel data. This will be the input to the AGC
+            uint8_t mean_intensity = 127; 
+        
+            // Input the mean intensity of the current frame to the AGC. Retrieve corrected gain and exposure. 
+            RetVal adjusted_settings = AGC(mean_intensity, data->current_gain, data->current_exposure, data->speed_setting);
 
-		/*
-		 * Image data can be accessed here, but the FrameBuffer
-		 * must be mapped by the application
-		 */
-	
-    
+            // Update the gain and exposure settings 
+            libcamera::ControlList &controls = request->controls();
+            controls.set(libcamera::controls::AnalogueGain,  static_cast<int32_t>(adjusted_settings.adjusted_gain));
+            controls.set(libcamera::controls::ExposureTime, static_cast<float>(adjusted_settings.adjusted_exposure));
+
+            // Update the last AGC change time 
+            data->last_agc_change = current_time;
+
+        }    
     
     }
 
@@ -496,8 +508,11 @@ int world_recorder(const uint32_t duration,
 
     // Define the data to be used 
     world_callback_data data;
-    data.frame_num = 0;
     data.camera = camera;
+    data.current_gain = 1;
+    data.current_exposure = 200; 
+    data.speed_setting = 0.95;
+    data.frame_num = 0;
 
     // Initialize the capture stream 
     libcamera::Stream *stream = streamConfig.stream();
@@ -529,10 +544,10 @@ int world_recorder(const uint32_t duration,
         // Also give the request a pointer to the data struct
         libcamera::ControlList &controls = request->controls();
 
-
-		//controls.set(controls::Brightness, 0.5);
-        controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false));
-        controls.set(libcamera::controls::AWB_ENABLE, libcamera::ControlValue(false));
+        controls.set(libcamera::controls::AeEnable, false);
+        controls.set(libcamera::controls::AwbEnable, false);
+        controls.set(libcamera::controls::AnalogueGain, (int32_t) 1);
+        controls.set(libcamera::controls::ExposureTime, (float) 200);
         controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({frame_duration, frame_duration}));
 
         requests.push_back(std::move(request));
