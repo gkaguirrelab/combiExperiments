@@ -390,12 +390,14 @@ static void world_frame_callback(libcamera::Request *request) {
 	for (auto bufferPair : buffers) {
 		// (Unused) Stream *stream = bufferPair.first;
 		libcamera::FrameBuffer *buffer = bufferPair.second;
-		//const libcamera::FrameMetadata &metadata = buffer->metadata();
+		const libcamera::FrameMetadata &metadata = buffer->metadata();
 
         // Retrieve the arguments data for the callback function
         data = reinterpret_cast<world_callback_data*>(buffer->cookie());
 
-		/* Print some information about the buffer which has completed. */
+        //std::cout << "PLANES: " << metadata.planes().size() << '\n';
+
+    		/* Print some information about the buffer which has completed. */
 		//std::cout << " seq: " << std::setw(6) << std::setfill('0') << metadata.sequence
 		//	  << " timestamp: " << metadata.timestamp
 		//	  << " bytesused: ";
@@ -464,7 +466,7 @@ int world_recorder(const uint32_t duration,
     camera->acquire();
 
     // Define the configuration for the camera
-    std::unique_ptr<libcamera::CameraConfiguration> config = camera->generateConfiguration( { libcamera::StreamRole::VideoRecording} );
+    std::unique_ptr<libcamera::CameraConfiguration> config = camera->generateConfiguration( { libcamera::StreamRole::Raw} );
 
     libcamera::StreamConfiguration &streamConfig = config->at(0);
     std::cout << "Default viewfinder configuration is: " << streamConfig.toString() << std::endl;
@@ -532,9 +534,6 @@ int world_recorder(const uint32_t duration,
         controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false));
         controls.set(libcamera::controls::AWB_ENABLE, libcamera::ControlValue(false));
         controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({frame_duration, frame_duration}));
-        //controls.set(libcamera::controls::DIGITAL_GAIN, libcamera::ControlValue(1));
-        
-        //controls.set(libcamera::controls::FRAME_DURATION, libcamera::ControlValue(frame_duration)); 
 
         requests.push_back(std::move(request));
     }
