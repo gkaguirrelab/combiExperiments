@@ -6,7 +6,7 @@ function runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,varargin)
 %{
     subjectID = 'PILT_0001';
     NDlabel = '0x5';
-    refFreqHz = [24,12,6,3,1.5];
+    refFreqHz = 10;
     runDiscrimThreshExperiment(subjectID,NDlabel,refFreqHz);
 %}
 
@@ -180,16 +180,16 @@ for bb=1:nBlocks
     % Reference frequency vector, which will contain indices of refFreqHz
     refFreqHzIndex = zeros(1, nTrialsPerBlock);
 
-    group = ceil(nTrialsPerBlock / length(refFreqHz)); 
+    group = floor(nTrialsPerBlock / length(refFreqHz)); 
     startIdx = 1;
 
-    % Loop through indices
+    % Loop through ref frequency indices
     for ii = 1:length(refFreqHz)
-
-        % Find the end index for the current group (range of columns)
+        
+        % Determine the range of columns to assign the current refFreqHz
+        % index
         endIdx = startIdx + group - 1;
-      
-        % Assign the current refFreqHz index value to the current group
+       
         refFreqHzIndex(1, startIdx:endIdx) = ii;
 
         startIdx = endIdx + 1;
