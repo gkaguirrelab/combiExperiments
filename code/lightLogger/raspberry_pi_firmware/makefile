@@ -32,7 +32,6 @@ $(BINARIES_DIR)/rpi_cpp.o: rpi_cpp.cpp
 $(BINARIES_DIR)/AGC.o: $(AGC_DIR)/AGC.cpp $(AGC_DIR)/AGC.h
 	$(CXX) $(CXXFLAGS) -c $(AGC_DIR)/AGC.cpp -o $(BINARIES_DIR)/AGC.o
 
-
 # Target: Dependencies | Make the parse_chunks_binary helper function a shared library so that Python can use it
 $(UTILITY_DIR)/parse_chunk_binary.so: $(UTILITY_DIR)/parse_chunk_binary.o
 	$(CXX) -shared $(UTILITY_DIR)/parse_chunk_binary.o -o $(UTILITY_DIR)/parse_chunk_binary.so

@@ -6,6 +6,7 @@ import pickle
 import pathlib
 import sys
 import ctypes
+import pandas as pd
 
 # Import the MS utility library 
 light_logger_dir_path: str = str(pathlib.Path(__file__).parents[2]) 
@@ -20,11 +21,14 @@ def parse_chunks_binary(recording_dir_path: str, start_chunk: int=0, end_chunk: 
                             for file in natsorted(os.listdir(recording_dir_path))
                             if 'chunk' in file][start_chunk:end_chunk]
 
+    # Let's find the performance file if it exists
+    performance_df: pd.DataFrame | None = pd.read_csv(os.path.join(recording_dir_path, "performance.csv"), header=0) if os.path.join(os.path.join(recording_dir_path, "performance.csv")) else None
+
     # Now, let's read in all of the chunks
     chunks: list = [parse_chunk_binary(chunk_path)
                    for chunk_path in chunk_filepaths]
 
-    return chunks
+    return {"performance_df": performance_df, 'chunks': chunks}
 
 """Parse an individual chunk that was captured with the C++ implementation of RPI firmware"""
 def parse_chunk_binary(chunk_path: str) -> dict:
