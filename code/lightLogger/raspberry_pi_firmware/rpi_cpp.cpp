@@ -20,14 +20,23 @@
 #include <linux/i2c-dev.h>
 #include <libcamera/libcamera.h>
 #include <libuvc/libuvc.h>
+#include <mutex>
 #include <sys/mman.h>
 
 namespace fs = std::filesystem; 
 
-/*
-ALL LIBRARIES INCLUDED ABOVE HERE. MUST COMPILE WITH THE "libraries"" 
-FOLDER FROM CURRENT DIRECTORY INCLUDED
-*/
+
+// Define a struct to track the performance of all of the 
+// recorders of the duration of the video. This will be needed 
+// to read in the data in Python and analyze performance. 
+typedef struct { 
+    uint32_t duration; 
+    size_t M_captured_frames = 0;
+    size_t W_captured_frames = 0;
+    size_t P_captured_frames = 0;
+    size_t S_captured_frames = 0;
+
+} performance_data;
 
 // NOTE: You MUST!!! run this program with sudo. Otherwise, the world camera will not connect
 
@@ -228,7 +237,8 @@ Continous recorder for the MS.
 int minispect_recorder(const uint32_t duration, 
                        std::vector<uint8_t>* buffer_one, 
                        std::vector<uint8_t>* buffer_two,
-                       const uint16_t buffer_size_frames) 
+                       const uint16_t buffer_size_frames,
+                       performance_data* performance_struct) 
     {
     // Create a boost io_service object to manage the IO objects
     // and initialize serial port variable
@@ -348,6 +358,9 @@ int minispect_recorder(const uint32_t duration,
     ms.close(); 
     std::cout << "MS | Closed." << '\n'; 
 
+    // Save the recording performance for this recorder in the performance data struct
+    performance_struct->M_captured_frames = frame_num; 
+
     return 0;
 }
 
@@ -367,9 +380,11 @@ typedef struct {
     uint16_t buffer_size_frames; 
     uint8_t current_buffer;
     std::vector<uint8_t>* buffer;
+    size_t buffer_offset; 
     std::vector<uint8_t>* buffer_one; 
     std::vector<uint8_t>* buffer_two; 
-    size_t buffer_offset; 
+    size_t buffer_one_offset;
+    size_t buffer_two_offset;
 } world_callback_data;
 
 static void world_frame_callback(libcamera::Request *request) {
@@ -388,10 +403,31 @@ static void world_frame_callback(libcamera::Request *request) {
 
     // (Unused) Stream *stream = bufferPair.first;
     libcamera::FrameBuffer *buffer = buffer_pair.second;
-    const libcamera::FrameMetadata &metadata = buffer->metadata();
+    //const libcamera::FrameMetadata &metadata = buffer->metadata();
 
     // Retrieve the arguments data for the callback function
     data = reinterpret_cast<world_callback_data*>(buffer->cookie());
+
+    // Retrieve information we will lookup often from the struct onto the stack 
+    size_t frame_num = data->frame_num;
+    size_t buffer_size_frames = data->buffer_size_frames;
+    uint8_t current_buffer = data->current_buffer;
+
+    // Swap buffers if this one is full
+    if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
+       // If we are using buffer two, switch to buffer one, otherwise vice versa
+        if(current_buffer % 2 == 0) {
+            data->buffer = data->buffer_one;
+            data->buffer_offset = data->buffer_one_offset;
+        }
+        else {
+            data->buffer = data->buffer_two;
+            data->buffer_offset = data->buffer_two_offset;
+        }
+        
+        // Update the current buffer state THIS LINE CAUSES A SEGFAULT 
+       data->current_buffer = (current_buffer % 2) + 1;
+    }
 
     // RAW images have 1 plane, so retrieve the plane the data lies on
     libcamera::FrameBuffer::Plane pixel_data_plane = buffer->planes()[0];
@@ -403,13 +439,13 @@ static void world_frame_callback(libcamera::Request *request) {
     uint8_t* pixel_data = static_cast<uint8_t*>(memory_map) + pixel_data_plane.offset;
 
     // Copy to the given buffer TODO: Need to fix this by having different offsets for the different buffers, but right now just testing
-    //std::memcpy(data->buffer->data(), pixel_data, pixel_data_plane.length); //Replace 0 with the start index of where this img should go
+    std::memcpy(data->buffer->data() + data->buffer_offset, pixel_data, pixel_data_plane.length); //Replace 0 with the start index of where this img should go
 
     // Change the AGC every 250 milliseconds
     if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
         // Calculate the mean of the pixel data. This will be the input to the AGC
-        uint8_t mean_intensity = 127; 
-    
+        int32_t mean_intensity = std::accumulate(data->buffer->begin() + data->buffer_offset, data->buffer->begin() + data->buffer_offset + pixel_data_plane.length, 0) / pixel_data_plane.length; 
+
         // Input the mean intensity of the current frame to the AGC. Retrieve corrected gain and exposure. 
         RetVal adjusted_settings = AGC(mean_intensity, data->current_gain, data->current_exposure, data->speed_setting);
 
@@ -424,7 +460,6 @@ static void world_frame_callback(libcamera::Request *request) {
         data->last_agc_change = current_time;
     }    
     
-
     // Increment the frame number
     data->frame_num++; 
 
@@ -446,14 +481,14 @@ Continous recorder for the World Camera.
 int world_recorder(const uint32_t duration, 
                    std::vector<uint8_t>* buffer_one, 
                    std::vector<uint8_t>* buffer_two,
-                   const uint16_t buffer_size_frames) 
+                   const uint16_t buffer_size_frames,
+                   performance_data* performance_struct) 
     {
     // Define parameters for the video stream 
     constexpr size_t cols = 640; 
     constexpr size_t rows = 480;
-    constexpr float_t fps = 206.65;
-    constexpr int64_t frame_duration = 1e6/200;
-    
+    constexpr float_t fps = 200;
+    constexpr int64_t frame_duration = 1e6/fps;
     
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
@@ -479,17 +514,17 @@ int world_recorder(const uint32_t duration,
     // Acquire the camera 
     camera->acquire();
 
-    // Define the configuration for the camera
+    // Define the configuration for the camera (this MUST be raw for raw images)
     std::unique_ptr<libcamera::CameraConfiguration> config = camera->generateConfiguration( { libcamera::StreamRole::Raw} );
 
     libcamera::StreamConfiguration &streamConfig = config->at(0);
-    std::cout << "Default viewfinder configuration is: " << streamConfig.toString() << std::endl;
+    //std::cout << "Default viewfinder configuration is: " << streamConfig.toString() << std::endl;
 
     streamConfig.size.width = cols;
     streamConfig.size.height = rows;
 
     config->validate();
-    std::cout << "Validated viewfinder configuration is: " << streamConfig.toString() << std::endl;
+    //std::cout << "Validated viewfinder configuration is: " << streamConfig.toString() << std::endl;
 
     camera->configure(config.get());
 
@@ -504,9 +539,8 @@ int world_recorder(const uint32_t duration,
         }
 
         size_t allocated = allocator->buffers(cfg.stream()).size();
-        std::cout << "Allocated " << allocated << " buffers for stream" << std::endl;
+        //std::cout << "Allocated " << allocated << " buffers for stream" << std::endl;
     }
-
 
     // Define the data to be used 
     world_callback_data data;
@@ -515,6 +549,14 @@ int world_recorder(const uint32_t duration,
     data.current_exposure = 200; 
     data.speed_setting = 0.95;
     data.frame_num = 0;
+    data.current_buffer = 1;
+    data.buffer = buffer_one;
+    data.buffer_one = buffer_one;
+    data.buffer_two = buffer_two;
+    data.buffer_one_offset = 0;
+    data.buffer_two_offset = 0;
+    data.buffer_offset = data.buffer_one_offset;
+    data.buffer_size_frames = buffer_size_frames;
 
     // Initialize the capture stream 
     libcamera::Stream *stream = streamConfig.stream();
@@ -555,99 +597,26 @@ int world_recorder(const uint32_t duration,
         requests.push_back(std::move(request));
     }
     
-    std::cout << "Allocated the stream " << std::endl;
+    //std::cout << "Allocated the stream " << std::endl;
 
     // Connect the world camera to its callback function 
     camera->requestCompleted.connect(world_frame_callback);
 
-     
-    std::cout << "Assigned the callback " << std::endl;
+    // Initialize libcamera
+    std::cout << "World | Initialized..." << '\n'; 
+    
+    //std::cout << "Assigned the callback " << std::endl;
 
     camera->start(&requests[0]->controls());
 
      
-    std::cout << "Started the camera" << std::endl;
+    //std::cout << "Started the camera" << std::endl;
 
     for (std::unique_ptr<libcamera::Request> &request : requests) {
         camera->queueRequest(request.get());
     }
     
-
     std::this_thread::sleep_for(std::chrono::seconds(duration));
-    /*
-
-    // Initialize a counter for how many frames we are going to capture, 
-    // and the size of our buffers 
-    size_t frame_num = 0; 
-
-    // Initialize a variable we will use to hold the mean of certain frames when we do AGC
-    uint8_t frame_mean;
-
-    // Initialize variables for the initial gain and exposure of the camera 
-    float_t current_gain = 1;
-    float_t current_exposure = 100; 
-
-    // Set the initial buffer pointer to buffer 1
-    std::vector<uint8_t>* buffer = buffer_one;
-    uint8_t current_buffer = 1;
-    
-    std::cout << "World | Initialized." << '\n';
-
-    // Begin recording for the given duration
-    std::cout << "World | Beginning recording..." << '\n';
-    auto start_time = std::chrono::steady_clock::now(); // Capture the start time
-    auto last_gain_change = start_time;
-    while(true) {
-        // Capture the elapsed time since start and ensure it is in the units of seconds
-        auto current_time = std::chrono::steady_clock::now();
-        auto elapsed_time = current_time - start_time;
-        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
-
-        // End recording if we have reached the desired duration. 
-        if ((uint32_t) elapsed_seconds >= duration) {
-            break;
-        }
-
-        // Swap buffers if this one is full
-        if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
-            // If we are currently using buffer 2, swap to 1
-            
-            // If we are using buffer two, switch to buffer one, otherwise vice versa
-            buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
-
-            // Update the current buffer state
-            current_buffer = (current_buffer % 2) + 1;
-        }
-
-        // Capture the desired frame
-        int frame = 100;
-
-        // Save the desired frame into the buffer (TODO: This is a kludge method just for now. ideally we will not be overwriting)
-        (*buffer)[frame_num % buffer_size_frames] = frame; 
-
-
-        // Adjust the AGC every 250MS
-        auto time_since_last_agc = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_gain_change).count();
-        if(time_since_last_agc >= 250) {
-            // Calculate the mean of the frame
-            frame_mean = frame; 
-
-            // Use the mean as an input and current settings to calculate the new gain/exposure 
-            RetVal adjusted_camera_info = AGC(frame_mean, current_gain, current_exposure, 0.95);
-
-            // Set the camera to use the new gain/exposure settings
-            current_gain = adjusted_camera_info.adjusted_gain;
-            current_exposure = adjusted_camera_info.adjusted_exposure; 
-
-            // Update the last gain change if we just changed the gain
-            last_gain_change = current_time;
-        }
-
-        // Increment the number of captured frames
-        frame_num++;
-    }
-    */
-    
 
     // Output information about how much data we captured 
     std::cout << "World | Captured Frames: " << data.frame_num << '\n';
@@ -663,6 +632,9 @@ int world_recorder(const uint32_t duration,
     cm->stop();
 
     std::cout << "World | Closed." << '\n'; 
+
+    // Save the recording performance for this recorder in the performance data struct
+    performance_struct->W_captured_frames = data.frame_num; 
 
     return 0;
 }
@@ -680,9 +652,12 @@ typedef struct {
     uint16_t buffer_size_frames; 
     uint8_t current_buffer;
     std::vector<uint8_t>* buffer;
+    size_t buffer_offset; 
     std::vector<uint8_t>* buffer_one; 
     std::vector<uint8_t>* buffer_two; 
-    size_t buffer_offset; 
+    size_t buffer_one_offset; 
+    size_t buffer_two_offset; 
+
 } pupil_callback_data;
 
 void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
@@ -695,9 +670,15 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
 
     // Swap buffers if this one is full
     if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
-
         // If we are using buffer two, switch to buffer one, otherwise vice versa
-        data->buffer = (data->current_buffer % 2 == 0) ? data->buffer_one : data->buffer_two;
+        if(data->current_buffer % 2 == 0) {
+            data->buffer = data->buffer_one;
+            data->buffer_offset = data->buffer_one_offset;
+        }
+        else {
+            data->buffer = data->buffer_two;
+            data->buffer_offset = data->buffer_two_offset;
+        }
         
         // Update the current buffer state
         data->current_buffer = (data->current_buffer % 2) + 1;
@@ -706,8 +687,8 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
     // Save the desired frame into the buffer
     // The number of bytes from the frame are not equal to the number of bytes I have calculated because MJPEG compresses data.
     // This means it is not constant in size. Need to figure out how to do handle this
-    std::cout << "Their calculation of number of bytes: " << frame->data_bytes << '\n';
-    std::cout << "The number of rows per UVC: " << frame->height << " The number of cols per UVC: " << frame->width << '\n';
+    //std::cout << "Their calculation of number of bytes: " << frame->data_bytes << '\n';
+    //std::cout << "The number of rows per UVC: " << frame->height << " The number of cols per UVC: " << frame->width << '\n';
     
     std::memcpy(data->buffer->data() + data->buffer_offset, frame->data, frame->data_bytes);
 
@@ -728,7 +709,8 @@ Continous recorder for the Pupil Camera.
 int pupil_recorder(const uint32_t duration, 
                    std::vector<uint8_t>* buffer_one, 
                    std::vector<uint8_t>* buffer_two,
-                   const uint16_t buffer_size_frames) 
+                   const uint16_t buffer_size_frames,
+                   performance_data* performance_struct) 
     {
     
     uvc_context_t *ctx;
@@ -794,9 +776,11 @@ int pupil_recorder(const uint32_t duration,
     data.buffer_size_frames = buffer_size_frames; 
     data.current_buffer = current_buffer; 
     data.buffer = buffer; 
-    data.buffer_offset = 0; 
     data.buffer_one = buffer_one; 
     data.buffer_two = buffer_two;  
+    data.buffer_one_offset = 0; 
+    data.buffer_two_offset = 0; 
+    data.buffer_offset = data.buffer_one_offset;
 
     // Begin recording for the given duration
     std::cout << "Pupil | Beginning recording..." << '\n';
@@ -825,6 +809,9 @@ int pupil_recorder(const uint32_t duration,
 
     std::cout << "Pupil | Closed." << '\n'; 
 
+    // Save the recording performance for this recorder in the performance data struct
+    performance_struct->P_captured_frames = data.frame_num; 
+
     return 0;
 }
 
@@ -840,7 +827,8 @@ Continous recorder for the Sunglasses Hall magnetic sensor.
 int sunglasses_recorder(const uint32_t duration,
                         std::vector<uint8_t>* buffer_one, 
                         std::vector<uint8_t>* buffer_two,
-                        const uint16_t buffer_size_frames) 
+                        const uint16_t buffer_size_frames,
+                        performance_data* performance_struct) 
     {
     // Initialize a connection to the bus to read from the sensor
     std::cout << "Sunglasses | Initializating..." << '\n'; 
@@ -946,16 +934,18 @@ int sunglasses_recorder(const uint32_t duration,
     }
 
     // Output information about how much data we captured 
-    std::cout << "Sunglasses | Captured Frames: " << frame_num << '\n';
+    std::cout << "Sunglasses | Captured Frames: " << frame_num/2 << '\n';
 
     // Close the connection to the i2c_bus device
     std::cout << "Sunglasses | Closing..." << '\n'; 
     close(i2c_bus);
     std::cout << "Sunglasses | Closed." << '\n'; 
 
+    // Save the recording performance for this recorder in the performance data struct
+    performance_struct->S_captured_frames = frame_num / 2; 
+    
     return 0;
 }
-
 
 int main(int argc, char **argv) {
     // Initialize variable to hold output directory path. Path need not exist
@@ -968,7 +958,7 @@ int main(int argc, char **argv) {
     // Initialize controller flags as entirely false. This is because we will denote which controllers 
     // to use based on arguments passed. 
     constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
-    std::vector<std::function<int(int32_t, std::vector<uint8_t>*, std::vector<uint8_t>*, uint16_t)>> controller_functions = {minispect_recorder, world_recorder, pupil_recorder, sunglasses_recorder}; // this CANNOT be constexpr because function stubs are dynamic
+    std::vector<std::function<int(int32_t, std::vector<uint8_t>*, std::vector<uint8_t>*, uint16_t, performance_data*)>> controller_functions = {minispect_recorder, world_recorder, pupil_recorder, sunglasses_recorder}; // this CANNOT be constexpr because function stubs are dynamic
     std::array<bool, 4> controller_flags = {false, false, false, false}; // this CANNOT be constexpr because values will change 
     constexpr std::array<uint8_t, 4> sensor_FPS = {1, 200, 120, 1};
     constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*80, sensor_FPS[2]*400*400, sensor_FPS[3]*2}; // this can be constexpr because values will never change
@@ -1052,6 +1042,8 @@ int main(int argc, char **argv) {
     // this point MUST use \n as a terminator instead of '\n', which is significantly slower, and all code should be 
     // absolutely optimally written in regards to time efficency. 
     std::vector<std::thread> threads;
+    performance_data performance_struct; 
+    performance_struct.duration = duration; 
 
     // We will spawn only threads for those controllers that we are going to use. 
     // Spawn them, with the duration of recording as an argument
@@ -1063,7 +1055,8 @@ int main(int argc, char **argv) {
         threads.emplace_back(std::thread(controller_functions[used_controller_idx], 
                                          duration,
                                          &buffers_one[used_controller_idx], &buffers_two[used_controller_idx],
-                                         sensor_buffer_size*sensor_FPS[used_controller_idx]));
+                                         sensor_buffer_size*sensor_FPS[used_controller_idx],
+                                         &performance_struct));
     }
 
     // We will also spawn the parallel write process, to monitor output from these threads
@@ -1078,6 +1071,30 @@ int main(int argc, char **argv) {
 
     // Signal to the user that the threads has successfully closed their operation
     std::cout << "----THREADS CLOSED SUCCESSFULLY---" << '\n'; 
+
+    // Output the performance metrics in CSV Format
+    fs::path performance_filepath = output_dir / "performance.csv";
+
+    // Open the file in write mode
+    std::ofstream performance_file(performance_filepath);
+
+    // Check if the file is open
+    if (!performance_file.is_open()) {
+        std::cout << "ERROR: Could not open performance file" << '\n';
+        return 1; 
+    }
+
+    // Write the performance data to the file
+    performance_file << "Duration,M_frames,W_frames,P_frames,S_frames\n";
+    performance_file << performance_struct.duration << ',' << performance_struct.M_captured_frames << ',' 
+                     << performance_struct.W_captured_frames << ',' << performance_struct.P_captured_frames
+                     << ',' << performance_struct.S_captured_frames << '\n';
+
+    // Close the performance file
+    performance_file.close();
+
+    // Signal to the user that the threads has successfully closed their operation
+    std::cout << "----LOGGED PERFORMANCE METRICS---" << '\n'; 
 
 
     return 0; 
