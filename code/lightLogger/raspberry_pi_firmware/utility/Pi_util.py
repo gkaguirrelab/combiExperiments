@@ -57,7 +57,7 @@ def parse_chunk_binary(chunk_path: str) -> dict:
         # Next, we can call the legacy code for parsing a bytearray from the MS
         AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_readings(bytes_buffer)
 
-        return numpy_bytes_arr
+        return AS_channels, TS_channels, LS_channels, LS_temp
     
     """Define the parser for the World frames for a given chunk"""
     def world_parser(buffer: np.ndarray):
@@ -122,7 +122,6 @@ def parse_chunk_binary(chunk_path: str) -> dict:
 
         # Return the data as Python-compatible objects    
         return chunk_ptr, chunk_dict
-
 
     # Deserialize the binary file via CPP and read in the
     # chunk's data into numpy arrays. 
