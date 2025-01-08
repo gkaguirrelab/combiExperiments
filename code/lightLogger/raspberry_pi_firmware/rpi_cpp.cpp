@@ -258,7 +258,8 @@ int minispect_recorder(const uint32_t duration,
     std::array<char, 1> byte_read; 
     std::array<char, data_length> reading_buffer; 
 
-    // Initialize a counter for how many frames we are going to capture 
+    // Initialize a counter for how many frames we are going to capture and the current buffer position 
+    size_t buffer_offset = 0;
     size_t frame_num = 0; 
 
     // Attempt to connect to the MS
@@ -269,6 +270,7 @@ int minispect_recorder(const uint32_t duration,
 
     }
     catch(const std::exception& e) {
+        std::cout << "ERROR: Could not open MS connection" << '\n';
         std::cerr << "ERROR: " << e.what() << '\n';
 
         // Close the MS and safely exit from the error
@@ -314,12 +316,15 @@ int minispect_recorder(const uint32_t duration,
         }
         
         // Swap buffers if we filled up this buffer
-        if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
+        if(buffer_offset > 0 && buffer_offset % buffer_size_frames == 0) {
             // If we are using buffer two, switch to buffer one, otherwise vice versa
             buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
 
             // Update the current buffer state
             current_buffer = (current_buffer % 2) + 1;
+
+            // Reset the buffer offset to 0 since now we are working with a new buffer 
+            buffer_offset = 0; 
         }
 
 
@@ -345,7 +350,7 @@ int minispect_recorder(const uint32_t duration,
             }
 
             // Append these bytes to the buffer for the duration of the video
-            buffer->insert(buffer->end(), reading_buffer.begin(), reading_buffer.end()); 
+            std::memcpy(buffer->data()+buffer_offset, reading_buffer.data(), data_length);
 
             // Increment the number of captured frames 
             frame_num++; 
@@ -385,8 +390,6 @@ typedef struct {
     size_t buffer_offset; 
     std::vector<uint8_t>* buffer_one; 
     std::vector<uint8_t>* buffer_two; 
-    size_t buffer_one_offset;
-    size_t buffer_two_offset;
 } world_callback_data;
 
 static void world_frame_callback(libcamera::Request *request) {
@@ -418,17 +421,11 @@ static void world_frame_callback(libcamera::Request *request) {
     // Swap buffers if this one is full
     if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
        // If we are using buffer two, switch to buffer one, otherwise vice versa
-        if(current_buffer % 2 == 0) {
-            data->buffer = data->buffer_one;
-            data->buffer_offset = data->buffer_one_offset;
-        }
-        else {
-            data->buffer = data->buffer_two;
-            data->buffer_offset = data->buffer_two_offset;
-        }
-        
-        // Update the current buffer state THIS LINE CAUSES A SEGFAULT 
+        data->buffer = (current_buffer % 2 == 0) ? data->buffer_one : data->buffer_two;
+
+        // Update the current buffer state and buffer pointer position
        data->current_buffer = (current_buffer % 2) + 1;
+       data->buffer_offset = 0; 
     }
 
     // RAW images have 1 plane, so retrieve the plane the data lies on
@@ -440,7 +437,7 @@ static void world_frame_callback(libcamera::Request *request) {
     // Cast to byte array 
     uint8_t* pixel_data = static_cast<uint8_t*>(memory_map) + pixel_data_plane.offset;
 
-    // Copy to the given buffer TODO: Need to fix this by having different offsets for the different buffers, but right now just testing
+    // Copy to the given buffer TODO: Right now I am never incrementing the buffer offset. This is just for testing for now.
     std::memcpy(data->buffer->data() + data->buffer_offset, pixel_data, pixel_data_plane.length); //Replace 0 with the start index of where this img should go
 
     // Change the AGC every 250 milliseconds
@@ -555,9 +552,7 @@ int world_recorder(const uint32_t duration,
     data.buffer = buffer_one;
     data.buffer_one = buffer_one;
     data.buffer_two = buffer_two;
-    data.buffer_one_offset = 0;
-    data.buffer_two_offset = 0;
-    data.buffer_offset = data.buffer_one_offset;
+    data.buffer_offset = 0;
     data.buffer_size_frames = buffer_size_frames;
 
     // Initialize the capture stream 
@@ -657,8 +652,6 @@ typedef struct {
     size_t buffer_offset; 
     std::vector<uint8_t>* buffer_one; 
     std::vector<uint8_t>* buffer_two; 
-    size_t buffer_one_offset; 
-    size_t buffer_two_offset; 
 
 } pupil_callback_data;
 
@@ -673,17 +666,11 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
     // Swap buffers if this one is full
     if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
         // If we are using buffer two, switch to buffer one, otherwise vice versa
-        if(data->current_buffer % 2 == 0) {
-            data->buffer = data->buffer_one;
-            data->buffer_offset = data->buffer_one_offset;
-        }
-        else {
-            data->buffer = data->buffer_two;
-            data->buffer_offset = data->buffer_two_offset;
-        }
-        
-        // Update the current buffer state
+        data->buffer = (data->current_buffer % 2 == 0) ? data->buffer_one : data->buffer_two;
+
+        // Update the current buffer as well as the pointer to the position therein 
         data->current_buffer = (data->current_buffer % 2) + 1;
+        data->buffer_offset = 0; 
     }
 
     // Save the desired frame into the buffer
@@ -696,7 +683,7 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
 
     // Increment the number of captured frames and the offset into the data buffer 
     data->frame_num+=1;
-    data->buffer_offset += frame->data_bytes;  // TODO: THIS WILL NOT WORK CURRENTLY, NEED TWO SEPARATE OFFSETS FOR BOTH BUFFERS
+    data->buffer_offset += frame->data_bytes;
 }
 
 /*
@@ -780,9 +767,7 @@ int pupil_recorder(const uint32_t duration,
     data.buffer = buffer; 
     data.buffer_one = buffer_one; 
     data.buffer_two = buffer_two;  
-    data.buffer_one_offset = 0; 
-    data.buffer_two_offset = 0; 
-    data.buffer_offset = data.buffer_one_offset;
+    data.buffer_offset = data.buffer_offset;
 
     // Begin recording for the given duration
     std::cout << "Pupil | Beginning recording..." << '\n';
@@ -842,8 +827,9 @@ int sunglasses_recorder(const uint32_t duration,
     constexpr uint8_t read_reg = 0x00;
 
     // Initialize a counter for how many frames we are going to capture 
-    // and how big our buffer is
+    // and the current offset into the buffer
     size_t frame_num = 0; 
+    size_t buffer_offset = 0;
 
     // Set the initial buffer pointer to buffer 1
     std::vector<uint8_t>* buffer = buffer_one;
@@ -894,13 +880,16 @@ int sunglasses_recorder(const uint32_t duration,
         }
 
         // Swap buffers if this one is full (divide by two here since we are doing 2 writes per frame captured)
-        if(frame_num > 0 && (frame_num / 2) % buffer_size_frames == 0) {
+        if(buffer_offset > 0 && (buffer_offset / 2) % buffer_size_frames == 0) {
 
             // If we are using buffer two, switch to buffer one, otherwise vice versa
             buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
             
             // Update the current buffer state
             current_buffer = (current_buffer % 2) + 1;
+
+            // Reset the buffer offset to 0
+            buffer_offset = 0;
         }
 
         // Read 2 bytes from the device
@@ -923,11 +912,12 @@ int sunglasses_recorder(const uint32_t duration,
         uint8_t upper_byte = (raw_adc >> 8) & 0xFF; // Upper 8 bits of reading
 
         // Write the bytes from the reading to the buffer
-        (*buffer)[frame_num % buffer_size_frames] = lower_byte; 
-        (*buffer)[(frame_num + 1) % buffer_size_frames] = upper_byte; 
+        (*buffer)[buffer_offset % buffer_size_frames] = lower_byte; 
+        (*buffer)[(buffer_offset + 1) % buffer_size_frames] = upper_byte; 
 
-        // Increment the captured frame number
-        frame_num+=2; 
+        // Increment the captured frame number and buffer position 
+        frame_num++; 
+        buffer_offset+=2; 
 
         // Sleep for a few seconds between readings, as high FPS for sunglasses 
         // is not important
@@ -944,7 +934,7 @@ int sunglasses_recorder(const uint32_t duration,
     std::cout << "Sunglasses | Closed." << '\n'; 
 
     // Save the recording performance for this recorder in the performance data struct
-    performance_struct->S_captured_frames = frame_num / 2; 
+    performance_struct->S_captured_frames = frame_num; 
     
     return 0;
 }
