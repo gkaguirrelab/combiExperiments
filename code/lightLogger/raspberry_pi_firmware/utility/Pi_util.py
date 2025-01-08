@@ -48,6 +48,32 @@ def parse_chunk_binary(chunk_path: str) -> dict:
             ("S_size", ctypes.c_uint64),
         ]
 
+    """Define the parser for the MS bytes for a given chunk"""
+    def ms_parser(numpy_bytes_arr: np.ndarray):
+        # First, we will convert the numpy bytes arr to Python bytes arr 
+        # to use legacy code 
+        bytes_buffer: bytearray = numpy_bytes_arr.tobytes()
+
+        # Next, we can call the legacy code for parsing a bytearray from the MS
+        AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_readings(bytes_buffer)
+
+        return numpy_bytes_arr
+    
+    """Define the parser for the World frames for a given chunk"""
+    def world_parser(buffer: np.ndarray):
+
+        return buffer
+
+    """Define the parser for the pupil frames for a given chunk"""
+    def pupil_parser(buffer: np.ndarray):
+
+        return buffer
+
+    """Define the parser for the sunglasses buffer for a given chunk"""
+    def sunglasses_parser(buffer: np.ndarray):
+
+        return buffer
+
     # Define argument and return type for the CPP deserialization function
     cpp_parser_lib.parse_chunk_binary.argtypes = [ctypes.c_char_p]
     cpp_parser_lib.parse_chunk_binary.restype = ctypes.POINTER(chunk_struct)
@@ -55,6 +81,10 @@ def parse_chunk_binary(chunk_path: str) -> dict:
     # Define the argument type for free_chunk_struct
     cpp_parser_lib.free_chunk_struct.argtypes = [ctypes.POINTER(chunk_struct)]
     cpp_parser_lib.free_chunk_struct.restype = None
+
+    # Define the set of parsers for each sensor
+    parsers: dict = {'M': ms_parser, 'W': world_parser,
+                     'P': pupil_parser, 'S': sunglasses_parser}
 
     """Helper function to parse chunks. Passes the path to CPP,
        executes, and reads in the deserialized data as np.arrays.
@@ -87,8 +117,8 @@ def parse_chunk_binary(chunk_path: str) -> dict:
             # Next, we will read in a numpy array of that size TODO: Will reshape to nMeasures x nFrames x nRows x nCols later
             buffer_as_np: np.ndarray = np.ctypeslib.as_array(getattr(chunk, sensor_field), shape=(buffer_size,))
 
-            # Append this buffer name and its buffer to the Python dict 
-            chunk_dict[sensor_field] = buffer_as_np
+            # Append this buffer name and its parsed value to the Python dict 
+            chunk_dict[sensor_field] = parsers[sensor_field](buffer_as_np)
 
         # Return the data as Python-compatible objects    
         return chunk_ptr, chunk_dict
