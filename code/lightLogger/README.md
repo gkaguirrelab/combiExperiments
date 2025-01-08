@@ -16,7 +16,7 @@ $ rpiControl@10.102.141.235's password: DEFAULT PASSWORD (a certain sequence of 
 
 ## Current State
 
-The project state is currently such that recordings can be made and saved from all sensors at their target FPS, either individually or simultanously, via code written and C++. Recordings are made continuously for a given duration (up to ```2^32-1``` seconds) and buffers of ```10``` seconds are written to disk in parallel to active capture. This uses a double buffer stragegy, writing one buffer while recording and fill another, switching between them when each recorder has captured enough frames for that buffer. This also includes using the automatic gain control *(AGC)* that we wrote ourselves to adjust world camera settings on the fly. However, it does **not** include downsampling of the world camera. This functionality has been completed individually, located in downsampled.cpp, but has not yet been included in ```rpi_cpp.cpp``` (name to change in the future, too). Therefore, the data written to disk for the world camera is entirely dummy data.
+The project state is currently such that recordings can be made and saved from all sensors at their target FPS, either individually or simultanously, via code written and C++. Recordings are made continuously for a given duration (up to ```2^32-1``` seconds) and buffers of ```10``` seconds are written to disk in parallel to active capture. This uses a double buffer stragegy, writing one buffer while recording and fill another, switching between them when each recorder has captured enough frames for that buffer. As we are unable to guarantee perfect FPS, the writing process will **automatically** swap the buffers every ```12``` seconds. This gives ```2``` seconds of leeway in case things are moving a little slowly. This also includes using the automatic gain control *(AGC)* that we wrote ourselves to adjust world camera settings on the fly. However, it does **not** include downsampling of the world camera. This functionality has been completed individually, located in downsampled.cpp, but has not yet been included in ```rpi_cpp.cpp``` (name to change in the future, too). Therefore, the data written to disk for the world camera is entirely dummy data.
 
 Recordings can also be analyzed using the ```parse_chunks_binary``` function located in ```Pi_util.py```. This will parse the serialized data for each chunk, as well as the ```.csv``` file denoting the duration of the recording and how many frames were captured in total by all the sensors. You can then analyze sensor data in ```10``` second intervals *or* flatten this array for a given sensor and analyze performance for the entire recording. 
 
@@ -47,7 +47,7 @@ $ make
 
 The executable for the Raspberry Pi firmware is called ```FIRMWARE```. You can run it by doing the following: 
 ```
-$ ./FIRMWARE -s 1 -p 1 -w 1 -m 1 -d 30 -o /media/rpiControl/FF5E-7541/allSensorsCPP
+$ sudo ./FIRMWARE -s 1 -p 1 -w 1 -m 1 -d 30 -o /media/rpiControl/FF5E-7541/allSensorsCPP
 ```
 
 All of the flags correspond to the sensors that you want to be active, except for ```-d``` and ```-o``` which are the duration (in seconds) and the output path respectively. The output path does not have to exist. 
