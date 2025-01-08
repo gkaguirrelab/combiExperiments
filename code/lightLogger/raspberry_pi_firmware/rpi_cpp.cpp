@@ -112,6 +112,8 @@ int write_process_parallel(const fs::path* output_dir,
     // that have been filled (as we are using compressed MJPEG, not all 8x400x400 bytes are used. In fact, 
     // many less than that are used)
 
+    // TODO: Need to downsample the world camera data somewhere
+
     // Let the user know the write process started successfully 
     std::cout << "Write | Initialized" << '\n';
     
@@ -1021,7 +1023,7 @@ int main(int argc, char **argv) {
         // Mutiply the duration times the data size. 
         // For instance:
             // the MS reads 148 bytes per second. 
-            // the World cam reads at 200x30x40 bytes per second 
+            // the World cam reads at 200x60x80 bytes per second 
             // the Pupil cam reads at 120x400x400 bytes per second
             // the sunglasses sensor reads at 1x2 bytes per second 
 
