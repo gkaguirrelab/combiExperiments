@@ -85,19 +85,19 @@ for ii = 1:length(modDirections)
                 hold on
             end
 
+            % Add the psychometric function for this side
+            for cc = 1:length(stimParamsDomainList)
+                outcomes = psychObj.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
+                fitCorrect(cc) = outcomes(2);
+            end
+
             psychObjArray{ss} = psychObj;
         end
 
-        % Add the psychometric function
-        stimParamsDomainList1 = psychObjArray{1}.stimParamsDomainList;
-        stimParamsDomainList2 = psychObjArray{2}.stimParamsDomainList;
-        stimParamsDomainList = [stimParamsDomainList1, stimParamsDomainList2];
-
-        % Forcing the lapse rate to be 0
-        psiParamsFit(1, 3) = 0;
+      % Add the psychometric function
 
         for cc = 1:length(stimParamsDomainList)
-            outcomes = psychObjArray{1}.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
+            outcomes = psychObj.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
             fitCorrect(cc) = outcomes(2);
         end
         plot(stimParamsDomainList,fitCorrect,'-k');
