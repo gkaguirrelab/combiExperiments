@@ -128,13 +128,14 @@ for bb=1:nBlocks
                 load(filename,'psychObj');
                 % Put in the fresh CombiLEDObj
                 psychObj.CombiLEDObj = CombiLEDObj;
-                % Initiate the CombiLED settings
-                psychObj.initializeDisplay;
                 % Increment blockIdx
                 psychObj.blockIdx = psychObj.blockIdx+1;
                 psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
                 % Update the useStaircase flag in case this has changed
                 psychObj.useStaircase = useStaircase;
+                % Update the simulate stimuli and response flags in case this has changed
+                psychObj.simulateResponse = simulateResponse;
+                psychObj.simulateStimuli = simulateStimuli;
             else
                 % Create the object
                 psychObj = PsychDiscrimFlickerThreshold(CombiLEDObj,modResult,refFreqHz(rr),...
@@ -156,6 +157,12 @@ for bb=1:nBlocks
 
     end
 
+    % Initialize the display for one of the psychObj elements. This routine
+    % assumes that all of the psychObj elements that will be called during
+    % the block use the same modulation, modulation background, temporal
+    % profile (i.e., sinusoid), and trial duration.
+    psychObjArray{1,1}.initializeDisplay;
+
     % Start the block
     fprintf('Press enter to start block %d...',bb);
     input('');
@@ -167,9 +174,16 @@ for bb=1:nBlocks
             psychObjArray{ss, rr}.blockStartTimes(psychObjArray{ss,rr}.blockIdx) = blockStartTime;
         end
     end
+
+    % Verify that the number of trials per block is compatible with the number
+    % of reference frequencies. 
+    if mod(nTrialsPerBlock, length(refFreqHz) * 2) ~= 0
+        error(['The number of trials must be even and a ' ...
+            'multiple of the number of reference frequencies.'])
+    end
     
     % Create two vectors, one containing estimate types (high or low side)
-    % and the other containing reference frequencies
+    % and the other containing reference frequencies.
 
     % High or low side estimate vector
     estimateType = zeros(1, nTrialsPerBlock);

@@ -20,8 +20,6 @@ classdef PsychDiscrimFlickerThreshold < handle
         modResult
         questData
         simulatePsiParams
-        simulateResponse
-        simulateStimuli
         giveFeedback
         staircaseRule
         psychometricFuncHandle
@@ -47,6 +45,10 @@ classdef PsychDiscrimFlickerThreshold < handle
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
         useStaircase
+
+        % Can switch between simulating and not simulating
+        simulateResponse
+        simulateStimuli
 
         % Assign a filename which is handy for saving and loading
         filename

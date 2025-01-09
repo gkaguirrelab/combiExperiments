@@ -1,8 +1,8 @@
 % Run through the set of reference flicker frequencies
 
-subjectID = 'PILT_0002';
+subjectID = 'PILT_0004';
 refFreqHz = [24,12,6,3,1.5];
-NDlabel = '0x5';
+NDlabel = '3x5';
 simulateFlag = true;
 
 % [~,stimOrderIdx] = sort(rand(1,nLevels));
