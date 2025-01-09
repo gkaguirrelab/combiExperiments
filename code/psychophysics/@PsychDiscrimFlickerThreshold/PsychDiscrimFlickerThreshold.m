@@ -136,7 +136,9 @@ classdef PsychDiscrimFlickerThreshold < handle
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
+        [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportCombinedParams(obj1, obj2, options)
         figHandle = plotOutcome(obj,visible)
         resetSearch(obj)
     end
 end
+
