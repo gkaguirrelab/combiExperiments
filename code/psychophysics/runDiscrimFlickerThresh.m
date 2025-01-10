@@ -210,13 +210,24 @@ for bb=1:nBlocks
 
     end
 
-    % Permute the elements of both lists to randomize them
-    estimateType = estimateType(randperm(length(estimateType)));
-    refFreqHzIndex = refFreqHzIndex(randperm(length(refFreqHzIndex)));
+    % Generate all possible pairs and combine them into a single matrix
+    % of unique pairs
+    [ET, RF] = meshgrid(estimateType, refFreqHzIndex);
+    pairs = [ET(:), RF(:)];
+    pairs = unique(pairs, 'rows', 'stable');
+
+    % Determine the number of times to repeat each unique pair
+    pairRepetitions = nTrialsPerBlock / length(pairs);
+
+    % Now create a list with repeated pairs 
+    finalPairs = repmat(pairs, pairRepetitions, 1);  
+
+    % Permute the pairs to randomize the order
+    permutedPairs = finalPairs(randperm(size(finalPairs, 1)), :);
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
-        psychObjArray{estimateType(ii), refFreqHzIndex(ii)}.presentTrial
+        psychObjArray{permutedPairs(ii, 1), permutedPairs(ii, 2)}.presentTrial
     end
 
     % Report completion of this block
