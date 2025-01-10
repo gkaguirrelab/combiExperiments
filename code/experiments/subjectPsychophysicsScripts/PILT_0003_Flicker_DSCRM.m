@@ -3,7 +3,7 @@
 subjectID = 'PILT_0004';
 refFreqHz = [24,12,6,3,1.5];
 NDlabel = '3x5';
-simulateFlag = true;
+simulateFlag = false;
 
 % [~,stimOrderIdx] = sort(rand(1,nLevels));
 % nLevels = 2*length(flickerFreqSetHz);

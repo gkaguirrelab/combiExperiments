@@ -1,7 +1,7 @@
 close all
 clear
 
-subjectID = 'PILT_0003';
+subjectID = 'PILT_0004';
 flickerFreqSetHz = [1.5,3,6,12,24];
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
@@ -33,7 +33,7 @@ tiledlayout(length(modDirections),length(flickerFreqSetHz),"TileSpacing","compac
 for ii = 1:length(modDirections)
     for rr = 1:length(flickerFreqSetHz)
 
-        dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabelsAll{1}],experimentName);
+        dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabelsAll{2}],experimentName);
         nexttile;
         hold on
 
@@ -263,98 +263,152 @@ end
 % Set up a third figure
 figHandle3 = figure(3);
 figuresize(750,250,'units','pt');
-tiledlayout(length(modDirections),1,"TileSpacing","compact",'Padding','tight');
+% tiledlayout(length(modDirections),1,"TileSpacing","compact",'Padding','tight');
 
-for ii = 1:length(modDirections)
-    for rr = 1:length(flickerFreqSetHz)
+count = 1;
 
-        dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabelsAll{1}],experimentName);
+while true    
 
-        xData = log10(flickerFreqSetHz);
+    if count == 1
+        subjectID = 'PILT_0003';
 
-        psychObjArray = {};
+        % dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
+        % dropBoxSubDir='FLIC_data';
+        % projectName='combiLED';
+        % experimentName = 'DSCM';
 
-        for ss = 1:2 % High and low side estimates
+        subjectDir = fullfile(...
+            dropBoxBaseDir,...
+            dropBoxSubDir,...,
+            projectName,...
+            subjectID);
 
-            % Load this measure
-            psychFileStem = [subjectID '_' modDirections{ii} ...
-                '_' experimentName '_' ...
-                strrep(num2str(targetPhotoreceptorContrast(ii)),'.','x') ...
-                '_refFreq-' num2str(flickerFreqSetHz(rr)) 'Hz' ...
-                '_' stimParamLabels{ss}];
-            filename = fullfile(dataDir,psychFileStem);
-            load(filename,'psychObj');
+        NDlabel = NDlabelsAll{1};
 
-            psychObjArray{ss} = psychObj;
+    elseif count == 2
+        subjectID = 'PILT_0004';
+        % 
+        % dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
+        % dropBoxSubDir='FLIC_data';
+        % projectName='combiLED';
+        % experimentName = 'DSCM';
+
+        subjectDir = fullfile(...
+            dropBoxBaseDir,...
+            dropBoxSubDir,...,
+            projectName,...
+            subjectID);
+
+        NDlabel = NDlabelsAll{2};
+    end
+
+    count = count + 1;
+
+    hold on
+
+    for ii = 1:length(modDirections)
+        for rr = 1:length(flickerFreqSetHz)
+
+            dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabel],experimentName);
+
+            xData = log10(flickerFreqSetHz);
+
+            psychObjArray = {};
+
+            for ss = 1:2 % High and low side estimates
+
+                % Load this measure
+                psychFileStem = [subjectID '_' modDirections{ii} ...
+                    '_' experimentName '_' ...
+                    strrep(num2str(targetPhotoreceptorContrast(ii)),'.','x') ...
+                    '_refFreq-' num2str(flickerFreqSetHz(rr)) 'Hz' ...
+                    '_' stimParamLabels{ss}];
+                filename = fullfile(dataDir,psychFileStem);
+                load(filename,'psychObj');
+
+                psychObjArray{ss} = psychObj;
+
+            end
+
+            % Get params
+            lb1 = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
+            lb2 = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
+            lb = min(lb1, lb2);
+            ub1 = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
+            ub2 = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+            ub = max(ub1, ub2);
+
+            [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObjArray{1}.reportCombinedParams(psychObjArray{2},'lb',lb,'ub',ub,'nBoots',100);
+
+            % Calculate sigmas and CIs for the current mod direction and
+            % estimate type
+            if ii == 1
+                % Sigmas
+                % slopeVals_LminusM(rr) = psiParamsFit(2);
+                % slopeValCI_LminusM(rr,1) = psiParamsCI(1,2);
+                % slopeValCI_LminusM(rr,2) = psiParamsCI(2,2);
+
+                % Slopes
+                slopeVals_LminusM(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                slopeValCI_LminusM(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                slopeValCI_LminusM(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+            end
+
+            if ii == 2
+                % Sigmas
+                % slopeVals_LightFlux(rr) = psiParamsFit(2);
+                % slopeValCI_LightFlux(rr,1) = psiParamsCI(1,2);
+                % slopeValCI_LightFlux(rr,2) = psiParamsCI(2,2);
+
+                % Slopes
+                slopeVals_LightFlux(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                slopeValCI_LightFlux(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                slopeValCI_LightFlux(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+            end
 
         end
 
-        % Get params
-        [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObjArray{1}.reportCombinedParams(psychObjArray{2},'lb',lb,'ub',ub,'nBoots',100);
+        if ii == 1 % L minus M
 
-        % Calculate sigmas and CIs for the current mod direction and
-        % estimate type
-        if ii == 1
-            % Sigmas
-            % slopeVals_LminusM(rr) = psiParamsFit(2);
-            % slopeValCI_LminusM(rr,1) = psiParamsCI(1,2);
-            % slopeValCI_LminusM(rr,2) = psiParamsCI(2,2);
+            subplot(2, 1, 1);
+            hold on;
 
-            % Slopes
-            slopeVals_LminusM(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
-            slopeValCI_LminusM(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
-            slopeValCI_LminusM(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+            plot(xData, slopeVals_LminusM, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
+
+            for rr = 1:length(flickerFreqSetHz)
+                % Plot the confidence interval for each slope value
+                plot([xData(rr), xData(rr)], [slopeValCI_LminusM(rr, 1), slopeValCI_LminusM(rr, 2)], '-', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
+            end
+
+            title('L minus M');
+
+        elseif ii == 2 % LightFlux
+
+            subplot(2, 1, 2);
+            hold on;
+
+            plot(xData, slopeVals_LightFlux, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
+
+            for rr = 1:length(flickerFreqSetHz)
+                % Plot the confidence interval for each slope value
+                plot([xData(rr), xData(rr)], [slopeValCI_LightFlux(rr, 1), slopeValCI_LightFlux(rr, 2)], '-b', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
+            end
+
+            title('Light Flux');
+
         end
 
-        if ii == 2
-            % Sigmas
-            % slopeVals_LightFlux(rr) = psiParamsFit(2);
-            % slopeValCI_LightFlux(rr,1) = psiParamsCI(1,2);
-            % slopeValCI_LightFlux(rr,2) = psiParamsCI(2,2);
-
-            % Slopes
-            slopeVals_LightFlux(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
-            slopeValCI_LightFlux(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
-            slopeValCI_LightFlux(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
-        end
+        xlabel('log reference frequency (Hz)');
+        ylabel('slope value');
+        ylim([0,2]);
 
     end
 
-    if ii == 1 % L minus M
-
-        nexttile;
-        hold on;
-
-        plot(xData, slopeVals_LminusM, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
-
-        for rr = 1:length(flickerFreqSetHz)
-            % Plot the confidence interval for each slope value
-            plot([xData(rr), xData(rr)], [slopeValCI_LminusM(rr, 1), slopeValCI_LminusM(rr, 2)], '-', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
-        end
-
-        title('L minus M');
-
-    elseif ii == 2 % LightFlux
-
-        nexttile;
-        hold on;
-
-        plot(xData, slopeVals_LightFlux, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
-
-        for rr = 1:length(flickerFreqSetHz)
-            % Plot the confidence interval for each slope value
-            plot([xData(rr), xData(rr)], [slopeValCI_LightFlux(rr, 1), slopeValCI_LightFlux(rr, 2)], '-b', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
-        end
-
-        title('Light Flux');
-
+    if count == 2
+        break
     end
 
-    xlabel('log reference frequency (Hz)');
-    ylabel('slope value');
-    ylim([0,2]);
-
-end
+end % while loop 
 
 
 
