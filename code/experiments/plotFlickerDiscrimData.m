@@ -302,8 +302,6 @@ while true
         NDlabel = NDlabelsAll{2};
     end
 
-    count = count + 1;
-
     hold on
 
     for ii = 1:length(modDirections)
@@ -344,69 +342,91 @@ while true
             % estimate type
             if ii == 1
                 % Sigmas
-                % slopeVals_LminusM(rr) = psiParamsFit(2);
-                % slopeValCI_LminusM(rr,1) = psiParamsCI(1,2);
-                % slopeValCI_LminusM(rr,2) = psiParamsCI(2,2);
+                slopeVals_LminusM(rr) = psiParamsFit(2);
+                slopeValCI_LminusM(rr,1) = psiParamsCI(1,2);
+                slopeValCI_LminusM(rr,2) = psiParamsCI(2,2);
 
                 % Slopes
-                slopeVals_LminusM(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
-                slopeValCI_LminusM(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
-                slopeValCI_LminusM(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+                % slopeVals_LminusM(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                % slopeValCI_LminusM(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                % slopeValCI_LminusM(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
             end
 
             if ii == 2
                 % Sigmas
-                % slopeVals_LightFlux(rr) = psiParamsFit(2);
-                % slopeValCI_LightFlux(rr,1) = psiParamsCI(1,2);
-                % slopeValCI_LightFlux(rr,2) = psiParamsCI(2,2);
+                slopeVals_LightFlux(rr) = psiParamsFit(2);
+                slopeValCI_LightFlux(rr,1) = psiParamsCI(1,2);
+                slopeValCI_LightFlux(rr,2) = psiParamsCI(2,2);
 
                 % Slopes
-                slopeVals_LightFlux(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
-                slopeValCI_LightFlux(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
-                slopeValCI_LightFlux(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+                % slopeVals_LightFlux(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                % slopeValCI_LightFlux(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                % slopeValCI_LightFlux(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
             end
 
         end
 
         if ii == 1 % L minus M
 
+            if strcmp(subjectID, 'PILT_0003')
+                Color = [0, 0, 0.5];
+            elseif strcmp(subjectID, 'PILT_0004')
+                Color = [0, 0.5, 0];
+            end
+
             subplot(2, 1, 1);
             hold on;
 
-            plot(xData, slopeVals_LminusM, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
+            plot(xData, slopeVals_LminusM, '-o', 'LineWidth', 2, 'Color', Color);
 
             for rr = 1:length(flickerFreqSetHz)
                 % Plot the confidence interval for each slope value
-                plot([xData(rr), xData(rr)], [slopeValCI_LminusM(rr, 1), slopeValCI_LminusM(rr, 2)], '-', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
+                plot([xData(rr), xData(rr)], [slopeValCI_LminusM(rr, 1), slopeValCI_LminusM(rr, 2)], 'LineWidth', 3, 'Color', Color); % vertical line for CI
             end
 
             title('L minus M');
 
+            if strcmp(subjectID, 'PILT_0004')
+                legend('','0x5','','','','','','3x5')
+            end
+
         elseif ii == 2 % LightFlux
+
+            if strcmp(subjectID, 'PILT_0003')
+                Color = [0, 0, 0.5];
+            elseif strcmp(subjectID, 'PILT_0004')
+                Color = [0, 0.5, 0];
+            end
 
             subplot(2, 1, 2);
             hold on;
 
-            plot(xData, slopeVals_LightFlux, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
+            plot(xData, slopeVals_LightFlux, '-o', 'LineWidth', 2, 'Color', Color);
 
             for rr = 1:length(flickerFreqSetHz)
                 % Plot the confidence interval for each slope value
-                plot([xData(rr), xData(rr)], [slopeValCI_LightFlux(rr, 1), slopeValCI_LightFlux(rr, 2)], '-b', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
+                plot([xData(rr), xData(rr)], [slopeValCI_LightFlux(rr, 1), slopeValCI_LightFlux(rr, 2)], 'LineWidth', 3, 'Color', Color); % vertical line for CI
             end
 
             title('Light Flux');
 
+            if strcmp(subjectID, 'PILT_0004')
+                legend('','0x5','','','','','','3x5')
+            end
+
         end
 
         xlabel('log reference frequency (Hz)');
-        ylabel('slope value');
-        ylim([0,2]);
+        ylabel('sigma values');
+        ylim([0,3]);
 
     end
 
     if count == 2
         break
     end
+
+    count = count + 1;
 
 end % while loop 
 
