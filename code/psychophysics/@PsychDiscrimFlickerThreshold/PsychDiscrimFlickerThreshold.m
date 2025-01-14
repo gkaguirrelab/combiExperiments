@@ -21,7 +21,7 @@ classdef PsychDiscrimFlickerThreshold < handle
         questData
         simulatePsiParams
         giveFeedback
-        staircaseRule
+        staircaseRule % [nUp, nDown]
         psychometricFuncHandle
         psiParamLabels
         stimParamsDomainList
@@ -74,13 +74,13 @@ classdef PsychDiscrimFlickerThreshold < handle
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',true,@islogical);            
-            p.addParameter('staircaseRule',[1,1],@isnumeric);
+            p.addParameter('staircaseRule',[1,3],@isnumeric);
             p.addParameter('psychometricFuncHandle',@qpCumulativeNormalLapse,@ishandle);
             p.addParameter('psiParamLabels',{'μ','σ','λ'},@iscell);
             p.addParameter('simulatePsiParams',[0,0.3,0.05],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,3,51),linspace(0,0.1,11)},@isnumeric);
+                {linspace(0,0,1),linspace(0,3,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
