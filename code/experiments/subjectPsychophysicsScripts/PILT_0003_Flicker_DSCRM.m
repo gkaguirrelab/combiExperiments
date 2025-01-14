@@ -18,6 +18,6 @@ simulateFlag = false;
 % end
 
 % Use Quest+
-runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',10,'useStaircase',false, ...
+runDiscrimFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',10,'useStaircase',true, ...
     'simulateResponse',simulateFlag,'simulateStimuli',simulateFlag);
 
