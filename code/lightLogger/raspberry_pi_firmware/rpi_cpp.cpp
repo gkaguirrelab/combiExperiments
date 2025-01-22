@@ -884,7 +884,7 @@ int sunglasses_recorder(const uint32_t duration,
 
         // Swap buffers if this one is full
         if(buffer_offset == buffer->size()) {
-            std::cout << "Sunglasses | Swapping buffers" << '\n';
+            //std::cout << "Sunglasses | Swapping buffers" << '\n';
 
             // If we are using buffer two, switch to buffer one, otherwise vice versa
             buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
@@ -910,15 +910,15 @@ int sunglasses_recorder(const uint32_t duration,
             raw_adc -= 4096;
         }
 
-        std::cout << "Sunglasses | Original Reading: " << raw_adc << '\n';
+        //std::cout << "Sunglasses | Original Reading: " << raw_adc << '\n';
 
         // Need to split our reading in two parts because our reading is 12 bit and 
         // our buffer is for 8 bit values
         uint8_t lower_byte = raw_adc & 0xFF;        // Lower 8 bits of reading
         uint8_t upper_byte = (raw_adc >> 8) & 0xFF; // Upper 8 bits of reading
 
-        std::cout << "Sunglasses | Upper byte: " << std::bitset<8>(upper_byte) << '\n';
-        std::cout << "Sunglasses | Lower byte: " << std::bitset<8>(lower_byte) << '\n';
+        //std::cout << "Sunglasses | Upper byte: " << std::bitset<8>(upper_byte) << '\n';
+        //std::cout << "Sunglasses | Lower byte: " << std::bitset<8>(lower_byte) << '\n';
 
         // Ensure the buffer offset does not go out of bounds of the buffer array
         if(buffer_offset+1 >= buffer->size()) {
