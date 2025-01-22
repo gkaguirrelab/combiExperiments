@@ -159,6 +159,18 @@ int write_process_parallel(const fs::path* output_dir,
             // Retrieve the correct buffer to write
             buffer = (write_num % 2 == 0) ? buffers_two : buffers_one;
 
+            // Ensure at least one sensor had data in this buffer, otherwise something's gon wrong 
+            size_t sensors_with_content = 0; 
+            for(size_t i = 0; i < buffer->size(); i++) {
+                if(buffer->at(i).size() > 0) {
+                    sensors_with_content++; 
+                } 
+            }
+            if(sensors_with_content == 0) {
+                std::cout << "Write | ERROR: No sensor data in recording buffer" << '\n';
+                exit(1); 
+            }
+
             { // Must force archive to go out of scope, ensuring all contents are flushed
                 cereal::BinaryOutputArchive out_archive(out_file);
                 out_archive(*buffer);
