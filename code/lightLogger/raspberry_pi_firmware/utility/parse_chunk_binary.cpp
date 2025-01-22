@@ -7,6 +7,7 @@
 #include <string>
 #include <cereal/types/vector.hpp>
 #include <cereal/archives/binary.hpp>
+#include <bitset>
 
 namespace fs = std::filesystem;
 
@@ -44,6 +45,9 @@ extern "C" {
     @Mod: N/A
     */
     chunk_struct* parse_chunk_binary(const char* python_str_path) {
+        // Define the order in which the buffers are stored 
+        constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
+        
         // First let's convert the Python character array to a CPP string 
         std::string path(python_str_path);
 
@@ -79,6 +83,20 @@ extern "C" {
         // Read in the data to an initialized variable
         std::vector<std::vector<uint8_t>> chunk_vector; 
         in_archive(chunk_vector); 
+
+        // Iterate over the sizes of each of the buffers and print out the size
+        std::cout << "Num sensor buffers: " << chunk_vector.size() << '\n'; 
+        std::cout << "Sensor buffer sizes" << '\n';
+        for(size_t i = 0; i < controller_names.size(); i++) {
+            std:: cout << "\t" << controller_names[i] << ": " << chunk_vector[i].size() << '\n';
+        }
+
+
+        // Iterate over the size of the sunglasses vector and print out values just to test
+        for(size_t i = 0; i < chunk_vector[3].size(); i+=2) {
+            std::cout << "Sunglasses | Lower Byte: " << std::bitset<8>(chunk_vector[3][i]) << std::endl;
+            std::cout << "Sunglasses | Upper Byte: " << std::bitset<8>(chunk_vector[3][i+1]) << std::endl;
+        }
 
         // Now we need to allocate heap memory for each of these readings and copy them over 
         // so that Python can retrieve them and free them later

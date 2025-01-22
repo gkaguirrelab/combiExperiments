@@ -1085,7 +1085,7 @@ int main(int argc, char **argv) {
     std::cout << "----BUFFER ALLOCATIONS SUCCESSFUL---" << '\n';
     std::cout << "Num recording buffers: " << 2 << '\n';
     std::cout << "Num sensor buffers: " << buffers_one.size() << '\n';
-    std::cout << "Sensor buffer size | capacities(bytes): " << '\n';
+    std::cout << "Sensor buffer sizes | capacities(bytes): " << '\n';
     for(size_t i = 0; i < buffers_one.size(); i++) {
         std::cout << '\t' << controller_names[i] << ": " << buffers_one[i].size() << '|' << buffers_one[i].capacity() << '\n';
     }

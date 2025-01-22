@@ -25,7 +25,7 @@ def parse_chunks_binary(recording_dir_path: str, start_chunk: int=0, end_chunk: 
                             if 'chunk' in file][start_chunk:end_chunk]
 
     # Let's find the performance file if it exists
-    performance_df: pd.DataFrame | None = pd.read_csv(os.path.join(recording_dir_path, "performance.csv"), header=0) if os.path.join(os.path.join(recording_dir_path, "performance.csv")) else None
+    performance_df: pd.DataFrame | None = pd.read_csv(os.path.join(recording_dir_path, "performance.csv"), header=0) if os.path.exists(os.path.join(recording_dir_path, "performance.csv")) else None
 
     # Now, let's read in all of the chunks
     chunks: list = [parse_chunk_binary(chunk_path)
@@ -82,6 +82,10 @@ def parse_chunk_binary(chunk_path: str) -> dict:
         # The buffer passed in is made up of 8 bit unsigned ints, 
         # but the values reported by the sunglasses sensor require 12 bits, 
         # so lets convert to 16 and return
+
+        print('THIS IS THE SUNGLASSES BUFFER')
+        print(buffer)
+
 
         return buffer.view(np.uint16)
 
