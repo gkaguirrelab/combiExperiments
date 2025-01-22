@@ -85,6 +85,7 @@ def parse_chunk_binary(chunk_path: str) -> dict:
 
         print('THIS IS THE SUNGLASSES BUFFER')
         print(buffer)
+        print(buffer.view(np.uint16))
 
 
         return buffer.view(np.uint16)
