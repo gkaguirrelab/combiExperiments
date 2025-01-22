@@ -159,18 +159,6 @@ int write_process_parallel(const fs::path* output_dir,
             // Retrieve the correct buffer to write
             buffer = (write_num % 2 == 0) ? buffers_two : buffers_one;
 
-            // Ensure at least one sensor had data in this buffer, otherwise something's gon wrong 
-            size_t sensors_with_content = 0; 
-            for(size_t i = 0; i < buffer->size(); i++) {
-                if(buffer->at(i).size() > 0) {
-                    sensors_with_content++; 
-                } 
-            }
-            if(sensors_with_content == 0) {
-                std::cout << "Write | ERROR: No sensor data in recording buffer" << '\n';
-                exit(1); 
-            }
-
             { // Must force archive to go out of scope, ensuring all contents are flushed
                 cereal::BinaryOutputArchive out_archive(out_file);
                 out_archive(*buffer);
@@ -894,9 +882,8 @@ int sunglasses_recorder(const uint32_t duration,
             break;
         }
 
-        // Swap buffers if this one is full (divide by two here since we are doing 2 writes per frame captured)
-        if((buffer_offset / 2) == buffer_size_frames) {
-
+        // Swap buffers if this one is full
+        if(buffer_offset == buffer->size()) {
             std::cout << "Sunglasses | Swapping buffers" << '\n';
 
             // If we are using buffer two, switch to buffer one, otherwise vice versa
@@ -930,24 +917,24 @@ int sunglasses_recorder(const uint32_t duration,
         uint8_t lower_byte = raw_adc & 0xFF;        // Lower 8 bits of reading
         uint8_t upper_byte = (raw_adc >> 8) & 0xFF; // Upper 8 bits of reading
 
+        std::cout << "Sunglasses | Upper byte: " << std::bitset<8>(upper_byte) << '\n';
+        std::cout << "Sunglasses | Lower byte: " << std::bitset<8>(lower_byte) << '\n';
+
         // Ensure the buffer offset does not go out of bounds of the buffer array
-        if(buffer_offset >= buffer->capacity()) {
+        if(buffer_offset+1 >= buffer->size()) {
             std::cout << "Sunglasses | ERROR: Overran buffer" << '\n';
             exit(1); 
         }
 
-        std::cout << "Sunglasses | Upper byte: " << std::bitset<8>(upper_byte) << '\n';
-        std::cout << "Sunglasses | Lower byte: " << std::bitset<8>(lower_byte) << '\n';
-
         // Write the bytes from the reading to the buffer
-        (*buffer)[buffer_offset % buffer_size_frames] = lower_byte; 
-        (*buffer)[(buffer_offset + 1) % buffer_size_frames] = upper_byte; 
+        (*buffer)[buffer_offset] = lower_byte; 
+        (*buffer)[(buffer_offset + 1)] = upper_byte; 
 
         // Increment the captured frame number and buffer position 
         frame_num++; 
         buffer_offset+=2; 
 
-        // Sleep for a few seconds between readings, as high FPS for sunglasses 
+        // Sleep for some time between readings, as high FPS for sunglasses 
         // is not important
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -1076,9 +1063,9 @@ int main(int argc, char **argv) {
             // the Pupil cam reads at 120x400x400 bytes per second
             // the sunglasses sensor reads at 1x2 bytes per second 
 
-        // Allocate the desired memory but do NOT initialize it
-        buffers_one[controller_idx].reserve(sensor_buffer_size * data_size_multiplers[controller_idx]); 
-        buffers_two[controller_idx].reserve(sensor_buffer_size * data_size_multiplers[controller_idx]); 
+        // Allocate the appropriate amount of space and initialize all values to 0 
+        buffers_one[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx], 0); 
+        buffers_two[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx], 0); 
     }
 
     // Output information about how the buffer allocation process went
