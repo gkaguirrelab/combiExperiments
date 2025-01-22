@@ -5,6 +5,7 @@
 #include <array>
 #include <iostream>
 #include <vector>
+#include <downsample.h>
 
 using std::cout;
 
@@ -38,11 +39,11 @@ being Bayer-aware.
            with the downsampled image. 
 @Returns: None
 */
-extern "C" void downsample(const uint8_t* flattened_img, 
-                           uint16_t rows, 
-                           uint16_t cols,
-                           uint8_t factor,
-                           uint8_t* output) 
+void downsample(const uint8_t* flattened_img, 
+                uint16_t rows, 
+                uint16_t cols,
+                uint8_t factor,
+                uint8_t* output) 
 {       
     // Find the shape of the new image by dividing by 2 x factor 
     // along each dimension
@@ -128,12 +129,12 @@ being Bayer-aware.
            with the downsampled images. 
 @Returns: None
 */
-extern "C" void downsample_buffer(const uint8_t* flattened_img_buffer, 
-                                  uint16_t buffer_size,
-                                  uint16_t rows, 
-                                  uint16_t cols,
-                                  uint8_t factor,
-                                  uint8_t* output) 
+void downsample_buffer(const uint8_t* flattened_img_buffer, 
+                             uint16_t buffer_size,
+                             uint16_t rows, 
+                             uint16_t cols,
+                             uint8_t factor,
+                             uint8_t* output) 
 {       
     // Find the shape of the new image by dividing by 2 x factor 
     // along each dimension
@@ -211,8 +212,4 @@ extern "C" void downsample_buffer(const uint8_t* flattened_img_buffer,
         }
 
     }
-}
-
-int main() {
-   return 0; 
 }
