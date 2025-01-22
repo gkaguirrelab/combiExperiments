@@ -23,6 +23,7 @@
 #include <mutex>
 #include <sys/mman.h>
 #include <bitset>
+#include "downsample.h"
 
 namespace fs = std::filesystem; 
 
@@ -318,7 +319,7 @@ int minispect_recorder(const uint32_t duration,
         
         // Swap buffers if we filled up this buffer
         if(buffer_offset == buffer->size()) {
-            std::cout << "MS | Swapping buffers" << '\n';
+            //std::cout << "MS | Swapping buffers" << '\n';
 
             // If we are using buffer two, switch to buffer one, otherwise vice versa
             buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
@@ -335,7 +336,7 @@ int minispect_recorder(const uint32_t duration,
 
         // If this byte is the start buffer, note that we have received a reading
         if (byte_read[0] == start_delim) {      
-            std::cout << "MS | Captured a reading" << '\n';
+            //std::cout << "MS | Captured a reading" << '\n';
 
             // Now we can read the correct amount of data
             boost::asio::read(ms, boost::asio::buffer(reading_buffer, data_length));
@@ -402,6 +403,10 @@ typedef struct {
     float_t speed_setting; 
     std::chrono::steady_clock::time_point last_agc_change; 
     size_t frame_num; 
+    size_t rows;
+    size_t cols; 
+    uint8_t downsample_factor;
+    size_t downsampled_bytes_per_image; 
     uint16_t buffer_size_frames; 
     uint8_t current_buffer;
     std::vector<uint8_t>* buffer;
@@ -433,11 +438,12 @@ static void world_frame_callback(libcamera::Request *request) {
 
     // Retrieve information we will lookup often from the struct onto the stack 
     size_t frame_num = data->frame_num;
-    size_t buffer_size_frames = data->buffer_size_frames;
     uint8_t current_buffer = data->current_buffer;
 
     // Swap buffers if this one is full
-    if(frame_num > 0 && frame_num % buffer_size_frames == 0) {
+    if(data->buffer_offset == data->buffer->size()) {
+        //std::cout << "World | Swapping buffers" << '\n';
+
        // If we are using buffer two, switch to buffer one, otherwise vice versa
         data->buffer = (current_buffer % 2 == 0) ? data->buffer_one : data->buffer_two;
 
@@ -454,14 +460,23 @@ static void world_frame_callback(libcamera::Request *request) {
 
     // Cast to byte array 
     uint8_t* pixel_data = static_cast<uint8_t*>(memory_map) + pixel_data_plane.offset;
+    //std::cout << "World | Captured a Frame of length " << pixel_data_plane.length << '\n';
 
-    // Copy to the given buffer TODO: Right now I am never incrementing the buffer offset. This is just for testing for now.
-    std::memcpy(data->buffer->data() + data->buffer_offset, pixel_data, pixel_data_plane.length); //Replace 0 with the start index of where this img should go
+    // Ensure the image is the size we think it should be 
+    if(pixel_data_plane.length != data->rows * data->cols) {
+        std::cout << "World | ERROR: Bytes returned from camera are not equal to intended" << '\n'; 
+        return; 
+    }
+
+    // Downsample the image to save space, time when writing, and for privacy reasons
+    downsample(pixel_data, data->rows, data->cols, data->downsample_factor, data->buffer->data()+data->buffer_offset);
 
     // Change the AGC every 250 milliseconds
     if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
         // Calculate the mean of the pixel data. This will be the input to the AGC
-        int32_t mean_intensity = std::accumulate(data->buffer->begin() + data->buffer_offset, data->buffer->begin() + data->buffer_offset + pixel_data_plane.length, 0) / pixel_data_plane.length; 
+        int32_t mean_intensity = std::accumulate(data->buffer->begin() + data->buffer_offset, data->buffer->begin() + data->buffer_offset + data->downsampled_bytes_per_image, 0) / data->downsampled_bytes_per_image; 
+
+        //std::cout << "World | Calculating AGC with mean intensity " << mean_intensity << '\n';
 
         // Input the mean intensity of the current frame to the AGC. Retrieve corrected gain and exposure. 
         RetVal adjusted_settings = AGC(mean_intensity, data->current_gain, data->current_exposure, data->speed_setting);
@@ -479,6 +494,9 @@ static void world_frame_callback(libcamera::Request *request) {
     
     // Increment the frame number
     data->frame_num++; 
+
+    // Increment the buffer offset for the next frame 
+    data->buffer_offset += data->downsampled_bytes_per_image; 
 
     // Put the frame buffer back into circulation with the camera
     request->reuse(libcamera::Request::ReuseBuffers);
@@ -506,6 +524,8 @@ int world_recorder(const uint32_t duration,
     constexpr size_t rows = 480;
     constexpr float_t fps = 200;
     constexpr int64_t frame_duration = 1e6/fps;
+    constexpr uint8_t downsample_factor = 3; // The power of 2 with which to downsample each dimension of the frame 
+    constexpr size_t downsampled_bytes_per_image = (rows >> downsample_factor) * (cols >> downsample_factor);
     
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
@@ -566,6 +586,10 @@ int world_recorder(const uint32_t duration,
     data.current_exposure = 200; 
     data.speed_setting = 0.95;
     data.frame_num = 0;
+    data.rows = rows; 
+    data.cols = cols; 
+    data.downsample_factor = downsample_factor;
+    data.downsampled_bytes_per_image = downsampled_bytes_per_image; 
     data.current_buffer = 1;
     data.buffer = buffer_one;
     data.buffer_one = buffer_one;
@@ -618,14 +642,14 @@ int world_recorder(const uint32_t duration,
     camera->requestCompleted.connect(world_frame_callback);
 
     // Initialize libcamera
-    std::cout << "World | Initialized..." << '\n'; 
+    std::cout << "World | Initialized" << '\n'; 
     
     //std::cout << "Assigned the callback " << std::endl;
 
     camera->start(&requests[0]->controls());
 
      
-    //std::cout << "Started the camera" << std::endl;
+    std::cout << "World | Beginning recording" << std::endl;
 
     for (std::unique_ptr<libcamera::Request> &request : requests) {
         camera->queueRequest(request.get());
@@ -996,7 +1020,7 @@ int main(int argc, char **argv) {
     constexpr std::array<uint8_t, 4> sensor_FPS = {1, 200, 120, 1};
 
     // Calculate the data size for each of the sensors per each second of capture. The sunglasses sensor is x2 because it returns a 16bit value and we are storing with 8 bit arrays
-    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*80, sensor_FPS[2]*400*400, sensor_FPS[3]*2}; // this can be constexpr because values will never change
+    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*40, sensor_FPS[2]*400*400, sensor_FPS[3]*2}; // this can be constexpr because values will never change
     
     // Initialize a variable for the size of each sensors' buffer in seconds. This will be regularly written out and cleared
     constexpr uint8_t sensor_buffer_size = 10; 
@@ -1084,6 +1108,7 @@ int main(int argc, char **argv) {
         buffers_one[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx], 0); 
         buffers_two[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx], 0); 
     }
+
 
     // Output information about how the buffer allocation process went
     std::cout << "----BUFFER ALLOCATIONS SUCCESSFUL---" << '\n';
