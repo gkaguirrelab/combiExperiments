@@ -22,6 +22,7 @@
 #include <libuvc/libuvc.h>
 #include <mutex>
 #include <sys/mman.h>
+#include <bitset>
 
 namespace fs = std::filesystem; 
 
@@ -751,6 +752,7 @@ int pupil_recorder(const uint32_t duration,
 
     std::cout << "Pupil | Initialized." << '\n';
 
+    /*
     // Initialize a counter for how many frames we are going to capture 
     // and how many bytes each frame is
     size_t frame_num = 0; 
@@ -786,6 +788,7 @@ int pupil_recorder(const uint32_t duration,
     
     // Output information about how much data we captured 
     std::cout << "Pupil | Captured Frames: " << data.frame_num << '\n';
+    */
 
     // Close the connection to the Camera device
     std::cout << "Pupil | Closing..." << '\n'; 
@@ -797,7 +800,7 @@ int pupil_recorder(const uint32_t duration,
     std::cout << "Pupil | Closed." << '\n'; 
 
     // Save the recording performance for this recorder in the performance data struct
-    performance_struct->P_captured_frames = data.frame_num; 
+    //performance_struct->P_captured_frames = data.frame_num; 
 
     return 0;
 }
@@ -880,7 +883,9 @@ int sunglasses_recorder(const uint32_t duration,
         }
 
         // Swap buffers if this one is full (divide by two here since we are doing 2 writes per frame captured)
-        if(buffer_offset > 0 && (buffer_offset / 2) % buffer_size_frames == 0) {
+        if((buffer_offset / 2) == buffer_size_frames) {
+
+            std::cout << "Sunglasses | Swapping buffers" << '\n';
 
             // If we are using buffer two, switch to buffer one, otherwise vice versa
             buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
@@ -906,10 +911,21 @@ int sunglasses_recorder(const uint32_t duration,
             raw_adc -= 4096;
         }
 
+        std::cout << "Sunglasses | Original Reading: " << raw_adc << '\n';
+
         // Need to split our reading in two parts because our reading is 12 bit and 
         // our buffer is for 8 bit values
         uint8_t lower_byte = raw_adc & 0xFF;        // Lower 8 bits of reading
         uint8_t upper_byte = (raw_adc >> 8) & 0xFF; // Upper 8 bits of reading
+
+        // Ensure the buffer offset does not go out of bounds of the buffer array
+        if(buffer_offset >= buffer->capacity()) {
+            std::cout << "Sunglasses | ERROR: Overran buffer" << '\n';
+            exit(1); 
+        }
+
+        std::cout << "Sunglasses | Upper byte: " << std::bitset<8>(upper_byte) << '\n';
+        std::cout << "Sunglasses | Lower byte: " << std::bitset<8>(lower_byte) << '\n';
 
         // Write the bytes from the reading to the buffer
         (*buffer)[buffer_offset % buffer_size_frames] = lower_byte; 
@@ -926,7 +942,7 @@ int sunglasses_recorder(const uint32_t duration,
     }
 
     // Output information about how much data we captured 
-    std::cout << "Sunglasses | Captured Frames: " << frame_num/2 << '\n';
+    std::cout << "Sunglasses | Captured Frames: " << frame_num << '\n';
 
     // Close the connection to the i2c_bus device
     std::cout << "Sunglasses | Closing..." << '\n'; 
@@ -940,6 +956,12 @@ int sunglasses_recorder(const uint32_t duration,
 }
 
 int main(int argc, char **argv) {
+    /***************************************************************
+     *                                                             *
+     *                     VARIABLE INITIALIZATION                 *
+     *                                                             *
+     ***************************************************************/
+    
     // Initialize variable to hold output directory path. Path need not exist
     fs::path output_dir;
 
@@ -947,14 +969,31 @@ int main(int argc, char **argv) {
     // negative, then it will be for infinity
     uint32_t duration; 
 
+    // Initialize an array of sensor names. The index of these names will correspond to the sensor's info in other arrays. For instance, MS info will always be ind 0
+    constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
+
     // Initialize controller flags as entirely false. This is because we will denote which controllers 
     // to use based on arguments passed. 
-    constexpr std::array<char, 4> controller_names = {'M', 'W', 'P', 'S'};  // this can be constexpr because values will never change 
-    std::vector<std::function<int(int32_t, std::vector<uint8_t>*, std::vector<uint8_t>*, uint16_t, performance_data*)>> controller_functions = {minispect_recorder, world_recorder, pupil_recorder, sunglasses_recorder}; // this CANNOT be constexpr because function stubs are dynamic
     std::array<bool, 4> controller_flags = {false, false, false, false}; // this CANNOT be constexpr because values will change 
+    
+    // Define the FPS of each of the sensors 
     constexpr std::array<uint8_t, 4> sensor_FPS = {1, 200, 120, 1};
+
+    // Calculate the data size for each of the sensors per each second of capture. The sunglasses sensor is x2 because it returns a 16bit value and we are storing with 8 bit arrays
     constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*80, sensor_FPS[2]*400*400, sensor_FPS[3]*2}; // this can be constexpr because values will never change
-    constexpr uint8_t sensor_buffer_size = 10; // Initialize a variable for the size of each sensors' buffer in seconds. This will be regularly written out and cleared
+    
+    // Initialize a variable for the size of each sensors' buffer in seconds. This will be regularly written out and cleared
+    constexpr uint8_t sensor_buffer_size = 10; 
+
+    // Initialize an array of function pointers that point to the recorder functions for each sensor
+    std::array<std::function<int(int32_t, std::vector<uint8_t>*, std::vector<uint8_t>*, uint16_t, performance_data*)>, 4> controller_functions = {minispect_recorder, world_recorder, pupil_recorder, sunglasses_recorder}; // this CANNOT be constexpr because function stubs are dynamic
+    
+
+    /***************************************************************
+     *                                                             *
+     *               ARGUMENT PARSING AND VALIDATION               *
+     *                                                             *
+     ***************************************************************/
 
     // Parse the commandline arguments.
     if(parse_args(argc, (const char**) argv, output_dir, controller_flags, duration)) {
@@ -992,18 +1031,26 @@ int main(int argc, char **argv) {
 
     std::cout << "Output Directory: " << output_dir << '\n';
     std::cout << "Duration: " << duration << " seconds" << '\n';
-    std::cout << "Buffer size: " << std::to_string(sensor_buffer_size) << " seconds" << '\n'; // Not sure why but I had to use std::to_string to get this to show
+    std::cout << "Buffer size: " << std::to_string(sensor_buffer_size) << " seconds" << '\n'; // Not sure why but I had to use std::to_string to get this to show. I think it's because uint8_t is an alias for unsigned char
     std::cout << "Num Active Controllers: " << num_active_sensors << '\n';
     std::cout << "Controllers to use: " << '\n';
     for(size_t i = 0; i < controller_names.size(); i++) {
         std::cout << '\t' << controller_names[i] << " | " << controller_flags[i] << '\n';
     }
 
+    /***************************************************************
+     *                                                             *
+     *                  BUFFER SETUP AND ALLOCATION                *
+     *                                                             *
+     ***************************************************************/
+
+
     // Once we know the duration and the sensors we are using, we are going to dynamically 
     // allocate two buffers of duration seconds per sensor of 8bit values. This is because 
     // we are going to spawn between them
     
-    // First, allocate outer vectors for all of the potential sensors
+    // First, allocate outer arrays for all of the potential sensors. We can use array here since we know that there will 
+    // always be four controllers worth of buffers
     std::vector<std::vector<uint8_t>> buffers_one(controller_names.size());
     std::vector<std::vector<uint8_t>> buffers_two(controller_names.size());
 
@@ -1017,18 +1064,25 @@ int main(int argc, char **argv) {
             // the Pupil cam reads at 120x400x400 bytes per second
             // the sunglasses sensor reads at 1x2 bytes per second 
 
-        // Allocate time + 1 in case things read a little faster than normal
-        buffers_one[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx]); 
-        buffers_two[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx]); 
+        // Allocate the desired memory but do NOT initialize it
+        buffers_one[controller_idx].reserve(sensor_buffer_size * data_size_multiplers[controller_idx]); 
+        buffers_two[controller_idx].reserve(sensor_buffer_size * data_size_multiplers[controller_idx]); 
     }
 
     // Output information about how the buffer allocation process went
     std::cout << "----BUFFER ALLOCATIONS SUCCESSFUL---" << '\n';
+    std::cout << "Num recording buffers: " << 2 << '\n';
     std::cout << "Num sensor buffers: " << buffers_one.size() << '\n';
-    std::cout << "Sensor buffer capacities(bytes): " << '\n';
+    std::cout << "Sensor buffer size | capacities(bytes): " << '\n';
     for(size_t i = 0; i < buffers_one.size(); i++) {
-        std::cout << '\t' << controller_names[i] << ": " << buffers_one[i].size() << '\n';
+        std::cout << '\t' << controller_names[i] << ": " << buffers_one[i].size() << '|' << buffers_one[i].capacity() << '\n';
     }
+
+    /***************************************************************
+     *                                                             *
+     *                      THREAD SPAWNING                        *
+     *                                                             *
+     ***************************************************************/
 
     // Begin parallel recording and enter performance critical section. All print statements below 
     // this point MUST use \n as a terminator instead of '\n', which is significantly slower, and all code should be 
@@ -1040,8 +1094,6 @@ int main(int argc, char **argv) {
     // We will spawn only threads for those controllers that we are going to use. 
     // Spawn them, with the duration of recording as an argument
     std::cout << "----SPAWNING THREADS---" << '\n';
-    
-    //sunglasses_recorder(duration, &buffers_one[0], &buffers_two[0], 5);
     
     for (const auto& used_controller_idx: used_controller_indices) {
         threads.emplace_back(std::thread(controller_functions[used_controller_idx], 
@@ -1056,6 +1108,14 @@ int main(int argc, char **argv) {
                                                              sensor_buffer_size,
                                                              &buffers_one, &buffers_two));
 
+
+    /***************************************************************
+     *                                                             *
+     *                      THREAD CLEANUP                         *
+     *                                                             *
+     ***************************************************************/
+
+
     // Join threads to ensure they complete before the program ends
     for (auto& t : threads) {
         t.join();
@@ -1064,6 +1124,15 @@ int main(int argc, char **argv) {
     // Signal to the user that the threads has successfully closed their operation
     std::cout << "----THREADS CLOSED SUCCESSFULLY---" << '\n'; 
 
+
+    /***************************************************************
+     *                                                             *
+     *                    PERFORMANCE METRICS                      *
+     *                                                             *
+     ***************************************************************/
+
+
+    /*
     // Output the performance metrics in CSV Format
     fs::path performance_filepath = output_dir / "performance.csv";
 
@@ -1088,6 +1157,7 @@ int main(int argc, char **argv) {
     // Signal to the user that the threads has successfully closed their operation
     std::cout << "----LOGGED PERFORMANCE METRICS---" << '\n'; 
 
+    */
 
     return 0; 
 }
