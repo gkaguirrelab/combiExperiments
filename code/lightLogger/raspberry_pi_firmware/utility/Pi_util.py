@@ -64,8 +64,13 @@ def parse_chunk_binary(chunk_path: str) -> dict:
     
     """Define the parser for the World frames for a given chunk"""
     def world_parser(buffer: np.ndarray):
+        # First, we retrieve the shape of an individual frame 
+        frame_shape: np.ndarray = np.array([40, 60])
 
-        return buffer
+        # Now, let's calculate how many frames we have 
+        num_frames: int = buffer.shape[0] // np.prod(frame_shape)
+
+        return buffer.reshape(num_frames, *frame_shape)
 
     """Define the parser for the pupil frames for a given chunk"""
     def pupil_parser(buffer: np.ndarray) -> np.ndarray:
@@ -82,11 +87,6 @@ def parse_chunk_binary(chunk_path: str) -> dict:
         # The buffer passed in is made up of 8 bit unsigned ints, 
         # but the values reported by the sunglasses sensor require 12 bits, 
         # so lets convert to 16 and return
-
-        print('THIS IS THE SUNGLASSES BUFFER')
-        print(buffer)
-        print(buffer.view(np.uint16))
-
 
         return buffer.view(np.uint16)
 
@@ -123,7 +123,7 @@ def parse_chunk_binary(chunk_path: str) -> dict:
         sensor_fields_and_sizes: list = {field.split('_')[0]: getattr(chunk, field)  
                                         for (field, _) 
                                         in chunk._fields_
-                                        if '_size' in field} # Retrieve the sensor name by splicing out the _size portion of the name
+                                        if '_size' in field} # Retrieve the sensor name by splicing out the _size portion of the name which is like M_size
         
         # Assert that the CPP executed without error
         assert(all(buffer_size != -1 for sensor, buffer_size in sensor_fields_and_sizes.items()))   # Error code: -1 means that the file does not exist
