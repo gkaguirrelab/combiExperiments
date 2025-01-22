@@ -317,7 +317,9 @@ int minispect_recorder(const uint32_t duration,
         }
         
         // Swap buffers if we filled up this buffer
-        if(buffer_offset > 0 && buffer_offset % buffer_size_frames == 0) {
+        if(buffer_offset == buffer->size()) {
+            std::cout << "MS | Swapping buffers" << '\n';
+
             // If we are using buffer two, switch to buffer one, otherwise vice versa
             buffer = (current_buffer % 2 == 0) ? buffer_one : buffer_two;
 
@@ -328,12 +330,13 @@ int minispect_recorder(const uint32_t duration,
             buffer_offset = 0; 
         }
 
-
         // Read a byte from the serial stream
         boost::asio::read(ms, boost::asio::buffer(byte_read));
 
         // If this byte is the start buffer, note that we have received a reading
-        if (byte_read[0] == start_delim) {            
+        if (byte_read[0] == start_delim) {      
+            std::cout << "MS | Captured a reading" << '\n';
+
             // Now we can read the correct amount of data
             boost::asio::read(ms, boost::asio::buffer(reading_buffer, data_length));
 
@@ -349,9 +352,23 @@ int minispect_recorder(const uint32_t duration,
                 if(ms.is_open()) { ms.close();}
                 exit(1);
             }
+ 
+            // Ensure we are not going to overrun the buffer on this write.
+            // Note since this is essentially copying an array over, we must only check if it's greater than size. 
+            // Consider when buffer offset is 0. If our buffer was 1 reading (148) bytes, if we checked if buffer_offset + 148 
+            // is >= it would falsely say this is out of bounds. 
+            if(buffer_offset+data_length > buffer->size()) {
+                std::cout << "MS | ERROR: Overran buffer" << '\n';
+                
+                if(ms.is_open()) { ms.close();}
+                exit(1);
+            }
 
             // Append these bytes to the buffer for the duration of the video
             std::memcpy(buffer->data()+buffer_offset, reading_buffer.data(), data_length);
+
+            // Increment the buffer offset 
+            buffer_offset += data_length; 
 
             // Increment the number of captured frames 
             frame_num++; 
