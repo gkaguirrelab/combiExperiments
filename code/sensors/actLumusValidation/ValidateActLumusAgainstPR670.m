@@ -46,11 +46,24 @@ pr670MeasuredSPD = pr670MeasuredSPD.spectrum / 2;
 predictedCountsPerChannel = 2*pi*pr670MeasuredSPD'*actLumusChannelSPDs;
 
 % Make a plot
-scatter(predictedCountsPerChannel, actLumusCountsPerChannel , 'filled')
-xlabel('PR670 projected on ActLumus channnels [W / m2]')
-ylabel('ActLumus channel values [W / m2]')
+figure
+plot([0.002,0.1],[0.002,0.1],'-k','LineWidth',2)
+hold on
+shift = 1.25;
+for ii = 1:length(predictedCountsPerChannel)
+    plot(predictedCountsPerChannel(ii),actLumusCountsPerChannel(ii),'.','MarkerSize',35);
+    text(predictedCountsPerChannel(ii)/shift,actLumusCountsPerChannel(ii)*shift,num2str(ii),"FontSize",16);   
+end
+a = gca();
+a.XScale='log'; a.YScale='log';
+a.XTickLabel = {'0.001','0.01','0.1'};
+a.YTickLabel = {'0.001','0.01','0.1'};
+xlim([0.001,0.25]);
+ylim([0.001,0.25]);
+a.FontSize = 14;
+xlabel('Predicted radiance [W/m^2]','FontSize',14)
+ylabel('ActLumus observed [W/m^2]','FontSize',14)
 axis square 
-refline(1,0);
 
 
 

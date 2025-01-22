@@ -1,8 +1,7 @@
-
 close all
 clear
 
-subjectID = 'PILT_0003';
+subjectID = 'PILT_0004';
 flickerFreqSetHz = [1.5,3,6,12,24];
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
@@ -24,6 +23,8 @@ subjectDir = fullfile(...
     projectName,...
     subjectID);
 
+%% Plot the full psychometric functions
+
 % Set up a figure
 figHandle = figure(1);
 figuresize(750,250,'units','pt');
@@ -32,7 +33,7 @@ tiledlayout(length(modDirections),length(flickerFreqSetHz),"TileSpacing","compac
 for ii = 1:length(modDirections)
     for rr = 1:length(flickerFreqSetHz)
 
-        dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabelsAll{1}],experimentName);
+        dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabelsAll{2}],experimentName);
         nexttile;
         hold on
 
@@ -89,9 +90,27 @@ for ii = 1:length(modDirections)
         end
 
         % Add the psychometric function
-        stimParamsDomainList1 = psychObjArray{1}.stimParamsDomainList;
-        stimParamsDomainList2 = psychObjArray{2}.stimParamsDomainList;
-        stimParamsDomainList = [stimParamsDomainList1, stimParamsDomainList2];
+        stimParamsDomainList = [psychObjArray{1}.stimParamsDomainList, psychObjArray{2}.stimParamsDomainList];
+
+        % Get the Max Likelihood psi params, temporarily turning off verbosity.
+
+        % Finding ub and lb based on the high and low side psychometric objects
+        lb1 = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
+        lb2 = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
+        lb = min(lb1, lb2);
+        ub1 = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
+        ub2 = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+        ub = max(ub1, ub2);
+
+        storeVerbose1 = psychObjArray{1}.verbose;
+        storeVerbose2 = psychObjArray{2}.verbose;
+        psychObjArray{1}.verbose = false;
+        psychObjArray{2}.verbose = false;
+
+        [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObjArray{1}.reportCombinedParams(psychObjArray{2}, 'lb', lb, 'ub', ub, 'nBoots', 100);
+
+        psychObjArray{1}.verbose = storeVerbose1;
+        psychObjArray{2}.verbose = storeVerbose2;
 
         % Forcing the lapse rate to be 0
         psiParamsFit(1, 3) = 0;
@@ -138,6 +157,8 @@ for ii = 1:length(modDirections)
     end
 
 end
+
+%% Plot the slopes of the psychometric functions with two arms
 
 % Plotting the slopes with CIs
 % Set up a second figure
@@ -234,6 +255,292 @@ for ii = 1:length(modDirections)
     ylabel('slope of psychometric function');
     ylim([0,2]);
     legend('Low Test', 'High Test');
+
+end
+
+%% Plot the sigmas or slopes of the full psychometric functions with CIs
+
+% Set up a third figure
+figHandle3 = figure(3);
+figuresize(750,250,'units','pt');
+% tiledlayout(length(modDirections),1,"TileSpacing","compact",'Padding','tight');
+
+count = 1;
+
+while true    
+
+    if count == 1
+        subjectID = 'PILT_0003';
+
+        % dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
+        % dropBoxSubDir='FLIC_data';
+        % projectName='combiLED';
+        % experimentName = 'DSCM';
+
+        subjectDir = fullfile(...
+            dropBoxBaseDir,...
+            dropBoxSubDir,...,
+            projectName,...
+            subjectID);
+
+        NDlabel = NDlabelsAll{1};
+
+    elseif count == 2
+        subjectID = 'PILT_0004';
+        % 
+        % dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
+        % dropBoxSubDir='FLIC_data';
+        % projectName='combiLED';
+        % experimentName = 'DSCM';
+
+        subjectDir = fullfile(...
+            dropBoxBaseDir,...
+            dropBoxSubDir,...,
+            projectName,...
+            subjectID);
+
+        NDlabel = NDlabelsAll{2};
+    end
+
+    hold on
+
+    for ii = 1:length(modDirections)
+        for rr = 1:length(flickerFreqSetHz)
+
+            dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabel],experimentName);
+
+            xData = log10(flickerFreqSetHz);
+
+            psychObjArray = {};
+
+            for ss = 1:2 % High and low side estimates
+
+                % Load this measure
+                psychFileStem = [subjectID '_' modDirections{ii} ...
+                    '_' experimentName '_' ...
+                    strrep(num2str(targetPhotoreceptorContrast(ii)),'.','x') ...
+                    '_refFreq-' num2str(flickerFreqSetHz(rr)) 'Hz' ...
+                    '_' stimParamLabels{ss}];
+                filename = fullfile(dataDir,psychFileStem);
+                load(filename,'psychObj');
+
+                psychObjArray{ss} = psychObj;
+
+            end
+
+            % Get params
+            lb1 = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
+            lb2 = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
+            lb = min(lb1, lb2);
+            ub1 = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
+            ub2 = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+            ub = max(ub1, ub2);
+
+            [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObjArray{1}.reportCombinedParams(psychObjArray{2},'lb',lb,'ub',ub,'nBoots',100);
+
+            % Calculate sigmas and CIs for the current mod direction and
+            % estimate type
+            if ii == 1
+                % Sigmas
+                slopeVals_LminusM(rr) = psiParamsFit(2);
+                slopeValCI_LminusM(rr,1) = psiParamsCI(1,2);
+                slopeValCI_LminusM(rr,2) = psiParamsCI(2,2);
+
+                % Slopes
+                % slopeVals_LminusM(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                % slopeValCI_LminusM(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                % slopeValCI_LminusM(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+            end
+
+            if ii == 2
+                % Sigmas
+                slopeVals_LightFlux(rr) = psiParamsFit(2);
+                slopeValCI_LightFlux(rr,1) = psiParamsCI(1,2);
+                slopeValCI_LightFlux(rr,2) = psiParamsCI(2,2);
+
+                % Slopes
+                % slopeVals_LightFlux(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+                % slopeValCI_LightFlux(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+                % slopeValCI_LightFlux(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+            end
+
+        end
+
+        if ii == 1 % L minus M
+
+            if strcmp(subjectID, 'PILT_0003')
+                Color = [0, 0, 0.5];
+            elseif strcmp(subjectID, 'PILT_0004')
+                Color = [0, 0.5, 0];
+            end
+
+            subplot(2, 1, 1);
+            hold on;
+
+            plot(xData, slopeVals_LminusM, '-o', 'LineWidth', 2, 'Color', Color);
+
+            for rr = 1:length(flickerFreqSetHz)
+                % Plot the confidence interval for each slope value
+                plot([xData(rr), xData(rr)], [slopeValCI_LminusM(rr, 1), slopeValCI_LminusM(rr, 2)], 'LineWidth', 3, 'Color', Color); % vertical line for CI
+            end
+
+            title('L minus M');
+
+            if strcmp(subjectID, 'PILT_0004')
+                legend('','0x5','','','','','','3x5')
+            end
+
+        elseif ii == 2 % LightFlux
+
+            if strcmp(subjectID, 'PILT_0003')
+                Color = [0, 0, 0.5];
+            elseif strcmp(subjectID, 'PILT_0004')
+                Color = [0, 0.5, 0];
+            end
+
+            subplot(2, 1, 2);
+            hold on;
+
+            plot(xData, slopeVals_LightFlux, '-o', 'LineWidth', 2, 'Color', Color);
+
+            for rr = 1:length(flickerFreqSetHz)
+                % Plot the confidence interval for each slope value
+                plot([xData(rr), xData(rr)], [slopeValCI_LightFlux(rr, 1), slopeValCI_LightFlux(rr, 2)], 'LineWidth', 3, 'Color', Color); % vertical line for CI
+            end
+
+            title('Light Flux');
+
+            if strcmp(subjectID, 'PILT_0004')
+                legend('','0x5','','','','','','3x5')
+            end
+
+        end
+
+        xlabel('log reference frequency (Hz)');
+        ylabel('sigma values');
+        ylim([0,3]);
+
+    end
+
+    if count == 2
+        break
+    end
+
+    count = count + 1;
+
+end % while loop 
+
+%% Plot the sigma values for PILT_0004 on one plot
+
+close all
+
+% Set up a fourth figure
+figHandle4 = figure(4);
+figuresize(750,250,'units','pt');
+% tiledlayout(length(modDirections),1,"TileSpacing","compact",'Padding','tight');
+
+for ii = 1:length(modDirections)
+    for rr = 1:length(flickerFreqSetHz)
+
+        dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabel],experimentName);
+
+        xData = log10(flickerFreqSetHz);
+
+        psychObjArray = {};
+
+        for ss = 1:2 % High and low side estimates
+
+            subjectID = 'PILT_0004';
+
+            subjectDir = fullfile(...
+                dropBoxBaseDir,...
+                dropBoxSubDir,...,
+                projectName,...
+                subjectID);
+
+            NDlabel = NDlabelsAll{2};
+
+            % Load this measure
+            psychFileStem = [subjectID '_' modDirections{ii} ...
+                '_' experimentName '_' ...
+                strrep(num2str(targetPhotoreceptorContrast(ii)),'.','x') ...
+                '_refFreq-' num2str(flickerFreqSetHz(rr)) 'Hz' ...
+                '_' stimParamLabels{ss}];
+            filename = fullfile(dataDir,psychFileStem);
+            load(filename,'psychObj');
+
+            psychObjArray{ss} = psychObj;
+
+        end
+
+        % Get params
+        lb1 = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
+        lb2 = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
+        lb = min(lb1, lb2);
+        ub1 = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
+        ub2 = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+        ub = max(ub1, ub2);
+
+        [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObjArray{1}.reportCombinedParams(psychObjArray{2},'lb',lb,'ub',ub,'nBoots',100);
+
+        % Calculate sigmas and CIs for the current mod direction and
+        % estimate type
+        if ii == 1
+            % Sigmas
+            slopeVals_LminusM(rr) = psiParamsFit(2);
+            slopeValCI_LminusM(rr,1) = psiParamsCI(1,2);
+            slopeValCI_LminusM(rr,2) = psiParamsCI(2,2);
+
+            % Slopes
+            % slopeVals_LminusM(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+            % slopeValCI_LminusM(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+            % slopeValCI_LminusM(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+        end
+
+        if ii == 2
+            % Sigmas
+            slopeVals_LightFlux(rr) = psiParamsFit(2);
+            slopeValCI_LightFlux(rr,1) = psiParamsCI(1,2);
+            slopeValCI_LightFlux(rr,2) = psiParamsCI(2,2);
+
+            % Slopes
+            % slopeVals_LightFlux(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+            % slopeValCI_LightFlux(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+            % slopeValCI_LightFlux(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+        end
+
+    end
+
+    if ii == 1 % L minus M
+
+        hold on;
+
+        plot(xData, slopeVals_LminusM, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
+
+        for rr = 1:length(flickerFreqSetHz)
+            % Plot the confidence interval for each slope value
+            plot([xData(rr), xData(rr)], [slopeValCI_LminusM(rr, 1), slopeValCI_LminusM(rr, 2)], 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
+        end
+
+    elseif ii == 2 % LightFlux
+
+        hold on;
+
+        plot(xData, slopeVals_LightFlux, '-o', 'LineWidth', 2, 'Color', [0, 0.5, 0]);
+
+        for rr = 1:length(flickerFreqSetHz)
+            % Plot the confidence interval for each slope value
+            plot([xData(rr), xData(rr)], [slopeValCI_LightFlux(rr, 1), slopeValCI_LightFlux(rr, 2)], 'LineWidth', 3, 'Color', [0, 0.5, 0]); % vertical line for CI
+        end
+
+        title('Sigma values for 210 trials at low light level')
+        legend('L minus M', '', '', '', '', '', 'Light Flux', 'Location', 'northwest')
+
+    end
+
+    xlabel('log reference frequency (Hz)');
+    ylabel('sigma values');
+    ylim([0,3.25]);
 
 end
 

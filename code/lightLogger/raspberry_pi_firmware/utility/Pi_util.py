@@ -7,12 +7,15 @@ import pathlib
 import sys
 import ctypes
 import pandas as pd
+import cv2
 
 # Import the MS utility library 
 light_logger_dir_path: str = str(pathlib.Path(__file__).parents[2]) 
 MS_recorder_path: str = os.path.join(light_logger_dir_path, 'miniSpect')
 sys.path.append(MS_recorder_path)
 import MS_util
+
+
 
 """Parse an entire recording captured with the C++ implementation of RPI firmware"""
 def parse_chunks_binary(recording_dir_path: str, start_chunk: int=0, end_chunk: int=None) -> list:
@@ -48,6 +51,41 @@ def parse_chunk_binary(chunk_path: str) -> dict:
             ("S_size", ctypes.c_uint64),
         ]
 
+    """Define the parser for the MS bytes for a given chunk"""
+    def ms_parser(buffer: np.ndarray) -> tuple:
+        # First, we will convert the numpy bytes arr to Python bytes arr 
+        # to use legacy code 
+        bytes_buffer: bytearray = buffer.tobytes()
+
+        # Next, we can call the legacy code for parsing a bytearray from the MS
+        AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_readings(bytes_buffer)
+
+        return AS_channels, TS_channels, LS_channels, LS_temp
+    
+    """Define the parser for the World frames for a given chunk"""
+    def world_parser(buffer: np.ndarray):
+
+        return buffer
+
+    """Define the parser for the pupil frames for a given chunk"""
+    def pupil_parser(buffer: np.ndarray) -> np.ndarray:
+        # The pupil buffer is more complex, as it stores MJPEG compressed images. 
+        # Therefore, we cannot simply reshape to nFrames, rows, cols. 
+
+        image_size: int = 400*400 # Calculate the size of the image in bytes. TODO: This is a placeholder and we will import this from somewhere
+
+        # Unsure if this works, but this is the idea. The shapes are not equal otherwise we would convert to numpy array
+        return [cv2.imdecode(buffer[start:start+image_size], cv2.IMREAD_COLOR) for start in range(0, buffer.shape[0], image_size) ]
+
+    """Define the parser for the sunglasses buffer for a given chunk"""
+    def sunglasses_parser(buffer: np.ndarray) -> np.ndarray:
+        # The buffer passed in is made up of 8 bit unsigned ints, 
+        # but the values reported by the sunglasses sensor require 12 bits, 
+        # so lets convert to 16 and return
+
+        return buffer.view(np.uint16)
+
+        
     # Define argument and return type for the CPP deserialization function
     cpp_parser_lib.parse_chunk_binary.argtypes = [ctypes.c_char_p]
     cpp_parser_lib.parse_chunk_binary.restype = ctypes.POINTER(chunk_struct)
@@ -55,6 +93,10 @@ def parse_chunk_binary(chunk_path: str) -> dict:
     # Define the argument type for free_chunk_struct
     cpp_parser_lib.free_chunk_struct.argtypes = [ctypes.POINTER(chunk_struct)]
     cpp_parser_lib.free_chunk_struct.restype = None
+
+    # Define the set of parsers for each sensor
+    parsers: dict = {'M': ms_parser, 'W': world_parser,
+                     'P': pupil_parser, 'S': sunglasses_parser}
 
     """Helper function to parse chunks. Passes the path to CPP,
        executes, and reads in the deserialized data as np.arrays.
@@ -87,12 +129,11 @@ def parse_chunk_binary(chunk_path: str) -> dict:
             # Next, we will read in a numpy array of that size TODO: Will reshape to nMeasures x nFrames x nRows x nCols later
             buffer_as_np: np.ndarray = np.ctypeslib.as_array(getattr(chunk, sensor_field), shape=(buffer_size,))
 
-            # Append this buffer name and its buffer to the Python dict 
-            chunk_dict[sensor_field] = buffer_as_np
+            # Append this buffer name and its parsed value to the Python dict 
+            chunk_dict[sensor_field] = parsers[sensor_field](buffer_as_np)
 
         # Return the data as Python-compatible objects    
         return chunk_ptr, chunk_dict
-
 
     # Deserialize the binary file via CPP and read in the
     # chunk's data into numpy arrays. 

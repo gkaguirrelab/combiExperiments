@@ -22,19 +22,24 @@ sys.path.append(os.path.dirname(__file__))
 from MS_recorder import COM_PORT, BAUDRATE, MSG_LENGTH, DATA_LENGTH
 
 """Parse the MS readings and return them as a tuple of pd.DataFrames"""
-def parse_readings(readings: str | np.ndarray) -> tuple:
+def parse_readings(readings: bytes | bytearray | np.ndarray) -> tuple:
     # If we have the readings stored in their packed view in .npy format
     # we need to do ALL of the parsing and unpacking 
-    if(isinstance(readings, bytearray)):
+    if(isinstance(readings, bytes) or isinstance(readings, bytearray)):
         # First, we must parse the np.array of bytes into the respective sensors' bytes
         AS_channels, TS_channels, LS_channels, LS_temp = parse_SERIAL(readings)
     
-    else: # Otherwise, we can simply parse a reading from a csv file and add some formatting + unpacking
-          # for the accelerometer
+    # Otherwise, we can simply parse a reading from a csv file and add some formatting + unpacking
+    # for the accelerometer
+    elif(isinstance(readings, np.ndarray)): 
         AS_channels: str = os.path.join(readings, 'AS_channels.csv')
         TS_channels: str = os.path.join(readings, AS_channels.replace('AS', 'TS'))
         LS_channels: str = os.path.join(readings, AS_channels.replace('AS', 'LS'))
         LS_temp: str = os.path.join(readings, LS_channels.replace('channels', 'temp'))
+    
+    # Otherwise, this is an unsupported type
+    else:
+        raise Exception(f'ERROR: Unsupported type: {type(readings)}')
 
     # Parse the readings into dataframes and return them
     AS_df: pd.DataFrame = reading_to_df(AS_channels, np.uint16, sensor_name='A')
@@ -289,7 +294,7 @@ def parse_SERIAL(serial_bytes: np.ndarray) -> tuple:
 
     # Iterate over how many readings we have 
     for reading_num, _ in enumerate(range(0, len(serial_bytes), DATA_LENGTH)):
-        print(f'Reading num: {reading_num}/{len(serial_bytes)/DATA_LENGTH}')
+        #print(f'Reading num: {reading_num}/{len(serial_bytes)/DATA_LENGTH}')
 
         AS_start, AS_end = AS_bytes_info + (reading_num * DATA_LENGTH)
         TS_start, TS_end = TS_bytes_info + (reading_num * DATA_LENGTH)

@@ -20,10 +20,8 @@ classdef PsychDiscrimFlickerThreshold < handle
         modResult
         questData
         simulatePsiParams
-        simulateResponse
-        simulateStimuli
         giveFeedback
-        staircaseRule
+        staircaseRule % [nUp, nDown]
         psychometricFuncHandle
         psiParamLabels
         stimParamsDomainList
@@ -47,6 +45,10 @@ classdef PsychDiscrimFlickerThreshold < handle
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
         useStaircase
+
+        % Can switch between simulating and not simulating
+        simulateResponse
+        simulateStimuli
 
         % Assign a filename which is handy for saving and loading
         filename
@@ -72,13 +74,13 @@ classdef PsychDiscrimFlickerThreshold < handle
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',true,@islogical);            
-            p.addParameter('staircaseRule',[1,1],@isnumeric);
+            p.addParameter('staircaseRule',[1,3],@isnumeric);
             p.addParameter('psychometricFuncHandle',@qpCumulativeNormalLapse,@ishandle);
             p.addParameter('psiParamLabels',{'μ','σ','λ'},@iscell);
             p.addParameter('simulatePsiParams',[0,0.3,0.05],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,3,51),linspace(0,0.1,11)},@isnumeric);
+                {linspace(0,0,1),linspace(0,3,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -136,7 +138,9 @@ classdef PsychDiscrimFlickerThreshold < handle
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
+        [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportCombinedParams(obj1, obj2, options)
         figHandle = plotOutcome(obj,visible)
         resetSearch(obj)
     end
 end
+

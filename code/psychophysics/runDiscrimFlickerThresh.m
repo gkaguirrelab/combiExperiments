@@ -128,13 +128,14 @@ for bb=1:nBlocks
                 load(filename,'psychObj');
                 % Put in the fresh CombiLEDObj
                 psychObj.CombiLEDObj = CombiLEDObj;
-                % Initiate the CombiLED settings
-                psychObj.initializeDisplay;
                 % Increment blockIdx
                 psychObj.blockIdx = psychObj.blockIdx+1;
                 psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
                 % Update the useStaircase flag in case this has changed
                 psychObj.useStaircase = useStaircase;
+                % Update the simulate stimuli and response flags in case this has changed
+                psychObj.simulateResponse = simulateResponse;
+                psychObj.simulateStimuli = simulateStimuli;
             else
                 % Create the object
                 psychObj = PsychDiscrimFlickerThreshold(CombiLEDObj,modResult,refFreqHz(rr),...
@@ -156,6 +157,12 @@ for bb=1:nBlocks
 
     end
 
+    % Initialize the display for one of the psychObj elements. This routine
+    % assumes that all of the psychObj elements that will be called during
+    % the block use the same modulation, modulation background, temporal
+    % profile (i.e., sinusoid), and trial duration.
+    psychObjArray{1,1}.initializeDisplay;
+
     % Start the block
     fprintf('Press enter to start block %d...',bb);
     input('');
@@ -167,9 +174,16 @@ for bb=1:nBlocks
             psychObjArray{ss, rr}.blockStartTimes(psychObjArray{ss,rr}.blockIdx) = blockStartTime;
         end
     end
+
+    % Verify that the number of trials per block is compatible with the number
+    % of reference frequencies. 
+    if mod(nTrialsPerBlock, length(refFreqHz) * 2) ~= 0
+        error(['The number of trials must be even and a ' ...
+            'multiple of the number of reference frequencies.'])
+    end
     
     % Create two vectors, one containing estimate types (high or low side)
-    % and the other containing reference frequencies
+    % and the other containing reference frequencies.
 
     % High or low side estimate vector
     estimateType = zeros(1, nTrialsPerBlock);
@@ -196,13 +210,24 @@ for bb=1:nBlocks
 
     end
 
-    % Permute the elements of both lists to randomize them
-    estimateType = estimateType(randperm(length(estimateType)));
-    refFreqHzIndex = refFreqHzIndex(randperm(length(refFreqHzIndex)));
+    % Generate all possible pairs and combine them into a single matrix
+    % of unique pairs
+    [ET, RF] = meshgrid(estimateType, refFreqHzIndex);
+    pairs = [ET(:), RF(:)];
+    pairs = unique(pairs, 'rows', 'stable');
+
+    % Determine the number of times to repeat each unique pair
+    pairRepetitions = nTrialsPerBlock / length(pairs);
+
+    % Now create a list with repeated pairs 
+    finalPairs = repmat(pairs, pairRepetitions, 1);  
+
+    % Permute the pairs to randomize the order
+    permutedPairs = finalPairs(randperm(size(finalPairs, 1)), :);
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
-        psychObjArray{estimateType(ii), refFreqHzIndex(ii)}.presentTrial
+        psychObjArray{permutedPairs(ii, 1), permutedPairs(ii, 2)}.presentTrial
     end
 
     % Report completion of this block
