@@ -1,7 +1,7 @@
 close all
 clear
 
-subjectID = 'PILT_0004';
+subjectID = 'PILT_0005';
 flickerFreqSetHz = [1.5,3,6,12,24];
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
@@ -442,6 +442,8 @@ figuresize(750,250,'units','pt');
 for ii = 1:length(modDirections)
     for rr = 1:length(flickerFreqSetHz)
 
+        NDlabel = NDlabelsAll{2};
+
         dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabel],experimentName);
 
         xData = log10(flickerFreqSetHz);
@@ -450,7 +452,7 @@ for ii = 1:length(modDirections)
 
         for ss = 1:2 % High and low side estimates
 
-            subjectID = 'PILT_0004';
+            subjectID = 'PILT_0005';
 
             subjectDir = fullfile(...
                 dropBoxBaseDir,...
