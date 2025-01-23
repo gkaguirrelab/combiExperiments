@@ -65,7 +65,7 @@ def parse_chunk_binary(chunk_path: str) -> dict:
     """Define the parser for the World frames for a given chunk"""
     def world_parser(buffer: np.ndarray):
         # First, we retrieve the shape of an individual frame 
-        frame_shape: np.ndarray = np.array([40, 60])
+        frame_shape: np.ndarray = np.array([480, 640])
 
         # Now, let's calculate how many frames we have 
         num_frames: int = buffer.shape[0] // np.prod(frame_shape)
@@ -144,8 +144,9 @@ def parse_chunk_binary(chunk_path: str) -> dict:
     # chunk's data into numpy arrays. 
     cpp_chunk_pointer, chunk_dict = parse_chunk(chunk_path)
 
-    # Free the memory allocated in CPP for the chunk
-    cpp_parser_lib.free_chunk_struct(cpp_chunk_pointer)
+    # Free the memory allocated in CPP for the chunk (note: for some reason this causes a segfault sometimes. I've commented it out
+    # for now, but may need to see if this memory is actually freed or leaks in some way without this)
+    #cpp_parser_lib.free_chunk_struct(cpp_chunk_pointer)
 
     return chunk_dict
 
