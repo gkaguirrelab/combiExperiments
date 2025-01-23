@@ -26,6 +26,7 @@ p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateResponse',false,@islogical);
 p.addParameter('simulateStimuli',false,@islogical);
+p.addParameter('randomCombi',true,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
@@ -38,6 +39,7 @@ verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
 simulateResponse = p.Results.simulateResponse;
 simulateStimuli = p.Results.simulateStimuli;
+randomCombi = p.Results.randomCombi;
 
 % Set our experimentName
 experimentName = 'DUAL';
