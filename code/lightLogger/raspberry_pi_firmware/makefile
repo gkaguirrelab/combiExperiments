@@ -7,13 +7,14 @@ CEREAL_DIR = ./libraries/cereal-1.3.2/include
 LIBCAMERA_INCLUDE_DIR = /usr/local/include/libcamera
 LIBCAMERA_LIB_DIR = /usr/lib/aarch64-linux-gnu
 LIBUVC_INCLUDE_DIR = ./libraries/libuvc/include
-LIBUVC_LIB_DIR = ./usr/local/lib/
+LIBUVC_LIB_DIR = /usr/local/lib/
+OPENCV_DIR = /usr/include/opencv4
 BINARIES_DIR = ./binaries
 
 # Compiler and compiler flags
 CXX = g++
-CXXFLAGS = -Wall -Wextra -v -O3 -std=c++17 -I$(LIBRARIES_DIR) -I$(LIBCAMERA_INCLUDE_DIR) -I$(AGC_DIR) -I$(DOWNSAMPLE_DIR) -I$(CEREAL_DIR) -I$(LIBUVC_INCLUDE_DIR)
-LDFLAGS = -L$(LIBCAMERA_LIB_DIR) -lcamera -lcamera-base -L$(LIBCAMERA_LIB_DIR) -luvc -lusb-1.0 -pthread
+CXXFLAGS = -Wall -Wextra -v -O3 -std=c++17 -I$(LIBRARIES_DIR) -I$(LIBCAMERA_INCLUDE_DIR) -I$(OPENCV_DIR) -I$(AGC_DIR) -I$(DOWNSAMPLE_DIR) -I$(CEREAL_DIR) -I$(LIBUVC_INCLUDE_DIR)
+LDFLAGS = -L$(LIBCAMERA_LIB_DIR) -lcamera -lcamera-base -L$(LIBCAMERA_LIB_DIR) -luvc -lusb-1.0 -pthread -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs
 
 # Define the name of the output executable
 OUTPUT_EXECUTABLE_NAME = FIRMWARE 
