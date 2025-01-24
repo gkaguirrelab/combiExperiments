@@ -400,7 +400,7 @@ Callback function for libcamera when it retrieves a frame from the world recorde
 typedef struct {
     std::shared_ptr<libcamera::Camera> camera;
     float_t current_gain;
-    float_t current_exposure; 
+    int current_exposure; 
     float_t speed_setting; 
     std::chrono::steady_clock::time_point last_agc_change; 
     size_t frame_num; 
@@ -436,7 +436,7 @@ static void world_frame_callback(libcamera::Request *request) {
 
     // Capture the metadata of this frame. This lets us know if a frame was successfully captured and also 
     // the frame sequence number. Gaps in the sequence number indicate dropped frames 
-    const libcamera::FrameMetadata &metadata = buffer->metadata();  
+    const libcamera::FrameMetadata &metadata = buffer->metadata();
     
     // Check if the frame was captured without any sort of error
     if(metadata.status != libcamera::FrameMetadata::Status::FrameSuccess) {
@@ -500,25 +500,26 @@ static void world_frame_callback(libcamera::Request *request) {
 
     //std::cout << "MEAN INTENSITY: " << mean_intensity << '\n';
 
+        // Update the gain and exposure settings 
+    //libcamera::ControlList &controls = request->controls();
+
+    //std::cout << "CURRENT ANALOGUE GAIN " << controls.get(libcamera::controls::ANALOGUE_GAIN).toString() << '\n';
+    
+    //controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false));
+    //controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue((int) adjusted_settings.adjusted_exposure));
+
     // Change the AGC every 250 milliseconds
     if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
         // Calculate the mean of the pixel data. This will be the input to the AGC
-        // /int32_t mean_intensity = std::accumulate(pixel_data, pixel_data + pixel_data_plane.length, 0) / pixel_data_plane.length; 
+        //int32_t mean_intensity = std::accumulate(pixel_data, pixel_data + pixel_data_plane.length, 0) / pixel_data_plane.length; 
 
         //std::cout << "World | Calculating AGC with mean intensity " << mean_intensity << '\n';
 
         // Input the mean intensity of the current frame to the AGC. Retrieve corrected gain and exposure. 
-        //RetVal adjusted_settings = AGC(mean_intensity, data->current_gain, data->current_exposure, data->speed_setting);
+        RetVal adjusted_settings = AGC(120, data->current_gain, data->current_exposure, data->speed_setting);
 
-        // Update the gain and exposure settings 
-        libcamera::ControlList &controls = request->controls();
-
-        //std::cout << "CURRENT ANALOGUE GAIN" << controls.get(libcamera::controls::ANALO << '\n';
-        
-        //controls.set(libcamera::controls::AnalogueGain, static_cast<int32_t>(adjusted_settings.adjusted_gain));
-        //controls.set(libcamera::controls::ExposureTime, static_cast<float>(adjusted_settings.adjusted_exposure));
-        //data->current_gain = static_cast<float_t>(adjusted_settings.adjusted_gain);
-        //data->current_exposure = static_cast<float_t>(adjusted_settings.adjusted_exposure); 
+        data->current_gain = (float_t) adjusted_settings.adjusted_gain;
+        data->current_exposure = (int) adjusted_settings.adjusted_exposure; 
 
         // Update the last AGC change time 
         data->last_agc_change = current_time;
@@ -531,8 +532,16 @@ static void world_frame_callback(libcamera::Request *request) {
     // Increment the buffer offset for the next frame 
     data->buffer_offset += pixel_data_plane.length; 
 
-    // Put the frame buffer back into circulation with the camera
-    request->reuse(libcamera::Request::ReuseBuffers);
+    // Put the frame buffer back into circulation with the camera 
+    // with the updated controls
+    request->reuse(libcamera::Request::ReuseFlag::ReuseBuffers);
+    libcamera::ControlList &controls = request->controls();
+    controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false)); 
+
+    std::cout << "Controls size: " << controls.size() << '\n';
+
+
+
     data->camera->queueRequest(request);
 
 }
@@ -680,9 +689,9 @@ int world_recorder(const uint32_t duration,
         libcamera::ControlList &controls = request->controls();
 
         controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false));
-        controls.set(libcamera::controls::AWB_ENABLE, libcamera::ControlValue(false ));
-        controls.set(libcamera::controls::ANALOGUE_GAIN, libcamera::ControlValue((float_t) 5));
-        controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue((int) 4000));
+        //controls.set(libcamera::controls::AWB_ENABLE, libcamera::ControlValue(false ));
+        //controls.set(libcamera::controls::ANALOGUE_GAIN, libcamera::ControlValue((float_t) 5));
+        //controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue((int) 4000));
         //controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({frame_duration, frame_duration}));
 
         requests.push_back(std::move(request)); 
@@ -707,6 +716,28 @@ int world_recorder(const uint32_t duration,
         camera->queueRequest(request.get());
     }
     
+    /*
+    auto start_time = std::chrono::steady_clock::now(); // Capture the start time
+    while(true) {
+        // Capture the elapsed time since start and ensure it is in the units of seconds
+        auto current_time = std::chrono::steady_clock::now();
+        auto elapsed_time = current_time - start_time;
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
+        
+        // End recording if we have reached the desired duration. 
+        if ((uint32_t) elapsed_seconds >= duration) {
+            break;
+        }
+
+
+        libcamera::ControlList &controls = requests[0]->controls();
+        controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false));
+        
+
+
+    }
+    */
+
     std::this_thread::sleep_for(std::chrono::seconds(duration));
 
     // Output information about how much data we captured 
