@@ -64,6 +64,8 @@ def parse_chunk_binary(chunk_path: str) -> dict:
     
     """Define the parser for the World frames for a given chunk"""
     def world_parser(buffer: np.ndarray):
+        buffer = buffer.view(np.uint16)
+
         # First, we retrieve the shape of an individual frame 
         frame_shape: np.ndarray = np.array([480, 640])
 
@@ -72,15 +74,16 @@ def parse_chunk_binary(chunk_path: str) -> dict:
 
         return buffer.reshape(num_frames, *frame_shape)
 
+
     """Define the parser for the pupil frames for a given chunk"""
     def pupil_parser(buffer: np.ndarray) -> np.ndarray:
-        # The pupil buffer is more complex, as it stores MJPEG compressed images. 
-        # Therefore, we cannot simply reshape to nFrames, rows, cols. 
+        # First, we retrieve the shape of an individual frame 
+        frame_shape: np.ndarray = np.array([400, 400])
 
-        image_size: int = 400*400 # Calculate the size of the image in bytes. TODO: This is a placeholder and we will import this from somewhere
+        # Now, let's calculate how many frames we have 
+        num_frames: int = buffer.shape[0] // np.prod(frame_shape)
 
-        # Unsure if this works, but this is the idea. The shapes are not equal otherwise we would convert to numpy array
-        return [cv2.imdecode(buffer[start:start+image_size], cv2.IMREAD_COLOR) for start in range(0, buffer.shape[0], image_size) ]
+        return buffer.reshape(num_frames, *frame_shape)
 
     """Define the parser for the sunglasses buffer for a given chunk"""
     def sunglasses_parser(buffer: np.ndarray) -> np.ndarray:
