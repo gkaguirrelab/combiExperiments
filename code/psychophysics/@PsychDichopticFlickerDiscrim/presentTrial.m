@@ -13,6 +13,10 @@ simulateResponse = obj.simulateResponse;
 % Determine if we are giving feedback on each trial
 giveFeedback = obj.giveFeedback;
 
+% Determine if we are randomly assigning the reference flicker on each trial,
+% or fixing it to CombiLED A
+randomCombi = obj.randomCombi;
+
 % The calling function sets the reference frequency, and the contrast of
 % the test and ref
 refFreqHz = obj.refFreqHz;
@@ -50,18 +54,26 @@ end
 testParams = [testContrastAdjusted,testFreqHz,testPhase];
 refParams = [refContrastAdjusted,refFreqHz,refPhase];
 
-% Randomly assign the stimuli to the intervals
-switch 1+logical(round(rand()))
-    case 1
-        intervalParams(1,:) = testParams;
-        intervalParams(2,:) = refParams;
-        testInterval = 1;
-    case 2
-        intervalParams(1,:) = refParams;
-        intervalParams(2,:) = testParams;
-        testInterval = 2;
-    otherwise
-        error('Not a valid testInterval')
+if randomCombi
+    % OPTION 1: Randomly assign the stimuli to the intervals
+    switch 1+logical(round(rand()))
+        case 1
+            intervalParams(1,:) = testParams;
+            intervalParams(2,:) = refParams;
+            testInterval = 1;
+        case 2
+            intervalParams(1,:) = refParams;
+            intervalParams(2,:) = testParams;
+            testInterval = 2;
+        otherwise
+            error('Not a valid testInterval')
+    end
+else
+    % OPTION 2: Fix the reference flicker to the first interval,
+    % and thus to Combi LED A. 
+    intervalParams(1,:) = refParams;
+    intervalParams(2,:) = testParams;
+    testInterval = 2;
 end
 
 % Note which interval contains the faster flicker, which is used for
@@ -109,42 +121,42 @@ end
 if ~simulateStimuli
 
     % Alert the subject the trial is about to start
-    % audioObjs.ready.play; % Removed ready tone
     stopTimeSeconds = cputime() + 1;
     obj.waitUntil(stopTimeSeconds);
 
-    % Present the two intervals
-    for ii=1:2
+    % Present the two intervals simultaneously
+    % Prepare the stimulus
+    stopTime = cputime() + obj.interStimulusIntervalSecs;
 
-        % Prepare the stimulus
-        stopTime = cputime() + obj.interStimulusIntervalSecs;
-        obj.CombiLEDObj.setContrast(intervalParams(ii,1));
-        obj.CombiLEDObj.setFrequency(intervalParams(ii,2));
-        obj.CombiLEDObj.setPhaseOffset(intervalParams(ii,3));
-        obj.waitUntil(stopTime);
+    obj.CombiLEDObjA.setContrast(intervalParams(1,1));
+    obj.CombiLEDObjA.setFrequency(intervalParams(1,2));
+    obj.CombiLEDObjA.setPhaseOffset(intervalParams(1,3));
 
-        % Present the stimulus. If it is the first interval, wait the
-        % entire stimulusDuration. If it is the second interval. just wait
-        % 1/4 of the stimulus and then move on to the response, thus
-        % allowing the subject to respond during the second stimulus.
-        if ii == 1
-            stopTime = cputime() + obj.stimulusDurationSecs;
-        else
-            stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
-        end
-        obj.CombiLEDObj.startModulation;
-        audioObjs.low.play;
-        obj.waitUntil(stopTime);
-    end
+    obj.CombiLEDObjB.setContrast(intervalParams(2,1));
+    obj.CombiLEDObjB.setFrequency(intervalParams(2,2));
+    obj.CombiLEDObjB.setPhaseOffset(intervalParams(2,3));
+
+    obj.waitUntil(stopTime);
+
+    % Present the stimuli. Wait 1/4 of the stimuli and then move on to 
+    % the response, thus allowing the subject to respond during the stimuli. 
+    stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
+
+    obj.CombiLEDObjA.startModulation;
+    obj.CombiLEDObjB.startModulation;
+    audioObjs.low.play;
+    obj.waitUntil(stopTime);
+
 end
 
 % Start the response interval
 if ~simulateResponse
-    [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2'});
+    [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
+        'leftarrow', 'rightarrow'});
     switch keyPress
-        case {'1','numpad1'}
+        case {'1','numpad1','leftarrow'}
             intervalChoice = 1;
-        case {'2','numpad2'}
+        case {'2','numpad2','rightarrow'}
             intervalChoice = 2;
     end
     close(S.fh);
@@ -155,7 +167,8 @@ end
 
 % Stop the stimulus in case it is still running
 if ~simulateStimuli
-    obj.CombiLEDObj.stopModulation;
+    obj.CombiLEDObjA.stopModulation;
+    obj.CombiLEDObjB.stopModulation;
 end
 
 % Determine if the subject has selected the ref or test interval

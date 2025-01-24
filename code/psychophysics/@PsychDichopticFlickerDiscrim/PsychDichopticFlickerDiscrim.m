@@ -37,10 +37,11 @@ classdef PsychDichopticFlickerDiscrim < handle
     % These may be modified after object creation
     properties (SetAccess=public)
 
-        % The display object. This is modifiable so that we can re-load
+        % The display objects. This is modifiable so that we can re-load
         % a PsychDetectionThreshold, update this handle, and then continue
         % to collect data
-        CombiLEDObj
+        CombiLEDObjA
+        CombiLEDObjB
 
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
@@ -49,6 +50,10 @@ classdef PsychDichopticFlickerDiscrim < handle
         % Can switch between simulating and not simulating
         simulateResponse
         simulateStimuli
+
+        % Switch between randomly assigning reference flicker and 
+        % always assigning it to CombiLED A
+        randomCombi
 
         % Assign a filename which is handy for saving and loading
         filename
@@ -63,7 +68,7 @@ classdef PsychDichopticFlickerDiscrim < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscrim(CombiLEDObj,modResult,refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResult,refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -72,6 +77,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.addParameter('randomizePhase',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
+            p.addParameter('randomCombi',true,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',true,@islogical);            
             p.addParameter('staircaseRule',[1,3],@isnumeric);
@@ -85,7 +91,8 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
-            obj.CombiLEDObj = CombiLEDObj;
+            obj.CombiLEDObjA = CombiLEDObjA;
+            obj.CombiLEDObjB = CombiLEDObjB;
             obj.modResult = modResult;
             obj.refFreqHz = refFreqHz;
             obj.testContrast = p.Results.testContrast;
@@ -93,6 +100,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.randomizePhase = p.Results.randomizePhase;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
+            obj.randomCombi = p.Results.randomCombi;
             obj.giveFeedback = p.Results.giveFeedback;
             obj.useStaircase = p.Results.useStaircase;
             obj.staircaseRule = p.Results.staircaseRule;
@@ -116,7 +124,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             % Initialize Quest+
             obj.initializeQP;
 
-            % Initialize the CombiLED
+            % Initialize the CombiLEDs
             obj.initializeDisplay;
 
             % There is a roll-off (attenuation) of the amplitude of
