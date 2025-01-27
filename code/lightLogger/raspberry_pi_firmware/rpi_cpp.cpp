@@ -404,6 +404,7 @@ typedef struct {
     float_t speed_setting; 
     std::chrono::steady_clock::time_point last_agc_change; 
     size_t frame_num; 
+    uint64_t frame_duration;
     size_t sequence_number; 
     size_t rows;
     size_t cols; 
@@ -486,7 +487,7 @@ static void world_frame_callback(libcamera::Request *request) {
     uint8_t* pixel_data = static_cast<uint8_t*>(memory_map); 
 
     // Ensure the image is the size we think it should be 
-    //if(pixel_data_plane.length != data->rows * data->cols) {
+    //if(pixel_data_plane.length != (data->rows * data->cols)) {
     //    std::cout << "World | ERROR: Bytes returned from camera "<< pixel_data_plane.length << " are not equal to intended " << data->rows * data->cols << '\n'; 
     //    return; 
     //}
@@ -516,7 +517,7 @@ static void world_frame_callback(libcamera::Request *request) {
         //std::cout << "World | Calculating AGC with mean intensity " << mean_intensity << '\n';
 
         // Input the mean intensity of the current frame to the AGC. Retrieve corrected gain and exposure. 
-        RetVal adjusted_settings = AGC(120, data->current_gain, data->current_exposure, data->speed_setting);
+        RetVal adjusted_settings = AGC(25, data->current_gain, data->current_exposure, data->speed_setting);
 
         data->current_gain = (float_t) adjusted_settings.adjusted_gain;
         data->current_exposure = (int) adjusted_settings.adjusted_exposure; 
@@ -537,8 +538,13 @@ static void world_frame_callback(libcamera::Request *request) {
     request->reuse(libcamera::Request::ReuseFlag::ReuseBuffers);
     libcamera::ControlList &controls = request->controls();
     controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false)); 
+    controls.set(libcamera::controls::AWB_ENABLE, libcamera::ControlValue(false));
+    controls.set(libcamera::controls::ANALOGUE_GAIN, libcamera::ControlValue(data->current_gain)); 
+    controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue(data->current_exposure)); 
+    controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({data->frame_duration, data->frame_duration}));
 
-    std::cout << "Controls size: " << controls.size() << '\n';
+
+    //std::cout << "Controls size: " << controls.size() << '\n';
 
 
 
@@ -568,6 +574,8 @@ int world_recorder(const uint32_t duration,
     constexpr int64_t frame_duration = 1e6/fps;
     constexpr uint8_t downsample_factor = 3; // The power of 2 with which to downsample each dimension of the frame 
     constexpr size_t downsampled_bytes_per_image = (rows >> downsample_factor) * (cols >> downsample_factor);
+    constexpr float_t initial_gain = 1; 
+    constexpr int initial_exposure = 100; 
     
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
@@ -610,6 +618,9 @@ int world_recorder(const uint32_t duration,
     }
 
     streamConfig.pixelFormat = libcamera::formats::SRGGB8;
+     // potentially look at stride for the image artifacts. 
+
+
     streamConfig.size.width = cols;
     streamConfig.size.height = rows;
 
@@ -621,10 +632,11 @@ int world_recorder(const uint32_t duration,
     std::cout << "Validated viewfinder configuration is: " << streamConfig.toString() << std::endl;
     std::cout << "Validated size | " << "height: " << streamConfig.size.height << " width: " << streamConfig.size.width << '\n';
     std::cout << "Validated format | " << "format: " << streamConfig.pixelFormat.toString() << '\n'; 
+    std::cout << "Validated Stride: " << streamConfig.stride << '\n'; 
 
     camera->configure(config.get());
 
-
+    
     // Allocate buffers for the frames we will capture 
     libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator(camera);
 
@@ -642,11 +654,12 @@ int world_recorder(const uint32_t duration,
     // Define the data to be used 
     world_callback_data data;
     data.camera = camera;
-    data.current_gain = 8;
-    data.current_exposure = 8000; 
+    data.current_gain = initial_gain;
+    data.current_exposure = initial_exposure; 
     data.speed_setting = 0.95;
     data.sequence_number = 0; 
     data.frame_num = 0;
+    data.frame_duration = frame_duration;
     data.rows = rows; 
     data.cols = cols; 
     data.downsample_factor = downsample_factor;
@@ -689,10 +702,10 @@ int world_recorder(const uint32_t duration,
         libcamera::ControlList &controls = request->controls();
 
         controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false));
-        //controls.set(libcamera::controls::AWB_ENABLE, libcamera::ControlValue(false ));
-        //controls.set(libcamera::controls::ANALOGUE_GAIN, libcamera::ControlValue((float_t) 5));
-        //controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue((int) 4000));
-        //controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({frame_duration, frame_duration}));
+        controls.set(libcamera::controls::AWB_ENABLE, libcamera::ControlValue(false));
+        controls.set(libcamera::controls::ANALOGUE_GAIN, libcamera::ControlValue(initial_gain));
+        controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue(initial_exposure));
+        controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({frame_duration, frame_duration}));
 
         requests.push_back(std::move(request)); 
     }
