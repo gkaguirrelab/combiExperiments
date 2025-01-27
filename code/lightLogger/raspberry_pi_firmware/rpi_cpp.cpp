@@ -446,7 +446,7 @@ static void world_frame_callback(libcamera::Request *request) {
     }
 
     // Retrieve the sequence number and ensure it is sequential with the previous one
-    //if(metadata.sequence - 1 != data->sequence_number) {
+    //if(metadata.sequence != data->sequence_number) {
     //    size_t num_dropped_frames = metadata.sequence - data->sequence_number; 
     //    std::cout << "World | Dropped " << num_dropped_frames << " frames" << '\n';  
     //}
@@ -478,8 +478,6 @@ static void world_frame_callback(libcamera::Request *request) {
         return;
     }
 
-    //std::memcpy(data->buffer->data()+data->buffer_offset, memory, pixel_data_plane.length);
-
     // Retireve the plane data from the object 
     //void *memory_map = mmap(nullptr, pixel_data_plane.length + pixel_data_plane.offset, PROT_READ | PROT_WRITE, MAP_SHARED, pixel_data_plane.fd.get(), 0); 
 
@@ -487,37 +485,23 @@ static void world_frame_callback(libcamera::Request *request) {
     uint8_t* pixel_data = static_cast<uint8_t*>(memory_map); 
 
     // Ensure the image is the size we think it should be 
-    //if(pixel_data_plane.length != (data->rows * data->cols)) {
-    //    std::cout << "World | ERROR: Bytes returned from camera "<< pixel_data_plane.length << " are not equal to intended " << data->rows * data->cols << '\n'; 
-    //    return; 
-    //}
+    if(pixel_data_plane.length != (data->rows * data->cols*2)) {
+        std::cout << "World | ERROR: Bytes returned from camera "<< pixel_data_plane.length << " are not equal to intended " << data->rows * data->cols << '\n'; 
+        return; 
+    }
 
     // Downsample the image to save space, time when writing, and for privacy reasons
-    //downsample(pixel_data, data->rows, data->cols, data->downsample_factor, data->buffer->data()+data->buffer_offset);
+    downsample16(pixel_data, data->rows, data->cols, data->downsample_factor, data->buffer->data()+data->buffer_offset);
 
-    std::memcpy(data->buffer->data() + data->buffer_offset, pixel_data, pixel_data_plane.length);
-
-    //int32_t mean_intensity = std::accumulate(uint8_vector.begin(), uint8_vector.end(), 0) / uint8_vector.size(); 
-
-    //std::cout << "MEAN INTENSITY: " << mean_intensity << '\n';
-
-        // Update the gain and exposure settings 
-    //libcamera::ControlList &controls = request->controls();
-
-    //std::cout << "CURRENT ANALOGUE GAIN " << controls.get(libcamera::controls::ANALOGUE_GAIN).toString() << '\n';
-    
-    //controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false));
-    //controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue((int) adjusted_settings.adjusted_exposure));
+    //std::memcpy(data->buffer->data() + data->buffer_offset, pixel_data, pixel_data_plane.length);
 
     // Change the AGC every 250 milliseconds
     if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
         // Calculate the mean of the pixel data. This will be the input to the AGC
-        //int32_t mean_intensity = std::accumulate(pixel_data, pixel_data + pixel_data_plane.length, 0) / pixel_data_plane.length; 
-
-        //std::cout << "World | Calculating AGC with mean intensity " << mean_intensity << '\n';
+        int32_t mean_intensity = std::accumulate(pixel_data, pixel_data + pixel_data_plane.length, 0) / pixel_data_plane.length; 
 
         // Input the mean intensity of the current frame to the AGC. Retrieve corrected gain and exposure. 
-        RetVal adjusted_settings = AGC(25, data->current_gain, data->current_exposure, data->speed_setting);
+        adjusted_settings adjusted_settings = AGC(mean_intensity, data->current_gain, data->current_exposure, data->speed_setting);
 
         data->current_gain = (float_t) adjusted_settings.adjusted_gain;
         data->current_exposure = (int) adjusted_settings.adjusted_exposure; 
@@ -531,7 +515,7 @@ static void world_frame_callback(libcamera::Request *request) {
     data->sequence_number = metadata.sequence; 
 
     // Increment the buffer offset for the next frame 
-    data->buffer_offset += pixel_data_plane.length; 
+    data->buffer_offset += data->downsampled_bytes_per_image; //pixel_data_plane.length; 
 
     // Put the frame buffer back into circulation with the camera 
     // with the updated controls
@@ -542,11 +526,6 @@ static void world_frame_callback(libcamera::Request *request) {
     controls.set(libcamera::controls::ANALOGUE_GAIN, libcamera::ControlValue(data->current_gain)); 
     controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue(data->current_exposure)); 
     controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({data->frame_duration, data->frame_duration}));
-
-
-    //std::cout << "Controls size: " << controls.size() << '\n';
-
-
 
     data->camera->queueRequest(request);
 
@@ -573,7 +552,7 @@ int world_recorder(const uint32_t duration,
     constexpr float_t fps = 200;
     constexpr int64_t frame_duration = 1e6/fps;
     constexpr uint8_t downsample_factor = 3; // The power of 2 with which to downsample each dimension of the frame 
-    constexpr size_t downsampled_bytes_per_image = (rows >> downsample_factor) * (cols >> downsample_factor);
+    constexpr size_t downsampled_bytes_per_image = (rows >> downsample_factor) * (cols >> downsample_factor) * 2;
     constexpr float_t initial_gain = 1; 
     constexpr int initial_exposure = 100; 
     
@@ -619,7 +598,7 @@ int world_recorder(const uint32_t duration,
 
     streamConfig.pixelFormat = libcamera::formats::SRGGB8;
      // potentially look at stride for the image artifacts. 
-
+    //streamConfig.size.shrinkBy(libcamera::Size() )
 
     streamConfig.size.width = cols;
     streamConfig.size.height = rows;
@@ -1116,7 +1095,7 @@ int main(int argc, char **argv) {
     constexpr std::array<uint8_t, 4> sensor_FPS = {1, 200, 120, 1};
 
     // Calculate the data size for each of the sensors per each second of capture. The sunglasses sensor is x2 because it returns a 16bit value and we are storing with 8 bit arrays
-    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*640*480*2, sensor_FPS[2]*400*400, sensor_FPS[3]*2}; // this can be constexpr because values will never change
+    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*80*2, sensor_FPS[2]*400*400, sensor_FPS[3]*2}; // this can be constexpr because values will never change
     
     // Initialize a variable for the size of each sensors' buffer in seconds. This will be regularly written out and cleared
     constexpr uint8_t sensor_buffer_size = 10; 

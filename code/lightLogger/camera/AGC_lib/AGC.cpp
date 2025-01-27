@@ -7,11 +7,12 @@
 #include <array> 
 #include <AGC.h>
 
-RetVal AGC(double signal, double gain, 
-          double exposure, double speed_setting) {   
+adjusted_settings AGC(double signal, double gain, 
+                      double exposure, double speed_setting) 
+{   
 
         // Initialize a struct of return values
-        RetVal ret_val; 
+        adjusted_settings ret_val; 
         ret_val.adjusted_gain = gain; 
         ret_val.adjusted_exposure = exposure;
         
