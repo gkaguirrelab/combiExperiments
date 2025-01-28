@@ -86,7 +86,7 @@ int parse_args(const int argc, const char** argv,
         CLI11_PARSE(app, argc, argv);
     }
     catch(CLI::ParseError& e) {
-        app.exit(e); //Returns non 0 error code on failure
+        return app.exit(e); //Returns non 0 error code on failure
     }
 
     return 0; // Returns 0 on success
@@ -445,12 +445,6 @@ static void world_frame_callback(libcamera::Request *request) {
         return ; 
     }
 
-    // Retrieve the sequence number and ensure it is sequential with the previous one
-    //if(metadata.sequence != data->sequence_number) {
-    //    size_t num_dropped_frames = metadata.sequence - data->sequence_number; 
-    //    std::cout << "World | Dropped " << num_dropped_frames << " frames" << '\n';  
-    //}
-
     // Retrieve the arguments data for the callback function
     data = reinterpret_cast<world_callback_data*>(buffer->cookie());
 
@@ -472,14 +466,13 @@ static void world_frame_callback(libcamera::Request *request) {
 
     // RAW images have 1 plane, so retrieve the plane the data lies on
     libcamera::FrameBuffer::Plane pixel_data_plane = buffer->planes().front();
+    // check if I need to free this stuff
     void *memory_map = mmap(nullptr, pixel_data_plane.length, PROT_READ, MAP_SHARED, pixel_data_plane.fd.get(), pixel_data_plane.offset);
     if (memory_map == MAP_FAILED) {
         std::cout << "World | Failed to map buffer memory!" << std::endl;
+        perror("mmap");
         return;
     }
-
-    // Retireve the plane data from the object 
-    //void *memory_map = mmap(nullptr, pixel_data_plane.length + pixel_data_plane.offset, PROT_READ | PROT_WRITE, MAP_SHARED, pixel_data_plane.fd.get(), 0); 
 
     // Cast to byte array 
     uint8_t* pixel_data = static_cast<uint8_t*>(memory_map); 
@@ -498,8 +491,6 @@ static void world_frame_callback(libcamera::Request *request) {
 
     // Downsample the image to save space, time when writing, and for privacy reasons
     downsample16(pixel_data, data->rows, data->cols, data->downsample_factor, data->buffer->data()+data->buffer_offset);
-
-    //std::memcpy(data->buffer->data() + data->buffer_offset, pixel_data, pixel_data_plane.length);
 
     // Change the AGC every 250 milliseconds
     if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
@@ -522,6 +513,13 @@ static void world_frame_callback(libcamera::Request *request) {
 
     // Increment the buffer offset for the next frame 
     data->buffer_offset += data->downsampled_bytes_per_image; //pixel_data_plane.length; 
+
+
+    // Unmap memory when done
+    if (munmap(memory_map, pixel_data_plane.length) != 0) {
+        std::cout << "World | ERROR: Failed to unmap memory" << '\n';
+        perror("munmap");
+    }   
 
     // Put the frame buffer back into circulation with the camera 
     // with the updated controls
@@ -588,19 +586,7 @@ int world_recorder(const uint32_t duration,
 
     // Define the configuration for the camera (this MUST be raw for raw images)
     std::unique_ptr<libcamera::CameraConfiguration> config = camera->generateConfiguration( { libcamera::StreamRole::Raw} );
-
     libcamera::StreamConfiguration &streamConfig = config->at(0);
-    //std::cout << "Default viewfinder configuration is: " << streamConfig.toString() << std::endl; 
-
-    //streamConfig.pixelFormat = libcamera::formats::;
-
-    const libcamera::StreamFormats &formats = streamConfig.formats();
-
-    std::cout << "Supported Pixel Formats:" << std::endl;
-
-    for (const auto &format : formats.pixelformats()) {
-        std::cout << "  " << format.toString() << std::endl;
-    }
 
     streamConfig.pixelFormat = libcamera::formats::SRGGB8;
      // potentially look at stride for the image artifacts. 
@@ -713,28 +699,6 @@ int world_recorder(const uint32_t duration,
     for (std::unique_ptr<libcamera::Request> &request : requests) {
         camera->queueRequest(request.get());
     }
-    
-    /*
-    auto start_time = std::chrono::steady_clock::now(); // Capture the start time
-    while(true) {
-        // Capture the elapsed time since start and ensure it is in the units of seconds
-        auto current_time = std::chrono::steady_clock::now();
-        auto elapsed_time = current_time - start_time;
-        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(elapsed_time).count();
-        
-        // End recording if we have reached the desired duration. 
-        if ((uint32_t) elapsed_seconds >= duration) {
-            break;
-        }
-
-
-        libcamera::ControlList &controls = requests[0]->controls();
-        controls.set(libcamera::controls::AE_ENABLE, libcamera::ControlValue(false));
-        
-
-
-    }
-    */
 
     std::this_thread::sleep_for(std::chrono::seconds(duration));
 
@@ -748,7 +712,7 @@ int world_recorder(const uint32_t duration,
     allocator->free(stream);
     delete allocator;
     camera->release();
-    camera.reset();
+    // camera.reset();
     cm->stop();
 
     std::cout << "World | Closed." << '\n'; 
