@@ -782,8 +782,8 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
     // Convert the usr_pointer to be a data struct    
     pupil_callback_data *data = static_cast<pupil_callback_data*>(ptr);
 
-    // Swap buffers if this one is full
-    if(data->buffer_offset == data->buffer->size()) {
+    // Swap buffers if this one is full. Need to use FPS here since we allocated more space per buffer than will actually be filled 
+    if(data->frame_num > 0 && (data->frame_num % data->buffer_size_frames == 0)) {
         // If we are using buffer two, switch to buffer one, otherwise vice versa
         data->buffer = (data->current_buffer % 2 == 0) ? data->buffer_one : data->buffer_two;
 
@@ -802,7 +802,7 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
         //return ;
     //}
 
-    std::cout << "THIS IS HOW MANY PUPIL DATA BYTES " << frame->data_bytes << '\n'; 
+    //std::cout << "THIS IS HOW MANY PUPIL DATA BYTES " << frame->data_bytes << '\n'; 
 
     // Ensure we are not going to overrun the memory buffer 
     if(data->buffer_offset + frame->data_bytes > data->buffer->size()) {
