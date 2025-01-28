@@ -86,50 +86,55 @@ def parse_chunk_binary(chunk_path: str) -> dict:
         # we will have to use our own decoding routine to split all of the images' 
         # bytes into their own arrays, then pass them to cv2.imdecode
 
-        # The start of JPEG images are marked by the start and end delimeters (S0I=0xFFD8, EOI=0xFFD9)
-        # Therefore, we must find all occurences of these in the buffer array. 
-
+        # First, we will convert the buffer to its raw bytes an initialize an array for the
+        # frames 
         buffer_as_bytes: bytes = buffer.tobytes()
-
         frames: list = []
 
         # Find the starting and ending delims of the first image 
         start: int = buffer_as_bytes.find(b'\xFF\xD8')
         end: int = buffer_as_bytes.find(b'\xFF\xD9')
 
+        # If we got an empty buffer, simply return an empty array now
         if(start == -1):
             return np.empty((0,400,400), dtype=np.uint8)
         
+        # Otherwise, we found a start and no ending delim, this is a problem and the image is malformed
         if(end == -1):
             raise Exception('ERROR: Could not find an ending delimeter in pupil buffer')
+        
+        # If we did find the start of an ending delim, we need to add 2 to it so when we 
+        # copy we include that ending delim in the image 
         end += 2 
 
+        # Append the first image to the frame array
         frames.append(buffer[start:end])
 
-        print(f'START: {start} | END: {end} | LENGTH: {buffer.shape[0]}')
-
-        # Iterate 
+        # Now, we will conduct this operation on the rest of the images in the array
         while(start < buffer.shape[0] and end < buffer.shape[0]):
-            # Find the new start and ends
+            # Find the new start and ends. We must looking for the next start after the last end
+            # and the next end after this new start
             start: int = buffer_as_bytes.find(b'\xFF\xD8', end)
             end: int = buffer_as_bytes.find(b'\xFF\xD9', start)
 
+            # If we don't have any more starting delims, we have converted all the iamges 
+            # in this buffer. Simply return
             if(start == -1):
                 break 
-        
+            
+            # Otherwise, we found a starting delim without an ending delim. The image is malformed, so throw an error
             if(end == -1):
                 raise Exception('ERROR: Could not find an ending delimeter in pupil buffer')
 
+            # Otherwise, we found an ending delim. We must add 2 to it to include the ending delim in the bytes 
+            # we attribute to the current frame 
             end+=2
+            
+            # Append the frame to the frame array
             frames.append(buffer[start:end])
 
-
-            print(f'START: {start} | END: {end} | LENGTH: {buffer.shape[0]}')
-
-            pass
-
-        
-        return np.array([cv2.imdecode(frame, cv2.IMREAD_GRAYSCALE) for frame in frames])
+        # Decode the images and convert the frames to a standardized np.array 
+        return np.array([cv2.imdecode(frame, cv2.IMREAD_GRAYSCALE) for frame in frames], dtype=np.uint8)
 
 
 
