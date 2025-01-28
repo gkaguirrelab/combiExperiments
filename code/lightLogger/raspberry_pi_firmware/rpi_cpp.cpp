@@ -791,18 +791,6 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
         data->current_buffer = (data->current_buffer % 2) + 1;
         data->buffer_offset = 0; 
     }
-    
-    // Decompress the MJPEG image to its original size, as libuvc automatically compresses the image in MJPEG format, making the number of 
-    // bytes non-constant. Note: If this is too slow, we can switch to using libturbo-jpeg 
-   // cv::Mat uncompressed_img = cv::imdecode(cv::Mat(1, frame->data_bytes, CV_8UC1, frame->data), cv::IMREAD_GRAYSCALE);
-
-    // Check if decoding was successful
-    //if (uncompressed_img.empty()) {
-    //    std::cerr << "Pupil | ERROR: Could not decode MJPEG image." << '\n';
-        //return ;
-    //}
-
-    //std::cout << "THIS IS HOW MANY PUPIL DATA BYTES " << frame->data_bytes << '\n'; 
 
     // Ensure we are not going to overrun the memory buffer 
     if(data->buffer_offset + frame->data_bytes > data->buffer->size()) {
@@ -811,7 +799,6 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
     }
 
     // Save the desired frame into the buffer
-    //size_t num_bytes_uncompressed = uncompressed_img.total() * uncompressed_img.elemSize();
     std::memcpy(data->buffer->data() + data->buffer_offset, frame->data, frame->data_bytes);
 
     // Increment the number of captured frames and the offset into the data buffer 
@@ -1265,7 +1252,6 @@ int main(int argc, char **argv) {
      ***************************************************************/
 
 
-    /*
     // Output the performance metrics in CSV Format
     fs::path performance_filepath = output_dir / "performance.csv";
 
@@ -1289,8 +1275,6 @@ int main(int argc, char **argv) {
 
     // Signal to the user that the threads has successfully closed their operation
     std::cout << "----LOGGED PERFORMANCE METRICS---" << '\n'; 
-
-    */
 
     return 0; 
 }
