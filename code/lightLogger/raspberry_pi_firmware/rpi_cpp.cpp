@@ -490,6 +490,12 @@ static void world_frame_callback(libcamera::Request *request) {
         return; 
     }
 
+    // Ensure we are not going to overrun the buffer
+    if(data->buffer_offset+data->downsampled_bytes_per_image > data->buffer->size()) {
+        std::cout << "World | ERROR: Overran buffer" << '\n';
+        return ; 
+    }
+
     // Downsample the image to save space, time when writing, and for privacy reasons
     downsample16(pixel_data, data->rows, data->cols, data->downsample_factor, data->buffer->data()+data->buffer_offset);
 
@@ -788,21 +794,29 @@ void pupil_frame_callback(uvc_frame_t* frame, void *ptr) {
     
     // Decompress the MJPEG image to its original size, as libuvc automatically compresses the image in MJPEG format, making the number of 
     // bytes non-constant. Note: If this is too slow, we can switch to using libturbo-jpeg 
-    cv::Mat uncompressed_img = cv::imdecode(cv::Mat(1, frame->data_bytes, CV_8UC1, frame->data), cv::IMREAD_GRAYSCALE);
+   // cv::Mat uncompressed_img = cv::imdecode(cv::Mat(1, frame->data_bytes, CV_8UC1, frame->data), cv::IMREAD_GRAYSCALE);
 
     // Check if decoding was successful
-    if (uncompressed_img.empty()) {
-        std::cerr << "Pupil | ERROR: Could not decode MJPEG image." << '\n';
-        return ;
+    //if (uncompressed_img.empty()) {
+    //    std::cerr << "Pupil | ERROR: Could not decode MJPEG image." << '\n';
+        //return ;
+    //}
+
+    std::cout << "THIS IS HOW MANY PUPIL DATA BYTES " << frame->data_bytes << '\n'; 
+
+    // Ensure we are not going to overrun the memory buffer 
+    if(data->buffer_offset + frame->data_bytes > data->buffer->size()) {
+        std::cout << "Pupil | ERROR: Overran buffer" << '\n'; 
+        return ; 
     }
 
     // Save the desired frame into the buffer
-    size_t num_bytes_uncompressed = uncompressed_img.total() * uncompressed_img.elemSize();
-    std::memcpy(data->buffer->data() + data->buffer_offset, uncompressed_img.data, num_bytes_uncompressed);
+    //size_t num_bytes_uncompressed = uncompressed_img.total() * uncompressed_img.elemSize();
+    std::memcpy(data->buffer->data() + data->buffer_offset, frame->data, frame->data_bytes);
 
     // Increment the number of captured frames and the offset into the data buffer 
     data->frame_num+=1;
-    data->buffer_offset += num_bytes_uncompressed;
+    data->buffer_offset += frame->data_bytes;
 }
 
 /*
@@ -1095,7 +1109,10 @@ int main(int argc, char **argv) {
     constexpr std::array<uint8_t, 4> sensor_FPS = {1, 200, 120, 1};
 
     // Calculate the data size for each of the sensors per each second of capture. The sunglasses sensor is x2 because it returns a 16bit value and we are storing with 8 bit arrays
-    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*80*2, sensor_FPS[2]*400*400, sensor_FPS[3]*2}; // this can be constexpr because values will never change
+    // The world is also x2 because it returns a 16-bit image and its size is the downsampled size.
+    // The pupil images are compressed additionally, hence why it is not 400x400 for the size of the images. Instead, I observed I saw no higher than 21K bytes per image in my brief testing 
+    // therefore, as a conservative estimate, I've put a total of 22K bytes. Note this is a massive reduction. 160000 bytes per image to 22K. (yay!)
+    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*80*2, sensor_FPS[2]*400*55, sensor_FPS[3]*2}; // this can be constexpr because values will never change
     
     // Initialize a variable for the size of each sensors' buffer in seconds. This will be regularly written out and cleared
     constexpr uint8_t sensor_buffer_size = 10; 
