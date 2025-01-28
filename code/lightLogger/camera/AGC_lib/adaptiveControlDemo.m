@@ -34,7 +34,7 @@ fps = 200;
 framesPerUpdate = 50;
 
 % Range of signal values
-signalRange = [0,255];
+signalRange = [0,65472];
 
 % Properties of the sinusoid
 modDurSecs = 10;
@@ -172,7 +172,7 @@ ylim([0 contrast*1.05]);
 %% Local function that is the AGC
 function [gain, exposure] = AGC(s, gain, exposure, speedSetting)
 
-signalTarget = 127;
+signalTarget = 65472/2;
 gainRange = [1 10.666];
 exposureRange = [37,floor(1e6/206.65)];
 signalRange = [0,255];

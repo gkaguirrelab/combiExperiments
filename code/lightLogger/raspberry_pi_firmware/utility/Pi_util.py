@@ -63,27 +63,75 @@ def parse_chunk_binary(chunk_path: str) -> dict:
         return AS_channels, TS_channels, LS_channels, LS_temp
     
     """Define the parser for the World frames for a given chunk"""
-    def world_parser(buffer: np.ndarray):
+    def world_parser(buffer: np.ndarray) -> dict:
+        # Reintepret the bytes into a 16 bit unsigned array, as that is what 
+        # is returned from the camera
         buffer = buffer.view(np.uint16)
 
         # First, we retrieve the shape of an individual frame 
-        frame_shape: np.ndarray = np.array([480, 640])
+        frame_shape: np.ndarray = np.array([60, 80])
 
         # Now, let's calculate how many frames we have 
         num_frames: int = buffer.shape[0] // np.prod(frame_shape)
+
+        # Reshape the buffer into its proper format
+        buffer = buffer.reshape(num_frames, *frame_shape)
 
         return buffer.reshape(num_frames, *frame_shape)
 
 
     """Define the parser for the pupil frames for a given chunk"""
     def pupil_parser(buffer: np.ndarray) -> np.ndarray:
-        # First, we retrieve the shape of an individual frame 
-        frame_shape: np.ndarray = np.array([400, 400])
+        # The images are delivered to us as a stream of images in MJPEG compressed format. Therefore, 
+        # we will have to use our own decoding routine to split all of the images' 
+        # bytes into their own arrays, then pass them to cv2.imdecode
 
-        # Now, let's calculate how many frames we have 
-        num_frames: int = buffer.shape[0] // np.prod(frame_shape)
+        # The start of JPEG images are marked by the start and end delimeters (S0I=0xFFD8, EOI=0xFFD9)
+        # Therefore, we must find all occurences of these in the buffer array. 
 
-        return buffer.reshape(num_frames, *frame_shape)
+        buffer_as_bytes: bytes = buffer.tobytes()
+
+        frames: list = []
+
+        # Find the starting and ending delims of the first image 
+        start: int = buffer_as_bytes.find(b'\xFF\xD8')
+        end: int = buffer_as_bytes.find(b'\xFF\xD9')
+
+        if(start == -1):
+            return np.empty((0,400,400), dtype=np.uint8)
+        
+        if(end == -1):
+            raise Exception('ERROR: Could not find an ending delimeter in pupil buffer')
+        end += 2 
+
+        frames.append(buffer[start:end])
+
+        print(f'START: {start} | END: {end} | LENGTH: {buffer.shape[0]}')
+
+        # Iterate 
+        while(start < buffer.shape[0] and end < buffer.shape[0]):
+            # Find the new start and ends
+            start: int = buffer_as_bytes.find(b'\xFF\xD8', end)
+            end: int = buffer_as_bytes.find(b'\xFF\xD9', start)
+
+            if(start == -1):
+                break 
+        
+            if(end == -1):
+                raise Exception('ERROR: Could not find an ending delimeter in pupil buffer')
+
+            end+=2
+            frames.append(buffer[start:end])
+
+
+            print(f'START: {start} | END: {end} | LENGTH: {buffer.shape[0]}')
+
+            pass
+
+        
+        return np.array([cv2.imdecode(frame, cv2.IMREAD_GRAYSCALE) for frame in frames])
+
+
 
     """Define the parser for the sunglasses buffer for a given chunk"""
     def sunglasses_parser(buffer: np.ndarray) -> np.ndarray:
