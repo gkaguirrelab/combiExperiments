@@ -1216,6 +1216,7 @@ int main(int argc, char **argv) {
      ***************************************************************/
 
 
+    /*
     // Output the performance metrics in CSV Format
     fs::path performance_filepath = output_dir / "performance.csv";
 
@@ -1236,6 +1237,7 @@ int main(int argc, char **argv) {
 
     // Close the performance file
     performance_file.close();
+    */
 
     // Signal to the user that the threads has successfully closed their operation
     std::cout << "----LOGGED PERFORMANCE METRICS---" << '\n'; 
