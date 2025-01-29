@@ -52,7 +52,7 @@ function [chunks, performance_table] = parse_chunks_binary(path_to_experiment, u
     cd(cwd);
 
     % Now, we will read in the files by calling the appropriate Python function 
-    chunks_as_py = struct(Pi_util.parse_chunks_binary(path_to_experiment, use_mean_frame));  
+    chunks_as_py = struct(Pi_util.parse_chunks_binary(path_to_experiment, true));  
 
     % Now, we will finish converting this object into all native MATLAB types
     chunks_as_py.performance_df = table(chunks_as_py.performance_df);  % First, convert the performance data to MATLAB type 

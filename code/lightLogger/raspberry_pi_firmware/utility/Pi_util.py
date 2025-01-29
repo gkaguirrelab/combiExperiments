@@ -16,7 +16,7 @@ sys.path.append(MS_recorder_path)
 import MS_util
 
 """Parse an entire recording captured with the C++ implementation of RPI firmware"""
-def parse_chunks_binary(recording_dir_path: str, start_chunk: int=0, end_chunk: int=None, use_mean_frame: bool=False) -> list:
+def parse_chunks_binary(recording_dir_path: str, use_mean_frame: bool=False, start_chunk: int=0, end_chunk: int=None) -> list:
     # First, let's find all of the chunks in sorted order
     chunk_filepaths: list = [os.path.join(recording_dir_path, file)
                             for file in natsorted(os.listdir(recording_dir_path))
@@ -26,8 +26,8 @@ def parse_chunks_binary(recording_dir_path: str, start_chunk: int=0, end_chunk: 
     performance_df: pd.DataFrame | None = pd.read_csv(os.path.join(recording_dir_path, "performance.csv"), header=0) if os.path.exists(os.path.join(recording_dir_path, "performance.csv")) else None
 
     # Now, let's read in all of the chunks
-    chunks: list = [parse_chunk_binary(chunk_path, use_mean_frame)
-                   for chunk_path in chunk_filepaths]
+    chunks: list = [parse_chunk_binary(chunk_path, use_mean_frame=use_mean_frame)
+                    for chunk_path in chunk_filepaths]
 
     return {"performance_df": performance_df, 'chunks': chunks}
 
