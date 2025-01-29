@@ -15,10 +15,8 @@ MS_recorder_path: str = os.path.join(light_logger_dir_path, 'miniSpect')
 sys.path.append(MS_recorder_path)
 import MS_util
 
-
-
 """Parse an entire recording captured with the C++ implementation of RPI firmware"""
-def parse_chunks_binary(recording_dir_path: str, start_chunk: int=0, end_chunk: int=None) -> list:
+def parse_chunks_binary(recording_dir_path: str, start_chunk: int=0, end_chunk: int=None, use_mean_frame: bool=False) -> list:
     # First, let's find all of the chunks in sorted order
     chunk_filepaths: list = [os.path.join(recording_dir_path, file)
                             for file in natsorted(os.listdir(recording_dir_path))
@@ -28,13 +26,13 @@ def parse_chunks_binary(recording_dir_path: str, start_chunk: int=0, end_chunk: 
     performance_df: pd.DataFrame | None = pd.read_csv(os.path.join(recording_dir_path, "performance.csv"), header=0) if os.path.exists(os.path.join(recording_dir_path, "performance.csv")) else None
 
     # Now, let's read in all of the chunks
-    chunks: list = [parse_chunk_binary(chunk_path)
+    chunks: list = [parse_chunk_binary(chunk_path, use_mean_frame)
                    for chunk_path in chunk_filepaths]
 
     return {"performance_df": performance_df, 'chunks': chunks}
 
 """Parse an individual chunk that was captured with the C++ implementation of RPI firmware"""
-def parse_chunk_binary(chunk_path: str) -> dict:
+def parse_chunk_binary(chunk_path: str, use_mean_frame: bool=False) -> dict:
     # Load in the CPP deserialization library
     cpp_parser_lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), "parse_chunk_binary.so"))
 
@@ -63,7 +61,7 @@ def parse_chunk_binary(chunk_path: str) -> dict:
         return AS_channels, TS_channels, LS_channels, LS_temp
     
     """Define the parser for the World frames for a given chunk"""
-    def world_parser(buffer: np.ndarray) -> dict:
+    def world_parser(buffer: np.ndarray) -> np.ndarray:
         # Reintepret the bytes into a 16 bit unsigned array, as that is what 
         # is returned from the camera
         buffer = buffer.view(np.uint16)
@@ -77,7 +75,8 @@ def parse_chunk_binary(chunk_path: str) -> dict:
         # Reshape the buffer into its proper format
         buffer = buffer.reshape(num_frames, *frame_shape)
 
-        return buffer.reshape(num_frames, *frame_shape)
+        # Take the mean of each frame if that is what is desired
+        return buffer if use_mean_frame is False else np.mean(buffer, axis=(1,2))
 
 
     """Define the parser for the pupil frames for a given chunk"""
@@ -134,9 +133,10 @@ def parse_chunk_binary(chunk_path: str) -> dict:
             frames.append(buffer[start:end])
 
         # Decode the images and convert the frames to a standardized np.array 
-        return np.array([cv2.imdecode(frame, cv2.IMREAD_GRAYSCALE) for frame in frames], dtype=np.uint8)
+        buffer = np.array([cv2.imdecode(frame, cv2.IMREAD_GRAYSCALE) for frame in frames], dtype=np.uint8)
 
-
+        # Return mean of each frame if desired 
+        return buffer if use_mean_frame is False else np.mean(buffer, axis=(1,2))
 
     """Define the parser for the sunglasses buffer for a given chunk"""
     def sunglasses_parser(buffer: np.ndarray) -> np.ndarray:
