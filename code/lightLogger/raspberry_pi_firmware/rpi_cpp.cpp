@@ -108,18 +108,9 @@ int write_process_parallel(const fs::path* output_dir,
                            const uint32_t duration, 
                            const uint8_t buffer_size_s,
                            std::vector<std::vector<uint8_t>>* buffers_one, 
-                           std::vector<std::vector<uint8_t>>* buffers_two) 
+                           std::vector<std::vector<uint8_t>>* buffers_two,
+                           std::vector<uint8_t>* downsampled_world) 
     {
-
-    // TODO: We may be able to cut down on the write time by writing only the bytes of the pupil 
-    // that have been filled (as we are using compressed MJPEG, not all 8x400x400 bytes are used. In fact, 
-    // many less than that are used)
-
-    // TODO: Need to downsample the world camera data somewhere
-
-    // Let the user know the write process started successfully 
-    std::cout << "Write | Initialized" << '\n';
-    
     // Capture the start time of this process
     auto start_time = std::chrono::steady_clock::now();
     auto last_write_time = std::chrono::steady_clock::now();
@@ -135,7 +126,10 @@ int write_process_parallel(const fs::path* output_dir,
     fs::path filename = "";
     std::ofstream out_file; 
 
-    // Define timing variables we will use later
+    // Calculate how many frames we will have to downsample for the world
+    constexpr size_t original_world_image_bytesize = (640*480*2); 
+    constexpr size_t downsampled_world_image_bytesize = (60*40*2); 
+    const size_t num_world_frames = buffers_two->at(1).size() / original_world_image_bytesize; 
 
     // Write at regular intervals until the end of the recording 
     std::cout << "Write | Beginning waiting for writes..." << '\n';
@@ -160,6 +154,15 @@ int write_process_parallel(const fs::path* output_dir,
 
             // Retrieve the correct buffer to write
             buffer = (write_num % 2 == 0) ? buffers_two : buffers_one;
+
+            // Downsample the world frames
+            for(size_t i = 0; i < num_world_frames; i++) {
+                // Downsample the image into the downsampled buffer 
+                downsample16(buffer->at(1).data() + ( i * original_world_image_bytesize), 480, 640, 3, downsampled_world->data() + (i*downsampled_world_image_bytesize));
+            }
+
+            // Copy the downsampled world frames into the world buffer 
+            //std::memcpy(buffer->at(1).data(), downsampled_world->data(), downsampled_world->size()); 
 
             { // Must force archive to go out of scope, ensuring all contents are flushed
                 cereal::BinaryOutputArchive out_archive(out_file);
@@ -399,6 +402,7 @@ Callback function for libcamera when it retrieves a frame from the world recorde
 */
 typedef struct {
     std::shared_ptr<libcamera::Camera> camera;
+    bool use_agc; 
     float_t current_gain;
     int current_exposure; 
     float_t speed_setting; 
@@ -490,10 +494,12 @@ static void world_frame_callback(libcamera::Request *request) {
     }
 
     // Downsample the image to save space, time when writing, and for privacy reasons
-    downsample16(pixel_data, data->rows, data->cols, data->downsample_factor, data->buffer->data()+data->buffer_offset);
+    //downsample16(pixel_data, data->rows, data->cols, data->downsample_factor, data->buffer->data()+data->buffer_offset);
+    std::memcpy(data->buffer->data()+data->buffer_offset, pixel_data, pixel_data_plane.length);
+
 
     // Change the AGC every 250 milliseconds
-    if(std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
+    if(data->use_agc == true && std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
         // Calculate the mean of the pixel data. This will be the input to the AGC
         int32_t mean_intensity = std::accumulate(pixel_data, pixel_data + pixel_data_plane.length, 0) / pixel_data_plane.length; 
 
@@ -512,7 +518,7 @@ static void world_frame_callback(libcamera::Request *request) {
     data->sequence_number = metadata.sequence; 
 
     // Increment the buffer offset for the next frame 
-    data->buffer_offset += data->downsampled_bytes_per_image; //pixel_data_plane.length; 
+    data->buffer_offset += pixel_data_plane.length; //pixel_data_plane.length; 
 
 
     // Unmap memory when done
@@ -557,8 +563,9 @@ int world_recorder(const uint32_t duration,
     constexpr int64_t frame_duration = 1e6/fps;
     constexpr uint8_t downsample_factor = 3; // The power of 2 with which to downsample each dimension of the frame 
     constexpr size_t downsampled_bytes_per_image = (rows >> downsample_factor) * (cols >> downsample_factor) * 2;
-    constexpr float_t initial_gain = 1; 
-    constexpr int initial_exposure = 100; 
+    constexpr float_t initial_gain = 2; 
+    constexpr int initial_exposure = 4000; 
+    constexpr bool use_agc = false; 
     
     // Initialize libcamera
     std::cout << "World | Initializating..." << '\n'; 
@@ -625,6 +632,7 @@ int world_recorder(const uint32_t duration,
     // Define the data to be used 
     world_callback_data data;
     data.camera = camera;
+    data.use_agc = use_agc;
     data.current_gain = initial_gain;
     data.current_exposure = initial_exposure; 
     data.speed_setting = 0.95;
@@ -1063,7 +1071,7 @@ int main(int argc, char **argv) {
     // The world is also x2 because it returns a 16-bit image and its size is the downsampled size.
     // The pupil images are compressed additionally, hence why it is not 400x400 for the size of the images. Instead, I observed I saw no higher than 21K bytes per image in my brief testing 
     // therefore, as a conservative estimate, I've put a total of 22K bytes. Note this is a massive reduction. 160000 bytes per image to 22K. (yay!)
-    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*60*80*2, sensor_FPS[2]*400*55, sensor_FPS[3]*2}; // this can be constexpr because values will never change
+    constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*148, sensor_FPS[1]*640*480*2, sensor_FPS[2]*400*55, sensor_FPS[3]*2}; // this can be constexpr because values will never change
     
     // Initialize a variable for the size of each sensors' buffer in seconds. This will be regularly written out and cleared
     constexpr uint8_t sensor_buffer_size = 10; 
@@ -1152,15 +1160,19 @@ int main(int argc, char **argv) {
         buffers_two[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx], 0); 
     }
 
+    // Allocate a buffer to hold the downsampled world images. 
+    std::vector<uint8_t> downsampled_world; 
+    downsampled_world.resize(sensor_FPS[1]*sensor_buffer_size*60*40*2); 
 
     // Output information about how the buffer allocation process went
     std::cout << "----BUFFER ALLOCATIONS SUCCESSFUL---" << '\n';
     std::cout << "Num recording buffers: " << 2 << '\n';
-    std::cout << "Num sensor buffers: " << buffers_one.size() << '\n';
+    std::cout << "Num sensor buffers: " << buffers_one.size() + 1 << '\n';
     std::cout << "Sensor buffer sizes | capacities(bytes): " << '\n';
     for(size_t i = 0; i < buffers_one.size(); i++) {
         std::cout << '\t' << controller_names[i] << ": " << buffers_one[i].size() << '|' << buffers_one[i].capacity() << '\n';
     }
+    std::cout << "\tdW: " << downsampled_world.size() << '|' << downsampled_world.capacity() << '\n'; 
 
     /***************************************************************
      *                                                             *
@@ -1190,7 +1202,8 @@ int main(int argc, char **argv) {
     // We will also spawn the parallel write process, to monitor output from these threads
     threads.emplace_back(std::thread(write_process_parallel, &output_dir, duration, 
                                                              sensor_buffer_size,
-                                                             &buffers_one, &buffers_two));
+                                                             &buffers_one, &buffers_two,
+                                                             &downsampled_world));
 
 
     /***************************************************************
@@ -1216,7 +1229,6 @@ int main(int argc, char **argv) {
      ***************************************************************/
 
 
-    /*
     // Output the performance metrics in CSV Format
     fs::path performance_filepath = output_dir / "performance.csv";
 
@@ -1237,7 +1249,6 @@ int main(int argc, char **argv) {
 
     // Close the performance file
     performance_file.close();
-    */
 
     // Signal to the user that the threads has successfully closed their operation
     std::cout << "----LOGGED PERFORMANCE METRICS---" << '\n'; 
