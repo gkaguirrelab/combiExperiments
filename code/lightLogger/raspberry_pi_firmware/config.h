@@ -75,11 +75,11 @@ constexpr size_t world_cols = 640;
 constexpr size_t world_rows = 480;
 constexpr uint8_t world_fps = 200; // Note, if you update this here, make sure you update the corresponding value in sensor_FPS
 constexpr int64_t world_frame_duration = 1e6/world_fps;
-constexpr uint8_t world_downsample_factor = 3; // The power of 2 with which to downsample each dimension of the frame (3->[40,60]) 
+constexpr uint8_t world_downsample_factor = 0; // The power of 2 with which to downsample each dimension of the frame (3->[40,60]) 
 constexpr size_t world_original_image_bytesize = (world_rows * world_cols * 2); 
 constexpr size_t world_downsampled_bytes_per_image = (world_rows >> world_downsample_factor) * (world_cols >> world_downsample_factor) * 2;
-constexpr float_t world_initial_gain = 1; 
-constexpr int world_initial_exposure = 100; 
+constexpr float_t world_initial_gain = 3; 
+constexpr int world_initial_exposure = 4000; 
 constexpr bool world_use_agc = false; 
 constexpr float_t world_agc_speed_setting = 0.95;
 

@@ -111,6 +111,7 @@ int write_process_parallel(std::vector<std::vector<uint8_t>>* buffers_one,
     // Determine how many frames are in a world frame buffer. We will use this for 
     // iterating over images to downsample  
     constexpr size_t world_frames_per_buffer = world_fps * sensor_buffer_size;
+    constexpr size_t world_buffer_size_bytes = world_original_image_bytesize * world_fps * sensor_buffer_size; 
 
     // Write at regular intervals until the end of the recording 
     std::cout << "Write | Beginning waiting for writes..." << '\n';
@@ -128,7 +129,7 @@ int write_process_parallel(std::vector<std::vector<uint8_t>>* buffers_one,
 
         // If we have filled at least one buffer and it is a few seconds into the next buffer, 
         // write out the previous buffer and clear it for the next swap 
-        if(time_since_last_write >= (sensor_buffer_size + 2)) {
+        if(time_since_last_write >= (sensor_buffer_size + 1)) {
             // Begin timing how long writing this chunk took
             auto start_write_time = std::chrono::steady_clock::now();
             std::cout << "Write | Writing buffer: " << write_num << '\n';  
@@ -136,21 +137,18 @@ int write_process_parallel(std::vector<std::vector<uint8_t>>* buffers_one,
             // Retrieve the correct buffer to write
             buffer = (write_num % 2 == 0) ? buffers_two : buffers_one;
 
-            // Log the original size in bytes of the world buffer. This is because we will be shrinking and reexpanding 
-            // during downsampling to speed up write time 
-            size_t original_world_buffer_size = buffer->at(1).size(); 
-
             // Downsample the world frames
-            for(size_t frame_num = 0; frame_num < world_frames_per_buffer; frame_num++) {
+            //for(size_t frame_num = 0; frame_num < world_frames_per_buffer; frame_num++) {
                 // Downsample the image into the downsampled buffer 
-                downsample16(buffer->at(1).data() + ( frame_num * world_original_image_bytesize), world_rows, world_cols, world_downsample_factor, downsampled_world->data() + (frame_num * world_downsampled_bytes_per_image));
-            }
+            //    downsample16(buffer->at(1).data() + ( frame_num * world_original_image_bytesize), world_rows, world_cols, world_downsample_factor, downsampled_world->data() + (frame_num * world_downsampled_bytes_per_image));
+            //}
 
             // Copy the downsampled world frames into the world buffer 
             std::memcpy(buffer->at(1).data(), downsampled_world->data(), downsampled_world->size()); 
 
             // Shrink to fit just the downsampled size 
-            buffer->at(1).resize(downsampled_world->size()); 
+            //buffer->at(1).resize(downsampled_world->size()); 
+            
 
             // Serialize and write out the data 
             { // Must force archive to go out of scope, ensuring all contents are flushed
@@ -163,11 +161,17 @@ int write_process_parallel(std::vector<std::vector<uint8_t>>* buffers_one,
             filename = "";
 
             // Resize the world vector back to its origianl size 
-            buffer->at(1).resize(original_world_buffer_size, 0);
+            buffer->at(1).resize(world_buffer_size_bytes, 0);
             
             // Output how long writing this chunk took
             auto elapsed_time_writing = std::chrono::steady_clock::now() - start_write_time;
-            std::cout << "Write | Writing buffer: " << write_num << " Took(ms): " << std::chrono::duration<float_t, std::milli>(elapsed_time_writing).count() << '\n';  
+            std::cout << "Write | Writing buffer: " << write_num << " Took(ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time_writing).count() << '\n';  
+
+            // Ensure the writing did not take so long that we got buffers mixed up 
+            if(std::chrono::duration_cast<std::chrono::seconds>(elapsed_time_writing).count() >= sensor_buffer_size - 1) {
+                std::cout << "Write | ERROR: writing took too long" << '\n';
+                exit(1);
+            }
 
 
             // Update the last time we wrote to the current time 
@@ -193,7 +197,7 @@ int write_process_parallel(std::vector<std::vector<uint8_t>>* buffers_one,
 
             // Ensure the file was opened correctly 
             if(!out_file.is_open()) {
-                std::cerr << "ERROR: Failed to open outfile: " << output_dir / filename << '\n';
+                std::cout << "Write | ERROR: Failed to open outfile: " << output_dir / filename << '\n';
                 exit(1);
             }
         }
@@ -509,6 +513,7 @@ static void world_frame_callback(libcamera::Request *request) {
 
     // Increment the buffer offset for the next frame 
     data->buffer_offset += pixel_data_plane.length; //pixel_data_plane.length; 
+
 
     // Unmap memory when done
     if (munmap(memory_map, pixel_data_plane.length) != 0) {
@@ -1105,7 +1110,7 @@ int main(int argc, char **argv) {
 
     // Allocate a buffer to hold the downsampled world images. 
     std::vector<uint8_t> downsampled_world; 
-    downsampled_world.resize(sensor_FPS[1] * sensor_buffer_size * world_downsampled_bytes_per_image); 
+    downsampled_world.resize(world_fps * sensor_buffer_size * world_downsampled_bytes_per_image); 
 
     // Output information about how the buffer allocation process went
     std::cout << "----BUFFER ALLOCATIONS SUCCESSFUL---" << '\n';
