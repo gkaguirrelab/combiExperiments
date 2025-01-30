@@ -132,11 +132,11 @@ std::array<bool, 4> controller_flags = {false, false, false, false}; // this CAN
 constexpr std::array<uint8_t, 4> sensor_FPS = {ms_fps, world_fps, pupil_fps, sunglasses_fps};
 
 // Define the sizes of each of the sensors data in human form (NOT byte form)
-std::array<std::array<uint8_t, 2>, 4> sensor_sizes = {{ {ms_data_length, 1},
-                                                        {world_rows, world_cols},
-                                                        {pupil_rows, pupil_cols},
-                                                        {1,1}
-                                                     }}; 
+std::array<std::array<uint16_t, 2>, 4> sensor_sizes = {{ {ms_data_length, 1},
+                                                         {world_rows, world_cols},
+                                                         {pupil_rows, pupil_cols},
+                                                         {1,1}
+                                                      }}; 
 
 // Calculate the data size for each of the sensors per each second of capture. The sunglasses sensor is x2 because it returns a 16bit value and we are storing with 8 bit arrays
 // The world is also x2 because it returns a 16-bit image and its size is the downsampled size.

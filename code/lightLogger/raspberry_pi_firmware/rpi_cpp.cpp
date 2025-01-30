@@ -488,7 +488,6 @@ static void world_frame_callback(libcamera::Request *request) {
     //downsample16(pixel_data, data->rows, data->cols, data->downsample_factor, data->buffer->data()+data->buffer_offset);
     std::memcpy(data->buffer->data()+data->buffer_offset, pixel_data, pixel_data_plane.length);
 
-
     // Change the AGC every 250 milliseconds
     if(data->use_agc == true && std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
         // Calculate the mean of the pixel data. This will be the input to the AGC

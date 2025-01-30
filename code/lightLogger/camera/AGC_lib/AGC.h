@@ -16,6 +16,5 @@ enum class Correction_Direction {
     TURN_UP,   // 1
 };
 
-
 // Define the function stub for the AGC
 adjusted_settings AGC(double signal, double gain, double exposure, double speed_setting);
