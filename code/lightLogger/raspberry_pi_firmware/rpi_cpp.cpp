@@ -510,7 +510,6 @@ static void world_frame_callback(libcamera::Request *request) {
     // Increment the buffer offset for the next frame 
     data->buffer_offset += pixel_data_plane.length; //pixel_data_plane.length; 
 
-
     // Unmap memory when done
     if (munmap(memory_map, pixel_data_plane.length) != 0) {
         std::cout << "World | ERROR: Failed to unmap memory" << '\n';

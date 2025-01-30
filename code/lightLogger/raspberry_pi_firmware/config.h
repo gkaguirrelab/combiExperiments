@@ -133,7 +133,7 @@ constexpr std::array<uint8_t, 4> sensor_FPS = {ms_fps, world_fps, pupil_fps, sun
 
 // Define the sizes of each of the sensors data in human form (NOT byte form)
 std::array<std::array<uint16_t, 2>, 4> sensor_sizes = {{ {ms_data_length, 1},
-                                                         {world_rows, world_cols},
+                                                         {world_rows >> world_downsample_factor, world_cols >> world_downsample_factor},
                                                          {pupil_rows, pupil_cols},
                                                          {1,1}
                                                       }}; 
