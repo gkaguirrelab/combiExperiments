@@ -8,6 +8,7 @@ import sys
 import ctypes
 import pandas as pd
 import cv2
+import json
 
 # Import the MS utility library 
 light_logger_dir_path: str = str(pathlib.Path(__file__).parents[2]) 
@@ -22,17 +23,24 @@ def parse_chunks_binary(recording_dir_path: str, use_mean_frame: bool=False, sta
                             for file in natsorted(os.listdir(recording_dir_path))
                             if 'chunk' in file][start_chunk:end_chunk]
 
-    # Let's find the performance file if it exists
-    performance_df: pd.DataFrame | None = pd.read_csv(os.path.join(recording_dir_path, "performance.csv"), header=0) if os.path.exists(os.path.join(recording_dir_path, "performance.csv")) else None
+    
+    # Load in the performance data
+    performance_json: dict = None 
+    with open(os.path.join(recording_dir_path, 'performance.json'), 'r') as f:
+        performance_json: dict = json.load(f)
+
+        # Need to re-interpret the controller names as char, as they are by default 
+        # read in as unsigned int 
+        performance_json['controller_names'] = [chr(name) for name in performance_json['controller_names']]
 
     # Now, let's read in all of the chunks
-    chunks: list = [parse_chunk_binary(chunk_path, use_mean_frame=use_mean_frame)
+    chunks: list = [parse_chunk_binary(chunk_path, performance_json, use_mean_frame=use_mean_frame)
                     for chunk_path in chunk_filepaths]
 
-    return {"performance_df": performance_df, 'chunks': chunks}
+    return {"performance_dict": performance_json, 'chunks': chunks}
 
 """Parse an individual chunk that was captured with the C++ implementation of RPI firmware"""
-def parse_chunk_binary(chunk_path: str, use_mean_frame: bool=False) -> dict:
+def parse_chunk_binary(chunk_path: str, performance_json: dict, use_mean_frame: bool=False) -> dict:
     # Load in the CPP deserialization library
     cpp_parser_lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), "parse_chunk_binary.so"))
 
@@ -55,6 +63,12 @@ def parse_chunk_binary(chunk_path: str, use_mean_frame: bool=False) -> dict:
         # to use legacy code 
         bytes_buffer: bytearray = buffer.tobytes()
 
+        # Retrieve the size of the individual data
+        data_size_tuple: list = performance_json['sensor_size_settings'][performance_json['controller_names'].index('M')]
+
+        # Assert that the bytes buffer is divisble by the length of readings
+        assert(len(bytes_buffer) % data_size_tuple[0] == 0)
+
         # Next, we can call the legacy code for parsing a bytearray from the MS
         AS_channels, TS_channels, LS_channels, LS_temp = MS_util.parse_readings(bytes_buffer)
 
@@ -67,13 +81,13 @@ def parse_chunk_binary(chunk_path: str, use_mean_frame: bool=False) -> dict:
         buffer = buffer.view(np.uint16)
 
         # First, we retrieve the shape of an individual frame 
-        frame_shape: np.ndarray = np.array([60, 80])
+        data_size_tuple: list = performance_json['sensor_size_settings'][performance_json['controller_names'].index('W')]
 
         # Now, let's calculate how many frames we have 
-        num_frames: int = buffer.shape[0] // np.prod(frame_shape)
+        num_frames: int = buffer.shape[0] // np.prod(data_size_tuple)
 
         # Reshape the buffer into its proper format
-        buffer = buffer.reshape(num_frames, *frame_shape)
+        buffer = buffer.reshape(num_frames, *data_size_tuple)
 
         # Take the mean of each frame if that is what is desired
         return buffer if use_mean_frame is False else np.mean(buffer, axis=(1,2))
@@ -84,6 +98,7 @@ def parse_chunk_binary(chunk_path: str, use_mean_frame: bool=False) -> dict:
         # The images are delivered to us as a stream of images in MJPEG compressed format. Therefore, 
         # we will have to use our own decoding routine to split all of the images' 
         # bytes into their own arrays, then pass them to cv2.imdecode
+        data_size_tuple: list = performance_json['sensor_size_settings'][performance_json['controller_names'].index('P')]
 
         # First, we will convert the buffer to its raw bytes an initialize an array for the
         # frames 
@@ -96,7 +111,7 @@ def parse_chunk_binary(chunk_path: str, use_mean_frame: bool=False) -> dict:
 
         # If we got an empty buffer, simply return an empty array now
         if(start == -1):
-            return np.empty((0,400,400), dtype=np.uint8)
+            return np.empty((0, *data_size_tuple), dtype=np.uint8)
         
         # Otherwise, we found a start and no ending delim, this is a problem and the image is malformed
         if(end == -1):
@@ -187,10 +202,11 @@ def parse_chunk_binary(chunk_path: str, use_mean_frame: bool=False) -> dict:
 
         # Now, we will iterate over the fields and read them in as numpy arrays
         for sensor_field, buffer_size in sensor_fields_and_sizes.items():
-            # Next, we will read in a numpy array of that size TODO: Will reshape to nMeasures x nFrames x nRows x nCols later
+            # Next, we will read in a numpy array of that size
             buffer_as_np: np.ndarray = np.ctypeslib.as_array(getattr(chunk, sensor_field), shape=(buffer_size,))
 
             # Append this buffer name and its parsed value to the Python dict 
+            if(sensor_field == 'P') : continue # continue for pupil for now, as it is not working 
             chunk_dict[sensor_field] = parsers[sensor_field](buffer_as_np)
 
         # Return the data as Python-compatible objects    
