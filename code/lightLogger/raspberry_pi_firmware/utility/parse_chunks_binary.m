@@ -1,4 +1,4 @@
-function [chunks, performance_table] = parse_chunks_binary(path_to_experiment, use_mean_frame)
+function [chunks, performance_struct] = parse_chunks_binary(path_to_experiment, use_mean_frame)
 % Parses a chunk recording from the RPI into a cell of cells 
 % containing the paths to the sensors' info from each chunk (sorted)
 %
@@ -24,8 +24,8 @@ function [chunks, performance_table] = parse_chunks_binary(path_to_experiment, u
 %
 % Examples:
 %{
-    path_to_experiment = '/Volumes/EXTERNAL1/allSensorsCPP';
-    sorted_chunks = parse_chunk_paths(path_to_experiment);
+    path_to_experiment = '/Volumes/EXTERNAL1/newJson';
+    [chunks, performance_struct] = parse_chunks_binary(path_to_experiment);
 %}
 
 
@@ -55,8 +55,54 @@ function [chunks, performance_table] = parse_chunks_binary(path_to_experiment, u
     chunks_as_py = struct(Pi_util.parse_chunks_binary(path_to_experiment, true));  
 
     % Now, we will finish converting this object into all native MATLAB types
-    chunks_as_py.performance_df = table(chunks_as_py.performance_df);  % First, convert the performance data to MATLAB type 
-    chunks_as_py.chunks = cell(chunks_as_py.chunks); % Convert the outer list of chunks to MATLAB type 
+    
+    % First, convert the performance data to MATLAB type 
+    chunks_as_py.performance_dict = struct(chunks_as_py.performance_dict); 
+    field_names = fieldnames(chunks_as_py.performance_dict);
+
+    for cc = 1:numel(field_names) 
+        % We will handle several fields in unique ways due to how the data is structued 
+        if(field_names{cc} == "controller_names")
+            % Array of chars, so simply convert with string 
+            chunks_as_py.performance_dict.(field_names{cc}) = string(chunks_as_py.performance_dict.(field_names{cc}));
+            
+            continue ; 
+        end 
+
+        if(field_names{cc} == "controllers_used")
+            % Boolean array, so simply convert with logical 
+            chunks_as_py.performance_dict.(field_names{cc}) = logical(chunks_as_py.performance_dict.(field_names{cc}));
+            
+            continue ; 
+        end
+
+        if(field_names{cc} == "sensor_FPS_settings")
+            % py.list with ints in it, so first convert to cell
+            chunks_as_py.performance_dict.(field_names{cc}) = cell(chunks_as_py.performance_dict.(field_names{cc}));
+
+            % Then convert everything to double
+            chunks_as_py.performance_dict.(field_names{cc}) = cellfun(@double, chunks_as_py.performance_dict.(field_names{cc}));
+            
+            continue ; 
+        end
+
+        if(field_names{cc} == "sensor_size_settings")
+            % Py.list wherein each element is a list with 2 elements, so first convert to cell 
+            chunks_as_py.performance_dict.(field_names{cc}) = cell(chunks_as_py.performance_dict.(field_names{cc}));
+
+            % Then convert inner lists to double arrays, then outer cell to mat array
+            chunks_as_py.performance_dict.(field_names{cc}) = cell2mat(cellfun(@double, chunks_as_py.performance_dict.(field_names{cc}), 'UniformOutput', false));
+            
+            continue ; 
+        end 
+
+        % Default behavior is simply just convert with double
+        chunks_as_py.performance_dict.(field_names{cc}) = double(chunks_as_py.performance_dict.(field_names{cc}));
+          
+    end
+    
+    % % Convert the outer list of chunks to MATLAB type 
+    chunks_as_py.chunks = cell(chunks_as_py.chunks); 
 
     % Now, we will iterate over the chunks and convert them to MATLAB type 
     for cc = 1:numel(chunks_as_py.chunks) 
@@ -85,5 +131,5 @@ function [chunks, performance_table] = parse_chunks_binary(path_to_experiment, u
     end
 
     % Return the final converted values
-    performance_table = chunks_as_py.performance_df;
+    performance_struct = chunks_as_py.performance_dict;
     chunks = chunks_as_py.chunks; 
