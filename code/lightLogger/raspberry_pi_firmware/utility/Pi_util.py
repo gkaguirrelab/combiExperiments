@@ -206,7 +206,6 @@ def parse_chunk_binary(chunk_path: str, performance_json: dict, use_mean_frame: 
             buffer_as_np: np.ndarray = np.ctypeslib.as_array(getattr(chunk, sensor_field), shape=(buffer_size,))
 
             # Append this buffer name and its parsed value to the Python dict 
-            if(sensor_field == 'P') : continue # continue for pupil for now, as it is not working 
             chunk_dict[sensor_field] = parsers[sensor_field](buffer_as_np)
 
         # Return the data as Python-compatible objects    
