@@ -24,7 +24,7 @@ function modulateCombiLED(frequency, cal_path, color_profile, contrast)
     [~, calFileName, calDir] = selectCal();
     cal_path = fullfile(calDir,calFileName);
     frequency = 5; 
-    color_profile = [1,0,0,0,0,0,0,0];
+    color_profile = [1,1,1,1,1,1,1,1];
     modulateCombiLED(frequency, cal_path, color_profile);
 %}
 

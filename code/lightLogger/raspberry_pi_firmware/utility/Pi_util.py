@@ -90,7 +90,7 @@ def parse_chunk_binary(chunk_path: str, performance_json: dict, use_mean_frame: 
         buffer = buffer.reshape(num_frames, *data_size_tuple)
 
         # Take the mean of each frame if that is what is desired
-        return buffer if use_mean_frame is False else np.mean(buffer, axis=(1,2))
+        return buffer if use_mean_frame is False else np.max(buffer, axis=(1,2))
 
 
     """Define the parser for the pupil frames for a given chunk"""
