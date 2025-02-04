@@ -7,6 +7,9 @@ import os
 WORLD_CAM_FPS: int = 200
 WORLD_FRAME_SHAPE: np.ndarray = np.array([640,480], dtype=np.uint16)
 
+PUPIL_CAM_FPS: int = 120 
+PUPIL_FRAME_SHAPE: np.ndarray = np.array([400, 400], dtype=np.uint16)
+
 """Connect to the camera and initialize a control object"""
 def initialize_world_camera(initial_gain: float=2, initial_exposure: int=4839) -> picamera2.Picamera2: # regularly, these should be 1, 100
     # Initialize camera 
@@ -43,7 +46,7 @@ def initialize_world_camera(initial_gain: float=2, initial_exposure: int=4839) -
     cam.video_configuration.controls['AnalogueGain'] = 2
     cam.video_configuration.controls['ExposureTime'] = 4839
     
-    return cam, sensor_mode['size']
+    return cam
 
 
 def initialize_pupil_camera() -> uvc.Capture:
@@ -65,28 +68,52 @@ def initialize_pupil_camera() -> uvc.Capture:
     return cam 
 
 def record_pupil(cam: uvc.Capture, buffer: np.ndarray, 
-                 total_duration: int) -> None:
+                 total_duration: int, chunk_duration: int, downtime_duration: int) -> None:
     
-    # Denote the start time of recording
-    start_time: float = time.time()
+        # Calculate how many chunks we will record 
+    assert(total_duration % chunk_duration == 0)
+    num_chunks: int = total_duration // chunk_duration
 
-    while(True):
-        # Capture the current time
-        current_time: float = time.time()
-
-        if(current_time - start_time >= total_duration):
-            break 
+    # Record for the desired number of chunks 
+    for i in range(num_chunks):
+        # Track which frame number we're on
+        frame_num: int = 0
         
-        # Capture the frame
-        frame_obj: uvc_bindings.MJPEGFrame = cam.get_frame_robust()
+        # Define the start time of the capture 
+        start_time: float = time.time()
 
-        print(dir(frame_obj))
-        print(frame_obj.gray)
+        # Start the capture 
+        while(True):
+            # Retrieve the current time 
+            current_time: float = time.time()
 
+            if(current_time - start_time >= chunk_duration):
+                break 
+
+            # Retrieve the frame from the camera
+            pupil_frame: np.ndarray = pupil_cam.get_frame_robust().gray
+
+            # Save it into the buffer 
+            buffer[frame_num] = frame
+
+            # Increment the frame number 
+            frame_num += 1 
+
+        # Output the result
+        start_write_time: float = time.time()
+
+        print(f"Pupil | Captured: {frame_num} frames")
+
+        np.save(os.path.join(os.path.dirname(__file__), "/media/rpiControl/FF5E-7541/test_folder", f"pupil_chunk_{i}.npy"), buffer[:frame_num])
+        end_write_time: float = time.time() 
+
+        time.sleep(downtime_duration - (end_write_time - start_write_time))
+
+    return 
 
 
 # Record a video for a set duration and populate a buffer 
-def record_world(cam: picamera2.Picamera2, buffer: np.ndarray, 
+def record_world(world_cam: picamera2.Picamera2, buffer: np.ndarray, 
                  total_duration: int, chunk_duration: int, downtime_duration: int) -> None:
   
     # Calculate how many chunks we will record 
@@ -102,7 +129,7 @@ def record_world(cam: picamera2.Picamera2, buffer: np.ndarray,
         start_time: float = time.time()
 
         # Start the capture 
-        cam.start('video')
+        world_cam.start('video')
         while(True):
             # Retrieve the current time 
             current_time: float = time.time()
@@ -110,9 +137,9 @@ def record_world(cam: picamera2.Picamera2, buffer: np.ndarray,
             if(current_time - start_time >= chunk_duration):
                 break 
 
-            # Retrieve the frame from the camera 
-            frame: np.ndarray = cam.capture_array('raw')[:, 1::2]
-            
+            # Retrieve the frame from the cameras
+            world_frame: np.ndarray = world_cam.capture_array('raw')[:, 1::2]
+
             # Save it into the buffer 
             buffer[frame_num] = frame
 
@@ -120,47 +147,49 @@ def record_world(cam: picamera2.Picamera2, buffer: np.ndarray,
             frame_num += 1 
 
         # Stop capture while we output the buffer 
-        cam.stop()
+        world_cam.stop()
 
         # Output the result
         start_write_time: float = time.time()
-        np.save(os.path.join(os.path.dirname(__file__), "/media/rpiControl/FF5E-7541/test_folder", f"chunk_{i}.npy"), buffer[:frame_num])
+
+        print(f'World | Captured: {frame_num} frames')
+
+        np.save(os.path.join(os.path.dirname(__file__), "/media/rpiControl/FF5E-7541/test_folder", f"world_chunk_{i}.npy"), buffer[:frame_num])
         end_write_time: float = time.time() 
 
         time.sleep(downtime_duration - (end_write_time - start_write_time))
 
     return 
 
-
 def main():
     # The duration of the recording in seconds
     total_duration: int = 300 # 5mins 
 
     # The duration of chunks in seconds 
-    chunk_duration: int = 60 # 1 min chunks 
+    chunk_duration: int = 30 # 30 second chunks 
 
     # The standardized amount of downtime in seconds 
     downtime_duration: int = 15
 
     # Initialize the camera
-    print("Initializing Camera")
+    print("Initializing Cameras")
     
-    cam = initialize_pupil_camera()
-    #cam, frame_shape = initialize_camera()
+    world_cam: picamera2.Picamera2 = initialize_world_camera()
+    pupil_cam: uvc.Capture = initialize_pupil_camera()
 
     # Allocate the buffer of memory
-    print("Allocating Buffer") 
-    buffer: np.ndarray = np.empty(((chunk_duration + 1) * WORLD_CAM_FPS, *WORLD_FRAME_SHAPE), dtype=np.uint8)
-    
+    print("Allocating Buffers") 
+    world_buffer: np.ndarray = np.empty(((chunk_duration + 1) * WORLD_CAM_FPS, *WORLD_FRAME_SHAPE), dtype=np.uint8)
+    pupil_buffer: np.ndarray = np.empty(((chunk_duration + 1) * PUPIL_CAM_FPS, *PUPIL_FRAME_SHAPE), dtype=np.uint8)
+
     # Record for the desired duration and fill the buffer 
     print("Recording")
     record_pupil(cam, buffer, total_duration)
-    #record_world(cam, buffer, total_duration, chunk_duration, downtime_duration)
-    #cam.close()
+    record_world(world_cam, world_buffer, total_duration, chunk_duration, downtime_duration)
 
-    # Output the buffer 
-    print("Saving")
-    #np.save(os.path.join(os.path.dirname(__file__), 'test.npy'), buffer) 
+    print(f'Closing cameras')
+    world_cam.close()
+    pupil_cam.close()
 
 if(__name__ == "__main__"):
     main()

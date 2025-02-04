@@ -90,8 +90,8 @@ Writes buffers when they are full (after a small grace period).
 @Mod: Writes binary serialized buffers to numbered files in output_dir 
 */
 int write_process_parallel(std::vector<std::vector<uint8_t>>* buffers_one, 
-                           std::vector<std::vector<uint8_t>>* buffers_two,
-                           std::vector<uint8_t>* downsampled_world) 
+                           std::vector<std::vector<uint8_t>>* buffers_two
+                           ) 
     {
     // Capture the start time of this process
     auto start_time = std::chrono::steady_clock::now();
@@ -144,7 +144,7 @@ int write_process_parallel(std::vector<std::vector<uint8_t>>* buffers_one,
             //}
 
             // Copy the downsampled world frames into the world buffer 
-            std::memcpy(buffer->at(1).data(), downsampled_world->data(), downsampled_world->size()); 
+            //std::memcpy(buffer->at(1).data(), downsampled_world->data(), downsampled_world->size()); 
 
             // Shrink to fit just the downsampled size 
             //buffer->at(1).resize(downsampled_world->size()); 
@@ -160,8 +160,9 @@ int write_process_parallel(std::vector<std::vector<uint8_t>>* buffers_one,
             out_file.close();
             filename = "";
 
+
             // Resize the world vector back to its origianl size 
-            buffer->at(1).resize(world_buffer_size_bytes, 0);
+            //buffer->at(1).resize(world_buffer_size_bytes, 0);
             
             // Output how long writing this chunk took
             auto elapsed_time_writing = std::chrono::steady_clock::now() - start_write_time;
@@ -172,7 +173,6 @@ int write_process_parallel(std::vector<std::vector<uint8_t>>* buffers_one,
                 std::cout << "Write | ERROR: writing took too long" << '\n';
                 exit(1);
             }
-
 
             // Update the last time we wrote to the current time 
             last_write_time = current_time;
@@ -393,30 +393,6 @@ Callback function for libcamera when it retrieves a frame from the world recorde
 @Ret: 
 @Mod: 
 */
-typedef struct {
-    // A pointer to the camera itself, used for adjusting settings 
-    std::shared_ptr<libcamera::Camera> camera;
-
-    // Setting related information
-    bool use_agc; 
-    std::chrono::steady_clock::time_point last_agc_change; 
-    float_t current_gain;
-    int current_exposure; 
-    float_t speed_setting; 
-    uint64_t frame_duration;
-
-    // Tracking recording status information
-    size_t frame_num; 
-    size_t sequence_number; 
-
-    // Buffer related information
-    uint8_t current_buffer;
-    std::vector<uint8_t>* buffer;
-    size_t buffer_offset; 
-    std::vector<uint8_t>* buffer_one; 
-    std::vector<uint8_t>* buffer_two; 
-
-} world_callback_data;
 
 static void world_frame_callback(libcamera::Request *request) {
     // Determine if we have received invalid image data (e.g. during application shutdown)
@@ -432,41 +408,19 @@ static void world_frame_callback(libcamera::Request *request) {
     const libcamera::Request::BufferMap &buffers = request->buffers();
     auto buffer_pair = *buffers.begin();
 
-    // (Unused) Stream *stream = bufferPair.first;
-    libcamera::FrameBuffer *buffer = buffer_pair.second;
 
-    // Capture the metadata of this frame. This lets us know if a frame was successfully captured and also 
-    // the frame sequence number. Gaps in the sequence number indicate dropped frames 
-    const libcamera::FrameMetadata &metadata = buffer->metadata();
-    
-    // Check if the frame was captured without any sort of error
-    if(metadata.status != libcamera::FrameMetadata::Status::FrameSuccess) {
-        std::cout << "World | Frame unsuccessful" << '\n';
-        return ; 
-    }
+    libcamera::FrameBuffer *frame_data_buffer = buffer_pair.second;
 
     // Retrieve the arguments data for the callback function
-    data = reinterpret_cast<world_callback_data*>(buffer->cookie());
-
-    // Retrieve information we will lookup often from the struct onto the stack 
-    uint8_t current_buffer = data->current_buffer;
-
-    // Swap buffers if this one is full
-    if(data->buffer_offset == data->buffer->size()) {
-        //std::cout << "World | Swapping buffers" << '\n';
-
-       // If we are using buffer two, switch to buffer one, otherwise vice versa
-        data->buffer = (current_buffer % 2 == 0) ? data->buffer_one : data->buffer_two;
-
-        // Update the current buffer state and buffer pointer position
-       data->current_buffer = (current_buffer % 2) + 1;
-       data->buffer_offset = 0; 
-    }
+    data = reinterpret_cast<world_callback_data*>(frame_data_buffer->cookie());
+    
+    std::cout << "CAPTURED A FRAME" << '\n';
 
     // RAW images have 1 plane, so retrieve the plane the data lies on
-    libcamera::FrameBuffer::Plane pixel_data_plane = buffer->planes().front();
-    // check if I need to free this stuff
-    void *memory_map = mmap(nullptr, pixel_data_plane.length, PROT_READ, MAP_SHARED, pixel_data_plane.fd.get(), pixel_data_plane.offset);
+    libcamera::FrameBuffer::Plane pixel_data_plane = frame_data_buffer->planes().front();
+    
+    // Retrieve the pixel data as a memory map 
+    void *memory_map = mmap(nullptr, pixel_data_plane.length, PROT_READ, MAP_PRIVATE, pixel_data_plane.fd.get(), pixel_data_plane.offset);
     if (memory_map == MAP_FAILED) {
         std::cout << "World | Failed to map buffer memory!" << std::endl;
         perror("mmap");
@@ -476,29 +430,23 @@ static void world_frame_callback(libcamera::Request *request) {
     // Cast to byte array 
     uint8_t* pixel_data = static_cast<uint8_t*>(memory_map); 
 
-    // Ensure the image is the size we think it should be 
-    if(pixel_data_plane.length != (world_original_image_bytesize)) {
-        std::cout << "World | ERROR: Bytes returned from camera "<< pixel_data_plane.length << " are not equal to intended " << world_rows * world_cols << '\n'; 
-        return; 
-    }
-
-    // Ensure we are not going to overrun the buffer
-    if(data->buffer_offset + world_downsampled_bytes_per_image > data->buffer->size()) {
-        std::cout << "World | ERROR: Overran buffer" << '\n';
-        return ; 
-    }
-
+  
     // Downsample the image to save space, time when writing, and for privacy reasons
-    //downsample16(pixel_data, data->rows, data->cols, data->downsample_factor, data->buffer->data()+data->buffer_offset);
-    std::memcpy(data->buffer->data()+data->buffer_offset, pixel_data, pixel_data_plane.length);
+    //downsample16(pixel_data, world_rows, world_cols, world_downsample_factor, data->buffer->data()+data->buffer_offset);
+    
+    //data->buffer[data->buffer_offset] = pixel_data[1];
+    
+    std::memcpy(data->buffer->data()+data->buffer_offset, pixel_data, 2);//pixel_data_plane.length);
 
     // Change the AGC every 250 milliseconds
-    if(data->use_agc == true && std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
+    if(world_use_agc == true && std::chrono::duration_cast<std::chrono::milliseconds>(current_time - data->last_agc_change).count() >= 250) {
         // Calculate the mean of the pixel data. This will be the input to the AGC
-        int32_t mean_intensity = std::accumulate(pixel_data, pixel_data + pixel_data_plane.length, 0) / pixel_data_plane.length; 
+        //int32_t mean_intensity = std::accumulate(data->buffer->data()+data->buffer_offset, data->buffer->data()+data->buffer_offset+world_downsampled_bytes_per_image, 0) / world_downsampled_bytes_per_image; 
+
+        int32_t mean_intensity = 0; 
 
         // Input the mean intensity of the current frame to the AGC. Retrieve corrected gain and exposure. 
-        adjusted_settings adjusted_settings = AGC(mean_intensity, data->current_gain, data->current_exposure, data->speed_setting);
+        adjusted_settings adjusted_settings = AGC(mean_intensity, data->current_gain, data->current_exposure, world_agc_speed_setting);
 
         data->current_gain = (float_t) adjusted_settings.adjusted_gain;
         data->current_exposure = (int) adjusted_settings.adjusted_exposure; 
@@ -506,14 +454,11 @@ static void world_frame_callback(libcamera::Request *request) {
         // Update the last AGC change time 
         data->last_agc_change = current_time;
     }  
-    
-    // Increment the frame number and update the sequence number 
-    data->frame_num++; 
-    data->sequence_number = metadata.sequence; 
+
+
 
     // Increment the buffer offset for the next frame 
-    data->buffer_offset += pixel_data_plane.length; //pixel_data_plane.length; 
-
+    data->buffer_offset += world_downsampled_bytes_per_image; //pixel_data_plane.length; 
 
     // Unmap memory when done
     if (munmap(memory_map, pixel_data_plane.length) != 0) {
@@ -529,129 +474,102 @@ static void world_frame_callback(libcamera::Request *request) {
     controls.set(libcamera::controls::AWB_ENABLE, libcamera::ControlValue(false));
     controls.set(libcamera::controls::ANALOGUE_GAIN, libcamera::ControlValue(data->current_gain)); 
     controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue(data->current_exposure)); 
-    controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({data->frame_duration, data->frame_duration}));
+    controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({world_frame_duration, world_frame_duration}));
 
     data->camera->queueRequest(request);
 
+    // Increment the frame number
+    data->frame_num++; 
+
 }
 
-/*
-Continous recorder for the World Camera.
-@Param: duration: uint32_t - Time in seconds to record for. 
-        buffer one: std::vector<uint8_t>* - The first of two buffers allocated for the sensor
-        buffer two: std::vector<uint8_t>* - The second of two buffers allocated for the sensor
-        buffer_size_frames: uint16_t - The amount of frames until each buffer is full and needs to swap
-@Ret: 0 on success, errors and quits otherwise. 
-@Mod: Fills buffer_one and buffer_two with captured values. 
-*/
-int world_recorder(const uint32_t duration, 
-                   std::vector<uint8_t>* buffer_one, 
-                   std::vector<uint8_t>* buffer_two,
-                   const uint16_t buffer_size_frames,
-                   json* performance_json) 
+
+void initialize_world_camera(world_initialization_data* initialization_data, 
+                            world_callback_data* cookie_data) 
     {
-    // Initialize libcamera
-    std::cout << "World | Initializating..." << '\n'; 
     
-    // Define variables to detect the camera 
-    static std::shared_ptr<libcamera::Camera> camera;
-    std::unique_ptr<libcamera::CameraManager> cm = std::make_unique<libcamera::CameraManager>();
+    // Save the camera manager variable
+    initialization_data->cm = std::make_unique<libcamera::CameraManager>();
 
     // Initialize the camera manager to begin manipulating camera devices 
-    cm->start();
+    initialization_data->cm->start();
 
     // Retrieve the cameras themselves. If the world cam was not detected, throw an error
-    auto cameras = cm->cameras();
+    auto cameras = initialization_data->cm->cameras();
     if (cameras.empty()) {
         std::cout << "World Camera | Camera not found." << '\n';
-        cm->stop();
-        return EXIT_FAILURE;
+        initialization_data->cm->stop();
+        exit(1);
     }
 
     // Retrieve the first available camera from the manager to be the world camera 
-    camera = cm->get(cameras[0]->id());
+    initialization_data->camera = initialization_data->cm->get(cameras[0]->id());
 
     // Acquire the camera 
-    camera->acquire();
+    initialization_data->camera->acquire();
 
     // Define the configuration for the camera (this MUST be raw for raw images)
-    std::unique_ptr<libcamera::CameraConfiguration> config = camera->generateConfiguration( { libcamera::StreamRole::Raw} );
+    std::unique_ptr<libcamera::CameraConfiguration> config = initialization_data->camera->generateConfiguration( { libcamera::StreamRole::Raw} );
     libcamera::StreamConfiguration &streamConfig = config->at(0);
 
+    // Define characteristics about the camera stream we desire. NOTE: Even though I set it to SRGBGB8 here, it validates itself to 16.
+    // for unknown reasons. 8 is a supported mode, but it forces 16 bit (and has that level of precision, even though technically it shouldn't)
     streamConfig.pixelFormat = libcamera::formats::SRGGB8;
-     // potentially look at stride for the image artifacts. 
-    //streamConfig.size.shrinkBy(libcamera::Size() )
-
     streamConfig.size.width = world_cols;
     streamConfig.size.height = world_rows;
+    streamConfig.bufferCount = world_buffer_count;
 
+    // Validate the configuration and match to closest valid config. If unable to match or approximate, 
+    // we get invalid 
     if (config->validate() == libcamera::CameraConfiguration::Invalid) {
         std::cerr << "World | ERROR: Invalid configuration" << std::endl;
-        return -1;
+        exit(1);
     }
 
-    camera->configure(config.get());
+    std::cout << "----World | Configured Camera Mode----" << '\n';
+    std::cout << "Height: " << streamConfig.size.height << "| Width: " << streamConfig.size.width << '\n';
+    std::cout << "Pixel format: " << streamConfig.pixelFormat << '\n';
+    std::cout << "Buffer Count: " << streamConfig.bufferCount << '\n';
+    std::cout << "--------------------------------------" << '\n';
 
+    initialization_data->camera->configure(config.get());
     
     // Allocate buffers for the frames we will capture 
-    libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator(camera);
+    libcamera::FrameBufferAllocator *allocator = new libcamera::FrameBufferAllocator(initialization_data->camera);
 
     for (libcamera::StreamConfiguration &cfg : *config) {
         int ret = allocator->allocate(cfg.stream());
         if (ret < 0) {
-            std::cerr << "Can't allocate buffers" << std::endl;
-            return -ENOMEM;
+            std::cout << "World | Can't allocate buffers" << '\n';
+            exit(1);
         }
 
         size_t allocated = allocator->buffers(cfg.stream()).size();
-        //std::cout << "Allocated " << allocated << " buffers for stream" << std::endl;
     }
 
-    // Define the data to be used 
-    world_callback_data data;
-    
-    data.camera = camera;
-    
-    data.use_agc = world_use_agc;
-    data.last_agc_change = std::chrono::steady_clock::now();
-    data.current_gain = world_initial_gain;
-    data.current_exposure = world_initial_exposure; 
-    data.frame_duration = world_frame_duration;
-    data.speed_setting = world_agc_speed_setting;
-    
-    data.sequence_number = 0; 
-    data.frame_num = 0;
-
-    data.current_buffer = 1;
-    data.buffer = buffer_one;
-    data.buffer_one = buffer_one;
-    data.buffer_two = buffer_two;
-    data.buffer_offset = 0;
+    // Save the pointer to the allocator 
+    initialization_data->allocator = allocator; 
 
     // Initialize the capture stream 
     libcamera::Stream *stream = streamConfig.stream();
     const std::vector<std::unique_ptr<libcamera::FrameBuffer>> &buffers = allocator->buffers(stream);
-    std::vector<std::unique_ptr<libcamera::Request>> requests;
     for (size_t i = 0; i < buffers.size(); ++i) {
-        std::unique_ptr<libcamera::Request> request = camera->createRequest();
+        std::unique_ptr<libcamera::Request> request = initialization_data->camera->createRequest();
        
-        if (!request)
-        {
-            std::cerr << "Can't create request" << std::endl;
-            return 1;
+        if (!request) {
+            std::cerr << "World | Can't create request" << std::endl;
+            exit(1);
         }
         
         const std::unique_ptr<libcamera::FrameBuffer> &buffer = buffers[i];
 
         // Save a pointer to the callback data struct with the request
-        buffer->setCookie(reinterpret_cast<uint64_t>(&data));
+        buffer->setCookie(reinterpret_cast<uint64_t>(cookie_data));
         int ret = request->addBuffer(stream, buffer.get());
   
-        if (ret < 0)
-        {
-            std::cerr << "Can't set buffer for request"
-                << std::endl;
-            return 1;
+        if (ret < 0) {
+            std::cout << "World | Can't set buffer for request" << '\n';
+            exit(1);
         }
 
         // Set the controls of the camera (brightness, exposure, etc per request)
@@ -664,49 +582,80 @@ int world_recorder(const uint32_t duration,
         controls.set(libcamera::controls::EXPOSURE_TIME, libcamera::ControlValue(world_initial_exposure));
         controls.set(libcamera::controls::FrameDurationLimits, libcamera::Span<const std::int64_t, 2>({world_frame_duration, world_frame_duration}));
 
-        requests.push_back(std::move(request)); 
+        initialization_data->requests.push_back(std::move(request)); 
     }
-    
-    //std::cout << "Allocated the stream " << std::endl;
+
+    // Save the stream pointer and save the vector of requests 
+    initialization_data->stream = stream; 
 
     // Connect the world camera to its callback function 
-    camera->requestCompleted.connect(world_frame_callback);
+    initialization_data->camera->requestCompleted.connect(world_frame_callback);
 
-    // Initialize libcamera
-    std::cout << "World | Initialized" << '\n'; 
+    return ;
+}
+
+
+
+
+/* WIP recorder for the world cam 
+@Params:
+@Modifies:
+@Returns: 
+*/
+void world_recorder(world_initialization_data* world_init_data, world_callback_data* cookie_data, 
+                    uint32_t duration, uint8_t sensor_buffer_size, uint8_t sensor_downtime,  
+                    json* performance_json) 
+    { 
+    std::cout << "World | Beginning recording" << '\n';
+
+    // Define the start time of recording 
+    auto start_time = std::chrono::steady_clock::now(); 
     
-    //std::cout << "Assigned the callback " << std::endl;
+    // Record until the end of the duration
+    while(true) {
+        // Retrieve the current_time 
+        auto current_time = std::chrono::steady_clock::now(); 
 
-    camera->start(&requests[0]->controls());
+        // End recording if we have reached the desired time
+        if(std::chrono::duration_cast<std::chrono::seconds>(current_time - start_time).count() >= duration) {
+            break; 
+        }
 
-     
-    std::cout << "World | Beginning recording" << std::endl;
+        // Otherwise, capture for a burst 
+        // Start the capture from the camera 
+        world_init_data->camera->start(&(world_init_data->requests[0])->controls());
 
-    for (std::unique_ptr<libcamera::Request> &request : requests) {
-        camera->queueRequest(request.get());
-    }
+        // Queue the first requests into the camera (thus starting the frame callback )
+        for (std::unique_ptr<libcamera::Request> &request : world_init_data->requests) {
+            
+            world_init_data->camera->queueRequest(request.get());
+        }
 
-    std::this_thread::sleep_for(std::chrono::seconds(duration));
+        while(true) {
+            auto time_in_burst = std::chrono::steady_clock::now(); 
+
+            // If we reached desired burst length, stop
+            if(std::chrono::duration_cast<std::chrono::seconds>(time_in_burst - current_time).count() >= sensor_buffer_size) {
+                world_init_data->camera->stop(); 
+                break; 
+            }
+
+        }
+
+        std::cout << "SLEEPING" << '\n';
+        // Then sleep while the burst gets written out 
+        std::this_thread::sleep_for(std::chrono::seconds(sensor_downtime)); 
+
+    } 
+
+    std::cout << "World | Ending recording" << '\n';
 
     // Output information about how much data we captured 
-    std::cout << "World | Captured Frames: " << data.frame_num << '\n';
+    std::cout << "World | Captured Frames: " << cookie_data->frame_num << '\n';
 
-    // Close the connection to the Camera device
-    std::cout << "World | Closing..." << '\n';
-    
-    camera->stop();
-    allocator->free(stream);
-    delete allocator;
-    camera->release();
-    // camera.reset();
-    cm->stop();
 
-    std::cout << "World | Closed." << '\n'; 
 
-    // Save the recording performance for this recorder in the performance data struct
-    //performance_struct->W_captured_frames = data.frame_num; 
-
-    return 0;
+    return; 
 }
 
 
@@ -1090,8 +1039,8 @@ int main(int argc, char **argv) {
     
     // First, allocate outer arrays for all of the potential sensors. We can use array here since we know that there will 
     // always be four controllers worth of buffers
-    std::vector<std::vector<uint8_t>> buffers_one(controller_names.size());
-    std::vector<std::vector<uint8_t>> buffers_two(controller_names.size());
+    std::vector<std::vector<uint8_t>> buffers(controller_names.size());
+   // std::vector<std::vector<uint8_t>> buffers_two(controller_names.size());
 
     // Iterate over the inner buffers and reserve enough memory + fill in dummy values for all of the readings.
     // Only do this for the sensors we are actually using
@@ -1104,27 +1053,80 @@ int main(int argc, char **argv) {
             // the sunglasses sensor reads at 1x2 bytes per second 
 
         // Allocate the appropriate amount of space and initialize all values to 0 
-        buffers_one[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx], 0); 
-        buffers_two[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx], 0); 
+        buffers[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx], 0); 
+        //buffers_two[controller_idx].resize(sensor_buffer_size * data_size_multiplers[controller_idx], 0); 
     }
-
-    // Allocate a buffer to hold the downsampled world images. 
-    std::vector<uint8_t> downsampled_world; 
-    downsampled_world.resize(world_fps * sensor_buffer_size * world_downsampled_bytes_per_image); 
 
     // Output information about how the buffer allocation process went
     std::cout << "----BUFFER ALLOCATIONS SUCCESSFUL---" << '\n';
     std::cout << "Num recording buffers: " << 2 << '\n';
-    std::cout << "Num sensor buffers: " << buffers_one.size() + 1 << '\n';
+    std::cout << "Num sensor buffers: " << buffers.size() + 1 << '\n';
     std::cout << "Sensor buffer sizes | capacities(bytes): " << '\n';
-    for(size_t i = 0; i < buffers_one.size(); i++) {
-        std::cout << '\t' << controller_names[i] << ": " << buffers_one[i].size() << '|' << buffers_one[i].capacity() << '\n';
+    for(size_t i = 0; i < buffers.size(); i++) {
+        std::cout << '\t' << controller_names[i] << ": " << buffers[i].size() << '|' << buffers[i].capacity() << '\n';
     }
-    std::cout << "\tdW: " << downsampled_world.size() << '|' << downsampled_world.capacity() << '\n'; 
-
 
     // Save information about the buffers into the json 
     performance_data["buffer_size_s"] = sensor_buffer_size; 
+
+    /***************************************************************
+     *                                                             *
+     *                    CONTROLLER INITIALIZATION                *
+     *                                                             *
+     ***************************************************************/
+
+    // Initialize the ms if desired
+    if(controller_flags[0]) {
+        int test = 0; 
+    }
+
+    // Define initialization variables for the world camera 
+    world_callback_data world_cookie_data;
+    world_initialization_data world_init_data; 
+
+    // If the world cam is desired, initialize the sensor 
+    if(controller_flags[1]) {
+        // Initialize the world camera via libcamera
+        std::cout << "World | Initializating..." << '\n'; 
+        
+        initialize_world_camera(&world_init_data, &world_cookie_data); 
+
+        world_cookie_data.camera = world_init_data.camera;
+        world_cookie_data.buffer = &buffers[1]; 
+        world_cookie_data.last_agc_change = std::chrono::steady_clock::now();
+
+        // Note that it has been fully initialized but NOT started
+        std::cout << "World | Initialized..." << '\n'; 
+    }
+
+    // If the pupil cam is desired, initialize the sensor
+    if(controller_flags[2]) {
+        int test = 0;
+    }
+
+    
+    world_recorder(&world_init_data, &world_cookie_data,
+                   duration, sensor_buffer_size, sensor_downtime,
+                   &performance_data); 
+
+
+
+
+
+    /***************************************************************
+     *                                                             *
+     *                     CONTROLLER CLEANUP                      *
+     *                                                             *
+     ***************************************************************/
+    world_init_data.camera->stop();
+    world_init_data.allocator->free(world_init_data.stream);
+    delete world_init_data.allocator;
+    world_init_data.camera->release();
+    // camera.reset();
+    world_init_data.cm->stop();
+
+
+    return 0;
 
     /***************************************************************
      *                                                             *
@@ -1141,6 +1143,7 @@ int main(int argc, char **argv) {
     // Spawn them, with the duration of recording as an argument
     std::cout << "----SPAWNING THREADS---" << '\n';
     
+    /*
     for (const auto& used_controller_idx: used_controller_indices) {
         threads.emplace_back(std::thread(controller_functions[used_controller_idx], 
                                          duration,
@@ -1151,8 +1154,10 @@ int main(int argc, char **argv) {
 
     // We will also spawn the parallel write process, to monitor output from these threads
     threads.emplace_back(std::thread(write_process_parallel, 
-                                    &buffers_one, &buffers_two,
-                                    &downsampled_world));
+                                    &buffers_one, &buffers_two
+                                    ));
+
+
 
 
     /***************************************************************

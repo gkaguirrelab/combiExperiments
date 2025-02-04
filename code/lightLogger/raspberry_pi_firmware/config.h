@@ -34,11 +34,6 @@ int minispect_recorder(const uint32_t duration,
                        const uint16_t buffer_size_frames,
                        json* performance_json);
 
-int world_recorder(const uint32_t duration, 
-                   std::vector<uint8_t>* buffer_one, 
-                   std::vector<uint8_t>* buffer_two,
-                   const uint16_t buffer_size_frames,
-                   json* performance_json); 
 
 int pupil_recorder(const uint32_t duration, 
                    std::vector<uint8_t>* buffer_one, 
@@ -75,13 +70,60 @@ constexpr size_t world_cols = 640;
 constexpr size_t world_rows = 480;
 constexpr uint8_t world_fps = 200; // Note, if you update this here, make sure you update the corresponding value in sensor_FPS
 constexpr int64_t world_frame_duration = 1e6/world_fps;
-constexpr uint8_t world_downsample_factor = 0; // The power of 2 with which to downsample each dimension of the frame (3->[40,60]) 
+constexpr uint8_t world_downsample_factor = 5; // The power of 2 with which to downsample each dimension of the frame (3->[60, 80]) 
 constexpr size_t world_original_image_bytesize = (world_rows * world_cols * 2); 
 constexpr size_t world_downsampled_bytes_per_image = (world_rows >> world_downsample_factor) * (world_cols >> world_downsample_factor) * 2;
 constexpr float_t world_initial_gain = 3; 
 constexpr int world_initial_exposure = 4000; 
 constexpr bool world_use_agc = false; 
 constexpr float_t world_agc_speed_setting = 0.95;
+constexpr uint8_t world_buffer_count = 6; 
+
+// Define a struct to contain the information about the world camera 
+// after its initialized. We will need pointers to things to continue to communicate with it 
+typedef struct {
+    // A pointer to the camera itself
+    std::shared_ptr<libcamera::Camera> camera;
+
+    // A pointer to the camera manager
+    std::unique_ptr<libcamera::CameraManager> cm; 
+
+    // A pointer to the stream object so we can free it later after it has been initialized
+    libcamera::Stream* stream; 
+
+    // A pointer to the dynamic memory allocator for buffers for the camera
+    libcamera::FrameBufferAllocator* allocator; 
+
+    // A pointer to the vector of requests for the camera
+    std::vector<std::unique_ptr<libcamera::Request>> requests;
+
+} world_initialization_data; 
+
+
+// Define the struct used for communication with the callback function of 
+// the world camera. Each request will receive a pointer to this as a cookie
+typedef struct {
+    // A pointer to the camera itself, used for adjusting settings 
+    std::shared_ptr<libcamera::Camera> camera;
+
+    // Setting related information
+    std::chrono::steady_clock::time_point last_agc_change; 
+    float_t current_gain = world_initial_gain;
+    int current_exposure = world_initial_exposure; 
+
+    // Information regarding tracking recording progress 
+    uint64_t frame_num; 
+
+    // Buffer related information
+    uint8_t current_buffer = 1;
+    std::vector<uint8_t>* buffer;
+    size_t buffer_offset = 0; 
+
+} world_callback_data;
+
+void world_recorder(world_initialization_data* world_init_data, world_callback_data* cookie_data, 
+                    uint32_t duration, uint8_t sensor_buffer_size, uint8_t sensor_downtime,  
+                    json* performance_json);     
 
 
 /***************************************************************
@@ -132,22 +174,25 @@ std::array<bool, 4> controller_flags = {false, false, false, false}; // this CAN
 constexpr std::array<uint8_t, 4> sensor_FPS = {ms_fps, world_fps, pupil_fps, sunglasses_fps};
 
 // Define the sizes of each of the sensors data in human form (NOT byte form)
-std::array<std::array<uint16_t, 2>, 4> sensor_sizes = {{ {ms_data_length, 1},
-                                                         {world_rows >> world_downsample_factor, world_cols >> world_downsample_factor},
-                                                         {pupil_rows, pupil_cols},
-                                                         {1,1}
-                                                      }}; 
+constexpr std::array<std::array<uint16_t, 2>, 4> sensor_sizes = {{ {ms_data_length, 1},
+                                                                   {world_rows >> world_downsample_factor, world_cols >> world_downsample_factor},
+                                                                   {pupil_rows, pupil_cols},
+                                                                   {1,1}
+                                                                }}; 
 
 // Calculate the data size for each of the sensors per each second of capture. The sunglasses sensor is x2 because it returns a 16bit value and we are storing with 8 bit arrays
 // The world is also x2 because it returns a 16-bit image and its size is the downsampled size.
 // The pupil images are compressed additionally, hence why it is not 400x400 for the size of the images. Instead, I observed I saw no higher than 21K bytes per image in my brief testing 
 // therefore, as a conservative estimate, I've put a total of 22K bytes. Note this is a massive reduction. 160000 bytes per image to 22K. (yay!)
-constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*ms_data_length, sensor_FPS[1]*world_rows*world_cols*2, sensor_FPS[2]*400*55, sensor_FPS[3]*2}; // this can be constexpr because values will never change
+constexpr std::array<uint64_t, 4> data_size_multiplers = {sensor_FPS[0]*ms_data_length, sensor_FPS[1]*sensor_sizes[1][0]*sensor_sizes[1][1]*2, sensor_FPS[2]*400*55, sensor_FPS[3]*2}; // this can be constexpr because values will never change
     
 // Initialize a variable for the size of each sensors' buffer in seconds. This will be regularly written out and cleared
 constexpr uint8_t sensor_buffer_size = 10; 
 
+// Initialize a variable to denote the downtime between capture bursts
+constexpr uint8_t sensor_downtime = sensor_buffer_size / 2; 
+
 // Initialize an array of function pointers that point to the recorder functions for each sensor
-std::array<std::function<int(int32_t, std::vector<uint8_t>*, std::vector<uint8_t>*, uint16_t, json*)>, 4> controller_functions = {minispect_recorder, world_recorder, pupil_recorder, sunglasses_recorder}; // this CANNOT be constexpr because function stubs are dynamic
+// std::array<std::function<int(int32_t, std::vector<uint8_t>*, std::vector<uint8_t>*, uint16_t, json*)>, 4> controller_functions = {minispect_recorder, world_recorder, pupil_recorder, sunglasses_recorder}; // this CANNOT be constexpr because function stubs are dynamic
 
 
