@@ -5,7 +5,7 @@ import uvc
 import threading
 import os
 
-WORLD_CAM_FPS: int = 200
+WORLD_CAM_FPS: int = 206   
 WORLD_FRAME_SHAPE: np.ndarray = np.array([480, 640], dtype=np.uint16)
 
 PUPIL_CAM_FPS: int = 120 
@@ -23,8 +23,8 @@ def initialize_world_camera(initial_gain: float=2, initial_exposure: int=4839) -
     # Set up the streaming configuration
     cam.configure(cam.create_video_configuration(sensor={'output_size':sensor_mode['size'], 'bit_depth':sensor_mode['bit_depth']}, 
                                                  main={'size':sensor_mode['size']}, 
-                                                 raw=sensor_mode,
-                                                 )
+                                                 raw=sensor_mode
+                                                )
                  )
   
     # Ensure the frame rate; This is calculated by
@@ -32,7 +32,6 @@ def initialize_world_camera(initial_gain: float=2, initial_exposure: int=4839) -
     # e.g. 206.65 = 1000000/FDL => FDL = 1000000/206.65
     # 200 = 
     frame_duration_limit: int = 1000000//WORLD_CAM_FPS # Should output an integer 5000 for 200 FPS
-    assert(frame_duration_limit == 5000)
 
     cam.video_configuration.controls['NoiseReductionMode'] = 0
     cam.video_configuration.controls['FrameDurationLimits'] = (frame_duration_limit,frame_duration_limit) # for lower,upper bound equal
@@ -127,14 +126,19 @@ def record_world(world_cam: picamera2.Picamera2, buffer: np.ndarray,
     for i in range(num_chunks):
         # Track which frame number we're on
         frame_num: int = 0
-        
-        # Define the start time of the capture 
+
+        # Start the capture 
+
+        world_cam.start('video')
+
+        # First metadata capture is always long, so do it outside of the timed loop
+        world_cam.capture_metadata()
+
+         # Define the start time of the capture 
         start_time: float = time.time()
 
         print(f"World | Starting chunk: {i} @ {start_time}", flush=True)
 
-        # Start the capture 
-        world_cam.start('video')
         while(True):
             # Retrieve the current time 
             current_time: float = time.time()
@@ -142,10 +146,11 @@ def record_world(world_cam: picamera2.Picamera2, buffer: np.ndarray,
             if(current_time - start_time >= chunk_duration):
                 break 
 
-            # Retrieve the frame from the cameras
+            # This causes a halve in frame rrate 
+            metadata = world_cam.capture_metadata()
+
             world_frame: np.ndarray = world_cam.capture_array('raw')[:, 1::2]
 
-            # Save it into the buffer 
             buffer[frame_num] = world_frame
 
             # Increment the frame number 
@@ -166,23 +171,14 @@ def record_world(world_cam: picamera2.Picamera2, buffer: np.ndarray,
 
     return 
 
-def write_process(world_buffer: np.ndarray, pupil_buffer: np.ndarray,
-                  total_duration: int, chunk_duration: int, downtime_duration: int) -> None:
 
-
-
-    while(True):
-        pass 
-
-
-    return 
 
 def main():
     # The duration of the recording in seconds
     total_duration: int = 300 # 5mins 
 
     # The duration of chunks in seconds 
-    chunk_duration: int = 10 # 30 second chunks 
+    chunk_duration: int = 30 # 30 second chunks 
 
     # The standardized amount of downtime in seconds 
     downtime_duration: int = 15
@@ -191,36 +187,24 @@ def main():
     print("Initializing Cameras")
     
     world_cam: picamera2.Picamera2 = initialize_world_camera()
-    pupil_cam: uvc.Capture = initialize_pupil_camera()
+    #pupil_cam: uvc.Capture = initialize_pupil_camera()
 
     # Capture a frame from the pupil cam, it takes a second to start 
-    pupil_cam.get_frame_robust()
+    #pupil_cam.get_frame_robust()
 
     # Allocate the buffer of memory
     print("Allocating Buffers") 
     world_buffer: np.ndarray = np.empty(((chunk_duration + 1) * WORLD_CAM_FPS, *WORLD_FRAME_SHAPE), dtype=np.uint8)
-    pupil_buffer: np.ndarray = np.empty(((chunk_duration + 1) * PUPIL_CAM_FPS, *PUPIL_FRAME_SHAPE), dtype=np.uint8)
+    #pupil_buffer: np.ndarray = np.empty(((chunk_duration + 1) * PUPIL_CAM_FPS, *PUPIL_FRAME_SHAPE), dtype=np.uint8)
 
 
     # Record for the desired duration and fill the buffer 
     print("Recording")
-    t1 = threading.Thread(target=record_world, args=(world_cam, world_buffer, total_duration, chunk_duration, downtime_duration))      
-    t2 = threading.Thread(target=record_pupil, args=(pupil_cam, pupil_buffer, total_duration, chunk_duration, downtime_duration))
-    #p2 = mp.Process(target=record_pupil, args=(pupil_cam, pupil_buffer, total_duration, chunk_duration, downtime_duration))
-
-    t1.start()
-    t2.start()
-
-    #record_pupil(cam, buffer, total_duration)
-    #record_pupil(pupil_cam, pupil_buffer, total_duration, chunk_duration, downtime_duration)
-    #record_world(world_cam, world_buffer, total_duration, chunk_duration, downtime_duration)
-
-    t1.join()
-    t2.join()
+    record_world(world_cam, world_buffer, total_duration, chunk_duration, downtime_duration)
 
     print(f'Closing cameras')
     world_cam.close()
-    pupil_cam.close()
+    #pupil_cam.close()
 
 if(__name__ == "__main__"):
     main()
