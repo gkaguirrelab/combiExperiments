@@ -57,13 +57,20 @@ subjectDir = fullfile(...
     p.Results.projectName,...
     subjectID);
 
-% Load a modResult file and extract the calibration. We need this to
-% obtain a gamma table to pass to the combiLED, and this property of the
+% Load modResult files and extract the calibrations. We need this to
+% obtain a gamma table to pass to the combiLEDs, and this property of the
 % device does not change with modulation direction
-modResultFile = ...
+% CombiLED A
+modResultFileA = ...
     fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],'modResult.mat');
-load(modResultFile,'modResult');
-cal = modResult.meta.cal;
+load(modResultFileA,'modResult');
+calA = modResult.meta.cal;
+
+% CombiLED B
+modResultFileB = ...
+    fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],'modResult.mat');
+load(modResultFileB,'modResult');
+calB = modResult.meta.cal;
 
 % Set up the CombiLED
 if simulateStimuli
@@ -83,8 +90,8 @@ else
     end
 
     % Update the gamma table
-    CombiLEDObjA.setGamma(cal.processedData.gammaTable);
-    CombiLEDObjB.setGamma(cal.processedData.gammaTable);
+    CombiLEDObjA.setGamma(calA.processedData.gammaTable);
+    CombiLEDObjB.setGamma(calB.processedData.gammaTable);
 end
 
 % Provide instructions
