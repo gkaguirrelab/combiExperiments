@@ -7,6 +7,7 @@ NDlabel = '0x5';
 simulateFlag = false;
 
 % Use Quest+
+
 runDichopticFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',10,'useStaircase',false, ...
     'simulateResponse',simulateFlag,'simulateStimuli',simulateFlag, 'randomCombi', true);
 

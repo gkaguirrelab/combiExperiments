@@ -41,13 +41,13 @@ testContrastAdjusted =  testContrast / contrastAttenuationByFreq(testFreqHz);
 refContrastAdjusted =  refContrast / contrastAttenuationByFreq(refFreqHz);
 
 % The ref phase is always 0
-refPhase = 0;
+refPhase = round(rand())*pi;
 
 % Determine if we have random test phase or not
 if obj.randomizePhase
     testPhase = round(rand())*pi;
 else
-    testPhase = 0;
+    testPhase = refPhase + 90;
 end
 
 % Assemble the param sets
