@@ -1,4 +1,4 @@
-function generateModResulstForDMTF(subjectID,observerAgeInYears,NDlabel,varargin)
+function generateModResulstForDUALTesting(subjectID,observerAgeInYears,NDlabel,varargin)
 % We pre-generate the modResult files that define the L–M and LightFlux
 % modulations for each subject
 %
@@ -23,7 +23,7 @@ p.parse(varargin{:})
 primaryHeadRoom = p.Results.primaryHeadRoom;
 
 % Set our experimentName
-experimentName = 'DMTF';
+experimentName = 'DUAL';
 
 % Define our DropBox subdirectory
 dropBoxSubDir = 'FLIC_data';
@@ -37,7 +37,7 @@ fieldSizeDeg = 30;
 % Load the base cal and the max (ND0) cal
 baseCalName = 'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0.mat';
 baseCal = loadCalByName(baseCalName);
-maxSPDCalName = 'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0_maxSpectrum.mat';
+maxSPDCalName = 'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0x7_maxSpectrum.mat';
 maxSPDCal = loadCalByName(maxSPDCalName);
 
 % Obtain the transmittance for this ND filter setting
@@ -74,7 +74,7 @@ whichDirection = 'LminusM_wide';
 
 modResult = designModulation(whichDirection,photoreceptors,cal,...
     'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',3,...
-    'xyTarget',xyTarget,'searchBackground',true);
+    'xyTarget',xyTarget,'searchBackground',false);
 figHandle = plotModResult(modResult);
 drawnow
 
@@ -98,15 +98,11 @@ filename = fullfile(modDir,'modResult.pdf');
 saveas(figHandle,filename,'pdf')
 close(figHandle)
 
-% Save the background settings for the L-M modulation
-backgroundPrimary = modResult.settingsBackground;
-
-
 %% Create the LightFlux modulation
 whichDirection = 'LightFlux';
 
 modResult = designModulation(whichDirection,photoreceptors,cal,...
-    'primaryHeadRoom',primaryHeadRoom,'backgroundPrimary',backgroundPrimary);
+    'primaryHeadRoom',primaryHeadRoom,'searchBackground',false);
 figHandle = plotModResult(modResult);
 drawnow
 

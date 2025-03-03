@@ -37,12 +37,12 @@ fieldSizeDeg = 30;
 baseCalOptions = {'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0', ...
     'CombiLED-B_shortLLG-B_cassette-B_classicEyePiece-B_ND0'};
 
-maxSPDCalOptions = {'CombiLED-B_shortLLG_classicEyePiece_irFilter_Cassette-ND0_maxSpectrum',...
-   'CombiLED-B_shortLLG_classicEyePiece_irFilter_Cassette-ND0_maxSpectrum'};
+maxSPDCalOptions = {'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0_maxSpectrum',...
+   'CombiLED-B_shortLLG-B_cassette-B_classicEyePiece-B_ND0_maxSpectrum'};
 
 label = {'A', 'B'};
 
-for iCombi = 1:2
+for iCombi = 2:2
     % Load the base cal and the max (ND0) cal
     baseCalName = baseCalOptions{iCombi};
     baseCal = loadCalByName(baseCalName);
@@ -50,8 +50,8 @@ for iCombi = 1:2
     maxSPDCal = loadCalByName(maxSPDCalName);
 
     % Obtain the transmittance for this ND filter setting
-    % Change label{2} to label{iCombi} once we have two max spectrum files
-    targetSPDCalName = ['CombiLED-' label{2} '_shortLLG_classicEyePiece_irFilter_Cassette-ND' NDlabel '_maxSpectrum'];
+    targetSPDCalName = ['CombiLED-' label{iCombi} '_shortLLG-' label{iCombi} ...
+        '_cassette-' label{iCombi} '_classicEyePiece-' label{iCombi} '_ND' NDlabel '_maxSpectrum'];
     targetSPDCal = loadCalByName(targetSPDCalName);
     transmittance = targetSPDCal.rawData.gammaCurveMeanMeasurements ./ maxSPDCal.rawData.gammaCurveMeanMeasurements;
 
