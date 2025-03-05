@@ -34,16 +34,16 @@ xyTarget = [0.453178;0.348074];
 % The diameter of the stimulus field in degrees
 fieldSizeDeg = 30;
 
-% Load the base cal and the max (ND0) cal
+% Load the base cal and the max cal file for the ND of interest
 baseCalName = 'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0.mat';
 baseCal = loadCalByName(baseCalName);
-maxSPDCalName = 'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0x7_maxSpectrum.mat';
+maxSPDCalName = 'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0_maxSpectrum';
 maxSPDCal = loadCalByName(maxSPDCalName);
+targetSPDCalName = ['CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND' NDlabel '_maxSpectrum.mat'];
+targetSPDCal = loadCalByName(targetSPDCalName);
 
 % Obtain the transmittance for this ND filter setting
-targetSPDCalName = ['CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0_maxSpectrum'];
-targetSPDCal = loadCalByName(targetSPDCalName);
-transmittance = maxSPDCal.rawData.gammaCurveMeanMeasurements ./ targetSPDCal.rawData.gammaCurveMeanMeasurements;
+transmittance = targetSPDCal.rawData.gammaCurveMeanMeasurements ./ maxSPDCal.rawData.gammaCurveMeanMeasurements;
 
 % Create this cal file
 cal = baseCal;
@@ -75,6 +75,28 @@ modResult = designModulation(whichDirection,photoreceptors,cal,...
     'primaryHeadRoom',primaryHeadRoom,'searchBackground',false);
 figHandle = plotModResult(modResult);
 drawnow
+
+% Define the data directories
+modDir = fullfile(...
+    p.Results.dropBoxBaseDir,...
+    dropBoxSubDir,...,
+    p.Results.projectName,...
+    subjectID,[whichDirection '_ND' NDlabel]);
+dataDir = fullfile(modDir,experimentName);
+
+% Create a directory for the subject
+if ~isfolder(dataDir)
+    mkdir(dataDir)
+end
+
+% Save the mod result and plot
+filename = fullfile(modDir,'modResult.mat');
+save(filename,'modResult');
+filename = fullfile(modDir,'modResult.pdf');
+saveas(figHandle,filename,'pdf')
+close(figHandle)
+
+end
 
 % 
 % 
