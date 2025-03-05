@@ -8,8 +8,8 @@ function generateModResulstForDUALTesting(subjectID,observerAgeInYears,NDlabel,v
 %{
     subjectID = 'HERO_gka';
     observerAgeInYears = 54;
-    NDlabel = '0x5';
-    generateModResulstForDMTF(subjectID,observerAgeInYears,NDlabel);
+    NDlabel = '0x7';
+    generateModResulstForDUALTesting(subjectID,observerAgeInYears,NDlabel);
 %}
 
 % Parse the parameters
@@ -41,9 +41,9 @@ maxSPDCalName = 'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0x7_maxSpe
 maxSPDCal = loadCalByName(maxSPDCalName);
 
 % Obtain the transmittance for this ND filter setting
-targetSPDCalName = ['CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND' NDlabel '_maxSpectrum'];
+targetSPDCalName = ['CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0_maxSpectrum'];
 targetSPDCal = loadCalByName(targetSPDCalName);
-transmittance = targetSPDCal.rawData.gammaCurveMeanMeasurements ./ maxSPDCal.rawData.gammaCurveMeanMeasurements;
+transmittance = maxSPDCal.rawData.gammaCurveMeanMeasurements ./ targetSPDCal.rawData.gammaCurveMeanMeasurements;
 
 % Create this cal file
 cal = baseCal;
@@ -69,63 +69,72 @@ pupilDiameterMm = wy_getPupilSize(observerAgeInYears, luminanceCdM2, fieldSizeDe
 % Get these photoreceptors
 photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
 
-%% Create the L-M modulation
-whichDirection = 'LminusM_wide';
-
-modResult = designModulation(whichDirection,photoreceptors,cal,...
-    'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',3,...
-    'xyTarget',xyTarget,'searchBackground',false);
-figHandle = plotModResult(modResult);
-drawnow
-
-% Define the data directories
-modDir = fullfile(...
-    p.Results.dropBoxBaseDir,...
-    dropBoxSubDir,...,
-    p.Results.projectName,...
-    subjectID,[whichDirection '_ND' NDlabel]);
-dataDir = fullfile(modDir,experimentName);
-
-% Create a directory for the subject
-if ~isfolder(dataDir)
-    mkdir(dataDir)
-end
-
-% Save the mod result and plot
-filename = fullfile(modDir,'modResult.mat');
-save(filename,'modResult');
-filename = fullfile(modDir,'modResult.pdf');
-saveas(figHandle,filename,'pdf')
-close(figHandle)
-
-%% Create the LightFlux modulation
+% Make a LightFlux modulation
 whichDirection = 'LightFlux';
-
 modResult = designModulation(whichDirection,photoreceptors,cal,...
     'primaryHeadRoom',primaryHeadRoom,'searchBackground',false);
 figHandle = plotModResult(modResult);
 drawnow
 
-% Define the data directories
-modDir = fullfile(...
-    p.Results.dropBoxBaseDir,...
-    dropBoxSubDir,...,
-    p.Results.projectName,...
-    subjectID,[whichDirection '_ND' NDlabel]);
-dataDir = fullfile(modDir,experimentName);
-
-% Create a directory for the subject
-if ~isfolder(dataDir)
-    mkdir(dataDir)
-end
-
-% Save the mod result and plot
-filename = fullfile(modDir,'modResult.mat');
-save(filename,'modResult');
-filename = fullfile(modDir,'modResult.pdf');
-saveas(figHandle,filename,'pdf')
-close(figHandle)
-
-end
+% 
+% 
+% %% Create the L-M modulation
+% whichDirection = 'LminusM_wide';
+% 
+% modResult = designModulation(whichDirection,photoreceptors,cal,...
+%     'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',3,...
+%     'xyTarget',xyTarget,'searchBackground',false);
+% figHandle = plotModResult(modResult);
+% drawnow
+% 
+% % Define the data directories
+% modDir = fullfile(...
+%     p.Results.dropBoxBaseDir,...
+%     dropBoxSubDir,...,
+%     p.Results.projectName,...
+%     subjectID,[whichDirection '_ND' NDlabel]);
+% dataDir = fullfile(modDir,experimentName);
+% 
+% % Create a directory for the subject
+% if ~isfolder(dataDir)
+%     mkdir(dataDir)
+% end
+% 
+% % Save the mod result and plot
+% filename = fullfile(modDir,'modResult.mat');
+% save(filename,'modResult');
+% filename = fullfile(modDir,'modResult.pdf');
+% saveas(figHandle,filename,'pdf')
+% close(figHandle)
+% 
+% %% Create the LightFlux modulation
+% whichDirection = 'LightFlux';
+% 
+% modResult = designModulation(whichDirection,photoreceptors,cal,...
+%     'primaryHeadRoom',primaryHeadRoom,'searchBackground',false);
+% figHandle = plotModResult(modResult);
+% drawnow
+% 
+% % Define the data directories
+% modDir = fullfile(...
+%     p.Results.dropBoxBaseDir,...
+%     dropBoxSubDir,...,
+%     p.Results.projectName,...
+%     subjectID,[whichDirection '_ND' NDlabel]);
+% dataDir = fullfile(modDir,experimentName);
+% 
+% % Create a directory for the subject
+% if ~isfolder(dataDir)
+%     mkdir(dataDir)
+% end
+% 
+% % Save the mod result and plot
+% filename = fullfile(modDir,'modResult.mat');
+% save(filename,'modResult');
+% filename = fullfile(modDir,'modResult.pdf');
+% saveas(figHandle,filename,'pdf')
+% close(figHandle)
+% 
+% end
 
 
