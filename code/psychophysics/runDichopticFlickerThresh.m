@@ -1,4 +1,4 @@
-function runDichopticFlickerThresh(subjectID,NDlabel,refFreqHz,varargin)
+function runDichopticFlickerThresh(subjectID,NDlabel,NDlabelB,refFreqHz,varargin)
 % Psychometric measurement of discrmination thresholds at a set of
 % frequencies for two post-receptoral directions (LMS and L-M).
 %
@@ -17,8 +17,8 @@ p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
 p.addParameter('targetPhotoreceptorContrast',[0.075,0.333],@isnumeric);
-p.addParameter('stimParamsHi',{linspace(0,3,51),linspace(0,3,51)},@isnumeric);
-p.addParameter('stimParamsLow',{linspace(-3,0,51),linspace(-3,0,51)},@isnumeric);
+p.addParameter('stimParamsHi',{linspace(0,5,51),linspace(0,5,51)},@isnumeric);
+p.addParameter('stimParamsLow',{linspace(-5,0,51),linspace(-5,0,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',30,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
@@ -68,7 +68,7 @@ calA = modResult.meta.cal;
 
 % CombiLED B
 modResultFileB = ...
-    fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],'modResult.mat');
+    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelB],'modResult.mat');
 load(modResultFileB,'modResult');
 calB = modResult.meta.cal;
 
@@ -106,8 +106,13 @@ fprintf('**********************************\n\n');
 % Prepare to loop over blocks
 for bb=1:nBlocks
 
+%% Comment out switching between blocks
+% For now, just study directionIdx = 2 (i.e., LightFLux)
+%{    
     % Switch back and forth between the modulation directions
     directionIdx = mod(bb,2)+1;
+%}
+    directionIdx = 2;
 
     % Which direction we will use this time
     modResultFile = ...

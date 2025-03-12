@@ -30,7 +30,7 @@ classdef PsychDichopticFlickerDiscrim < handle
         refFreqHz
         refContrast
         testContrast
-        stimulusDurationSecs = 2;
+        stimulusDurationSecs = 30;
         interStimulusIntervalSecs = 0.2;
     end
 

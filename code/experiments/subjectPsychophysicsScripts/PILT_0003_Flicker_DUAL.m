@@ -1,14 +1,17 @@
 % Using two CombiLEDs to produce flicker
 
-subjectID = 'PILT_0003';
+subjectID = 'TEST';
 % Run through the set of reference flicker frequencies
-refFreqHz = [24,12,6,3,1.5];
-NDlabel = '0x5';
+% refFreqHz = [24,12,6,3,1.5];
+% refFreqHz = [ 3.0000    5.4216    9.7980   17.7069   32.0000];
+refFreqHz = [17.7069];
+NDlabel = '0x6';
+NDlabelB = '0x9';
 simulateFlag = false;
 
 % Use Quest+
 
-runDichopticFlickerThresh(subjectID,NDlabel,refFreqHz,'nBlocks',10,'useStaircase',false, ...
+runDichopticFlickerThresh(subjectID,NDlabel,NDlabelB,refFreqHz,'nBlocks',10,'useStaircase',false, ...
     'simulateResponse',simulateFlag,'simulateStimuli',simulateFlag, 'randomCombi', true);
 
 

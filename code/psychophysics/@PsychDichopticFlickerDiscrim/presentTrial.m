@@ -47,7 +47,10 @@ refPhase = round(rand())*pi;
 if obj.randomizePhase
     testPhase = round(rand())*pi;
 else
-    testPhase = refPhase + 90;
+    testPhase = refPhase + pi/2;
+    if testPhase > 2*pi
+        testPhase = refPhase - pi/2;
+    end
 end
 
 % Assemble the param sets
@@ -140,7 +143,7 @@ if ~simulateStimuli
 
     % Present the stimuli. Wait 1/4 of the stimuli and then move on to 
     % the response, thus allowing the subject to respond during the stimuli. 
-    stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
+    stopTime = cputime() + 0.5;
 
     obj.CombiLEDObjA.startModulation;
     obj.CombiLEDObjB.startModulation;

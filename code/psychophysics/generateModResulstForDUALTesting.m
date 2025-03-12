@@ -96,39 +96,35 @@ filename = fullfile(modDir,'modResult.pdf');
 saveas(figHandle,filename,'pdf')
 close(figHandle)
 
+% %% Create the L-M modulation
+whichDirection = 'LminusM_wide';
+
+modResult = designModulation(whichDirection,photoreceptors,cal,...
+    'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',3,...
+    'xyTarget',xyTarget,'searchBackground',false);
+figHandle = plotModResult(modResult);
+drawnow
+
+% Define the data directories
+modDir = fullfile(...
+    p.Results.dropBoxBaseDir,...
+    dropBoxSubDir,...,
+    p.Results.projectName,...
+    subjectID,[whichDirection '_ND' NDlabel]);
+dataDir = fullfile(modDir,experimentName);
+
+% Create a directory for the subject
+if ~isfolder(dataDir)
+    mkdir(dataDir)
 end
 
-% 
-% 
-% %% Create the L-M modulation
-% whichDirection = 'LminusM_wide';
-% 
-% modResult = designModulation(whichDirection,photoreceptors,cal,...
-%     'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',3,...
-%     'xyTarget',xyTarget,'searchBackground',false);
-% figHandle = plotModResult(modResult);
-% drawnow
-% 
-% % Define the data directories
-% modDir = fullfile(...
-%     p.Results.dropBoxBaseDir,...
-%     dropBoxSubDir,...,
-%     p.Results.projectName,...
-%     subjectID,[whichDirection '_ND' NDlabel]);
-% dataDir = fullfile(modDir,experimentName);
-% 
-% % Create a directory for the subject
-% if ~isfolder(dataDir)
-%     mkdir(dataDir)
-% end
-% 
-% % Save the mod result and plot
-% filename = fullfile(modDir,'modResult.mat');
-% save(filename,'modResult');
-% filename = fullfile(modDir,'modResult.pdf');
-% saveas(figHandle,filename,'pdf')
-% close(figHandle)
-% 
+% Save the mod result and plot
+filename = fullfile(modDir,'modResult.mat');
+save(filename,'modResult');
+filename = fullfile(modDir,'modResult.pdf');
+saveas(figHandle,filename,'pdf')
+close(figHandle)
+
 % %% Create the LightFlux modulation
 % whichDirection = 'LightFlux';
 % 
@@ -156,7 +152,8 @@ end
 % filename = fullfile(modDir,'modResult.pdf');
 % saveas(figHandle,filename,'pdf')
 % close(figHandle)
-% 
-% end
+% % 
+
+end
 
 
