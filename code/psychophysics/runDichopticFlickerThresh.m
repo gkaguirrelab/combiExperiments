@@ -16,7 +16,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
-p.addParameter('targetPhotoreceptorContrast',[0.075,0.333],@isnumeric);
+p.addParameter('targetPhotoreceptorContrast',[0.075,0.05],@isnumeric); %light flux was .333 but there was a lot of entoptic phenomena
 p.addParameter('stimParamsHi',{linspace(0,5,51),linspace(0,5,51)},@isnumeric);
 p.addParameter('stimParamsLow',{linspace(-5,0,51),linspace(-5,0,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',30,@isnumeric);
