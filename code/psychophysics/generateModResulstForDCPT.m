@@ -1,4 +1,4 @@
-function generateModResulstForDMTF(subjectID,observerAgeInYears,NDlabel,varargin)
+function generateModResulstForDCPT(subjectID,observerAgeInYears,NDlabelA,NDlabelB,varargin)
 % We pre-generate the modResult files that define the L–M and LightFlux
 % modulations for each subject
 %
@@ -8,22 +8,23 @@ function generateModResulstForDMTF(subjectID,observerAgeInYears,NDlabel,varargin
 %{
     subjectID = 'HERO_gka';
     observerAgeInYears = 54;
-    NDlabel = '0x5';
-    generateModResulstForDMTF(subjectID,observerAgeInYears,NDlabel);
+    NDlabel = '0x7';
+    generateModResulstForDUALTesting(subjectID,observerAgeInYears,NDlabel);
 %}
 
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('primaryHeadRoom',[0.075,0.075,0.075,0.075,0.075,0.075,0.20,0.075],@isnumeric);
+p.addParameter('primaryHeadRoom',0.05,@isnumeric);
+p.addParameter('contrastMatchConstraint',3,@isnumeric);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
 primaryHeadRoom = p.Results.primaryHeadRoom;
 
 % Set our experimentName
-experimentName = 'DUAL';
+experimentName = 'DCPT';
 
 % Define our DropBox subdirectory
 dropBoxSubDir = 'FLIC_data';
@@ -34,25 +35,30 @@ xyTarget = [0.453178;0.348074];
 % The diameter of the stimulus field in degrees
 fieldSizeDeg = 30;
 
+%% PLACE WHAT FOLLOWS WITHIN A LOOP FOR THE A AND B DEVICES
+
 baseCalOptions = {'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0', ...
     'CombiLED-B_shortLLG-B_cassette-B_classicEyePiece-B_ND0'};
-
 maxSPDCalOptions = {'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0_maxSpectrum',...
-   'CombiLED-B_shortLLG-B_cassette-B_classicEyePiece-B_ND0_maxSpectrum'};
+    'CombiLED-B_shortLLG-B_cassette-B_classicEyePiece-B_ND0_maxSpectrum'};
+targetSPDCalOptions = {['CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND' NDlabelA '_maxSpectrum.mat'],...
+    ['CombiLED-B_shortLLG-B_cassette-B_classicEyePiece-B_ND' NDlabelB '_maxSpectrum.mat']};
 
 label = {'A', 'B'};
 
-for iCombi = 2:2
-    % Load the base cal and the max (ND0) cal
+NDOptions = {NDlabelA, NDlabelB};
+
+for iCombi = 1:2
+
+    % Load the base cal and the max cal file for the ND of interest
     baseCalName = baseCalOptions{iCombi};
     baseCal = loadCalByName(baseCalName);
     maxSPDCalName = maxSPDCalOptions{iCombi};
     maxSPDCal = loadCalByName(maxSPDCalName);
+    targetSPDCalName = targetSPDCalOptions{iCombi};
+    targetSPDCal = loadCalByName(targetSPDCalName);
 
     % Obtain the transmittance for this ND filter setting
-    targetSPDCalName = ['CombiLED-' label{iCombi} '_shortLLG-' label{iCombi} ...
-        '_cassette-' label{iCombi} '_classicEyePiece-' label{iCombi} '_ND' NDlabel '_maxSpectrum'];
-    targetSPDCal = loadCalByName(targetSPDCalName);
     transmittance = targetSPDCal.rawData.gammaCurveMeanMeasurements ./ maxSPDCal.rawData.gammaCurveMeanMeasurements;
 
     % Create this cal file
@@ -79,11 +85,12 @@ for iCombi = 2:2
     % Get these photoreceptors
     photoreceptors = photoreceptorDictionaryHuman('observerAgeInYears',observerAgeInYears,'pupilDiameterMm',pupilDiameterMm);
 
-    %% Create the L-M modulation
+
+    % Create the L-M modulation
     whichDirection = 'LminusM_wide';
 
     modResult = designModulation(whichDirection,photoreceptors,cal,...
-        'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',3,...
+        'primaryHeadRoom',primaryHeadRoom,'contrastMatchConstraint',p.Results.contrastMatchConstraint,...
         'xyTarget',xyTarget,'searchBackground',true);
     figHandle = plotModResult(modResult);
     drawnow
@@ -93,7 +100,7 @@ for iCombi = 2:2
         p.Results.dropBoxBaseDir,...
         dropBoxSubDir,...,
         p.Results.projectName,...
-        subjectID,[whichDirection '_ND' NDlabel]);
+        subjectID,[whichDirection '_ND' NDOptions{1} '_' label{1} '_ND' NDOptions{2} '_' label{2}]);
     dataDir = fullfile(modDir,experimentName);
 
     % Create a directory for the subject
@@ -102,17 +109,16 @@ for iCombi = 2:2
     end
 
     % Save the mod result and plot
-    filename = fullfile(modDir, ['modResult' label{iCombi} '.mat']);
+    filename = fullfile(modDir,['modResult_' label{iCombi} '.mat']);
     save(filename,'modResult');
-    filename = fullfile(modDir,['modResult' label{iCombi} '.pdf']);
+    filename = fullfile(modDir,['modResult_' label{iCombi} '.pdf']);
     saveas(figHandle,filename,'pdf')
     close(figHandle)
 
     % Save the background settings for the L-M modulation
     backgroundPrimary = modResult.settingsBackground;
 
-
-    %% Create the LightFlux modulation
+    % Create the LightFlux modulation
     whichDirection = 'LightFlux';
 
     modResult = designModulation(whichDirection,photoreceptors,cal,...
@@ -125,7 +131,7 @@ for iCombi = 2:2
         p.Results.dropBoxBaseDir,...
         dropBoxSubDir,...,
         p.Results.projectName,...
-        subjectID,[whichDirection '_ND' NDlabel]);
+        subjectID,[whichDirection '_ND' NDOptions{1} '_' label{1} '_ND' NDOptions{2} '_' label{2}]);
     dataDir = fullfile(modDir,experimentName);
 
     % Create a directory for the subject
@@ -134,13 +140,12 @@ for iCombi = 2:2
     end
 
     % Save the mod result and plot
-    filename = fullfile(modDir,['modResult' label{iCombi} '.mat']);
+    filename = fullfile(modDir,['modResult_' label{iCombi} '.mat']);
     save(filename,'modResult');
-    filename = fullfile(modDir,['modResult' label{iCombi} '.pdf']);
+    filename = fullfile(modDir,['modResult_' label{iCombi} '.pdf']);
     saveas(figHandle,filename,'pdf')
     close(figHandle)
-
+end
 end
 
 
-end

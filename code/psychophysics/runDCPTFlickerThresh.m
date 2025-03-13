@@ -1,4 +1,4 @@
-function runDichopticFlickerThresh(subjectID,NDlabel,NDlabelB,refFreqHz,varargin)
+function runDCPTFlickerThresh(subjectID,NDlabelA,NDlabelB,refFreqHz,varargin)
 % Psychometric measurement of discrmination thresholds at a set of
 % frequencies for two post-receptoral directions (LMS and L-M).
 %
@@ -42,7 +42,7 @@ simulateStimuli = p.Results.simulateStimuli;
 randomCombi = p.Results.randomCombi;
 
 % Set our experimentName
-experimentName = 'DPTC';
+experimentName = 'DCPT';
 
 % Set the labels for the high and low stimulus ranges
 stimParamLabels = {'stimParamsHi','stimParamsLow'};
@@ -62,13 +62,13 @@ subjectDir = fullfile(...
 % device does not change with modulation direction
 % CombiLED A
 modResultFileA = ...
-    fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],'modResult.mat');
+    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelA '_A_ND' NDlabelB '_B'],'modResult_A.mat');
 load(modResultFileA,'modResult');
 calA = modResult.meta.cal;
 
 % CombiLED B
 modResultFileB = ...
-    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelB],'modResult.mat');
+    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelA '_A_ND' NDlabelB '_B'],'modResult_B.mat');
 load(modResultFileB,'modResult');
 calB = modResult.meta.cal;
 
@@ -106,23 +106,22 @@ fprintf('**********************************\n\n');
 % Prepare to loop over blocks
 for bb=1:nBlocks
 
-%% Comment out switching between blocks
-% For now, just study directionIdx = 2 (i.e., LightFLux)
-%{    
     % Switch back and forth between the modulation directions
     directionIdx = mod(bb,2)+1;
-%}
-    directionIdx = 2;
 
     % Which direction we will use this time
-    modResultFile = ...
-        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult.mat');
+    modResultFileA = ...
+        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelA '_A_ND' NDlabelB '_B'],'modResult_A.mat');
 
     % Load the previously generated modResult file for this direction
-    load(modResultFile,'modResult');
+    load(modResultFileA,'modResult');
+    modResultA = modResult; clear modResult;
+
+    %% FIX THIS AND LOAD MOD RESULT B
+    modResultB = modResultA;
 
     % Create a directory for the subject
-    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
+    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelA '_A_ND' NDlabelB '_B'],experimentName);
     if ~isfolder(dataDir)
         mkdir(dataDir)
     end
@@ -134,14 +133,18 @@ for bb=1:nBlocks
         for rr = 1:length(refFreqHz)
 
             % Define the filestem for this psychometric object
-            dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
+            dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelA '_A_ND' NDlabelB '_B'],experimentName);
             psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName ...
                 '_' strrep(num2str(targetPhotoreceptorContrast(directionIdx)),'.','x') ...
                 '_refFreq-' num2str(refFreqHz(rr)) 'Hz' ...
                 '_' stimParamLabels{ss}];
 
             % Calculate the testContrast
-            maxPhotoreceptorContrast = mean(abs(modResult.contrastReceptorsBipolar(modResult.meta.whichReceptorsToTarget)));
+            %% NOTE THAT WE WILL NEED TO OBTAIN SEPARATE A AND B TEST
+            % contrast levels, as the photoreceptor contrast can / will
+            % differ between the A and B combiLED modResults. For now, just
+            % doing the calculation for modResultA.
+            maxPhotoreceptorContrast = mean(abs(modResultA.contrastReceptorsBipolar(modResultA.meta.whichReceptorsToTarget)));
             testContrast = targetPhotoreceptorContrast(directionIdx) / maxPhotoreceptorContrast;
 
             % Obtain the relevant stimParam values
@@ -167,7 +170,7 @@ for bb=1:nBlocks
                 psychObj.randomCombi = randomCombi;
             else
                 % Create the object
-                psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResult,refFreqHz(rr),...
+                psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultA, modResultB, refFreqHz(rr),...
                     'refContrast',testContrast,'testContrast',testContrast,...
                     'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
                     'simulateResponse',simulateResponse,'simulateStimuli',simulateStimuli,...
@@ -216,6 +219,7 @@ for bb=1:nBlocks
 
     % High or low side estimate vector
     estimateType = zeros(1, nTrialsPerBlock);
+    
     % Assign the first half of the values as 1 and the second half as 2
     estimateType(1, 1:(nTrialsPerBlock/2)) = 1;
     estimateType(1, (nTrialsPerBlock/2)+1:nTrialsPerBlock) = 2;

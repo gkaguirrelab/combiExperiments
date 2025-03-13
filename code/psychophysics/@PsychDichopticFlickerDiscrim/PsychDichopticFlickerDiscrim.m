@@ -17,7 +17,8 @@ classdef PsychDichopticFlickerDiscrim < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
-        modResult
+        modResultA
+        modResultB
         questData
         simulatePsiParams
         giveFeedback
@@ -68,7 +69,7 @@ classdef PsychDichopticFlickerDiscrim < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResult,refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultA, modResultB, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -93,7 +94,8 @@ classdef PsychDichopticFlickerDiscrim < handle
             % Place various inputs and options into object properties
             obj.CombiLEDObjA = CombiLEDObjA;
             obj.CombiLEDObjB = CombiLEDObjB;
-            obj.modResult = modResult;
+            obj.modResultA = modResultA;
+            obj.modResultB = modResultB;
             obj.refFreqHz = refFreqHz;
             obj.testContrast = p.Results.testContrast;
             obj.refContrast = p.Results.refContrast;
