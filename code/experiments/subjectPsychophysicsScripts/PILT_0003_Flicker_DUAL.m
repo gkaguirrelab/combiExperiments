@@ -11,7 +11,7 @@ simulateFlag = false;
 
 % Use Quest+
 
-runDCPTFlickerThresh(subjectID,NDlabelA,NDlabelB,refFreqHz,'nBlocks',1,'useStaircase',false, ...
+runDCPTFlickerThresh(subjectID,NDlabelA,NDlabelB,refFreqHz,'nBlocks',2,'useStaircase',false, ...
     'simulateResponse',simulateFlag,'simulateStimuli',simulateFlag, 'randomCombi', true);
 
 
