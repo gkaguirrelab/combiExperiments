@@ -35,7 +35,9 @@ xyTarget = [0.453178;0.348074];
 % The diameter of the stimulus field in degrees
 fieldSizeDeg = 30;
 
-if ~exist('NDlabelA', 'var') && ~exist('NDlabelB', 'var')
+%% PLACE WHAT FOLLOWS WITHIN A LOOP FOR THE A AND B DEVICES
+
+if ~exist(NDlabelA, 'var') && ~exist(NDlabelB, 'var')
     NDlabelA = 'nan';
     NDlabelB = 'nan';
 end
@@ -57,7 +59,6 @@ label = {'A', 'B', 'C', 'D'};
 
 NDOptions = {NDlabelA, NDlabelB, NDlabelC, NDlabelD};
 
-% Loop for combis
 for iCombi = 3:4
 
     % Load the base cal and the max cal file for the ND of interest
