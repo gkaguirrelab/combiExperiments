@@ -25,7 +25,7 @@ classdef PsychDichopticFlickerDetect < handle
         staircaseRule % [nUp, nDown]
         psychometricFuncHandle
         psiParamLabels
-        stimParamsDomainList
+        testLogContrastSet
         psiParamsDomainList
         randomizePhase = false;
         testFreqHz
@@ -71,8 +71,8 @@ classdef PsychDichopticFlickerDetect < handle
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
-            p.addParameter('testContrast',0.333,@isnumeric);
-            p.addParameter('refContrast',0.333,@isnumeric);
+            % p.addParameter('testContrast',0.333,@isnumeric);
+            % p.addParameter('refContrast',0.333,@isnumeric);
             p.addParameter('randomizePhase',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
@@ -82,11 +82,17 @@ classdef PsychDichopticFlickerDetect < handle
             p.addParameter('staircaseRule',[1,3],@isnumeric);
             p.addParameter('psychometricFuncHandle',@qpCumulativeNormalLapse,@ishandle);
             p.addParameter('psiParamLabels',{'μ','σ','λ'},@iscell);
-            p.addParameter('simulatePsiParams',[0,0.3,0.05],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
+            p.addParameter('simulatePsiParams',[-2, 1.5, 0.5, 0.0],@isnumeric);
+            % p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,3,51),linspace(0,0,1)},@isnumeric);
+                {...
+                linspace(-2.5,-0.3,21), ...
+                logspace(log10(1),log10(10),21),...
+                [0.5],...
+                [0]...
+                },@isnumeric);
             p.addParameter('verbose',true,@islogical);
+            p.addParameter('testLogContrastSet',linspace(-3,-0.3,31),@isnumeric);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
@@ -95,8 +101,8 @@ classdef PsychDichopticFlickerDetect < handle
             obj.modResultC = modResultC;
             obj.modResultD = modResultD;
             obj.refFreqHz = refFreqHz;
-            obj.testContrast = p.Results.testContrast;
-            obj.refContrast = p.Results.refContrast;
+            % obj.testContrast = p.Results.testContrast;
+            % obj.refContrast = p.Results.refContrast;
             obj.randomizePhase = p.Results.randomizePhase;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
@@ -107,9 +113,10 @@ classdef PsychDichopticFlickerDetect < handle
             obj.psychometricFuncHandle = p.Results.psychometricFuncHandle;
             obj.psiParamLabels = p.Results.psiParamLabels;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
-            obj.stimParamsDomainList = p.Results.stimParamsDomainList;
+            % obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
+            obj.testLogContrastSet = p.Results.testLogContrastSet;
 
             % Detect incompatible simulate settings
             if obj.simulateStimuli && ~obj.simulateResponse
