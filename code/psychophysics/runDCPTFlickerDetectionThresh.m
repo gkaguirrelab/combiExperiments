@@ -1,6 +1,6 @@
-function runDCPTFlickerDetectionThresh(subjectID,NDlabelA,NDlabelB,refFreqHz,varargin)
-% Psychometric measurement of contrast detection thresholds at a set of
-% frequencies for two post-receptoral directions (LMS and L-M).
+function runDCPTFlickerDetectionThresh(subjectID,NDlabelC,NDlabelD,refFreqHz,testFreqHz,varargin)
+% Psychometric measurement of contrast detection thresholds using a 
+% binocular rig at a set of frequencies for two post-receptoral directions (LMS and L-M).
 %
 % Examples:
 %{
@@ -42,7 +42,7 @@ simulateStimuli = p.Results.simulateStimuli;
 randomCombi = p.Results.randomCombi;
 
 % Set our experimentName
-experimentName = 'DCPTDetect';
+experimentName = 'DCPT';
 
 % Set the labels for the high and low stimulus ranges
 stimParamLabels = {'stimParamsHi','stimParamsLow'};
@@ -61,37 +61,37 @@ subjectDir = fullfile(...
 % obtain a gamma table to pass to the combiLEDs, and this property of the
 % device does not change with modulation direction
 % CombiLED A
-modResultFileA = ...
-    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelA '_A_ND' NDlabelB '_B'],'modResult_A.mat');
-load(modResultFileA,'modResult');
-calA = modResult.meta.cal;
+modResultFileC = ...
+    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_C.mat');
+load(modResultFileC,'modResult');
+calC = modResult.meta.cal;
 
 % CombiLED B
-modResultFileB = ...
-    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelA '_A_ND' NDlabelB '_B'],'modResult_B.mat');
-load(modResultFileB,'modResult');
-calB = modResult.meta.cal;
+modResultFileD = ...
+    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_D.mat');
+load(modResultFileD,'modResult');
+calD = modResult.meta.cal;
 
 % Set up the CombiLED
 if simulateStimuli
-    CombiLEDObjA = [];
-    CombiLEDObjB = [];
+    CombiLEDObjC = [];
+    CombiLEDObjD = [];
 else
     % Open the CombiLED
-    CombiLEDObjA = CombiLEDcontrol('verbose',verboseCombiLED);
-    CombiLEDObjB = CombiLEDcontrol('verbose',verboseCombiLED);
+    CombiLEDObjC = CombiLEDcontrol('verbose',verboseCombiLED);
+    CombiLEDObjD = CombiLEDcontrol('verbose',verboseCombiLED);
 
     % Check the identifierString and swap objects if needed
-    if CombiLEDObjA.identifierString == "B000JA8P" % wrong identifier
+    if CombiLEDObjC.identifierString == "A10L31XZ" % wrong identifier
         % Swap the objects
-        tempObj = CombiLEDObjA;
-        CombiLEDObjA = CombiLEDObjB;
-        CombiLEDObjB = tempObj;
+        tempObj = CombiLEDObjC;
+        CombiLEDObjC = CombiLEDObjD;
+        CombiLEDObjD = tempObj;
     end
 
     % Update the gamma table
-    CombiLEDObjA.setGamma(calA.processedData.gammaTable);
-    CombiLEDObjB.setGamma(calB.processedData.gammaTable);
+    CombiLEDObjC.setGamma(calC.processedData.gammaTable);
+    CombiLEDObjD.setGamma(calD.processedData.gammaTable);
 end
 
 % Provide instructions
@@ -150,8 +150,8 @@ for bb=1:nBlocks
             % Load the object
             load(filename,'psychObj');
             % Put in the fresh CombiLEDObjs
-            psychObj.CombiLEDObjA = CombiLEDObjA;
-            psychObj.CombiLEDObjB = CombiLEDObjB;
+            psychObj.CombiLEDObjC = CombiLEDObjC;
+            psychObj.CombiLEDObjD = CombiLEDObjD;
             % Increment blockIdx
             psychObj.blockIdx = psychObj.blockIdx+1;
             psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
@@ -164,9 +164,9 @@ for bb=1:nBlocks
             psychObj.randomCombi = randomCombi;
         else
             % Create the object
-            psychObj = PsychDichopticFlickerDetect(CombiLEDObjA, CombiLEDObjB, modResultC, modResultD, refFreqHz(rr),...
-                'refContrast',testContrast,'testContrast',testContrast,...
-                'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
+            psychObj = PsychDichopticFlickerDetect(CombiLEDObjC, CombiLEDObjD, modResultC, modResultD, ...
+                 refFreqHz(rr), testFreqHz, ...
+                'verbose',verbosePsychObj, ...
                 'simulateResponse',simulateResponse,'simulateStimuli',simulateStimuli,...
                 'useStaircase', useStaircase, 'randomCombi', randomCombi);
             % Store the filename
@@ -250,7 +250,7 @@ for bb=1:nBlocks
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
-        psychObjArray{permutedPairs(ii, 1), permutedPairs(ii, 2)}.presentTrial
+        psychObjArray{permutedPairs(ii, 1)}.presentTrial
     end
 
     % Report completion of this block
@@ -261,8 +261,8 @@ for bb=1:nBlocks
         % Grab the next psychObj
         psychObj = psychObjArray{1, rr};
         % empty the CombiLEDObj handles and save the psychObj
-        psychObj.CombiLEDObjA = [];
-        psychObj.CombiLEDObjB = [];
+        psychObj.CombiLEDObjC = [];
+        psychObj.CombiLEDObjD = [];
         save(psychObj.filename,'psychObj');
     end
 
@@ -270,11 +270,11 @@ end % block loop
 
 % Clean up
 if ~simulateStimuli
-    CombiLEDObjA.goDark;
-    CombiLEDObjA.serialClose;
+    CombiLEDObjC.goDark;
+    CombiLEDObjC.serialClose;
 
-    CombiLEDObjB.goDark;
-    CombiLEDObjB.serialClose;
+    CombiLEDObjD.goDark;
+    CombiLEDObjD.serialClose;
 end
 clear CombiLEDObj
 

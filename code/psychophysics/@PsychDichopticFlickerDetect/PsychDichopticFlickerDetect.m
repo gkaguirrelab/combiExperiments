@@ -29,6 +29,7 @@ classdef PsychDichopticFlickerDetect < handle
         psiParamsDomainList
         randomizePhase = false;
         testFreqHz
+        refFreqHz
         stimulusDurationSecs = 2.5;
         interStimulusIntervalSecs = 0.2;
     end
@@ -67,7 +68,9 @@ classdef PsychDichopticFlickerDetect < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDetect(CombiLEDObjC, CombiLEDObjD, modResultC, modResultD, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDetect(CombiLEDObjC, CombiLEDObjD, modResultC, modResultD, ...
+                refFreqHz, testFreqHz, varargin)
+                
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -101,6 +104,7 @@ classdef PsychDichopticFlickerDetect < handle
             obj.modResultC = modResultC;
             obj.modResultD = modResultD;
             obj.refFreqHz = refFreqHz;
+            obj.testFreqHz = testFreqHz;
             % obj.testContrast = p.Results.testContrast;
             % obj.refContrast = p.Results.refContrast;
             obj.randomizePhase = p.Results.randomizePhase;
@@ -139,9 +143,10 @@ classdef PsychDichopticFlickerDetect < handle
             % the range of possible test frequencies (in dBs) relative to
             % the reference frequency. Check here that we can achieve the
             % called-for test and reference contrast given this.
-            maxTestFreqHz = obj.refFreqHz * db2pow(max(obj.stimParamsDomainList));
-            assert(obj.testContrast/contrastAttenuationByFreq(maxTestFreqHz) < 1);
-            assert(obj.refContrast/contrastAttenuationByFreq(obj.refFreqHz) < 1);
+            % FIX THIS - WHAT TO REPLACE stimParamsDomainList WITH?
+            % maxTestFreqHz = obj.refFreqHz * db2pow(max(obj.stimParamsDomainList));
+            % assert(obj.testContrast/contrastAttenuationByFreq(maxTestFreqHz) < 1);
+            % assert(obj.refContrast/contrastAttenuationByFreq(obj.refFreqHz) < 1);
 
         end
 

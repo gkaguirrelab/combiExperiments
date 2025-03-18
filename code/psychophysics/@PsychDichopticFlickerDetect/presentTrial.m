@@ -126,13 +126,13 @@ if ~simulateStimuli
     % Prepare the stimulus
     stopTime = cputime() + obj.interStimulusIntervalSecs;
 
-    obj.CombiLEDObjA.setContrast(intervalParams(1,1));
-    obj.CombiLEDObjA.setFrequency(intervalParams(1,2));
-    obj.CombiLEDObjA.setPhaseOffset(intervalParams(1,3));
+    obj.CombiLEDObjC.setContrast(intervalParams(1,1));
+    obj.CombiLEDObjC.setFrequency(intervalParams(1,2));
+    obj.CombiLEDObjC.setPhaseOffset(intervalParams(1,3));
 
-    obj.CombiLEDObjB.setContrast(intervalParams(2,1));
-    obj.CombiLEDObjB.setFrequency(intervalParams(2,2));
-    obj.CombiLEDObjB.setPhaseOffset(intervalParams(2,3));
+    obj.CombiLEDObjD.setContrast(intervalParams(2,1));
+    obj.CombiLEDObjD.setFrequency(intervalParams(2,2));
+    obj.CombiLEDObjD.setPhaseOffset(intervalParams(2,3));
 
     obj.waitUntil(stopTime);
 
@@ -140,8 +140,8 @@ if ~simulateStimuli
     % the response, thus allowing the subject to respond during the stimuli. 
     stopTime = cputime() + 0.5;
 
-    obj.CombiLEDObjA.startModulation;
-    obj.CombiLEDObjB.startModulation;
+    obj.CombiLEDObjC.startModulation;
+    obj.CombiLEDObjD.startModulation;
     audioObjs.low.play;
     obj.waitUntil(stopTime);
 
@@ -165,8 +165,8 @@ end
 
 % Stop the stimulus in case it is still running
 if ~simulateStimuli
-    obj.CombiLEDObjA.stopModulation;
-    obj.CombiLEDObjB.stopModulation;
+    obj.CombiLEDObjC.stopModulation;
+    obj.CombiLEDObjD.stopModulation;
 end
 
 % Determine if the subject has selected the ref or test interval
@@ -217,7 +217,7 @@ if obj.verbose
 end
 
 % Update questData
-questData = qpUpdate(questData,stimParam,outcome);
+questData = qpUpdate(questData,qpStimParams,outcome);
 
 % Add in the stimulus information
 questData.trialData(currTrialIdx).testPhase = testPhase;
