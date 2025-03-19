@@ -8,7 +8,7 @@ end
 
 % Grab some variables
 questData = obj.questData;
-stimParamsDomainList = obj.stimParamsDomainList;
+stimParamsDomainList = obj.questData.stimParamsDomainList;
 nTrials = length(obj.questData.trialData);
 
 % Get the Max Likelihood psi params, temporarily turning off verbosity.

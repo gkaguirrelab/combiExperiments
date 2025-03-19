@@ -44,7 +44,7 @@ targetSPDCalOptions = {['CombiLED-C_shortLLG_classicEyePiece-C_cassette-C_ND' ND
 
 label = {'C', 'D'};
 
-NDOptions = {'NDlabelC', 'NDlabelD'};
+NDOptions = {NDlabelC, NDlabelD};
 
 % Loop for combis
 for iCombi = 1:2
@@ -118,8 +118,6 @@ for iCombi = 1:2
 
     % Create the LightFlux modulation
     whichDirection = 'LightFlux';
-
-    
 
     modResult = designModulation(whichDirection,photoreceptors,cal,...
         'primaryHeadRoom',primaryHeadRoom); % 'backgroundPrimary',backgroundPrimary);

@@ -74,9 +74,9 @@ else
     testInterval = 2;
 end
 
-% Note which interval contains the faster flicker, which is used for
+% Note which interval contains the higher contrast, which is used for
 % feedback
-[~,fasterInterval] = max(intervalParams(:,2));
+[~,higherContrast] = max(intervalParams(:,1));
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -111,8 +111,9 @@ end
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Freq [%2.2f, %2.2f Hz]...', ...
-        currTrialIdx,intervalParams(1,2),intervalParams(2,2));
+    fprintf('Trial %d; Freq [%2.2f, %2.2f Hz], Contrast [%2.2f, %2.2f]... ', ...
+        currTrialIdx,intervalParams(1,2),intervalParams(2,2), ...
+        intervalParams(1,1), intervalParams(2,1));
 end
 
 % Present the stimuli
@@ -178,7 +179,7 @@ end
 
 % Determine if the subject has selected the faster interval and handle
 % audio feedback
-if intervalChoice==fasterInterval
+if intervalChoice==higherContrast
     % Correct
     correct = true;
     if obj.verbose
@@ -222,7 +223,7 @@ questData = qpUpdate(questData,qpStimParams,outcome);
 % Add in the stimulus information
 questData.trialData(currTrialIdx).testPhase = testPhase;
 questData.trialData(currTrialIdx).testInterval = testInterval;
-questData.trialData(currTrialIdx).fasterInterval = fasterInterval;
+questData.trialData(currTrialIdx).fasterInterval = higherContrast;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
 
