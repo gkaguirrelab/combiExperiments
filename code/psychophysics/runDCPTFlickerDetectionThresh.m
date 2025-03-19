@@ -231,7 +231,7 @@ for bb=1:nBlocks
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
-        psychObjArray{1, refFreqHzIndex(ii)}.presentTrial
+        psychObjArray{1, refFreqHzIndex(ii)}.presentTrial(refFreqHzIndex(ii)) % pass the current ref/test freq to presentTrial to calculate testContrastAdjusted
     end
 
     % Report completion of this block

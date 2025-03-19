@@ -1,4 +1,4 @@
-function presentTrial(obj)
+function presentTrial(obj, currentTestFreqHz)
 
 % Get the questData
 questData = obj.questData;
@@ -33,7 +33,7 @@ end
 
 % Adjust the contrast that is sent to the device to account for any
 % device attenuation of the modulation at high temporal frequencies
-testContrastAdjusted =  testContrast / contrastAttenuationByFreq(testFreqHz);
+testContrastAdjusted =  testContrast / contrastAttenuationByFreq(currentTestFreqHz);
 
 % The ref phase is always 0
 refPhase = round(rand())*pi;
