@@ -35,30 +35,19 @@ xyTarget = [0.453178;0.348074];
 % The diameter of the stimulus field in degrees
 fieldSizeDeg = 30;
 
-if ~exist('NDlabelA', 'var') && ~exist('NDlabelB', 'var')
-    NDlabelA = 'nan';
-    NDlabelB = 'nan';
-end
-
-baseCalOptions = {'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0', ...
-    'CombiLED-B_shortLLG-B_cassette-B_classicEyePiece-B_ND0', ...
-    'CombiLED-C_shortLLG_classicEyePiece-C_cassette-C_ND0', ...
+baseCalOptions = {'CombiLED-C_shortLLG_classicEyePiece-C_cassette-C_ND0', ...
     'CombiLED-D_shortLLG_classicEyePiece-D_cassette-D_ND0'};
-maxSPDCalOptions = {'CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND0_maxSpectrum',...
-    'CombiLED-B_shortLLG-B_cassette-B_classicEyePiece-B_ND0_maxSpectrum', ...
-     'CombiLED-C_shortLLG_classicEyePiece-C_cassette-C_ND0_maxSpectrum', ...
+maxSPDCalOptions = {'CombiLED-C_shortLLG_classicEyePiece-C_cassette-C_ND0_maxSpectrum', ...
      'CombiLED-D_shortLLG_classicEyePiece-D_cassette-D_ND0_maxSpectrum'};
-targetSPDCalOptions = {['CombiLED-A_shortLLG-A_cassette-A_classicEyePiece-A_ND' NDlabelA '_maxSpectrum.mat'],...
-    ['CombiLED-B_shortLLG-B_cassette-B_classicEyePiece-B_ND' NDlabelB '_maxSpectrum.mat'], ...
-    ['CombiLED-C_shortLLG_classicEyePiece-C_cassette-C_ND' NDlabelC '_maxSpectrum.mat'], ...
+targetSPDCalOptions = {['CombiLED-C_shortLLG_classicEyePiece-C_cassette-C_ND' NDlabelC '_maxSpectrum.mat'], ...
     ['CombiLED-D_shortLLG_classicEyePiece-D_cassette-D_ND' NDlabelD '_maxSpectrum.mat']};
 
-label = {'A', 'B', 'C', 'D'};
+label = {'C', 'D'};
 
-NDOptions = {NDlabelA, NDlabelB, NDlabelC, NDlabelD};
+NDOptions = {NDlabelC, NDlabelD};
 
 % Loop for combis
-for iCombi = 3:4
+for iCombi = 1:2
 
     % Load the base cal and the max cal file for the ND of interest
     baseCalName = baseCalOptions{iCombi};
@@ -109,7 +98,7 @@ for iCombi = 3:4
     %     p.Results.dropBoxBaseDir,...
     %     dropBoxSubDir,...,
     %     p.Results.projectName,...
-    %     subjectID,[whichDirection '_ND' NDOptions{3} '_' label{3} '_ND' NDOptions{4} '_' label{4}]);
+    %     subjectID,[whichDirection '_ND' NDOptions{1} '_' label{1} '_ND' NDOptions{2} '_' label{2}]);
     % dataDir = fullfile(modDir,experimentName);
     % 
     % % Create a directory for the subject
@@ -140,7 +129,7 @@ for iCombi = 3:4
         p.Results.dropBoxBaseDir,...
         dropBoxSubDir,...,
         p.Results.projectName,...
-        subjectID,[whichDirection '_ND' NDOptions{3} '_' label{3} '_ND' NDOptions{4} '_' label{4}]);
+        subjectID,[whichDirection '_ND' NDOptions{1} '_' label{1} '_ND' NDOptions{2} '_' label{2}]);
     dataDir = fullfile(modDir,experimentName);
 
     % Create a directory for the subject
