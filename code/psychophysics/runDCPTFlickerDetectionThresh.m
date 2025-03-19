@@ -203,20 +203,13 @@ for bb=1:nBlocks
         error(['The number of trials must be even and a ' ...
             'multiple of the number of reference frequencies.'])
     end
-    
-    % Create two vectors, one containing estimate types (high or low side)
-    % and the other containing reference frequencies.
 
-    % High or low side estimate vector
-    estimateType = zeros(1, nTrialsPerBlock);
-    
-    % Assign the first half of the values as 1 and the second half as 2
-    estimateType(1, 1:(nTrialsPerBlock/2)) = 1;
-    estimateType(1, (nTrialsPerBlock/2)+1:nTrialsPerBlock) = 2;
-
+    % Randomizing the order that reference frequencies are presented in. 
     % Reference frequency vector, which will contain indices of refFreqHz
     refFreqHzIndex = zeros(1, nTrialsPerBlock);
 
+    % Group the trials so each reference frequency is presented an equal
+    % number of times
     group = ceil(nTrialsPerBlock / length(refFreqHz)); 
     startIdx = 1;
 
@@ -233,24 +226,12 @@ for bb=1:nBlocks
 
     end
 
-    % Generate all possible pairs and combine them into a single matrix
-    % of unique pairs
-    [ET, RF] = meshgrid(estimateType, refFreqHzIndex);
-    pairs = [ET(:), RF(:)];
-    pairs = unique(pairs, 'rows', 'stable');
-
-    % Determine the number of times to repeat each unique pair
-    pairRepetitions = nTrialsPerBlock / length(pairs);
-
-    % Now create a list with repeated pairs 
-    finalPairs = repmat(pairs, pairRepetitions, 1);  
-
-    % Permute the pairs to randomize the order
-    permutedPairs = finalPairs(randperm(size(finalPairs, 1)), :);
+    % Now randomize the reference frequency order
+    refFreqHzIndex = refFreqHzIndex(randperm(nTrialsPerBlock));
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
-        psychObjArray{permutedPairs(ii, 1)}.presentTrial
+        psychObjArray{1, refFreqHzIndex(ii)}.presentTrial
     end
 
     % Report completion of this block
