@@ -59,6 +59,7 @@ for cc = 1:length(stimCounts)
 end
 
 % Add the psychometric function
+stimParamsDomainList = stimParamsDomainList{1};
 for cc = 1:length(stimParamsDomainList)
     outcomes = obj.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
     fitCorrect(cc) = outcomes(2);
@@ -73,7 +74,7 @@ plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 % Labels and range
 ylim([-0.1 1.1]);
 xlabel('stimulus difference [dB]')
-ylabel('proportion pick test as faster');
+ylabel('proportion pick higher contrast stimulus');
 title('Psychometric function');
 
 % Entropy by trial
