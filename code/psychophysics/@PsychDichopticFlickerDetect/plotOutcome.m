@@ -38,7 +38,7 @@ title('stimulus by trial');
 subplot(1,3,2);
 hold on
 
-% Get the proportion selected "test" for each stimulus
+% Get the proportion selected "higher contrast" for each stimulus
 stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
 stim = zeros(length(stimCounts),questData.nStimParams);
 for cc = 1:length(stimCounts)
