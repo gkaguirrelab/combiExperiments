@@ -35,10 +35,10 @@ xyTarget = [0.453178;0.348074];
 % The diameter of the stimulus field in degrees
 fieldSizeDeg = 30;
 
-baseCalOptions = {'CombiLED-C_shortLLG-C_classicEyePiece-C_cassette-C-ND0', ...
-    'CombiLED-D_shortLLG-D_classicEyePiece-D_cassette-D-ND0'};
+baseCalOptions = {'CombiLED-C_shortLLG-C_classicEyePiece-C_cassette-C_ND0', ...
+    'CombiLED-D_shortLLG-D_classicEyePiece-D_cassette-D_ND0'};
 maxSPDCalOptions = {'CombiLED-C_shortLLG-C_classicEyePiece-C_cassette-C_ND0_maxSpectrum', ...
-     'CombiLED-D_shortLLG_classicEyePiece-D_cassette-D_ND0_maxSpectrum'};
+     'CombiLED-D_shortLLG-D_classicEyePiece-D_cassette-D_ND0_maxSpectrum'};
 targetSPDCalOptions = {['CombiLED-C_shortLLG-C_classicEyePiece-C_cassette-C_ND' NDlabelC '_maxSpectrum.mat'], ...
     ['CombiLED-D_shortLLG-D_classicEyePiece-D_cassette-D_ND' NDlabelD '_maxSpectrum.mat']};
 
@@ -47,7 +47,7 @@ label = {'C', 'D'};
 NDOptions = {NDlabelC, NDlabelD};
 
 % Loop for combis
-for iCombi = 1:1
+for iCombi = 1:2
 
     % Load the base cal and the max cal file for the ND of interest
     baseCalName = baseCalOptions{iCombi};

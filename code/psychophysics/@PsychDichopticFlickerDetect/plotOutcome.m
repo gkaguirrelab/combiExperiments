@@ -8,8 +8,11 @@ end
 
 % Grab some variables
 questData = obj.questData;
-stimParamsDomainList = obj.questData.stimParamsDomainList;
+testLogContrastSet = obj.testLogContrastSet;
 nTrials = length(obj.questData.trialData);
+
+% Linearize contrast
+testContrastSet = 10.^testLogContrastSet;
 
 % Get the Max Likelihood psi params, temporarily turning off verbosity.
 lb = cellfun(@(x) min(x),obj.psiParamsDomainList);
@@ -59,21 +62,20 @@ for cc = 1:length(stimCounts)
 end
 
 % Add the psychometric function
-stimParamsDomainList = stimParamsDomainList{1};
-for cc = 1:length(stimParamsDomainList)
-    outcomes = obj.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
+for cc = 1:length(testContrastSet)
+    outcomes = obj.questData.qpPF(testContrastSet(cc),psiParamsFit);
     fitCorrect(cc) = outcomes(2);
 end
-plot(stimParamsDomainList,fitCorrect,'-k')
+plot(testContrastSet,fitCorrect,'-k')
 
 % Add a marker for the 50% point
 outcomes = obj.questData.qpPF(psiParamsFit(1),psiParamsFit);
 plot([psiParamsFit(1), psiParamsFit(1)],[0, outcomes(2)],':k')
-plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
+plot([min(testContrastSet), psiParamsFit(1)],[0.5 0.5],':k')
 
 % Labels and range
 ylim([-0.1 1.1]);
-xlabel('stimulus difference [dB]')
+xlabel('contrast difference')
 ylabel('proportion pick higher contrast stimulus');
 title('Psychometric function');
 
@@ -86,8 +88,8 @@ ylabel('entropy');
 title('Entropy by trial number')
 
 % Add a supertitle
-str = sprintf('Ref freq = %d Hz; [μ,σ,λ] = [%2.3f,%2.3f,%2.3f]',...
-    obj.refFreqHz,psiParamsFit);
+str = sprintf('Test freq = %d Hz; [μ,σ,λ] = [%2.3f,%2.3f,%2.3f]',...
+    obj.testFreqHz,psiParamsFit);
 sgtitle(str);
 
 end

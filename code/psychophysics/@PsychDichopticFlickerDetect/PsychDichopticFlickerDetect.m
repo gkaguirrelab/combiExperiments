@@ -69,7 +69,6 @@ classdef PsychDichopticFlickerDetect < handle
         function obj = PsychDichopticFlickerDetect(CombiLEDObjC, CombiLEDObjD, modResultC, modResultD, ...
                 testFreqHz, varargin)
                 
-
             % input parser
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('randomizePhase',true,@islogical);
