@@ -59,13 +59,13 @@ subjectDir = fullfile(...
 % device does not change with modulation direction
 % CombiLED C
 modResultFileC = ...
-    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_C.mat');
+    fullfile(subjectDir,[modDirections{2} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_C.mat');
 load(modResultFileC,'modResult');
 calC = modResult.meta.cal;
 
 % CombiLED D
 modResultFileD = ...
-    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_D.mat');
+    fullfile(subjectDir,[modDirections{2} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_D.mat');
 load(modResultFileD,'modResult');
 calD = modResult.meta.cal;
 
@@ -103,8 +103,10 @@ fprintf('**********************************\n\n');
 % Prepare to loop over blocks
 for bb=1:nBlocks
 
-    % Switch back and forth between the modulation directions
-    directionIdx = mod(bb,2)+1;
+    % for now, just light flux
+    directionIdx = 2;
+    % % Switch back and forth between the modulation directions
+    % directionIdx = mod(bb,2)+1;
 
     % Which direction we will use this time
     modResultFileC = ...
