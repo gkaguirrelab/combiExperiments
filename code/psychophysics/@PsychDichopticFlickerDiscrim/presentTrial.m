@@ -152,42 +152,55 @@ if ~simulateStimuli
 
 end
 
-intervalChoice = 0;
-
 % Start the response interval
+
+% Choose between keyboard or gamepad input
+keyboard = false;
+
 if ~simulateResponse
 
-    % Check for keyboard input
-    % [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
-    %     'leftarrow', 'rightarrow'});
-    % 
-    % if ~isempty(keyPress)
-    %     switch keyPress
-    %         case {'1','numpad1','leftarrow'}
-    %             intervalChoice = 1;
-    %         case {'2','numpad2','rightarrow'}
-    %             intervalChoice = 2;
-    %     end
-    % 
-    % else
+    if keyboard % Using keyboard
+        % Check for keyboard input
+        [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
+            'leftarrow', 'rightarrow'});
 
-
-        % Check for gamepad input
-        % Left side
-        buttonState5 = Gamepad('GetButton', 1, 5); % 5th button on 1st gamepad
-        buttonState7 = Gamepad('GetButton', 1, 7);
-        % Right side
-        buttonState6 = Gamepad('GetButton', 1, 5);
-        buttonState8 = Gamepad('GetButton', 1, 7);
-
-        if buttonState5 == 1 || buttonState7 == 1
-            intervalChoice = 1;
-        elseif buttonState6 == 1 || buttonState8 == 1
-            intervalChoice = 2;
+        if ~isempty(keyPress)
+            switch keyPress
+                case {'1','numpad1','leftarrow'}
+                    intervalChoice = 1;
+                case {'2','numpad2','rightarrow'}
+                    intervalChoice = 2;
+            end
         end
 
-    % end
-    
+    else  % Using gamepad
+
+        intervalStartSecs = second(datetime(),'secondofday');
+
+        while true % Keep looping until a button is pressed
+
+            % Check for gamepad input
+            % Left side
+            buttonState5 = Gamepad('GetButton', 1, 5); % 5th button on 1st gamepad
+            buttonState7 = Gamepad('GetButton', 1, 7);
+            % Right side
+            buttonState6 = Gamepad('GetButton', 1, 6);
+            buttonState8 = Gamepad('GetButton', 1, 8);
+
+            if buttonState5 == 1 || buttonState7 == 1
+                intervalChoice = 1;
+                responseTimeSecs = second(datetime(),'secondofday') - intervalStartSecs;
+                break
+            elseif buttonState6 == 1 || buttonState8 == 1
+                intervalChoice = 2;
+                responseTimeSecs = second(datetime(),'secondofday') - intervalStartSecs;
+                break
+            end
+
+        end
+
+    end
+
     close(S.fh);
 else
     intervalChoice = obj.getSimulatedResponse(stimParam,testInterval);

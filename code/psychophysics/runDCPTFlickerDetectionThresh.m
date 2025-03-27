@@ -185,7 +185,19 @@ for bb=1:nBlocks
 
     % Start the block
     fprintf('Press enter to start block %d...',bb);
-    input('');
+    % input('');  % If using keyboard
+
+    while true  % If using gamepad
+        buttonState1 = Gamepad('GetButton', 1, 1);
+        buttonState2 = Gamepad('GetButton', 1, 2);
+        buttonState3 = Gamepad('GetButton', 1, 3);
+        buttonState4 = Gamepad('GetButton', 1, 4);
+
+        if buttonState1 == 1 || buttonState2 == 1 || buttonState3 == 1 || buttonState4 == 1
+            break
+        end
+
+    end
 
     % Store the block start time
     for rr = 1:length(testFreqSetHz)
