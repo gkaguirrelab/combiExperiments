@@ -1,14 +1,14 @@
-function runDCPTFlickerDetectionThresh(subjectID,NDlabelC,NDlabelD,testFreqSetHz,varargin)
-% Psychometric measurement of contrast detection thresholds using a 
-% binocular rig at a set of frequencies for two post-receptoral directions (LMS and L-M).
+function runDCPT_detect(subjectID,NDlabel,testFreqSetHz,varargin)
+% Psychometric measurement of contrast detection thresholds using a
+% dichoptic, binocular rig at a set of frequencies for two post-receptoral
+% directions (LMS and L-M).
 %
 % Examples:
 %{
-    subjectID = 'TEST';
-    NDlabelC = '0';
-    NDlabelD = '0';
+    subjectID = 'HERO_gka';
+    NDlabel = '1';
     testFreqSetHz = [8];
-    runDCPTFlickerDetectionThresh(subjectID,NDlabelC,NDlabelD,testFreqSetHz);
+    runDCPT_detect(subjectID,NDlabel,testFreqSetHz);
 %}
 
 % Parse the parameters
@@ -39,10 +39,7 @@ simulateStimuli = p.Results.simulateStimuli;
 randomCombi = p.Results.randomCombi;
 
 % Set our experimentName
-experimentName = 'DCPT';
-
-% Set the labels for the high and low stimulus ranges
-stimParamLabels = {'stimParamsHi','stimParamsLow'};
+experimentName = 'DCPT_detect';
 
 % Set a random seed
 rng('shuffle');
@@ -54,19 +51,24 @@ subjectDir = fullfile(...
     p.Results.projectName,...
     subjectID);
 
+% Define the full paths to the modResult files
+combiLEDLabelSet = {'C','D'};
+for cc = 1:length(combiLEDLabelSet)
+    for dd = 1:2
+        modResultFiles{cc,dd} = ...
+            fullfile(subjectDir,[modDirections{dd} '_ND' NDlabel],['modResult_' combiLEDLabelSet{cc} '.mat']);
+    end
+end
+
 % Load modResult files and extract the calibrations. We need this to
 % obtain a gamma table to pass to the combiLEDs, and this property of the
 % device does not change with modulation direction
 % CombiLED C
-modResultFileC = ...
-    fullfile(subjectDir,[modDirections{2} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_C.mat');
-load(modResultFileC,'modResult');
+load(modResultFiles{1,1},'modResult');
 calC = modResult.meta.cal;
 
 % CombiLED D
-modResultFileD = ...
-    fullfile(subjectDir,[modDirections{2} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_D.mat');
-load(modResultFileD,'modResult');
+load(modResultFiles{2,1},'modResult');
 calD = modResult.meta.cal;
 
 % Set up the CombiLED
@@ -103,42 +105,32 @@ fprintf('**********************************\n\n');
 % Prepare to loop over blocks
 for bb=1:nBlocks
 
-    % for now, just light flux
-    directionIdx = 2;
-    % % Switch back and forth between the modulation directions
-    % directionIdx = mod(bb,2)+1;
-
-    % Which direction we will use this time
-    modResultFileC = ...
-        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_C.mat');
-
-    modResultFileD = ...
-        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],'modResult_D.mat');
+    % Switch back and forth between the modulation directions
+    directionIdx = mod(bb,2)+1;
+    directionIdx = 1;
 
     % Load the previously generated modResult file for this direction
-    load(modResultFileC,'modResult');
+    load(modResultFiles{1,directionIdx},'modResult');
     modResultC = modResult; clear modResult;
 
-    load(modResultFileD,'modResult');
+    load(modResultFiles{2,directionIdx},'modResult');
     modResultD = modResult;
 
     % Create a directory for the subject
-    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],experimentName);
+    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
     if ~isfolder(dataDir)
         mkdir(dataDir)
     end
 
-    % Assemble the psychObj array, looping over the high and low range of
-    % the discrimination function AND the reference frequencies
+    % Assemble the psychObj array, looping over the reference frequencies
     psychObjArray = cell(length(testFreqSetHz));
 
     for rr = 1:length(testFreqSetHz)
 
         % Define the filestem for this psychometric object
-        dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],experimentName);
+        dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel ],experimentName);
         psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName,'.','x', ...
-            '_refFreq-' num2str(testFreqSetHz(rr)) 'Hz' ...
-            '_' stimParamLabels{1}];
+            '_refFreq-' num2str(testFreqSetHz(rr)) 'Hz' ];
 
         % Create or load the psychometric object
         filename = fullfile(dataDir,[psychFileStem '.mat']);
@@ -184,20 +176,20 @@ for bb=1:nBlocks
     psychObjArray{1}.initializeDisplay;
 
     % Start the block
-    fprintf('Press enter to start block %d...',bb);
-    % input('');  % If using keyboard
+    % fprintf('Press button to start block %d...',bb);
+    input('');  % If using keyboard
 
-    while true  % If using gamepad
-        buttonState1 = Gamepad('GetButton', 1, 1);
-        buttonState2 = Gamepad('GetButton', 1, 2);
-        buttonState3 = Gamepad('GetButton', 1, 3);
-        buttonState4 = Gamepad('GetButton', 1, 4);
-
-        if buttonState1 == 1 || buttonState2 == 1 || buttonState3 == 1 || buttonState4 == 1
-            break
-        end
-
-    end
+    % while true  % If using gamepad
+    %     buttonState1 = Gamepad('GetButton', 1, 1);
+    %     buttonState2 = Gamepad('GetButton', 1, 2);
+    %     buttonState3 = Gamepad('GetButton', 1, 3);
+    %     buttonState4 = Gamepad('GetButton', 1, 4);
+    % 
+    %     if buttonState1 == 1 || buttonState2 == 1 || buttonState3 == 1 || buttonState4 == 1
+    %         break
+    %     end
+    % 
+    % end
 
     % Store the block start time
     for rr = 1:length(testFreqSetHz)
@@ -234,7 +226,7 @@ for bb=1:nBlocks
 
     end
 
-    % Now randomize the reference frequency order
+    % Now randomize the test frequency order
     testFreqHzIndex = testFreqHzIndex(randperm(nTrialsPerBlock));
 
     % Present nTrials

@@ -18,7 +18,7 @@ updateCombiLEDTimeSecs = obj.updateCombiLEDTimeSecs;
 waitToRespondTimeSecs = obj.waitToRespondTimeSecs;
 
 % Determine if we are randomly assigning the non-zero contrast flicker on
-% each trial, or fixing it to CombiLED C
+% each trial, or fixing it to CombiLED1
 randomCombi = obj.randomCombi;
 
 % The calling function sets the reference frequency
@@ -66,12 +66,15 @@ if randomCombi
             error('Not a valid testInterval')
     end
 else
-    % OPTION 2: Fix the reference flicker to the first interval,
-    % and thus to Combi LED A. 
+    % OPTION 2: Fix the reference flicker to combiLED1
     sideParams(1,:) = refParams;
     sideParams(2,:) = testParams;
     testSide = 2;
 end
+
+% Adjust the contrast again to null small differences in photoreceptor
+% contrast between the modulations in the two combiLEDs
+sideParams(:,1) = sideParams(:,1) .* obj.relativePhotoContrastCorrection';
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -116,15 +119,15 @@ if ~simulateStimuli
 
     % Send the params to the CombiLEDs. Give some time for this to take
     % place.
-    stopTime = cputime() + obj.updateCombiLEDTimeSecs;
+    stopTime = cputime() + updateCombiLEDTimeSecs;
 
-    obj.CombiLEDObjC.setContrast(sideParams(1,1));
-    obj.CombiLEDObjC.setFrequency(sideParams(1,2));
-    obj.CombiLEDObjC.setPhaseOffset(sideParams(1,3));
+    obj.CombiLEDObj1.setContrast(sideParams(1,1));
+    obj.CombiLEDObj1.setFrequency(sideParams(1,2));
+    obj.CombiLEDObj1.setPhaseOffset(sideParams(1,3));
 
-    obj.CombiLEDObjD.setContrast(sideParams(2,1));
-    obj.CombiLEDObjD.setFrequency(sideParams(2,2));
-    obj.CombiLEDObjD.setPhaseOffset(sideParams(2,3));
+    obj.CombiLEDObj2.setContrast(sideParams(2,1));
+    obj.CombiLEDObj2.setFrequency(sideParams(2,2));
+    obj.CombiLEDObj2.setPhaseOffset(sideParams(2,3));
 
     obj.waitUntil(stopTime);
 
@@ -133,8 +136,8 @@ if ~simulateStimuli
     % waitToRespondTimeSecs
     stopTime = cputime() + waitToRespondTimeSecs;
 
-    obj.CombiLEDObjC.startModulation;
-    obj.CombiLEDObjD.startModulation;
+    obj.CombiLEDObj1.startModulation;
+    obj.CombiLEDObj2.startModulation;
     audioObjs.low.play;
     obj.waitUntil(stopTime);
 
@@ -142,12 +145,13 @@ end
 
 % Start the response interval
 
+%% MAKE THIS A FLAG AT THE LEVEL OF THE PSYCHOBJ
 % Choose between keyboard or gamepad input
-keyboard = false;
+useKeyboardFlag = true;
 
 if ~simulateResponse
 
-    if keyboard % Using keyboard
+    if useKeyboardFlag % Using keyboard
         % Check for keyboard input
         [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
             'leftarrow', 'rightarrow'});
@@ -155,9 +159,9 @@ if ~simulateResponse
         if ~isempty(keyPress)
             switch keyPress
                 case {'1','numpad1','leftarrow'}
-                    intervalChoice = 1;
+                    sideChoice = 1;
                 case {'2','numpad2','rightarrow'}
-                    intervalChoice = 2;
+                    sideChoice = 2;
             end
         end
 
@@ -197,8 +201,8 @@ end
 
 % Stop the stimulus in case it is still running
 if ~simulateStimuli
-    obj.CombiLEDObjC.stopModulation;
-    obj.CombiLEDObjD.stopModulation;
+    obj.CombiLEDObj1.stopModulation;
+    obj.CombiLEDObj2.stopModulation;
 end
 
 % Determine if the subject has selected the ref or test interval

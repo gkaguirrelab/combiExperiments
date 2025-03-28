@@ -1,6 +1,6 @@
 function initializeDisplay(obj)
 
-if isempty(obj.CombiLEDObjC) && isempty(obj.CombiLEDObjD) && ~obj.simulateStimuli
+if isempty(obj.CombiLEDObj1) && isempty(obj.CombiLEDObj2) && ~obj.simulateStimuli
     if obj.verbose
         fprintf('One or both of the CombiLEDObjs is empty; update this property and call the initializeDisplay method');
     end
@@ -19,22 +19,22 @@ if ~obj.simulateStimuli
         fprintf('Initializing CombiLEDObj\n')
     end
 
-    obj.CombiLEDObjC.setSettings(obj.modResultC);    
-    obj.CombiLEDObjC.setDuration(stimulusDurationSecs);
-    obj.CombiLEDObjC.setWaveformIndex(1); % sinusoidal flicker
+    obj.CombiLEDObj1.setSettings(obj.modResult1);    
+    obj.CombiLEDObj1.setDuration(stimulusDurationSecs);
+    obj.CombiLEDObj1.setWaveformIndex(1); % sinusoidal flicker
 
-    obj.CombiLEDObjD.setSettings(obj.modResultD);    
-    obj.CombiLEDObjD.setDuration(stimulusDurationSecs);
-    obj.CombiLEDObjD.setWaveformIndex(1); % sinusoidal flicker
+    obj.CombiLEDObj2.setSettings(obj.modResult2);    
+    obj.CombiLEDObj2.setDuration(stimulusDurationSecs);
+    obj.CombiLEDObj2.setWaveformIndex(1); % sinusoidal flicker
     
     % Subject the stimulus onset and offset to a half-cosine ramp
-   obj.CombiLEDObjC.setAMIndex(2); % half-cosine windowing
-   obj.CombiLEDObjC.setAMFrequency(1/stimulusDurationSecs);
-   obj.CombiLEDObjC.setAMValues([0.25,0]); % 0.25 second half-cosine on; second value unused
+   obj.CombiLEDObj1.setAMIndex(2); % half-cosine windowing
+   obj.CombiLEDObj1.setAMFrequency(1/stimulusDurationSecs);
+   obj.CombiLEDObj1.setAMValues([0.25,0]); % 0.25 second half-cosine on; second value unused
 
-   obj.CombiLEDObjD.setAMIndex(2); % half-cosine windowing
-   obj.CombiLEDObjD.setAMFrequency(1/stimulusDurationSecs);
-   obj.CombiLEDObjD.setAMValues([0.25,0]); % 0.25 second half-cosine on; second value unused
+   obj.CombiLEDObj2.setAMIndex(2); % half-cosine windowing
+   obj.CombiLEDObj2.setAMFrequency(1/stimulusDurationSecs);
+   obj.CombiLEDObj2.setAMValues([0.25,0]); % 0.25 second half-cosine on; second value unused
 
 end
 

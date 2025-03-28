@@ -1,4 +1,4 @@
-function runDCPTFlickerThresh(subjectID,NDlabelA,NDlabelB,refFreqHz,varargin)
+function runDCPT_discrim(subjectID,NDlabelA,NDlabelB,refFreqHz,varargin)
 % Psychometric measurement of discrmination thresholds at a set of
 % frequencies for two post-receptoral directions (LMS and L-M).
 %
