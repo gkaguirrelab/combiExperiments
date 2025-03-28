@@ -27,6 +27,7 @@ p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateResponse',false,@islogical);
 p.addParameter('simulateStimuli',false,@islogical);
 p.addParameter('randomCombi',true,@islogical);
+p.addParameter('useKeyboardFlag',false,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
@@ -40,6 +41,7 @@ verbosePsychObj = p.Results.verbosePsychObj;
 simulateResponse = p.Results.simulateResponse;
 simulateStimuli = p.Results.simulateStimuli;
 randomCombi = p.Results.randomCombi;
+useKeyboardFlag = p.Results.useKeyboardFlag;
 
 % Set our experimentName
 experimentName = 'DCPT';
@@ -95,13 +97,27 @@ else
 end
 
 % Provide instructions
-fprintf('**********************************\n');
-fprintf('On each of many trials you will be presented with 2 seconds of flicker\n');
-fprintf('during each of two intervals. Your job is to indicate which interval\n');
-fprintf('had the faster flickering stimulus by pressing the 1 or 2 key on the\n');
-fprintf('numeric key pad. Each block has %d trials in a row after\n',nTrialsPerBlock);
-fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
-fprintf('**********************************\n\n');
+if useKeyboardFlag
+
+    fprintf('**********************************\n');
+    fprintf('On each of many trials you will be presented with flicker\n');
+    fprintf('on the left and right. Your job is to indicate which side\n');
+    fprintf('had the faster flickering stimulus by pressing the 1(left) or 2(right) key on the\n');
+    fprintf('keyboard. Each block has %d trials in a row after\n',nTrialsPerBlock);
+    fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
+    fprintf('**********************************\n\n');
+
+else
+
+    fprintf('**********************************\n');
+    fprintf('On each of many trials you will be presented with flicker\n');
+    fprintf('on the left and right. Your job is to indicate which side\n');
+    fprintf('had the faster flickering stimulus by pressing the left or right\n');
+    fprintf('bumpers on the game pad. Each block has %d trials in a row after\n',nTrialsPerBlock);
+    fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
+    fprintf('**********************************\n\n');
+
+end
 
 % Prepare to loop over blocks
 for bb=1:nBlocks
@@ -171,13 +187,16 @@ for bb=1:nBlocks
                 psychObj.simulateStimuli = simulateStimuli;
                 % Update the random combi setting
                 psychObj.randomCombi = randomCombi;
+                % Update the keyboard flag
+                psychObj.useKeyboardFlag = useKeyboardFlag;
             else
                 % Create the object
                 psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultA, modResultB, refFreqHz(rr),...
                     'refContrast',testContrast,'testContrast',testContrast,...
                     'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
                     'simulateResponse',simulateResponse,'simulateStimuli',simulateStimuli,...
-                    'useStaircase', useStaircase, 'randomCombi', randomCombi);
+                    'useStaircase', useStaircase, 'randomCombi', randomCombi, ...
+                    'useKeyboardFlag', useKeyboardFlag);
                 % Store the filename
                 psychObj.filename = filename;
             end
@@ -198,9 +217,31 @@ for bb=1:nBlocks
     % profile (i.e., sinusoid), and trial duration.
     psychObjArray{1,1}.initializeDisplay;
 
-    % Start the block
-    fprintf('Press enter to start block %d...',bb);
-    input('');
+    if useKeyboardFlag     % If using keyboard
+
+        % Start the block
+        fprintf('Press enter to start block %d...',bb);
+
+        input('');
+
+    else
+
+        % Start the block
+        fprintf('Press button 1, 2, 3, or 4 to start block %d...',bb);
+
+        while true  % If using gamepad
+            buttonState1 = Gamepad('GetButton', 1, 1);
+            buttonState2 = Gamepad('GetButton', 1, 2);
+            buttonState3 = Gamepad('GetButton', 1, 3);
+            buttonState4 = Gamepad('GetButton', 1, 4);
+
+            if buttonState1 == 1 || buttonState2 == 1 || buttonState3 == 1 || buttonState4 == 1
+                break
+            end
+
+        end
+
+    end
 
     % Store the block start time
     for ss = 1:2

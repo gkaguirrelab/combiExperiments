@@ -58,6 +58,9 @@ classdef PsychDiscrimFlickerThreshold < handle
         blockIdx = 1;
         blockStartTimes = datetime();
 
+        % Choose between keyboard and gamepad
+        useKeyboardFlag
+
     end
 
     methods
@@ -82,6 +85,7 @@ classdef PsychDiscrimFlickerThreshold < handle
             p.addParameter('psiParamsDomainList',...
                 {linspace(0,0,1),linspace(0,3,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
+            p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
@@ -102,6 +106,7 @@ classdef PsychDiscrimFlickerThreshold < handle
             obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
+            obj.useKeyboardFlag = p.Results.useKeyboardFlag;
 
             % Detect incompatible simulate settings
             if obj.simulateStimuli && ~obj.simulateResponse

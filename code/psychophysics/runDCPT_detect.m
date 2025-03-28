@@ -28,6 +28,7 @@ p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateResponse',false,@islogical);
 p.addParameter('simulateStimuli',false,@islogical);
 p.addParameter('randomCombi',true,@islogical);
+p.addParameter('useKeyboardFlag',false,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
@@ -41,6 +42,7 @@ verbosePsychObj = p.Results.verbosePsychObj;
 simulateResponse = p.Results.simulateResponse;
 simulateStimuli = p.Results.simulateStimuli;
 randomCombi = p.Results.randomCombi;
+useKeyboardFlag = p.Results.useKeyboardFlag;
 
 % Set our experimentName
 experimentName = 'DCPT_detect';
@@ -77,34 +79,48 @@ calD = modResult.meta.cal;
 
 % Set up the CombiLED
 if simulateStimuli
-    CombiLEDObjC = [];
-    CombiLEDObjD = [];
+    CombiLEDObj1 = [];
+    CombiLEDObj2 = [];
 else
     % Open the CombiLED
-    CombiLEDObjC = CombiLEDcontrol('verbose',verboseCombiLED);
-    CombiLEDObjD = CombiLEDcontrol('verbose',verboseCombiLED);
+    CombiLEDObj1 = CombiLEDcontrol('verbose',verboseCombiLED);
+    CombiLEDObj2 = CombiLEDcontrol('verbose',verboseCombiLED);
 
     % Check the identifierString and swap objects if needed
-    if CombiLEDObjC.identifierString == "A10L31XZ" % wrong identifier
+    if CombiLEDObj1.identifierString == "A10L31XZ" % wrong identifier
         % Swap the objects
-        tempObj = CombiLEDObjC;
-        CombiLEDObjC = CombiLEDObjD;
-        CombiLEDObjD = tempObj;
+        tempObj = CombiLEDObj1;
+        CombiLEDObj1 = CombiLEDObj2;
+        CombiLEDObj2 = tempObj;
     end
 
     % Update the gamma table
-    CombiLEDObjC.setGamma(calC.processedData.gammaTable);
-    CombiLEDObjD.setGamma(calD.processedData.gammaTable);
+    CombiLEDObj1.setGamma(calC.processedData.gammaTable);
+    CombiLEDObj2.setGamma(calD.processedData.gammaTable);
 end
 
 % Provide instructions
-fprintf('**********************************\n');
-fprintf('On each of many trials you will be presented with flicker\n');
-fprintf('on the left and right. Your job is to indicate which side\n');
-fprintf('had the faster flickering stimulus by pressing the 1(left) or 2(right) key on the\n');
-fprintf('numeric key pad. Each block has %d trials in a row after\n',nTrialsPerBlock);
-fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
-fprintf('**********************************\n\n');
+if useKeyboardFlag
+
+    fprintf('**********************************\n');
+    fprintf('On each of many trials you will be presented with flicker\n');
+    fprintf('on the left and right. Your job is to indicate which side\n');
+    fprintf('had the faster flickering stimulus by pressing the 1(left) or 2(right) key on the\n');
+    fprintf('keyboard. Each block has %d trials in a row after\n',nTrialsPerBlock);
+    fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
+    fprintf('**********************************\n\n');
+
+else
+
+    fprintf('**********************************\n');
+    fprintf('On each of many trials you will be presented with flicker\n');
+    fprintf('on the left and right. Your job is to indicate which side\n');
+    fprintf('had the faster flickering stimulus by pressing the left or right\n');
+    fprintf('bumpers on the game pad. Each block has %d trials in a row after\n',nTrialsPerBlock);
+    fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
+    fprintf('**********************************\n\n');
+
+end
 
 % Prepare to loop over blocks
 for bb=1:nBlocks
@@ -142,8 +158,8 @@ for bb=1:nBlocks
             % Load the object
             load(filename,'psychObj');
             % Put in the fresh CombiLEDObjs
-            psychObj.CombiLEDObjC = CombiLEDObjC;
-            psychObj.CombiLEDObjD = CombiLEDObjD;
+            psychObj.CombiLEDObj1 = CombiLEDObj1;
+            psychObj.CombiLEDObj2 = CombiLEDObj2;
             % Increment blockIdx
             psychObj.blockIdx = psychObj.blockIdx+1;
             psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
@@ -154,16 +170,19 @@ for bb=1:nBlocks
             psychObj.simulateStimuli = simulateStimuli;
             % Update the random combi setting
             psychObj.randomCombi = randomCombi;
+            % Update the keyboard flag
+            psychObj.useKeyboardFlag = useKeyboardFlag;
         else
             % Create the object
-            psychObj = PsychDichopticFlickerDetect(CombiLEDObjC, CombiLEDObjD, modResultC, modResultD, ...
+            psychObj = PsychDichopticFlickerDetect(CombiLEDObj1, CombiLEDObj2, modResultC, modResultD, ...
                  testFreqSetHz(rr), ...
                 'verbose',verbosePsychObj, ...
                 'testLogContrastSet',testLogContrastSets{dd},...
                 'simulateResponse',simulateResponse,...
                 'simulateStimuli',simulateStimuli,...
                 'useStaircase', useStaircase,...
-                'randomCombi', randomCombi);
+                'randomCombi', randomCombi, ...
+                'useKeyboardFlag', useKeyboardFlag);
             % Store the filename
             psychObj.filename = filename;
         end
@@ -182,21 +201,31 @@ for bb=1:nBlocks
     % profile (i.e., sinusoid), and trial duration.
     psychObjArray{1}.initializeDisplay;
 
-    % Start the block
-    % fprintf('Press button to start block %d...',bb);
-    input('');  % If using keyboard
+    if useKeyboardFlag     % If using keyboard
 
-    % while true  % If using gamepad
-    %     buttonState1 = Gamepad('GetButton', 1, 1);
-    %     buttonState2 = Gamepad('GetButton', 1, 2);
-    %     buttonState3 = Gamepad('GetButton', 1, 3);
-    %     buttonState4 = Gamepad('GetButton', 1, 4);
-    % 
-    %     if buttonState1 == 1 || buttonState2 == 1 || buttonState3 == 1 || buttonState4 == 1
-    %         break
-    %     end
-    % 
-    % end
+        % Start the block
+        fprintf('Press enter to start block %d...',bb);
+
+        input('');
+
+    else
+
+        % Start the block
+        fprintf('Press button 1, 2, 3, or 4 to start block %d...',bb);
+
+        while true  % If using gamepad
+            buttonState1 = Gamepad('GetButton', 1, 1);
+            buttonState2 = Gamepad('GetButton', 1, 2);
+            buttonState3 = Gamepad('GetButton', 1, 3);
+            buttonState4 = Gamepad('GetButton', 1, 4);
+
+            if buttonState1 == 1 || buttonState2 == 1 || buttonState3 == 1 || buttonState4 == 1
+                break
+            end
+
+        end
+
+    end
 
     % Store the block start time
     for rr = 1:length(testFreqSetHz)
@@ -249,8 +278,8 @@ for bb=1:nBlocks
         % Grab the next psychObj
         psychObj = psychObjArray{rr};
         % empty the CombiLEDObj handles and save the psychObj
-        psychObj.CombiLEDObjC = [];
-        psychObj.CombiLEDObjD = [];
+        psychObj.CombiLEDObj1 = [];
+        psychObj.CombiLEDObj2 = [];
         save(psychObj.filename,'psychObj');
     end
 
@@ -258,11 +287,11 @@ end % block loop
 
 % Clean up
 if ~simulateStimuli
-    CombiLEDObjC.goDark;
-    CombiLEDObjC.serialClose;
+    CombiLEDObj1.goDark;
+    CombiLEDObj1.serialClose;
 
-    CombiLEDObjD.goDark;
-    CombiLEDObjD.serialClose;
+    CombiLEDObj2.goDark;
+    CombiLEDObj2.serialClose;
 end
 clear CombiLEDObj
 

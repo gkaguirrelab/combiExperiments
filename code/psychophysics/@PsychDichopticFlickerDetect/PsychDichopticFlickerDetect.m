@@ -58,6 +58,9 @@ classdef PsychDichopticFlickerDetect < handle
         blockIdx = 1;
         blockStartTimes = datetime();
 
+        % Choose between keyboard and gamepad
+        useKeyboardFlag
+
     end
 
     methods
@@ -89,6 +92,7 @@ classdef PsychDichopticFlickerDetect < handle
                 [0]...
                 },@isnumeric);
             p.addParameter('verbose',true,@islogical);
+            p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
@@ -111,6 +115,7 @@ classdef PsychDichopticFlickerDetect < handle
             obj.simulatePsiParams = p.Results.simulatePsiParams;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
+            obj.useKeyboardFlag = p.Results.useKeyboardFlag;
 
             % Detect incompatible simulate settings
             if obj.simulateStimuli && ~obj.simulateResponse

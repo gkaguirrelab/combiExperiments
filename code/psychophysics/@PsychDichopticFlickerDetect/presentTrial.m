@@ -48,7 +48,7 @@ end
 
 % Assemble the param sets
 testParams = [testContrastAdjusted,testFreqHz,testPhase];
-refParams = [0,1,0];
+refParams = [0,testFreqHz,0];
 
 if randomCombi
     % OPTION 1: Randomly assign the stimuli to the left or right side eye
@@ -145,13 +145,9 @@ end
 
 % Start the response interval
 
-%% MAKE THIS A FLAG AT THE LEVEL OF THE PSYCHOBJ
-% Choose between keyboard or gamepad input
-useKeyboardFlag = true;
-
 if ~simulateResponse
 
-    if useKeyboardFlag % Using keyboard
+    if obj.useKeyboardFlag % Using keyboard
         % Check for keyboard input
         [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
             'leftarrow', 'rightarrow'});
