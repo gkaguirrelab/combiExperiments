@@ -19,7 +19,7 @@ p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
 p.addParameter('testLogContrastSets',{...
     linspace(log10(0.01),log10(0.25),31),...
-    linspace(log10(0.0025),log10(0.25),31)},@iscell);
+    linspace(log10(0.0077),log10(0.25),31)},@iscell);
 p.addParameter('nTrialsPerBlock',30,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);

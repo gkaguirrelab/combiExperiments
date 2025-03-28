@@ -1,9 +1,9 @@
 % Using two CombiLEDs to produce flicker
 
-subjectID = 'HERO_gka';
+subjectID = 'SM';
 % Run through the set of flicker frequencies
-% testFreqSetHz = [ 3.0000    5.4216    9.7980   17.7069   32.0000];
-testFreqSetHz = [8];  
+testFreqSetHz = [ 3.0000    5.4216    9.7980   17.7069   32.0000];
+%testFreqSetHz = [8];  
 NDlabel = '1';
 simulateFlag = false;
 useKeyboardFlag = false;

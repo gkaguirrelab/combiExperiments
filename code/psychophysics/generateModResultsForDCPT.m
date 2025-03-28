@@ -32,7 +32,7 @@ fieldSizeDeg = 30;
 % We set several primariesToMaximize so that the L-M modulation tends to
 % find solutions with large modulation depth. This is a hand-tweaked
 % solution that we have found works.
-primariesToMaximize = [2 3 6 7];
+primariesToMaximize = [1 2 3 4 5 6 7 8];
 
 % Define the calibration files
 baseCalOptions = {'CombiLED-C_shortLLG-C_classicEyePiece-C_cassette-C_ND0', ...
@@ -93,7 +93,8 @@ for iCombi = 1:2
         whichDirection = modulationDirections{dd};
         modResult = designModulation(whichDirection,photoreceptors,cal,...
             'primaryHeadRoom',primaryHeadRoom,'searchBackground',false,...
-            'primariesToMaximize',primariesToMaximize);
+            'primariesToMaximize',primariesToMaximize,...
+            'contrastMatchConstraint',4);
         figHandle = plotModResult(modResult);
         drawnow
 
