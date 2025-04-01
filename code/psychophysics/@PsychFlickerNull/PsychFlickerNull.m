@@ -22,17 +22,16 @@ classdef PsychFlickerNull < handle
     properties (SetAccess=private)
         sourceModResult
         silencingModResult
-        adjustedModResult
+        maxAdjustWeight
         simulateResponse
         simulateStimuli
         stimFreqHz
         stimContrast
+        nAdjustmentSteps
         stimWaveform
         asymmetricAdjustFlag
-        adjustWeight
         currTrialIdx = 0;
-        responseDurSecs = 3;
-        lastResponse
+        trialData
     end
 
     % These may be modified after object creation
@@ -60,8 +59,9 @@ classdef PsychFlickerNull < handle
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
-            p.addParameter('stimFreqHz',30,@isnumeric);
-            p.addParameter('stimContrast',0.5,@isnumeric);
+            p.addParameter('stimFreqHz',24,@isnumeric);
+            p.addParameter('stimContrast',0.1,@isnumeric);
+            p.addParameter('nAdjustmentSteps',10,@isnumeric);
             p.addParameter('stimWaveform',2,@isscalar);
             p.addParameter('asymmetricAdjustFlag',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
@@ -75,16 +75,28 @@ classdef PsychFlickerNull < handle
             obj.silencingModResult = silencingModResult;
             obj.stimFreqHz = p.Results.stimFreqHz;
             obj.stimContrast = p.Results.stimContrast;   
+            obj.nAdjustmentSteps = p.Results.nAdjustmentSteps;
             obj.stimWaveform = p.Results.stimWaveform;              
             obj.asymmetricAdjustFlag = p.Results.asymmetricAdjustFlag;                        
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.verbose = p.Results.verbose;
 
-            % Set the adjustment weight to zero and define the starting
-            % point of the adjustedModResult
-            obj.adjustWeight = 0;
-            obj.adjustedModResult = sourceModResult;
+            % Confirm that the source and silencing modResults have the
+            % same background settings
+            assert(all( (sourceModResult.settingsBackground - silencingModResult.settingsBackground) == 0));
+
+            % Calculate the largest available silencing direction
+            % adjustment that we can appply which is within device gamut
+            settingsBackground = sourceModResult.settingsBackground;
+            modRoom = min([1-settingsBackground, settingsBackground],[],2);
+            sourceDirection = sourceModResult.settingsHigh - sourceModResult.settingsBackground;
+            silencingDirection = silencingModResult.settingsHigh - silencingModResult.settingsBackground;
+            obj.maxAdjustWeight = min((modRoom - sourceDirection) ./ abs(silencingDirection));
+
+            % Set the adjustWeightDelta to provide 20 divisions from the
+            % max
+            obj.adjustWeightDelta = obj.maxAdjustWeight / obj.nAdjustmentSteps;
 
             % Detect incompatible simulate settings
             if obj.simulateStimuli && ~obj.simulateResponse
@@ -103,7 +115,7 @@ classdef PsychFlickerNull < handle
 
         % Required methods
         initializeDisplay(obj)
-        createAdjustedModResult(obj)
+        modResult = createAdjustedModResult(obj,adjustWeight)
         presentTrial(obj)
         [choice, responseTimeSecs] = getResponse(obj)
     end

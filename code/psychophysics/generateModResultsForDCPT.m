@@ -5,7 +5,7 @@ function generateModResultsForDCPT(subjectID,observerAgeInYears,NDlabel,varargin
 % Examples:
 %{
     subjectID = 'HERO_gka';
-    observerAgeInYears = 30;
+    observerAgeInYears = 55;
     NDlabel = '1';
     generateModResultsForDCPT(subjectID,observerAgeInYears,NDlabel);
 %}
@@ -45,7 +45,7 @@ modulationDirections = {'LminusM_wide','L_wide','LightFlux'};
 % We set several primariesToMaximize so that the L-M modulation tends to
 % find solutions with large modulation depth. This is a hand-tweaked
 % solution that we have found works.
-primariesToMaximizeSets = {[1 2 3 4 5 6 7 8],[],[]};
+primariesToMaximizeSets = {[2 3 6 7],[],[]};
 
 % The contrastMatchConstraint controls how closely the modResult meets the
 % contrast specifications present in the modulation dictionary. We want
