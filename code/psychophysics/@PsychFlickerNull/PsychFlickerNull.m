@@ -3,6 +3,10 @@
 % "silencing" modResult. The observer is invited to adjust the weight of
 % silencing modulation direction that is added or removed from the source
 % modulation direction to null a percetual feature.
+%
+% A typical application would be to pass an L-M "source" modulation and an
+% M-cone isolating "silencing" modulation, with the goal of nulling
+% a residual luminance component.
 
 
 classdef PsychFlickerNull < handle
@@ -58,7 +62,7 @@ classdef PsychFlickerNull < handle
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('stimFreqHz',30,@isnumeric);
             p.addParameter('stimContrast',0.5,@isnumeric);
-            p.addParameter('stimWaveform',1,@isscalar);
+            p.addParameter('stimWaveform',2,@isscalar);
             p.addParameter('asymmetricAdjustFlag',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
