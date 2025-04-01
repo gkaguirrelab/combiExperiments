@@ -293,6 +293,8 @@ if ~simulateStimuli
     CombiLEDObj2.goDark;
     CombiLEDObj2.serialClose;
 end
-clear CombiLEDObj
+clear CombiLEDObj1
+clear CombiLEDObj2
+
 
 end % function

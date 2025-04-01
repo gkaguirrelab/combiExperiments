@@ -12,7 +12,7 @@ function presentTrial(obj)
 % Increment the currTrialIdx
 obj.currTrialIdx = obj.currTrialIdx + 1;
 
-% We alternate between the high and low adjustment start points
+% % We alternate between the high and low adjustment start points
 startHighFlag = mod(obj.currTrialIdx,2);
 
 % Determine what we are simulating
