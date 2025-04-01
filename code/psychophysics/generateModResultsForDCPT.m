@@ -14,7 +14,7 @@ function generateModResultsForDCPT(subjectID,observerAgeInYears,NDlabel,varargin
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('primaryHeadRoom',0.05,@isnumeric);
+p.addParameter('primaryHeadRoom',0.10,@isnumeric); % Leave some space for nulling
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
@@ -23,16 +23,13 @@ primaryHeadRoom = p.Results.primaryHeadRoom;
 % Define our DropBox subdirectory
 dropBoxSubDir = 'FLIC_data';
 
-% The background XY chromaticity we will target
+% The background XY chromaticity we will target. Not currently used. We may
+% return to matching the background if we find that the half-on differs a
+% bit between the two CombiLEDs
 xyTarget = [0.453178;0.348074];
 
 % The diameter of the stimulus field in degrees
 fieldSizeDeg = 30;
-
-% We set several primariesToMaximize so that the L-M modulation tends to
-% find solutions with large modulation depth. This is a hand-tweaked
-% solution that we have found works.
-primariesToMaximize = [1 2 3 4 5 6 7 8];
 
 % Define the calibration files
 baseCalOptions = {'CombiLED-C_shortLLG-C_classicEyePiece-C_cassette-C_ND0', ...
@@ -43,7 +40,17 @@ targetSPDCalOptions = {['CombiLED-C_shortLLG-C_classicEyePiece-C_cassette-C_ND' 
     ['CombiLED-D_shortLLG-D_classicEyePiece-D_cassette-D_ND' NDlabel '_maxSpectrum.mat']};
 
 % The directions for which we will create modulations
-modulationDirections = {'LminusM_wide','LightFlux'};
+modulationDirections = {'LminusM_wide','L_wide','LightFlux'};
+
+% We set several primariesToMaximize so that the L-M modulation tends to
+% find solutions with large modulation depth. This is a hand-tweaked
+% solution that we have found works.
+primariesToMaximizeSets = {[1 2 3 4 5 6 7 8],[],[]};
+
+% The contrastMatchConstraint controls how closely the modResult meets the
+% contrast specifications present in the modulation dictionary. We want
+% this to be relatively strict for the L–M and L directions.
+contrastMatchConstraintSet = [3.5,3.5,1];
 
 % The names of the two combLEDs
 combiLEDLabel = {'C', 'D'};
@@ -93,8 +100,8 @@ for iCombi = 1:2
         whichDirection = modulationDirections{dd};
         modResult = designModulation(whichDirection,photoreceptors,cal,...
             'primaryHeadRoom',primaryHeadRoom,'searchBackground',false,...
-            'primariesToMaximize',primariesToMaximize,...
-            'contrastMatchConstraint',4);
+            'primariesToMaximize',primariesToMaximizeSets{dd},...
+            'contrastMatchConstraint',contrastMatchConstraintSet(dd));
         figHandle = plotModResult(modResult);
         drawnow
 
