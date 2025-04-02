@@ -92,15 +92,14 @@ while notDoneFlag
             adjustWeight = adjustWeight + adjustStep;
         case 'reverse'
             adjustWeight = adjustWeight - adjustStep;
-            notDoneFlag = false;
         case 'done'
             notDoneFlag = false;
     end
 
     % Check if we have not hit the adjustment max boundary
     if abs(adjustWeight) > obj.maxAdjustWeight
-        % PLAY SOME ERROR SOUND HERE
-        notDoneFlag = false;
+        beep
+        adjustWeight = sign(adjustWeight)*obj.maxAdjustWeight;
     end
 
     % Stop the modulation

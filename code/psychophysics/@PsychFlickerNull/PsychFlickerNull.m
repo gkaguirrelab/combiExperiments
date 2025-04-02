@@ -64,8 +64,8 @@ classdef PsychFlickerNull < handle
             % input parser
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('stimFreqHz',24,@isnumeric);
-            p.addParameter('stimContrast',0.1,@isnumeric);
-            p.addParameter('nAdjustmentSteps',10,@isnumeric);
+            p.addParameter('stimContrast',0.15,@isnumeric);
+            p.addParameter('nAdjustmentSteps',15,@isnumeric);
             p.addParameter('stimWaveform',2,@isscalar);
             p.addParameter('asymmetricAdjustFlag',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);

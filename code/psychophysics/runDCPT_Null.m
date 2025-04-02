@@ -14,7 +14,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('stimFreqHz',24,@isnumeric);
-p.addParameter('nTrials',3,@isnumeric);
+p.addParameter('nTrials',12,@isnumeric);
 p.addParameter('modDirections',{'LminusM_wide', 'L_wide'},@iscell);
 p.parse(varargin{:});
 
