@@ -14,8 +14,9 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('stimFreqHz',24,@isnumeric);
-p.addParameter('nTrials',12,@isnumeric);
-p.addParameter('modDirections',{'LminusM_wide_ND', 'L_wide'},@iscell);
+p.addParameter('nTrials',3,@isnumeric);
+p.addParameter('modDirections',{'LminusM_wide', 'L_wide'},@iscell);
+p.parse(varargin{:});
 
 %  Pull out of the p.Results structure
 %why do we have to pull things out of the struct? Jus so it is shorter?
@@ -47,33 +48,30 @@ end
 % obtain a gamma table to pass to the combiLEDs, and this property of the
 % device does not change with modulation direction
 % CombiLED C
-load(modResultFiles{1,1},'sourceModResult');
-calC = sourceModResult.meta.cal;
+load(modResultFiles{1,1},'modResult');
+calC = modResult.meta.cal;
 
 % CombiLED D
-load(modResultFiles{2,1},'sourceModResult');
-calD = sourceModResult.meta.cal;
+load(modResultFiles{2,1},'modResult');
+calD = modResult.meta.cal;
 
 % Set up the CombiLED
-if simulateStimuli
-    CombiLEDObj = {};
-else
-    % Open the CombiLED
-    CombiLEDObj{1} = CombiLEDcontrol('verbose',verboseCombiLED);
-    CombiLEDObj{2} = CombiLEDcontrol('verbose',verboseCombiLED);
+% Open the CombiLED
+CombiLEDObj{1} = CombiLEDcontrol('verbose',false);
+CombiLEDObj{2} = CombiLEDcontrol('verbose',false);
 
-    % Check the identifierString and swap objects if needed
-    if CombiLEDObj{1}.identifierString == "A10L31XZ" % wrong identifier
-        % Swap the objects
-        tempObj = CombiLEDObj{1};
-        CombiLEDObj{1} = CombiLEDObj{2};
-        CombiLEDObj{2} = tempObj;
-    end
-
-    % Update the gamma table
-    CombiLEDObj{1}.setGamma(calC.processedData.gammaTable);
-    CombiLEDObj{2}.setGamma(calD.processedData.gammaTable);
+% Check the identifierString and swap objects if needed
+if CombiLEDObj{1}.identifierString == "A10L31XZ" % wrong identifier
+    % Swap the objects
+    tempObj = CombiLEDObj{1};
+    CombiLEDObj{1} = CombiLEDObj{2};
+    CombiLEDObj{2} = tempObj;
 end
+
+% Update the gamma table
+CombiLEDObj{1}.setGamma(calC.processedData.gammaTable);
+CombiLEDObj{2}.setGamma(calD.processedData.gammaTable);
+
 
 % Provide instructions
 
@@ -86,7 +84,7 @@ fprintf('with the left arrow ONCE if you went too far. Press return to end.\n');
 fprintf('**********************************\n\n');
 
 % Assemble the psychObj array
-psychObjArray = cell(length(combiLEDLabelSet), length(modDirections));
+psychObjArray = cell(1, length(combiLEDLabelSet));
 
 for whichCombi=1:2
 
@@ -105,7 +103,7 @@ for whichCombi=1:2
     % Define the filestem for this psychometric object
     dataDir = fullfile(subjectDir,['LMinusMNull_ND' NDlabel],experimentName);
     psychFileStem = [subjectID '_LMinusMNull_' experimentName, ...
-        'FreqHz_' num2str(stimFreqHz)];
+        'FreqHz_' num2str(stimFreqHz) '_combi_' num2str(whichCombi)];
 
     % Create or load the psychometric object
     filename = fullfile(dataDir,[psychFileStem '.mat']);
@@ -133,7 +131,8 @@ for whichCombi=1:2
 end
 
 for tt = 1:nTrials
-    psychObjArray{testFreqHzIndex(ii)}.presentTrial();
+    combiIdx = mod(tt,2)+1;
+    psychObjArray{1, combiIdx}.presentTrial();
 end
 
 % Report completion of this block
@@ -150,11 +149,9 @@ end
 
 
 % Clean up
-if ~simulateStimuli
-    for whichCombi = 1:2
-        CombiLEDObj{whichCombi}.goDark;
-        CombiLEDObj{whichCombi}.serialClose;
-    end
+for whichCombi = 1:2
+    CombiLEDObj{whichCombi}.goDark;
+    CombiLEDObj{whichCombi}.serialClose;
 end
 clear CombiLEDObj
 

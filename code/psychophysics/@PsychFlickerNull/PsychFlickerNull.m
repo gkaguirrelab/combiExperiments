@@ -32,6 +32,7 @@ classdef PsychFlickerNull < handle
         asymmetricAdjustFlag
         currTrialIdx = 0;
         trialData
+        nTrials 
     end
 
     % These may be modified after object creation
@@ -50,6 +51,9 @@ classdef PsychFlickerNull < handle
         verbose = true;
         blockStartTimes = datetime();
 
+        % Assign a filename which is handy for saving and loading
+        filename
+
     end
 
     methods
@@ -67,6 +71,7 @@ classdef PsychFlickerNull < handle
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('verbose',true,@islogical);
+            p.addParameter('nTrials',12, @isnumeric);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
@@ -80,6 +85,7 @@ classdef PsychFlickerNull < handle
             obj.asymmetricAdjustFlag = p.Results.asymmetricAdjustFlag;                        
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
+            obj.nTrials = p.Results.nTrials;
             obj.verbose = p.Results.verbose;
 
             % Confirm that the source and silencing modResults have the

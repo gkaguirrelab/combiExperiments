@@ -1,4 +1,4 @@
-function runDCPT_discrim(subjectID,NDlabelA,NDlabelB,refFreqHz,varargin)
+function runDCPT_discrim(subjectID,NDlabel,refFreqHz,varargin)
 % Psychometric measurement of discrmination thresholds at a set of
 % frequencies for two post-receptoral directions (LMS and L-M).
 %
@@ -63,15 +63,15 @@ subjectDir = fullfile(...
 % obtain a gamma table to pass to the combiLEDs, and this property of the
 % device does not change with modulation direction
 % CombiLED A
-modResultFileA = ...
-    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelA '_A_ND' NDlabelB '_B'],'modResult_A.mat');
-load(modResultFileA,'modResult');
+modResultFileC = ...
+    fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],'modResult_C.mat');
+load(modResultFileC,'modResult');
 calA = modResult.meta.cal;
 
 % CombiLED B
-modResultFileB = ...
-    fullfile(subjectDir,[modDirections{1} '_ND' NDlabelA '_A_ND' NDlabelB '_B'],'modResult_B.mat');
-load(modResultFileB,'modResult');
+modResultFileD = ...
+    fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],'modResult_D.mat');
+load(modResultFileD,'modResult');
 calB = modResult.meta.cal;
 
 % Set up the CombiLED
@@ -127,10 +127,10 @@ for bb=1:nBlocks
 
     % Which direction we will use this time
     modResultFileC = ...
-        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelA '_C_ND' NDlabelB '_D'],'modResult_C.mat');
+        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult_C.mat');
 
     modResultFileD = ...
-        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelA '_C_ND' NDlabelB '_D'],'modResult_D.mat');
+        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult_D.mat');
 
     % Load the previously generated modResult file for this direction
     load(modResultFileC,'modResult');
@@ -140,7 +140,7 @@ for bb=1:nBlocks
     modResultD = modResult;
 
     % Create a directory for the subject
-    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],experimentName);
+    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
     if ~isfolder(dataDir)
         mkdir(dataDir)
     end
@@ -152,7 +152,7 @@ for bb=1:nBlocks
         for rr = 1:length(refFreqHz)
 
             % Define the filestem for this psychometric object
-            dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabelC '_C_ND' NDlabelD '_D'],experimentName);
+            dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
             psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName ...
                 '_' strrep(num2str(targetPhotoreceptorContrast(directionIdx)),'.','x') ...
                 '_refFreq-' num2str(refFreqHz(rr)) 'Hz' ...
@@ -191,7 +191,7 @@ for bb=1:nBlocks
                 psychObj.useKeyboardFlag = useKeyboardFlag;
             else
                 % Create the object
-                psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultA, modResultB, refFreqHz(rr),...
+                psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultC, modResultD, refFreqHz(rr),...
                     'refContrast',testContrast,'testContrast',testContrast,...
                     'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
                     'simulateResponse',simulateResponse,'simulateStimuli',simulateStimuli,...

@@ -155,11 +155,10 @@ end
 % Start the response interval
 
 % Choose between keyboard or gamepad input
-keyboard = false;
 
 if ~simulateResponse
 
-    if keyboard % Using keyboard
+    if obj.useKeyboardFlag % Using keyboard
         % Check for keyboard input
         [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
             'leftarrow', 'rightarrow'});
