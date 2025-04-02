@@ -79,6 +79,10 @@ else
     testInterval = 2;
 end
 
+% Adjust the contrast again to null small differences in photoreceptor
+% contrast between the modulations in the two combiLEDs
+intervalParams(:,1) = intervalParams(:,1) .* obj.relativePhotoContrastCorrection';
+
 % Note which interval contains the faster flicker, which is used for
 % feedback
 [~,fasterInterval] = max(intervalParams(:,2));
