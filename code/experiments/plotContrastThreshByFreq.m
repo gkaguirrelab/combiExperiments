@@ -1,4 +1,4 @@
-function figHandle = plotContrastThreshByFreq(subjectID, NDlabel)
+function plotContrastThreshByFreq(subjectID, NDlabel)
 % Create some figures that summarize the psychometric fitting
 
 % Set our file path
@@ -22,7 +22,7 @@ figure; hold on
 
  % Define a struct with psychObj files
  %for dd = 1:length(modDirections)
- for dd = 1:1
+ for dd = 1:2
 
      experimentDir = fullfile(subjectDir,[modDirections{dd} '_ND' NDlabel],experimentName);
      numFreqs = numel(dir(experimentDir)) - 2; % Subtract 2 for '.' and '..'
@@ -54,7 +54,7 @@ figure; hold on
 
      [frequencies(dd, :), idx] = sort(frequencies(dd, :), 2); 
      threshPhotoContrasts(dd, :) = threshPhotoContrasts(dd, idx);
-     sensitivity = 1./(threshPhotoContrasts(:,:).*100);
+     sensitivity(dd,:) = 1./((threshPhotoContrasts(dd,:).*100));
 
      plot(frequencies(dd,:), sensitivity(dd,:))
 
