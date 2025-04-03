@@ -40,17 +40,17 @@ targetSPDCalOptions = {['CombiLED-C_shortLLG-C_classicEyePiece-C_cassette-C_ND' 
     ['CombiLED-D_shortLLG-D_classicEyePiece-D_cassette-D_ND' NDlabel '_maxSpectrum.mat']};
 
 % The directions for which we will create modulations
-modulationDirections = {'LminusM_wide','L_wide','LightFlux'};
+modulationDirections = {'LminusM_wide','LightFlux'};
 
 % We set several primariesToMaximize so that the L-M modulation tends to
 % find solutions with large modulation depth. This is a hand-tweaked
 % solution that we have found works.
-primariesToMaximizeSets = {[2 3 6 7],[],[]};
+primariesToMaximizeSets = {[1:8],[]};
 
 % The contrastMatchConstraint controls how closely the modResult meets the
 % contrast specifications present in the modulation dictionary. We want
 % this to be relatively strict for the L–M and L directions.
-contrastMatchConstraintSet = [3.5,3.5,1];
+contrastMatchConstraintSet = [3,1];
 
 % The names of the two combLEDs
 combiLEDLabel = {'C', 'D'};
