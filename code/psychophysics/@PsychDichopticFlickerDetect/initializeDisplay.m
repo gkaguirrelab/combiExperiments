@@ -36,6 +36,22 @@ if ~obj.simulateStimuli
    obj.CombiLEDObj2.setAMFrequency(1/stimulusDurationSecs);
    obj.CombiLEDObj2.setAMValues([0.25,0]); % 0.25 second half-cosine on; second value unused
 
+   % Check that the minimum modulation contrast specified in
+   % testLogContrastSet does not encounter quantization errors for the
+   % spectral modulation that is loaded into each combiLED. We use the
+   % passed parameter "bitThresh" to determine how much quantization we
+   % will accept. The default is two bits, meaning that our "sinusoid"
+   % modulation must contain at least four discrete levels.
+   minContrast1 = obj.relativePhotoContrastCorrection(1) * 10^min(obj.testLogContrastSet);
+   quantizeErrorFlags = ...
+       obj.CombiLEDObj1.checkForQuantizationError(minContrast1,obj.bitThresh);
+   assert(~any(quantizeErrorFlags));
+
+   minContrast2 = obj.relativePhotoContrastCorrection(2) * 10^min(obj.testLogContrastSet);
+   quantizeErrorFlags = ...
+       obj.CombiLEDObj2.checkForQuantizationError(minContrast2,obj.bitThresh);
+   assert(~any(quantizeErrorFlags));
+
 end
 
 end

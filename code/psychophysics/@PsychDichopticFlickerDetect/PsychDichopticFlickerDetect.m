@@ -27,6 +27,7 @@ classdef PsychDichopticFlickerDetect < handle
         testFreqHz
         updateCombiLEDTimeSecs
         waitToRespondTimeSecs
+        bitThresh
     end
 
     % These may be modified after object creation
@@ -91,6 +92,7 @@ classdef PsychDichopticFlickerDetect < handle
                 [0.5],...
                 [0]...
                 },@isnumeric);
+            p.addParameter('bitThresh',2,@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})
@@ -114,6 +116,7 @@ classdef PsychDichopticFlickerDetect < handle
             obj.testLogContrastSet = p.Results.testLogContrastSet;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
+            obj.bitThresh = p.Results.bitThresh;
             obj.verbose = p.Results.verbose;
             obj.useKeyboardFlag = p.Results.useKeyboardFlag;
 
@@ -129,9 +132,6 @@ classdef PsychDichopticFlickerDetect < handle
 
             % Initialize Quest+
             obj.initializeQP;
-
-            % Initialize the CombiLEDs
-            obj.initializeDisplay;
 
             % There is a roll-off (attenuation) of the amplitude of
             % modulations with frequency. The stimParamsDomainList gives
@@ -155,18 +155,8 @@ classdef PsychDichopticFlickerDetect < handle
                 obj.relativePhotoContrastCorrection = [1,relativePhotoContrast];
             end
 
-            % Check that the minimum modulation contrast specified in 
-            % testLogContrastSet does not encounter quantization errors for
-            % the spectral modulation that is loaded into each combiLED.
-            minContrast1 = obj.relativePhotoContrastCorrection(1) * 10^min(obj.testLogContrastSet);
-            quantizeErrorFlags = ...
-                obj.CombiLEDObj1.checkForQuantizationError(minContrast1);
-            assert(~any(quantizeErrorFlags));
-
-            minContrast2 = obj.relativePhotoContrastCorrection(2) * 10^min(obj.testLogContrastSet);
-            quantizeErrorFlags = ...
-                obj.CombiLEDObj2.checkForQuantizationError(minContrast2);
-            assert(~any(quantizeErrorFlags));
+            % Initialize the CombiLEDs
+            obj.initializeDisplay;
 
         end
 

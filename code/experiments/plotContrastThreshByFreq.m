@@ -1,4 +1,4 @@
-function plotContrastThreshByFreq(subjectID, NDlabel)
+function plotContrastThreshByFreq(subjectID, NDlabel, freqSet)
 % Create some figures that summarize the psychometric fitting
 
 % Set our file path
@@ -20,17 +20,17 @@ modDirections = {'LminusM_wide','LightFlux'};
 % Plot L minus M and light flux on the same figure
 figure; hold on
 
+numFreqs = numel(freqSet);
+
  % Define a struct with psychObj files
  %for dd = 1:length(modDirections)
  for dd = 1:2
 
      experimentDir = fullfile(subjectDir,[modDirections{dd} '_ND' NDlabel],experimentName);
-     numFreqs = numel(dir(experimentDir)) - 2; % Subtract 2 for '.' and '..'
-     fileList = dir(experimentDir);
 
      for ff = 1:numFreqs
         % Loading in psychObj file for each test frequency and mod direction
-        detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]) = load([experimentDir, '/',fileList(ff + 2).name]); % +2 to skip '.' and '..' directories
+        detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]) = load([experimentDir, '/' , subjectID ,'_', modDirections{dd}, '_DCPT_detect.x_refFreq-', num2str(freqSet(ff)), 'Hz.mat']); % +2 to skip '.' and '..' directories
         currentFile = detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]);
 
         % Report psiParams
@@ -53,10 +53,9 @@ figure; hold on
      end
 
      [frequencies(dd, :), idx] = sort(frequencies(dd, :), 2); 
-     threshPhotoContrasts(dd, :) = threshPhotoContrasts(dd, idx);
-     sensitivity(dd,:) = 1./(threshPhotoContrasts(dd,:));
+     sensitivity = 1./threshPhotoContrasts(dd, idx);
 
-     plot(frequencies(dd,:), sensitivity(dd,:))
+     plot(frequencies(dd,:), sensitivity);
 
 
  end
