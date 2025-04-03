@@ -54,7 +54,7 @@ figure; hold on
 
      [frequencies(dd, :), idx] = sort(frequencies(dd, :), 2); 
      threshPhotoContrasts(dd, :) = threshPhotoContrasts(dd, idx);
-     sensitivity(dd,:) = 1./((threshPhotoContrasts(dd,:).*100));
+     sensitivity(dd,:) = 1./(threshPhotoContrasts(dd,:));
 
      plot(frequencies(dd,:), sensitivity(dd,:))
 
