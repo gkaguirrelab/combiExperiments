@@ -1,4 +1,4 @@
-function plotContrastThreshByFreq(subjectID, NDlabel, freqSet)
+function plotContrastThreshByFreq(subjectID, NDlabel, testFreqSetHz)
 % Create some figures that summarize the psychometric fitting
 
 % Set our file path
@@ -20,7 +20,7 @@ modDirections = {'LminusM_wide','LightFlux'};
 % Plot L minus M and light flux on the same figure
 figure; hold on
 
-numFreqs = numel(freqSet);
+numFreqs = numel(testFreqSetHz);
 colors = {'-ro', '-ko'};
 markerColors = {'r', 'k'};
 
@@ -32,7 +32,7 @@ markerColors = {'r', 'k'};
 
      for ff = 1:numFreqs
         % Loading in psychObj file for each test frequency and mod direction
-        detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]) = load([experimentDir, '/' , subjectID ,'_', modDirections{dd}, '_DCPT_detect.x_refFreq-', num2str(freqSet(ff)), 'Hz.mat']); % +2 to skip '.' and '..' directories
+        detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]) = load([experimentDir, '/' , subjectID ,'_', modDirections{dd}, '_DCPT_detect.x_refFreq-', num2str(testFreqSetHz(ff)), 'Hz.mat']); % +2 to skip '.' and '..' directories
         currentFile = detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]);
 
         % Report psiParams
@@ -61,16 +61,16 @@ markerColors = {'r', 'k'};
 
      % Add a fit using the Watson temporal senisitivity function, weighted by
      % the bootstrapped error
-     y = sensitivity;
-     w = 1./(1./(modContrast*10.^[results.logContrastThreshLow])- 1./(modContrast*10.^[results.logContrastThreshHigh]));
-     myWatson = @(p,x) p(1).*watsonTemporalModel(x, p(2:4));
-     myObj = @(p) sqrt(sum(w.*((myWatson(p,x)-y).^2)));
-     pFit = fmincon(myObj,p0,[],[],[],[],[1,0,0,0]);
-
-     % Add the fit
-     xFit = logspace(0,2,50);
-     yFit = myWatson(pFit,xFit);
-     plot(log10(xFit),(yFit),'-','Color',plotColor,'LineWidth',1.5)
+     % y = sensitivity;
+     % w = 1./(1./(modContrast*10.^[results.logContrastThreshLow])- 1./(modContrast*10.^[results.logContrastThreshHigh]));
+     % myWatson = @(p,x) p(1).*watsonTemporalModel(x, p(2:4));
+     % myObj = @(p) sqrt(sum(w.*((myWatson(p,x)-y).^2)));
+     % pFit = fmincon(myObj,p0,[],[],[],[],[1,0,0,0]);
+     % 
+     % % Add the fit
+     % xFit = logspace(0,2,50);
+     % yFit = myWatson(pFit,xFit);
+     % plot(log10(xFit),(yFit),'-','Color',plotColor,'LineWidth',1.5)
 
  end
  % Add labels
