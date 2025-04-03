@@ -21,6 +21,8 @@ modDirections = {'LminusM_wide','LightFlux'};
 figure; hold on
 
 numFreqs = numel(freqSet);
+colors = {'-ro', '-ko'};
+markerColors = {'r', 'k'};
 
  % Define a struct with psychObj files
  %for dd = 1:length(modDirections)
@@ -55,14 +57,26 @@ numFreqs = numel(freqSet);
      [frequencies(dd, :), idx] = sort(frequencies(dd, :), 2); 
      sensitivity = 1./threshPhotoContrasts(dd, idx);
 
-     plot(frequencies(dd,:), sensitivity);
+     plot(frequencies(dd,:), sensitivity, colors{dd}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{dd}, 'lineWidth', 2);
 
+     % Add a fit using the Watson temporal senisitivity function, weighted by
+     % the bootstrapped error
+     y = sensitivity;
+     w = 1./(1./(modContrast*10.^[results.logContrastThreshLow])- 1./(modContrast*10.^[results.logContrastThreshHigh]));
+     myWatson = @(p,x) p(1).*watsonTemporalModel(x, p(2:4));
+     myObj = @(p) sqrt(sum(w.*((myWatson(p,x)-y).^2)));
+     pFit = fmincon(myObj,p0,[],[],[],[],[1,0,0,0]);
+
+     % Add the fit
+     xFit = logspace(0,2,50);
+     yFit = myWatson(pFit,xFit);
+     plot(log10(xFit),(yFit),'-','Color',plotColor,'LineWidth',1.5)
 
  end
  % Add labels
 xlabel('Frequency (Hz)');
 ylabel('Contrast Sensitivity');
-title('Threshold vs. Frequency');
+title('Frequency vs. Contrast Sensitivity');
 xscale log;
 xticks(frequencies(1, :));
 xlim([2,50]);
