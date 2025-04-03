@@ -28,7 +28,7 @@ subplot(1,3,1);
 hold on
 plot(1:nTrials,[obj.questData.trialData.stim],'.r');
 xlabel('trial number');
-ylabel('test contrast')
+ylabel('test contrast [log]')
 title('stimulus by trial');
 
 % Now the proportion correct for each stimulus type, and the psychometric
@@ -76,7 +76,7 @@ xticks(linspace(-3, 0, 7));
 labels = 10.^(linspace(-3, 0, 7));
 xticklabels(round(labels, 3));
 xlabel('test contrast')
-ylabel('proportion pick higher contrast stimulus');
+ylabel('proportion correct');
 title('Psychometric function');
 
 % Entropy by trial
