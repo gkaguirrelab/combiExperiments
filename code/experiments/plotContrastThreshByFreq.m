@@ -29,6 +29,7 @@ markerColors = {'r', 'k'};
  for dd = 1:2
 
      experimentDir = fullfile(subjectDir,[modDirections{dd} '_ND' NDlabel],experimentName);
+     results = [];
 
      for ff = 1:numFreqs
         % Loading in psychObj file for each test frequency and mod direction
@@ -52,12 +53,35 @@ markerColors = {'r', 'k'};
         threshPhotoContrasts(dd, ff) = photoContrast1 * currentFile.psychObj.relativePhotoContrastCorrection(1) * rawThreshold(ff); 
         frequencies(dd, ff) = currentFile.psychObj.testFreqHz;
 
+        % Obtain boot-strapped params
+        nBoots = 200; confInterval = 0.68;
+        [~,fitParams,fitParamsCI] = currentFile.psychObj.reportParams(...
+            'nBoots',nBoots,'confInterval',confInterval);
+        results(ff).freqHz = currentFile.psychObj.testFreqHz;
+        results(ff).logContrastThresh = fitParams(1);
+        results(ff).logContrastThreshLow = fitParamsCI(1,1);
+        results(ff).logContrastThreshHigh = fitParamsCI(2,1);
+
      end
 
      [frequencies(dd, :), idx] = sort(frequencies(dd, :), 2); 
      sensitivity = 1./threshPhotoContrasts(dd, idx);
 
-     plot(frequencies(dd,:), sensitivity, colors{dd}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{dd}, 'lineWidth', 2);
+     for ff = 1:numFreqs
+         if dd == 1
+             yyaxis left
+             plot(frequencies(dd,:), sensitivity, colors{dd}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{dd}, 'lineWidth', 2);
+             errorbar(frequencies(dd,:), sensitivity, results(ff).logContrastThreshLow, results(ff).logContrastThreshHigh, 'bo-', 'LineWidth', 2, 'MarkerSize', 6);
+             ylim([100 1000])
+             ylabel('[1/contrast L-M]');
+         else
+             yyaxis right
+             plot(frequencies(dd,:), sensitivity, colors{dd}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{dd}, 'lineWidth', 2);
+             errorbar(frequencies(dd,:), sensitivity, results(ff).logContrastThreshLow, results(ff).logContrastThreshHigh, 'bo-', 'LineWidth', 2, 'MarkerSize', 6);
+             ylim([1 350])
+             ylabel('[1/contrast Light Flux]');
+         end
+     end
 
      % Add a fit using the Watson temporal senisitivity function, weighted by
      % the bootstrapped error
@@ -73,14 +97,19 @@ markerColors = {'r', 'k'};
      % plot(log10(xFit),(yFit),'-','Color',plotColor,'LineWidth',1.5)
 
  end
+
  % Add labels
 xlabel('Frequency (Hz)');
-ylabel('Contrast Sensitivity');
-title('Frequency vs. Contrast Sensitivity');
 xscale log;
 xticks(frequencies(1, :));
 xlim([2,50]);
+title('Frequency vs. Contrast Sensitivity');
 legend('L minus M wide','Light Flux');
+
+% Change the color of the axes
+ax = gca;
+ax.YAxis(1).Color = 'red';
+ax.YAxis(2).Color = 'black';
 
 
 end
