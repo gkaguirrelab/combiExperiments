@@ -20,8 +20,8 @@ p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
 p.addParameter('testLogContrastSets',{...
     linspace(log10(0.01),log10(0.25),31),...
     linspace(log10(0.0011),log10(0.25),31)},@iscell);
-p.addParameter('nTrialsPerBlock',30,@isnumeric);
-p.addParameter('nBlocks',10,@isnumeric);
+p.addParameter('nTrialsPerBlock',40,@isnumeric);
+p.addParameter('nBlocks',20,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
