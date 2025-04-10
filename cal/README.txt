@@ -1,1 +1,1 @@
-Place to save calibration files
+Place to save calibration files. These are organized by experiment
