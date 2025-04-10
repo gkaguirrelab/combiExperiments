@@ -20,8 +20,9 @@ p.parse(varargin{:})
 %  Pull out of the p.Results structure
 primaryHeadRoom = p.Results.primaryHeadRoom;
 
-% Define our DropBox subdirectory
+% Define our DropBox subdirectory and cal file subdirectory
 dropBoxSubDir = 'FLIC_data';
+calSubDir = 'DCPT';
 
 % The background XY chromaticity we will target. Not currently used. We may
 % return to matching the background if we find that the half-on differs a
@@ -60,11 +61,11 @@ for iCombi = 1:2
 
     % Load the base cal and the max cal file for the ND of interest
     baseCalName = baseCalOptions{iCombi};
-    baseCal = loadCalByName(baseCalName);
+    baseCal = loadCalByName(baseCalName, calSubDir);
     maxSPDCalName = maxSPDCalOptions{iCombi};
-    maxSPDCal = loadCalByName(maxSPDCalName);
+    maxSPDCal = loadCalByName(maxSPDCalName, calSubDir);
     targetSPDCalName = targetSPDCalOptions{iCombi};
-    targetSPDCal = loadCalByName(targetSPDCalName);
+    targetSPDCal = loadCalByName(targetSPDCalName, calSubDir);
 
     % Obtain the transmittance for this ND filter setting
     transmittance = targetSPDCal.rawData.gammaCurveMeanMeasurements ./ maxSPDCal.rawData.gammaCurveMeanMeasurements;
