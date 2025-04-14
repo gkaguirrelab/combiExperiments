@@ -152,10 +152,10 @@ for bb=1:nBlocks
             '_refFreq-' num2str(testFreqSetHz(rr)) 'Hz' ];
 
         % Create or load the psychometric object
-        filename = fullfile(dataDir,[psychFileStem '.mat']);
-        if isfile(filename)
+        psychObjFilename = fullfile(dataDir,[psychFileStem '.mat']);
+        if isfile(psychObjFilename)
             % Load the object
-            load(filename,'psychObj');
+            load(psychObjFilename,'psychObj');
             % Put in the fresh CombiLEDObjs
             psychObj.CombiLEDObj1 = CombiLEDObj1;
             psychObj.CombiLEDObj2 = CombiLEDObj2;
@@ -183,7 +183,7 @@ for bb=1:nBlocks
                 'randomCombi', randomCombi, ...
                 'useKeyboardFlag', useKeyboardFlag);
             % Store the filename
-            psychObj.filename = filename;
+            psychObj.filename = psychObjFilename;
         end
 
         % Store in the psychObjArray
@@ -276,10 +276,15 @@ for bb=1:nBlocks
     for rr = 1:length(testFreqSetHz)
         % Grab the next psychObj
         psychObj = psychObjArray{rr};
-        % empty the CombiLEDObj handles and save the psychObj
+        % empty the CombiLEDObj handles
         psychObj.CombiLEDObj1 = [];
         psychObj.CombiLEDObj2 = [];
-        save(psychObj.filename,'psychObj');
+        % Save the psychObj        
+        save(psychObjFilename,'psychObj');
+        % Update the filename field of the psychObj, in case we are
+        % collecting data on a computer with a different absolute path to
+        % the data save location
+        psychObj.filename = psychObjFilename;
     end
 
 end % block loop
