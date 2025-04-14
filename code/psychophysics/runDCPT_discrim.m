@@ -16,7 +16,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
-p.addParameter('targetPhotoreceptorContrast',[0.02,0.05],@isnumeric); % was .075 and .333 but these are too high and cause entoptic spatial pehnomena. Need to find something inbetween:)
+p.addParameter('targetPhotoreceptorContrast',[0.025,0.01; 0.05, 0.2; 0.1, 0.4],@isnumeric); % approximately 5x, 10x, and 20 x detection threshold for low sensitivity frequencies. columns mod dir, rows are contrast level
 p.addParameter('stimParamsHi',{linspace(0,5,51),linspace(0,5,51)},@isnumeric);
 p.addParameter('stimParamsLow',{linspace(-5,0,51),linspace(-5,0,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',30,@isnumeric);
@@ -146,67 +146,70 @@ for bb=1:nBlocks
     end
 
     % Assemble the psychObj array, looping over the high and low range of
-    % the discrimination function AND the reference frequencies
+    % the discrimination function AND the reference frequencies AND the
+    % contrast
     psychObjArray = cell(2, length(refFreqHz));
     for ss = 1:2
         for rr = 1:length(refFreqHz)
+            for iCont = size(targetPhotoreceptorContrast,2)
 
-            % Define the filestem for this psychometric object
-            dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
-            psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName ...
-                '_' strrep(num2str(targetPhotoreceptorContrast(directionIdx)),'.','x') ...
-                '_refFreq-' num2str(refFreqHz(rr)) 'Hz' ...
-                '_' stimParamLabels{ss}];
+                % Define the filestem for this psychometric object
+                dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
+                psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName ...
+                    '_' strrep(num2str(targetPhotoreceptorContrast(directionIdx, iCont)),'.','x') ...
+                    '_refFreq-' num2str(refFreqHz(rr)) 'Hz' ...
+                    '_' stimParamLabels{ss}];
 
-            % Calculate the testContrast
-            %% NOTE THAT WE WILL NEED TO OBTAIN SEPARATE A AND B TEST
-            % contrast levels, as the photoreceptor contrast can / will
-            % differ between the A and B combiLED modResults. For now, just
-            % doing the calculation for modResultA.
-            maxPhotoreceptorContrast = mean(abs(modResultC.contrastReceptorsBipolar(modResultC.meta.whichReceptorsToTarget)));
-            testContrast = targetPhotoreceptorContrast(directionIdx) / maxPhotoreceptorContrast;
+                % Calculate the testContrast
+                %% NOTE THAT WE WILL NEED TO OBTAIN SEPARATE A AND B TEST
+                % contrast levels, as the photoreceptor contrast can / will
+                % differ between the A and B combiLED modResults. For now, just
+                % doing the calculation for modResultA.
+                %%ALSO need to do all the contrast levels.
+                maxPhotoreceptorContrast = mean(abs(modResultC.contrastReceptorsBipolar(modResultC.meta.whichReceptorsToTarget)));
+                testContrast = targetPhotoreceptorContrast(directionIdx) / maxPhotoreceptorContrast;
 
-            % Obtain the relevant stimParam values
-            stimParamsDomainList = p.Results.(stimParamLabels{ss}){directionIdx};
+                % Obtain the relevant stimParam values
+                stimParamsDomainList = p.Results.(stimParamLabels{ss}){directionIdx};
 
-            % Create or load the psychometric object
-            filename = fullfile(dataDir,[psychFileStem '.mat']);
-            if isfile(filename)
-                % Load the object
-                load(filename,'psychObj');
-                % Put in the fresh CombiLEDObjs
-                psychObj.CombiLEDObjA = CombiLEDObjA;
-                psychObj.CombiLEDObjB = CombiLEDObjB;
-                % Increment blockIdx
-                psychObj.blockIdx = psychObj.blockIdx+1;
-                psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
-                % Update the useStaircase flag in case this has changed
-                psychObj.useStaircase = useStaircase;
-                % Update the simulate stimuli and response flags in case this has changed
-                psychObj.simulateResponse = simulateResponse;
-                psychObj.simulateStimuli = simulateStimuli;
-                % Update the random combi setting
-                psychObj.randomCombi = randomCombi;
-                % Update the keyboard flag
-                psychObj.useKeyboardFlag = useKeyboardFlag;
-            else
-                % Create the object
-                psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultC, modResultD, refFreqHz(rr),...
-                    'refContrast',testContrast,'testContrast',testContrast,...
-                    'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
-                    'simulateResponse',simulateResponse,'simulateStimuli',simulateStimuli,...
-                    'useStaircase', useStaircase, 'randomCombi', randomCombi, ...
-                    'useKeyboardFlag', useKeyboardFlag);
-                % Store the filename
-                psychObj.filename = filename;
+                % Create or load the psychometric object
+                filename = fullfile(dataDir,[psychFileStem '.mat']);
+                if isfile(filename)
+                    % Load the object
+                    load(filename,'psychObj');
+                    % Put in the fresh CombiLEDObjs
+                    psychObj.CombiLEDObjA = CombiLEDObjA;
+                    psychObj.CombiLEDObjB = CombiLEDObjB;
+                    % Increment blockIdx
+                    psychObj.blockIdx = psychObj.blockIdx+1;
+                    psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
+                    % Update the useStaircase flag in case this has changed
+                    psychObj.useStaircase = useStaircase;
+                    % Update the simulate stimuli and response flags in case this has changed
+                    psychObj.simulateResponse = simulateResponse;
+                    psychObj.simulateStimuli = simulateStimuli;
+                    % Update the random combi setting
+                    psychObj.randomCombi = randomCombi;
+                    % Update the keyboard flag
+                    psychObj.useKeyboardFlag = useKeyboardFlag;
+                else
+                    % Create the object
+                    psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultC, modResultD, refFreqHz(rr),...
+                        'refContrast',testContrast,'testContrast',testContrast,...
+                        'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
+                        'simulateResponse',simulateResponse,'simulateStimuli',simulateStimuli,...
+                        'useStaircase', useStaircase, 'randomCombi', randomCombi, ...
+                        'useKeyboardFlag', useKeyboardFlag);
+                    % Store the filename
+                    psychObj.filename = filename;
+                end
+
+                % Store in the psychObjArray
+                psychObjArray{ss, rr} = psychObj;
+
+                % Clear the psychObj
+                clear psychObj
             end
-
-            % Store in the psychObjArray
-            psychObjArray{ss, rr} = psychObj;
-
-            % Clear the psychObj
-            clear psychObj
-
         end
 
     end
@@ -252,18 +255,18 @@ for bb=1:nBlocks
     end
 
     % Verify that the number of trials per block is compatible with the number
-    % of reference frequencies. 
+    % of reference frequencies.
     if mod(nTrialsPerBlock, length(refFreqHz) * 2) ~= 0
         error(['The number of trials must be even and a ' ...
             'multiple of the number of reference frequencies.'])
     end
-    
+
     % Create two vectors, one containing estimate types (high or low side)
     % and the other containing reference frequencies.
 
     % High or low side estimate vector
     estimateType = zeros(1, nTrialsPerBlock);
-    
+
     % Assign the first half of the values as 1 and the second half as 2
     estimateType(1, 1:(nTrialsPerBlock/2)) = 1;
     estimateType(1, (nTrialsPerBlock/2)+1:nTrialsPerBlock) = 2;
@@ -271,7 +274,7 @@ for bb=1:nBlocks
     % Reference frequency vector, which will contain indices of refFreqHz
     refFreqHzIndex = zeros(1, nTrialsPerBlock);
 
-    group = ceil(nTrialsPerBlock / length(refFreqHz)); 
+    group = ceil(nTrialsPerBlock / length(refFreqHz));
     startIdx = 1;
 
     % Loop through indices
@@ -279,7 +282,7 @@ for bb=1:nBlocks
 
         % Find the end index for the current group (range of columns)
         endIdx = startIdx + group - 1;
-      
+
         % Assign the current refFreqHz index value to the current group
         refFreqHzIndex(1, startIdx:endIdx) = ii;
 
@@ -296,8 +299,8 @@ for bb=1:nBlocks
     % Determine the number of times to repeat each unique pair
     pairRepetitions = nTrialsPerBlock / length(pairs);
 
-    % Now create a list with repeated pairs 
-    finalPairs = repmat(pairs, pairRepetitions, 1);  
+    % Now create a list with repeated pairs
+    finalPairs = repmat(pairs, pairRepetitions, 1);
 
     % Permute the pairs to randomize the order
     permutedPairs = finalPairs(randperm(size(finalPairs, 1)), :);
