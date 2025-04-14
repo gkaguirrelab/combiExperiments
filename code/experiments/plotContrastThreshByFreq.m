@@ -46,7 +46,7 @@ for dd = 1:2
         % Plot the psychometric function for each frequency and mod dir,
         % save as pdf
         figHandle = currentFile.psychObj.plotOutcome('off');
-        filename = fullfile(figureOutDir,[subjectID '_ND' NDlabel '_' modDirections{dd} '_Freq_',num2str(ff) '.pdf']);
+        filename = fullfile(figureOutDir,[subjectID '_ND' NDlabel '_' modDirections{dd} sprintf('_Freq_%2.1f',testFreqSetHz(ff)) '.pdf']);
         saveas(figHandle,filename,'pdf')
         close(figHandle)
 
