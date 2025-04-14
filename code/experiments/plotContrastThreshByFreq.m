@@ -1,5 +1,6 @@
 function plotContrastThreshByFreq(subjectID, NDlabel, testFreqSetHz)
 % Create some figures that summarize the psychometric fitting
+% Also saves pdfs of the psychometric fits
 
 % Set our file path
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
@@ -35,8 +36,17 @@ for dd = 1:2
 
     for ff = 1:numFreqs
         % Loading in psychObj file for each test frequency and mod direction
-        detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]) = load([experimentDir, '/' , subjectID ,'_', modDirections{dd}, '_DCPT_detect.x_refFreq-', num2str(testFreqSetHz(ff)), 'Hz.mat']); % +2 to skip '.' and '..' directories
+        fileStem = [experimentDir, '/' , subjectID ,'_', modDirections{dd}, '_DCPT_detect.x_refFreq-', num2str(testFreqSetHz(ff)), 'Hz'];
+        detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]) = load([fileStem, '.mat']); 
         currentFile = detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]);
+        %plot the psychometric function for each frequency and mod dir,
+        %save as pdf
+        % Make the plot
+        figHandle = currentFile.psychObj.plotOutcome('off');
+        % Save the plot
+        filename = fullfile(dataDir,[fileStems '.pdf']);
+        saveas(figHandle,filename,'pdf')
+        close(figHandle)
 
         % Report psiParams
         lb = cellfun(@(x) min(x),currentFile.psychObj.psiParamsDomainList);
