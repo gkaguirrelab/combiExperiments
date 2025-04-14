@@ -26,7 +26,7 @@ modDirections = {'LminusM_wide','LightFlux'};
 figure; hold on
 
 % Bootstrap params
-nBoots = 10; confInterval = 0.68;
+nBoots = 100; confInterval = 0.68;
 
 numFreqs = numel(testFreqSetHz);
 plotSpec = {'-ro', '-ko'};
