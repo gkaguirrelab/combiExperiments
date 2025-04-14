@@ -76,7 +76,7 @@ for dd = 1:2
         for ff = 1:numFreqs
             plot([frequencies(dd,ff) frequencies(dd,ff)],[1./threshPhotoContrastsCILow(dd,ff) 1./threshPhotoContrastsCIHigh(dd,ff)], 'r-', 'LineWidth', 2, 'MarkerSize', 6);
         end
-        ylim([1 1000]);
+        ylim([1 1250]);
         ylabel('[1/contrast L-M]');
     else
         yyaxis right
@@ -84,7 +84,7 @@ for dd = 1:2
         for ff = 1:numFreqs
             plot([frequencies(dd,ff) frequencies(dd,ff)],[1./threshPhotoContrastsCILow(dd,ff) 1./threshPhotoContrastsCIHigh(dd,ff)], 'k-', 'LineWidth', 2, 'MarkerSize', 6);
         end
-        ylim([1 350]);
+        ylim([1 500]);
         ylabel('[1/contrast Light Flux]');
     end
 
