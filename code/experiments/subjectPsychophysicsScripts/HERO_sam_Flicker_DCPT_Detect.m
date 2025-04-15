@@ -3,17 +3,7 @@
 subjectID = 'HERO_sam';
 % Run through the set of flicker frequencies
 % testFreqSetHz = [ 3.0000    5.4216    9.7980   17.7069   32.0000];
-testFreqSetHz = [
-    3.0000
-    3.5940
-    4.2650
-    5.0870
-    6.1040
-    7.4170
-    9.1110
-    11.2810
-    13.9480
-    32.0000];
+testFreqSetHz = [3.0000    3.9025    5.0766    6.6039    8.5906   11.1750   14.5370   18.9103   24.5994   32.0000];
 NDlabel = '0x5';
 simulateFlag = false;
 useKeyboardFlag = false;

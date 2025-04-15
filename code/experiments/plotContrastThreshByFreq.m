@@ -1,5 +1,10 @@
 function plotContrastThreshByFreq(subjectID, NDlabel, testFreqSetHz)
 % Create some figures that summarize the psychometric fitting
+% Also saves pdfs of the psychometric fits
+
+% Define a path to save figures
+figureOutDir = '~/Desktop/FlickerFigures';
+mkdir(figureOutDir);
 
 % Set our file path
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
@@ -21,7 +26,7 @@ modDirections = {'LminusM_wide','LightFlux'};
 figure; hold on
 
 % Bootstrap params
-nBoots = 10; confInterval = 0.68;
+nBoots = 100; confInterval = 0.68;
 
 numFreqs = numel(testFreqSetHz);
 plotSpec = {'-ro', '-ko'};
@@ -35,8 +40,15 @@ for dd = 1:2
 
     for ff = 1:numFreqs
         % Loading in psychObj file for each test frequency and mod direction
-        detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]) = load([experimentDir, '/' , subjectID ,'_', modDirections{dd}, '_DCPT_detect.x_refFreq-', num2str(testFreqSetHz(ff)), 'Hz.mat']); % +2 to skip '.' and '..' directories
+        fileStem = [experimentDir, '/' , subjectID ,'_', modDirections{dd}, '_DCPT_detect.x_refFreq-', num2str(testFreqSetHz(ff)), 'Hz'];
+        detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]) = load([fileStem, '.mat']); 
         currentFile = detectionData.(modDirections{dd}).(['Freq_',num2str(ff)]);
+        % Plot the psychometric function for each frequency and mod dir,
+        % save as pdf
+        figHandle = currentFile.psychObj.plotOutcome('off');
+        filename = fullfile(figureOutDir,[subjectID '_ND' NDlabel '_' modDirections{dd} sprintf('_Freq_%2.1f',testFreqSetHz(ff)) '.pdf']);
+        saveas(figHandle,filename,'pdf')
+        close(figHandle)
 
         % Report psiParams
         lb = cellfun(@(x) min(x),currentFile.psychObj.psiParamsDomainList);
@@ -64,7 +76,7 @@ for dd = 1:2
         for ff = 1:numFreqs
             plot([frequencies(dd,ff) frequencies(dd,ff)],[1./threshPhotoContrastsCILow(dd,ff) 1./threshPhotoContrastsCIHigh(dd,ff)], 'r-', 'LineWidth', 2, 'MarkerSize', 6);
         end
-        ylim([1 1000]);
+        ylim([1 1250]);
         ylabel('[1/contrast L-M]');
     else
         yyaxis right
@@ -72,7 +84,7 @@ for dd = 1:2
         for ff = 1:numFreqs
             plot([frequencies(dd,ff) frequencies(dd,ff)],[1./threshPhotoContrastsCILow(dd,ff) 1./threshPhotoContrastsCIHigh(dd,ff)], 'k-', 'LineWidth', 2, 'MarkerSize', 6);
         end
-        ylim([1 350]);
+        ylim([1 500]);
         ylabel('[1/contrast Light Flux]');
     end
 
