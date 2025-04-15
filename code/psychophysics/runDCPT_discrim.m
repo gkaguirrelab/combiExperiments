@@ -4,10 +4,10 @@ function runDCPT_discrim(subjectID,NDlabel,refFreqHz,varargin)
 %
 % Examples:
 %{
-    subjectID = 'PILT_0001';
+    subjectID = 'HERO_gka';
     NDlabel = '0x5';
-    refFreqHz = [1.5, 3.4426, 7.9009, 18.1312, 24.0];
-    runDiscrimThreshExperiment(subjectID,NDlabel,refFreqHz);
+    refFreqHz = [3.0000    5.0454    8.4853   14.2705   24.0000];
+    runDCPT_discrim(subjectID,NDlabel,refFreqHz);
 %}
 
 % Parse the parameters
@@ -16,10 +16,10 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
-p.addParameter('targetPhotoreceptorContrast',[0.025,0.01; 0.05, 0.2; 0.1, 0.4],@isnumeric); % approximately 5x, 10x, and 20 x detection threshold for low sensitivity frequencies. columns mod dir, rows are contrast level
-p.addParameter('stimParamsHi',{linspace(0,5,51),linspace(0,5,51)},@isnumeric);
-p.addParameter('stimParamsLow',{linspace(-5,0,51),linspace(-5,0,51)},@isnumeric);
-p.addParameter('nTrialsPerBlock',30,@isnumeric);
+p.addParameter('targetPhotoContrast',[0.0375,0.15; 0.075, 0.3],@isnumeric); % approximately 5x, 10x, and 20 x detection threshold for low sensitivity frequencies. columns mod dir, rows are contrast level
+p.addParameter('stimParamsHi',{linspace(0,4,51),linspace(0,4,51)},@isnumeric);
+p.addParameter('stimParamsLow',{linspace(-4,0,51),linspace(-4,0,51)},@isnumeric);
+p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
 p.addParameter('verboseCombiLED',false,@islogical);
@@ -35,7 +35,7 @@ nTrialsPerBlock = p.Results.nTrialsPerBlock;
 nBlocks = p.Results.nBlocks;
 useStaircase = p.Results.useStaircase;
 modDirections = p.Results.modDirections;
-targetPhotoreceptorContrast = p.Results.targetPhotoreceptorContrast;
+targetPhotoContrast = p.Results.targetPhotoContrast;
 verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
 simulateResponse = p.Results.simulateResponse;
@@ -76,24 +76,24 @@ calB = modResult.meta.cal;
 
 % Set up the CombiLED
 if simulateStimuli
-    CombiLEDObjA = [];
-    CombiLEDObjB = [];
+    CombiLEDObjC = [];
+    CombiLEDObjD = [];
 else
     % Open the CombiLED
-    CombiLEDObjA = CombiLEDcontrol('verbose',verboseCombiLED);
-    CombiLEDObjB = CombiLEDcontrol('verbose',verboseCombiLED);
+    CombiLEDObjC = CombiLEDcontrol('verbose',verboseCombiLED);
+    CombiLEDObjD = CombiLEDcontrol('verbose',verboseCombiLED);
 
     % Check the identifierString and swap objects if needed
-    if CombiLEDObjA.identifierString == "B000JA8P" % wrong identifier
+    if CombiLEDObjC.identifierString == "B000JA8P" % wrong identifier
         % Swap the objects
-        tempObj = CombiLEDObjA;
-        CombiLEDObjA = CombiLEDObjB;
-        CombiLEDObjB = tempObj;
+        tempObj = CombiLEDObjC;
+        CombiLEDObjC = CombiLEDObjD;
+        CombiLEDObjD = tempObj;
     end
 
     % Update the gamma table
-    CombiLEDObjA.setGamma(calA.processedData.gammaTable);
-    CombiLEDObjB.setGamma(calB.processedData.gammaTable);
+    CombiLEDObjC.setGamma(calA.processedData.gammaTable);
+    CombiLEDObjD.setGamma(calB.processedData.gammaTable);
 end
 
 % Provide instructions
@@ -127,10 +127,10 @@ for bb=1:nBlocks
 
     % Which direction we will use this time
     modResultFileC = ...
-        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult_C_shifted.mat');
+        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel '_shifted'],'modResult_C.mat');
 
     modResultFileD = ...
-        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult_D_shifted.mat');
+        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel '_shifted'],'modResult_D.mat');
 
     % Load the previously generated modResult file for this direction
     load(modResultFileC,'modResult');
@@ -140,7 +140,7 @@ for bb=1:nBlocks
     modResultD = modResult;
 
     % Create a directory for the subject
-    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
+    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel, '_shifted'],experimentName);
     if ~isfolder(dataDir)
         mkdir(dataDir)
     end
@@ -148,22 +148,17 @@ for bb=1:nBlocks
     % Assemble the psychObj array, looping over the high and low range of
     % the discrimination function AND the reference frequencies AND the
     % contrast
-    psychObjArray = cell(2, length(refFreqHz));
+    psychObjArray = cell(2, length(refFreqHz), size(targetPhotoContrast,1));
     for ss = 1:2 % side, high, low
         for rr = 1:length(refFreqHz)
-            for iCont = size(targetPhotoreceptorContrast,2)
+            for iCont = 1:size(targetPhotoContrast,1)
 
                 % Define the filestem for this psychometric object
-                dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
+                dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel, '_shifted'],experimentName);
                 psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName ...
-                    '_cont-' strrep(num2str(targetPhotoreceptorContrast(iCont, directionIdx)),'.','x') ...
+                    '_cont-' strrep(num2str(targetPhotoContrast(iCont, directionIdx)),'.','x') ...
                     '_refFreq-' num2str(refFreqHz(rr)) 'Hz' ...
                     '_' stimParamLabels{ss}];
-
-                % Calculate the testContrast
-                %% the class def and present trial handle differences in combiLEDs
-                maxPhotoreceptorContrastC = mean(abs(modResultC.contrastReceptorsBipolar(modResultC.meta.whichReceptorsToTarget)));
-                testContrastC = targetPhotoreceptorContrast(iCont,directionIdx) / maxPhotoreceptorContrastC;
 
                 % Obtain the relevant stimParam values
                 stimParamsDomainList = p.Results.(stimParamLabels{ss}){directionIdx};
@@ -174,8 +169,8 @@ for bb=1:nBlocks
                     % Load the object
                     load(filename,'psychObj');
                     % Put in the fresh CombiLEDObjs
-                    psychObj.CombiLEDObjA = CombiLEDObjA;
-                    psychObj.CombiLEDObjB = CombiLEDObjB;
+                    psychObj.CombiLEDObjC = CombiLEDObjC;
+                    psychObj.CombiLEDObjD = CombiLEDObjD;
                     % Increment blockIdx
                     psychObj.blockIdx = psychObj.blockIdx+1;
                     psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
@@ -190,8 +185,8 @@ for bb=1:nBlocks
                     psychObj.useKeyboardFlag = useKeyboardFlag;
                 else
                     % Create the object
-                    psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultC, modResultD, refFreqHz(rr),...
-                        'refContrast',testContrastC,'testContrast',testContrastC,...
+                    psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjC, CombiLEDObjD, modResultC, modResultD, refFreqHz(rr),...
+                        'refPhotoContrast',targetPhotoContrast(iCont,directionIdx),'testPhotoContrast',targetPhotoContrast(iCont,directionIdx),...
                         'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
                         'simulateResponse',simulateResponse,'simulateStimuli',simulateStimuli,...
                         'useStaircase', useStaircase, 'randomCombi', randomCombi, ...
@@ -201,7 +196,7 @@ for bb=1:nBlocks
                 end
 
                 % Store in the psychObjArray
-                psychObjArray{ss, rr} = psychObj;
+                psychObjArray{ss, rr, iCont} = psychObj;
 
                 % Clear the psychObj
                 clear psychObj
@@ -214,7 +209,7 @@ for bb=1:nBlocks
     % assumes that all of the psychObj elements that will be called during
     % the block use the same modulation, modulation background, temporal
     % profile (i.e., sinusoid), and trial duration.
-    psychObjArray{1,1}.initializeDisplay;
+    psychObjArray{1,1,1}.initializeDisplay;
 
     if useKeyboardFlag     % If using keyboard
 
@@ -245,8 +240,10 @@ for bb=1:nBlocks
     % Store the block start time
     for ss = 1:2
         for rr = 1:length(refFreqHz)
-            blockStartTime = datetime();
-            psychObjArray{ss, rr}.blockStartTimes(psychObjArray{ss,rr}.blockIdx) = blockStartTime;
+            for iCont = 1:size(targetPhotoContrast,1)
+                blockStartTime = datetime();
+                psychObjArray{ss, rr, iCont}.blockStartTimes(psychObjArray{ss,rr, iCont}.blockIdx) = blockStartTime;
+            end
         end
     end
 
@@ -254,14 +251,23 @@ for bb=1:nBlocks
     % of reference frequencies.
     if mod(nTrialsPerBlock, length(refFreqHz) * 2) ~= 0
         error(['The number of trials must be even and a ' ...
-            'multiple of the number of reference frequencies.'])
+            'multiple of the number of reference frequencies and contrast levels.'])
     end
 
-    % Create two vectors, one containing estimate types (high or low side)
+    % Create three vectors, one containing estimate types (high or low
+    % side),
+    % another for contrast levels,
     % and the other containing reference frequencies.
 
     % High or low side estimate vector
     estimateType = zeros(1, nTrialsPerBlock);
+    % contrast vector
+    contrastLevel = zeros(1, nTrialsPerBlock);
+
+    % Assign contrast level
+    contrastLevel(1, 1:(nTrialsPerBlock/3)) = 1;
+    contrastLevel(1, (nTrialsPerBlock/3)+1:2*(nTrialsPerBlock/3)) = 2;
+    contrastLevel(1, (2*(nTrialsPerBlock/3))+1:nTrialsPerBlock) = 3;
 
     % Assign the first half of the values as 1 and the second half as 2
     estimateType(1, 1:(nTrialsPerBlock/2)) = 1;
@@ -286,24 +292,42 @@ for bb=1:nBlocks
 
     end
 
+    contIndex = zeros(1, nTrialsPerBlock);
+    contrastGroup = nTrialsPerBlock/(size(targetPhotoContrast,1));
+    startIdxCont = 1;
+     % Loop through indices for contrasts
+    for ii = 1:size(targetPhotoContrast,1)
+
+        % Find the end index for the current group (range of columns)
+        endIdxCont = startIdxCont + contrastGroup - 1;
+
+        % Assign the current refFreqHz index value to the current group
+        contIndex(1, startIdxCont:endIdxCont) = ii;
+
+        startIdxCont = endIdxCont + 1;
+    end
+
+
     % Generate all possible pairs and combine them into a single matrix
     % of unique pairs
-    [ET, RF] = meshgrid(estimateType, refFreqHzIndex);
-    pairs = [ET(:), RF(:)];
-    pairs = unique(pairs, 'rows', 'stable');
+    [ET, RF, CL] = meshgrid(estimateType, refFreqHzIndex, contIndex);
+    triplets = [ET(:), RF(:), CL(:)];
+    triplets = unique(triplets, 'rows', 'stable');
 
-    % Determine the number of times to repeat each unique pair
-    pairRepetitions = nTrialsPerBlock / length(pairs);
+    % Determine the number of times to repeat each unique triplet
+    tripletRepetitions = nTrialsPerBlock / length(triplets);
 
-    % Now create a list with repeated pairs
-    finalPairs = repmat(pairs, pairRepetitions, 1);
+    % Now create a list with repeated triplets
+    finalTriplets = repmat(triplets, tripletRepetitions, 1);
 
     % Permute the pairs to randomize the order
-    permutedPairs = finalPairs(randperm(size(finalPairs, 1)), :);
+    permutedPairs = finalTriplets(randperm(size(finalTriplets, 1)), :);
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
-        psychObjArray{permutedPairs(ii, 1), permutedPairs(ii, 2)}.presentTrial
+        psychObjArray{permutedPairs(ii, 1), permutedPairs(ii, 2), permutedPairs(ii, 3)}.presentTrial
+        BlockDone = load('gong.mat');
+        sound(BlockDone.y, BlockDone.Fs)
     end
 
     % Report completion of this block
@@ -312,12 +336,14 @@ for bb=1:nBlocks
     % Store the psychObjArray entries
     for ss = 1:2
         for rr = 1:length(refFreqHz)
-            % Grab the next psychObj
-            psychObj = psychObjArray{ss, rr};
-            % empty the CombiLEDObj handles and save the psychObj
-            psychObj.CombiLEDObjA = [];
-            psychObj.CombiLEDObjB = [];
-            save(psychObj.filename,'psychObj');
+            for iCont = 1:size(targetPhotoContrast,1)
+                % Grab the next psychObj
+                psychObj = psychObjArray{ss, rr, iCont};
+                % empty the CombiLEDObj handles and save the psychObj
+                psychObj.CombiLEDObjC = [];
+                psychObj.CombiLEDObjD = [];
+                save(psychObj.filename,'psychObj');
+            end
         end
     end
 
@@ -325,12 +351,16 @@ end % block loop
 
 % Clean up
 if ~simulateStimuli
-    CombiLEDObjA.goDark;
-    CombiLEDObjA.serialClose;
+    CombiLEDObjC.goDark;
+    CombiLEDObjC.serialClose;
 
-    CombiLEDObjB.goDark;
-    CombiLEDObjB.serialClose;
+    CombiLEDObjD.goDark;
+    CombiLEDObjD.serialClose;
 end
 clear CombiLEDObj
+
+%tell participant the task is done
+ExperimentDone = load('handel');
+sound(ExperimentDone.y,ExperimentDone.Fs)
 
 end % function

@@ -1,4 +1,4 @@
-function generateModResultsForDCPT(subjectID,observerAgeInYears,NDlabel,varargin)
+function generateShiftedModResultsForDCPT(subjectID,observerAgeInYears,NDlabel,varargin)
 % Generate modResult files for experiments on the dichoptic rig
 %
 % Syntax:

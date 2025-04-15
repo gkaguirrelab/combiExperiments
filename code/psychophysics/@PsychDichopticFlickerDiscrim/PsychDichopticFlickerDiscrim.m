@@ -30,8 +30,10 @@ classdef PsychDichopticFlickerDiscrim < handle
         psiParamsDomainList
         randomizePhase = false;
         refFreqHz
-        refContrast
-        testContrast
+        refPhotoContrast
+        testPhotoContrast
+        testModContrast
+        refModContrast
         stimulusDurationSecs = 30;
         interStimulusIntervalSecs = 0.2;
     end
@@ -73,12 +75,12 @@ classdef PsychDichopticFlickerDiscrim < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultA, modResultB, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjC, CombiLEDObjD, modResultC, modResultD, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
-            p.addParameter('testContrast',0.333,@isnumeric);
-            p.addParameter('refContrast',0.333,@isnumeric);
+            p.addParameter('testPhotoContrast',0.1,@isnumeric);
+            p.addParameter('refPhotoContrast',0.1,@isnumeric);
             p.addParameter('randomizePhase',false,@islogical);
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
@@ -97,13 +99,13 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
-            obj.CombiLEDObjC = CombiLEDObjA;
-            obj.CombiLEDObjD = CombiLEDObjB;
-            obj.modResultC = modResultA;
-            obj.modResultD = modResultB;
+            obj.CombiLEDObjC = CombiLEDObjC;
+            obj.CombiLEDObjD = CombiLEDObjD;
+            obj.modResultC = modResultC;
+            obj.modResultD = modResultD;
             obj.refFreqHz = refFreqHz;
-            obj.testContrast = p.Results.testContrast;
-            obj.refContrast = p.Results.refContrast;
+            obj.testPhotoContrast = p.Results.testPhotoContrast;
+            obj.refPhotoContrast = p.Results.refPhotoContrast;
             obj.randomizePhase = p.Results.randomizePhase;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
@@ -135,38 +137,46 @@ classdef PsychDichopticFlickerDiscrim < handle
             % Initialize the CombiLEDs
             obj.initializeDisplay;
 
-            % There is a roll-off (attenuation) of the amplitude of
-            % modulations with frequency. The stimParamsDomainList gives
-            % the range of possible test frequencies (in dBs) relative to
-            % the reference frequency. Check here that we can achieve the
-            % called-for test and reference contrast given this.
-            maxTestFreqHz = obj.refFreqHz * db2pow(max(obj.stimParamsDomainList));
-            assert(obj.testContrast/contrastAttenuationByFreq(maxTestFreqHz) < 1);
-            assert(obj.refContrast/contrastAttenuationByFreq(obj.refFreqHz) < 1);
+            % Determine the modulation contrast depth that produces the
+            % desired photoreceptor contrast on average across the two
+            % combiLEDs
+            maxPhotoContrastC = mean(abs(modResultC.contrastReceptorsBipolar(modResultC.meta.whichReceptorsToTarget)));
+            maxPhotoContrastD = mean(abs(modResultD.contrastReceptorsBipolar(modResultD.meta.whichReceptorsToTarget)));
+            meanMaxPhotoContrast = (maxPhotoContrastC + maxPhotoContrastD)/2;
+            obj.testModContrast = obj.testPhotoContrast / meanMaxPhotoContrast;
+            obj.refModContrast = obj.refPhotoContrast / meanMaxPhotoContrast;
 
             % Check the contrast on the targeted photoreceptors. This may
             % differ slightly for the modulations assigned to each
             % combiLED. We will calculate a contrast correction that is
             % applied to scale the larger contrast modulation to equate
             % them.
-            photoContrast1 = mean(abs(modResultC.contrastReceptorsBipolar(modResultC.meta.whichReceptorsToTarget)));
-            photoContrast2 = mean(abs(modResultD.contrastReceptorsBipolar(modResultD.meta.whichReceptorsToTarget)));
-            relativePhotoContrast = photoContrast1 / photoContrast2;
+            relativePhotoContrast = maxPhotoContrastC / maxPhotoContrastD;
             if relativePhotoContrast >= 1
                 obj.relativePhotoContrastCorrection = [1/relativePhotoContrast,1];
             else
                 obj.relativePhotoContrastCorrection = [1,relativePhotoContrast];
             end
 
+            % There is a roll-off (attenuation) of the amplitude of
+            % modulations with frequency. The stimParamsDomainList gives
+            % the range of possible test frequencies (in dBs) relative to
+            % the reference frequency. Check here that we can achieve the
+            % called-for test and reference contrast given this.
+            maxTestFreqHz = obj.refFreqHz * db2pow(max(obj.stimParamsDomainList));
+            assert(obj.testModContrast/contrastAttenuationByFreq(maxTestFreqHz) < 1);
+            assert(obj.refModContrast/contrastAttenuationByFreq(obj.refFreqHz) < 1);
+
             % Check that the minimum modulation contrast specified between
-            % testContrast and refContrast does not encounter quantization errors for
-            % the spectral modulation that is loaded into each combiLED.
-            minContrast1 = obj.relativePhotoContrastCorrection(1) * 10^min(obj.testContrast, obj.refContrast);
+            % testPhotoContrast and refPhotoContrast does not encounter
+            % quantization errors for the spectral modulation that is
+            % loaded into each combiLED.
+            minContrast1 = obj.relativePhotoContrastCorrection(1) * 10^min(obj.testPhotoContrast, obj.refPhotoContrast);
             quantizeErrorFlags = ...
                 obj.CombiLEDObjC.checkForQuantizationError(minContrast1);
             assert(~any(quantizeErrorFlags));
 
-            minContrast2 = obj.relativePhotoContrastCorrection(2) * 10^min(obj.testContrast, obj.refContrast);
+            minContrast2 = obj.relativePhotoContrastCorrection(2) * 10^min(obj.testPhotoContrast, obj.refPhotoContrast);
             quantizeErrorFlags = ...
                 obj.CombiLEDObjD.checkForQuantizationError(minContrast2);
             assert(~any(quantizeErrorFlags));

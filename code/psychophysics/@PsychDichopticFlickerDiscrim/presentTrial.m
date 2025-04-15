@@ -20,8 +20,8 @@ randomCombi = obj.randomCombi;
 % The calling function sets the reference frequency, and the contrast of
 % the test and ref
 refFreqHz = obj.refFreqHz;
-refContrast = obj.refContrast;
-testContrast = obj.testContrast;
+refModContrast = obj.refModContrast;
+testModContrast = obj.testModContrast;
 
 % Get the stimParam to use for this trial. Can use either a staircase or
 % QUEST+
@@ -37,8 +37,8 @@ testFreqHz = refFreqHz * db2pow(stimParam);
 
 % Adjust the contrast that is sent to the device to account for any
 % device attenuation of the modulation at high temporal frequencies
-testContrastAdjusted =  testContrast / contrastAttenuationByFreq(testFreqHz);
-refContrastAdjusted =  refContrast / contrastAttenuationByFreq(refFreqHz);
+testContrastAdjusted =  testModContrast / contrastAttenuationByFreq(testFreqHz);
+refContrastAdjusted =  refModContrast / contrastAttenuationByFreq(refFreqHz);
 
 % The ref phase is always 0
 refPhase = round(rand())*pi;
@@ -120,8 +120,8 @@ end
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Freq [%2.2f, %2.2f Hz]...', ...
-        currTrialIdx,intervalParams(1,2),intervalParams(2,2));
+    fprintf('Trial %d; Freq [%2.2f, %2.2f Hz] Contrast [%2.2g, %2.2g]...', ...
+        currTrialIdx,intervalParams(1,2),intervalParams(2,2),testModContrast, refModContrast);
 end
 
 % Present the stimuli
@@ -135,13 +135,13 @@ if ~simulateStimuli
     % Prepare the stimulus
     stopTime = cputime() + obj.interStimulusIntervalSecs;
 
-    obj.CombiLEDObjA.setContrast(intervalParams(1,1));
-    obj.CombiLEDObjA.setFrequency(intervalParams(1,2));
-    obj.CombiLEDObjA.setPhaseOffset(intervalParams(1,3));
+    obj.CombiLEDObjC.setContrast(intervalParams(1,1));
+    obj.CombiLEDObjC.setFrequency(intervalParams(1,2));
+    obj.CombiLEDObjC.setPhaseOffset(intervalParams(1,3));
 
-    obj.CombiLEDObjB.setContrast(intervalParams(2,1));
-    obj.CombiLEDObjB.setFrequency(intervalParams(2,2));
-    obj.CombiLEDObjB.setPhaseOffset(intervalParams(2,3));
+    obj.CombiLEDObjD.setContrast(intervalParams(2,1));
+    obj.CombiLEDObjD.setFrequency(intervalParams(2,2));
+    obj.CombiLEDObjD.setPhaseOffset(intervalParams(2,3));
 
     obj.waitUntil(stopTime);
 
@@ -149,8 +149,8 @@ if ~simulateStimuli
     % the response, thus allowing the subject to respond during the stimuli. 
     stopTime = cputime() + 0.5;
 
-    obj.CombiLEDObjA.startModulation;
-    obj.CombiLEDObjB.startModulation;
+    obj.CombiLEDObjC.startModulation;
+    obj.CombiLEDObjD.startModulation;
     audioObjs.low.play;
     obj.waitUntil(stopTime);
 
@@ -212,8 +212,8 @@ end
 
 % Stop the stimulus in case it is still running
 if ~simulateStimuli
-    obj.CombiLEDObjA.stopModulation;
-    obj.CombiLEDObjB.stopModulation;
+    obj.CombiLEDObjC.stopModulation;
+    obj.CombiLEDObjD.stopModulation;
 end
 
 % Determine if the subject has selected the ref or test interval
