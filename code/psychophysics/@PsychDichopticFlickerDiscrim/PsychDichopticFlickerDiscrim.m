@@ -17,8 +17,8 @@ classdef PsychDichopticFlickerDiscrim < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
-        modResultA
-        modResultB
+        modResultC
+        modResultD
         relativePhotoContrastCorrection
         questData
         simulatePsiParams
@@ -42,8 +42,8 @@ classdef PsychDichopticFlickerDiscrim < handle
         % The display objects. This is modifiable so that we can re-load
         % a PsychDetectionThreshold, update this handle, and then continue
         % to collect data
-        CombiLEDObjA
-        CombiLEDObjB
+        CombiLEDObjC
+        CombiLEDObjD
 
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
@@ -97,10 +97,10 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
-            obj.CombiLEDObjA = CombiLEDObjA;
-            obj.CombiLEDObjB = CombiLEDObjB;
-            obj.modResultA = modResultA;
-            obj.modResultB = modResultB;
+            obj.CombiLEDObjC = CombiLEDObjA;
+            obj.CombiLEDObjD = CombiLEDObjB;
+            obj.modResultC = modResultA;
+            obj.modResultD = modResultB;
             obj.refFreqHz = refFreqHz;
             obj.testContrast = p.Results.testContrast;
             obj.refContrast = p.Results.refContrast;
@@ -149,8 +149,8 @@ classdef PsychDichopticFlickerDiscrim < handle
             % combiLED. We will calculate a contrast correction that is
             % applied to scale the larger contrast modulation to equate
             % them.
-            photoContrast1 = mean(abs(modResultA.contrastReceptorsBipolar(modResultA.meta.whichReceptorsToTarget)));
-            photoContrast2 = mean(abs(modResultB.contrastReceptorsBipolar(modResultB.meta.whichReceptorsToTarget)));
+            photoContrast1 = mean(abs(modResultC.contrastReceptorsBipolar(modResultC.meta.whichReceptorsToTarget)));
+            photoContrast2 = mean(abs(modResultD.contrastReceptorsBipolar(modResultD.meta.whichReceptorsToTarget)));
             relativePhotoContrast = photoContrast1 / photoContrast2;
             if relativePhotoContrast >= 1
                 obj.relativePhotoContrastCorrection = [1/relativePhotoContrast,1];
@@ -163,12 +163,12 @@ classdef PsychDichopticFlickerDiscrim < handle
             % the spectral modulation that is loaded into each combiLED.
             minContrast1 = obj.relativePhotoContrastCorrection(1) * 10^min(obj.testContrast, obj.refContrast);
             quantizeErrorFlags = ...
-                obj.CombiLEDObjA.checkForQuantizationError(minContrast1);
+                obj.CombiLEDObjC.checkForQuantizationError(minContrast1);
             assert(~any(quantizeErrorFlags));
 
             minContrast2 = obj.relativePhotoContrastCorrection(2) * 10^min(obj.testContrast, obj.refContrast);
             quantizeErrorFlags = ...
-                obj.CombiLEDObjB.checkForQuantizationError(minContrast2);
+                obj.CombiLEDObjD.checkForQuantizationError(minContrast2);
             assert(~any(quantizeErrorFlags));
 
         end

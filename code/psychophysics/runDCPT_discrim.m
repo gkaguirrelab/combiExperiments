@@ -6,7 +6,7 @@ function runDCPT_discrim(subjectID,NDlabel,refFreqHz,varargin)
 %{
     subjectID = 'PILT_0001';
     NDlabel = '0x5';
-    refFreqHz = [24,12,6,3,1.5];
+    refFreqHz = [1.5, 3.4426, 7.9009, 18.1312, 24.0];
     runDiscrimThreshExperiment(subjectID,NDlabel,refFreqHz);
 %}
 
@@ -127,10 +127,10 @@ for bb=1:nBlocks
 
     % Which direction we will use this time
     modResultFileC = ...
-        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult_C.mat');
+        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult_C_shifted.mat');
 
     modResultFileD = ...
-        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult_D.mat');
+        fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],'modResult_D_shifted.mat');
 
     % Load the previously generated modResult file for this direction
     load(modResultFileC,'modResult');
@@ -149,25 +149,21 @@ for bb=1:nBlocks
     % the discrimination function AND the reference frequencies AND the
     % contrast
     psychObjArray = cell(2, length(refFreqHz));
-    for ss = 1:2
+    for ss = 1:2 % side, high, low
         for rr = 1:length(refFreqHz)
             for iCont = size(targetPhotoreceptorContrast,2)
 
                 % Define the filestem for this psychometric object
                 dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
                 psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName ...
-                    '_' strrep(num2str(targetPhotoreceptorContrast(directionIdx, iCont)),'.','x') ...
+                    '_cont-' strrep(num2str(targetPhotoreceptorContrast(iCont, directionIdx)),'.','x') ...
                     '_refFreq-' num2str(refFreqHz(rr)) 'Hz' ...
                     '_' stimParamLabels{ss}];
 
                 % Calculate the testContrast
-                %% NOTE THAT WE WILL NEED TO OBTAIN SEPARATE A AND B TEST
-                % contrast levels, as the photoreceptor contrast can / will
-                % differ between the A and B combiLED modResults. For now, just
-                % doing the calculation for modResultA.
-                %%ALSO need to do all the contrast levels.
-                maxPhotoreceptorContrast = mean(abs(modResultC.contrastReceptorsBipolar(modResultC.meta.whichReceptorsToTarget)));
-                testContrast = targetPhotoreceptorContrast(directionIdx) / maxPhotoreceptorContrast;
+                %% the class def and present trial handle differences in combiLEDs
+                maxPhotoreceptorContrastC = mean(abs(modResultC.contrastReceptorsBipolar(modResultC.meta.whichReceptorsToTarget)));
+                testContrastC = targetPhotoreceptorContrast(iCont,directionIdx) / maxPhotoreceptorContrastC;
 
                 % Obtain the relevant stimParam values
                 stimParamsDomainList = p.Results.(stimParamLabels{ss}){directionIdx};
@@ -195,7 +191,7 @@ for bb=1:nBlocks
                 else
                     % Create the object
                     psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjA, CombiLEDObjB, modResultC, modResultD, refFreqHz(rr),...
-                        'refContrast',testContrast,'testContrast',testContrast,...
+                        'refContrast',testContrastC,'testContrast',testContrastC,...
                         'stimParamsDomainList',stimParamsDomainList,'verbose',verbosePsychObj, ...
                         'simulateResponse',simulateResponse,'simulateStimuli',simulateStimuli,...
                         'useStaircase', useStaircase, 'randomCombi', randomCombi, ...
