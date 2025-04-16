@@ -2,9 +2,24 @@ function runDCPT_discrim(subjectID,NDlabel,refFreqHz,varargin)
 % Psychometric measurement of discrmination thresholds at a set of
 % frequencies for two post-receptoral directions (LMS and L-M).
 %
+%% NEED HEDAER COMMENTS
+
+% Optional
+% targetPhotoContrast       - 2xd vector, where d is the number of modulation
+%                               directions to be studied. columns mod dir,
+%                               rows are contrast level. Provides the low
+%                               and high contrast levels to be studied. The
+%                               default values are approximately 5x and 20x
+%                               detection thresholds from pilot temporal
+%                               contrast sensitivity functions detection
+%                               measures. We found thresholds of
+%                               approximately 0.005 contrast for L-M and
+%                               0.01 contrast for LF at lower temporal
+%                               frequencies.
+
 % Examples:
 %{
-    subjectID = 'HERO_gka';
+    subjectID = 'HERO_sam';
     NDlabel = '0x5';
     refFreqHz = [3.0000    5.0454    8.4853   14.2705   24.0000];
     runDCPT_discrim(subjectID,NDlabel,refFreqHz);
@@ -16,7 +31,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
-p.addParameter('targetPhotoContrast',[0.0375,0.15; 0.075, 0.3],@isnumeric); % approximately 5x, 10x, and 20 x detection threshold for low sensitivity frequencies. columns mod dir, rows are contrast level
+p.addParameter('targetPhotoContrast',[0.025,0.05; 0.05, 0.3],@isnumeric); 
 p.addParameter('stimParamsHi',{linspace(0,4,51),linspace(0,4,51)},@isnumeric);
 p.addParameter('stimParamsLow',{linspace(-4,0,51),linspace(-4,0,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
@@ -62,17 +77,17 @@ subjectDir = fullfile(...
 % Load modResult files and extract the calibrations. We need this to
 % obtain a gamma table to pass to the combiLEDs, and this property of the
 % device does not change with modulation direction
-% CombiLED A
+% CombiLED C -- left eyepiece
 modResultFileC = ...
     fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],'modResult_C.mat');
 load(modResultFileC,'modResult');
-calA = modResult.meta.cal;
+calC = modResult.meta.cal;
 
-% CombiLED B
+% CombiLED D -- right eyepiece
 modResultFileD = ...
     fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],'modResult_D.mat');
 load(modResultFileD,'modResult');
-calB = modResult.meta.cal;
+calD = modResult.meta.cal;
 
 % Set up the CombiLED
 if simulateStimuli
@@ -84,7 +99,7 @@ else
     CombiLEDObjD = CombiLEDcontrol('verbose',verboseCombiLED);
 
     % Check the identifierString and swap objects if needed
-    if CombiLEDObjC.identifierString == "B000JA8P" % wrong identifier
+    if CombiLEDObjC.identifierString == "A10L31XZ" % wrong identifier
         % Swap the objects
         tempObj = CombiLEDObjC;
         CombiLEDObjC = CombiLEDObjD;
@@ -92,9 +107,13 @@ else
     end
 
     % Update the gamma table
-    CombiLEDObjC.setGamma(calA.processedData.gammaTable);
-    CombiLEDObjD.setGamma(calB.processedData.gammaTable);
+    CombiLEDObjC.setGamma(calC.processedData.gammaTable);
+    CombiLEDObjD.setGamma(calD.processedData.gammaTable);
 end
+
+% Test that the CombiC and D objects have the correct identifier strings
+assert(CombiLEDObjC.identifierString == "A10L31XJ");
+assert(CombiLEDObjD.identifierString == "A10L31XZ");
 
 % Provide instructions
 if useKeyboardFlag
@@ -326,8 +345,6 @@ for bb=1:nBlocks
     % Present nTrials
     for ii = 1:nTrialsPerBlock
         psychObjArray{permutedPairs(ii, 1), permutedPairs(ii, 2), permutedPairs(ii, 3)}.presentTrial
-        BlockDone = load('gong.mat');
-        sound(BlockDone.y, BlockDone.Fs)
     end
 
     % Report completion of this block
@@ -346,8 +363,10 @@ for bb=1:nBlocks
             end
         end
     end
-
+    BlockDone = load('gong.mat');
+    sound(BlockDone.y, BlockDone.Fs)
 end % block loop
+
 
 % Clean up
 if ~simulateStimuli
