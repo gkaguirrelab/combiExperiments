@@ -280,14 +280,7 @@ for bb=1:nBlocks
 
     % High or low side estimate vector
     estimateType = zeros(1, nTrialsPerBlock);
-    % contrast vector
-    contrastLevel = zeros(1, nTrialsPerBlock);
-
-    % Assign contrast level
-    contrastLevel(1, 1:(nTrialsPerBlock/3)) = 1;
-    contrastLevel(1, (nTrialsPerBlock/3)+1:2*(nTrialsPerBlock/3)) = 2;
-    contrastLevel(1, (2*(nTrialsPerBlock/3))+1:nTrialsPerBlock) = 3;
-
+    
     % Assign the first half of the values as 1 and the second half as 2
     estimateType(1, 1:(nTrialsPerBlock/2)) = 1;
     estimateType(1, (nTrialsPerBlock/2)+1:nTrialsPerBlock) = 2;
