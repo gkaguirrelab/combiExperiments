@@ -357,7 +357,9 @@ for bb=1:nBlocks
         end
     end
     BlockDone = load('gong.mat');
-    sound(BlockDone.y, BlockDone.Fs)
+    if bb<nBlocks
+        sound(BlockDone.y, BlockDone.Fs)
+    end
 end % block loop
 
 
