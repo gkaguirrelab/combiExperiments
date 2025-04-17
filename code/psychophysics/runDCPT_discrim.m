@@ -42,7 +42,7 @@ p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateResponse',false,@islogical);
 p.addParameter('simulateStimuli',false,@islogical);
 p.addParameter('randomCombi',true,@islogical);
-p.addParameter('useKeyboardFlag',false,@islogical);
+p.addParameter('useKeyboardFlag',true,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
@@ -183,10 +183,11 @@ for bb=1:nBlocks
                 stimParamsDomainList = p.Results.(stimParamLabels{ss}){directionIdx};
 
                 % Create or load the psychometric object
-                filename = fullfile(dataDir,[psychFileStem '.mat']);
-                if isfile(filename)
+                psychObjFilename = fullfile(dataDir,[psychFileStem '.mat']);
+                if isfile(psychObjFilename)
                     % Load the object
-                    load(filename,'psychObj');
+                    load(psychObjFilename,'psychObj');
+                    psychObj.filename = psychObjFilename;
                     % Put in the fresh CombiLEDObjs
                     psychObj.CombiLEDObjC = CombiLEDObjC;
                     psychObj.CombiLEDObjD = CombiLEDObjD;
@@ -352,7 +353,12 @@ for bb=1:nBlocks
                 % empty the CombiLEDObj handles and save the psychObj
                 psychObj.CombiLEDObjC = [];
                 psychObj.CombiLEDObjD = [];
-                save(psychObj.filename,'psychObj');
+                % Save the psychObj        
+                save(psychObjFilename,'psychObj');
+                % Update the filename field of the psychObj, in case we are
+                % collecting data on a computer with a different absolute path to
+                % the data save location
+                psychObj.filename = psychObjFilename;
             end
         end
     end
