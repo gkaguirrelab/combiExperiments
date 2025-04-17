@@ -42,7 +42,7 @@ p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateResponse',false,@islogical);
 p.addParameter('simulateStimuli',false,@islogical);
 p.addParameter('randomCombi',true,@islogical);
-p.addParameter('useKeyboardFlag',true,@islogical);
+p.addParameter('useKeyboardFlag',false,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
@@ -203,6 +203,8 @@ for bb=1:nBlocks
                     psychObj.randomCombi = randomCombi;
                     % Update the keyboard flag
                     psychObj.useKeyboardFlag = useKeyboardFlag;
+                    % Update the filename
+                    psychObj.filename = psychObjFilename;
                 else
                     % Create the object
                     psychObj = PsychDichopticFlickerDiscrim(CombiLEDObjC, CombiLEDObjD, modResultC, modResultD, refFreqHz(rr),...
@@ -231,30 +233,23 @@ for bb=1:nBlocks
     % profile (i.e., sinusoid), and trial duration.
     psychObjArray{1,1,1}.initializeDisplay;
 
-    if useKeyboardFlag     % If using keyboard
-
-        % Start the block
+    % Start the block
+    if useKeyboardFlag     
+        % If using keyboard
         fprintf('Press enter to start block %d...',bb);
-
         input('');
-
     else
-
-        % Start the block
+        % If using gamepad
         fprintf('Press button 1, 2, 3, or 4 to start block %d...',bb);
-
-        while true  % If using gamepad
+        while true
             buttonState1 = Gamepad('GetButton', 1, 1);
             buttonState2 = Gamepad('GetButton', 1, 2);
             buttonState3 = Gamepad('GetButton', 1, 3);
             buttonState4 = Gamepad('GetButton', 1, 4);
-
             if buttonState1 == 1 || buttonState2 == 1 || buttonState3 == 1 || buttonState4 == 1
                 break
             end
-
         end
-
     end
 
     % Store the block start time
@@ -275,9 +270,8 @@ for bb=1:nBlocks
     end
 
     % Create three vectors, one containing estimate types (high or low
-    % side),
-    % another for contrast levels,
-    % and the other containing reference frequencies.
+    % side), another for contrast levels, and the other containing
+    % reference frequencies.
 
     % High or low side estimate vector
     estimateType = zeros(1, nTrialsPerBlock);
@@ -288,11 +282,10 @@ for bb=1:nBlocks
 
     % Reference frequency vector, which will contain indices of refFreqHz
     refFreqHzIndex = zeros(1, nTrialsPerBlock);
-
     group = ceil(nTrialsPerBlock / length(refFreqHz));
-    startIdx = 1;
 
     % Loop through indices
+    startIdx = 1;
     for ii = 1:length(refFreqHz)
 
         % Find the end index for the current group (range of columns)
@@ -308,6 +301,7 @@ for bb=1:nBlocks
     contIndex = zeros(1, nTrialsPerBlock);
     contrastGroup = nTrialsPerBlock/(size(targetPhotoContrast,1));
     startIdxCont = 1;
+
      % Loop through indices for contrasts
     for ii = 1:size(targetPhotoContrast,1)
 
@@ -319,7 +313,6 @@ for bb=1:nBlocks
 
         startIdxCont = endIdxCont + 1;
     end
-
 
     % Generate all possible pairs and combine them into a single matrix
     % of unique pairs
@@ -354,11 +347,7 @@ for bb=1:nBlocks
                 psychObj.CombiLEDObjC = [];
                 psychObj.CombiLEDObjD = [];
                 % Save the psychObj        
-                save(psychObjFilename,'psychObj');
-                % Update the filename field of the psychObj, in case we are
-                % collecting data on a computer with a different absolute path to
-                % the data save location
-                psychObj.filename = psychObjFilename;
+                save(psychObj.filename,'psychObj');
             end
         end
     end
