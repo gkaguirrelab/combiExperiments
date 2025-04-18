@@ -10,9 +10,9 @@ projectName='combiLED';
 experimentName = 'DUAL';
 
 % Set the labels for the light levels and directions
-NDlabelsAll = {'0x5','3x5'};
-modDirections = {'LminusM_wide','LightFlux'};
-targetPhotoreceptorContrast = [0.075,0.333];
+NDlabelsAll = {'0x6','3x5'};
+modDirections = {'LightFlux'};
+targetPhotoreceptorContrast = [0.05,0.333];
 % Set the labels for the high and low stimulus ranges
 stimParamLabels = {'stimParamsLow', 'stimParamsHi'};
 
