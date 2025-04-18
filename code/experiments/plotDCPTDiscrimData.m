@@ -130,7 +130,7 @@ for ii = 1:length(modDirections)
         %        plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 
         % Labels and range
-        xlim([-3.0 3.0]);
+        xlim([-4.0 4.0]);
         ylim([-0.1 1.1]);
         if rr == 6
             xlabel('stimulus difference [dB]');
