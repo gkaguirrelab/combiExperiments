@@ -101,8 +101,10 @@ for ii = 1:length(modDirections)
         lb1 = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
         lb2 = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
         lb = min(lb1, lb2);
-        ub1 = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
-        ub2 = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+        % ub1 = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
+        % ub2 = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+        ub1 = [0,50,0];
+        ub2 = [0,50,0];
         ub = max(ub1, ub2);
 
         storeVerbose1 = psychObjArray{1}.verbose;
