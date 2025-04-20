@@ -1,14 +1,10 @@
-% Object to support conducting a 2AFC flicker discrimination task. The
-% testing procedure involves showing a binocular, dichoptic reference
-% flicker of a specified frequency and photoreceptor contrast. The observer
-% presses a button when they feel they have properly encoded the stimulus.
-% After a variable delay the flicker returns, but on one side the flicker
-% frequency has been changed. The observer is asked to report the side on
-% which the change has occurred. QUEST+ is used to select stimuli in an
-% effort to estimate the sigma (slope) of a cumulative normal Gaussian that
-% defines the discrimination function. The mean (mu) is set to zero, which
-% corresponds to being 50% accurate when there is no physical difference
-% between the stimuli.
+% Object to support conducting a 2AFC flicker discrimination task,
+% using QUEST+ to select stimuli in an effort to estimate the sigma (slope)
+% of a cumulative normal Gaussian. The search is also asked to estimate the
+% mu (mean) of the cumulative normal, which prompts QUEST+ to explore both
+% above and below the reference stimulus. In fitting and reporting the
+% results we lock the mu to 0, which corresponds to being 50% accurate when
+% there is no physical difference between the stimuli.
 
 classdef PsychDichopticFlickerDiscrim < handle
 
@@ -21,7 +17,8 @@ classdef PsychDichopticFlickerDiscrim < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
-        modResultArr
+        modResultC
+        modResultD
         relativePhotoContrastCorrection
         questData
         simulatePsiParams
@@ -31,28 +28,36 @@ classdef PsychDichopticFlickerDiscrim < handle
         psiParamLabels
         stimParamsDomainList
         psiParamsDomainList
+        randomizePhase = false;
         refFreqHz
         refPhotoContrast
-        refModContrast
         testPhotoContrast
         testModContrast
-        isiSecs
+        refModContrast
+        stimulusDurationSecs = 30;
+        interStimulusIntervalSecs = 0.2;
     end
 
     % These may be modified after object creation
     properties (SetAccess=public)
 
-        % A cell array of the display objects. This is modifiable so that
-        % we can re-load a PsychDetectionThreshold, update this handle, and
-        % then continue to collect data
-        CombiLEDObjArr
+        % The display objects. This is modifiable so that we can re-load
+        % a PsychDetectionThreshold, update this handle, and then continue
+        % to collect data
+        CombiLEDObjC
+        CombiLEDObjD
 
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
         useStaircase
 
         % Can switch between simulating and not simulating
-        simulateMode
+        simulateResponse
+        simulateStimuli
+
+        % Switch between randomly assigning reference flicker and 
+        % always assigning it to CombiLED A
+        randomCombi
 
         % Assign a filename which is handy for saving and loading
         filename
@@ -70,14 +75,16 @@ classdef PsychDichopticFlickerDiscrim < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjArr, modResultArr, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjC, CombiLEDObjD, modResultC, modResultD, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
-            p.addParameter('refPhotoContrast',0.1,@isnumeric);
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
-            p.addParameter('isiSecs',0.5,@isnumeric);
-            p.addParameter('simulateMode',false,@islogical);
+            p.addParameter('refPhotoContrast',0.1,@isnumeric);
+            p.addParameter('randomizePhase',false,@islogical);
+            p.addParameter('simulateResponse',false,@islogical);
+            p.addParameter('simulateStimuli',false,@islogical);
+            p.addParameter('randomCombi',true,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',true,@islogical);            
             p.addParameter('staircaseRule',[1,3],@isnumeric);
@@ -92,13 +99,17 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
-            obj.CombiLEDObjArr = CombiLEDObjArr;
-            obj.modResultArr = modResultArr;
+            obj.CombiLEDObjC = CombiLEDObjC;
+            obj.CombiLEDObjD = CombiLEDObjD;
+            obj.modResultC = modResultC;
+            obj.modResultD = modResultD;
             obj.refFreqHz = refFreqHz;
             obj.testPhotoContrast = p.Results.testPhotoContrast;
             obj.refPhotoContrast = p.Results.refPhotoContrast;
-            obj.isiSecs = p.Results.isiSecs;            
-            obj.simulateMode = p.Results.simulateMode;
+            obj.randomizePhase = p.Results.randomizePhase;
+            obj.simulateResponse = p.Results.simulateResponse;
+            obj.simulateStimuli = p.Results.simulateStimuli;
+            obj.randomCombi = p.Results.randomCombi;
             obj.giveFeedback = p.Results.giveFeedback;
             obj.useStaircase = p.Results.useStaircase;
             obj.staircaseRule = p.Results.staircaseRule;
@@ -109,6 +120,12 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
             obj.useKeyboardFlag = p.Results.useKeyboardFlag;
+
+            % Detect incompatible simulate settings
+            if obj.simulateStimuli && ~obj.simulateResponse
+                fprintf('Forcing simulateResponse to true, as one cannot respond to a simulated stimulus\n')
+                obj.simulateResponse = true;
+            end
 
             % Initialize the blockStartTimes field
             obj.blockStartTimes(1) = datetime();
@@ -123,10 +140,9 @@ classdef PsychDichopticFlickerDiscrim < handle
             % Determine the modulation contrast depth that produces the
             % desired photoreceptor contrast on average across the two
             % combiLEDs
-            for side = 1:2
-                maxPhotoContrast(side) = mean(abs(modResultArr{side}.contrastReceptorsBipolar(modResultArr{side}.meta.whichReceptorsToTarget)));
-            end
-            meanMaxPhotoContrast = mean(maxPhotoContrast);
+            maxPhotoContrastC = mean(abs(modResultC.contrastReceptorsBipolar(modResultC.meta.whichReceptorsToTarget)));
+            maxPhotoContrastD = mean(abs(modResultD.contrastReceptorsBipolar(modResultD.meta.whichReceptorsToTarget)));
+            meanMaxPhotoContrast = (maxPhotoContrastC + maxPhotoContrastD)/2;
             obj.testModContrast = obj.testPhotoContrast / meanMaxPhotoContrast;
             obj.refModContrast = obj.refPhotoContrast / meanMaxPhotoContrast;
 
@@ -135,7 +151,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             % combiLED. We will calculate a contrast correction that is
             % applied to scale the larger contrast modulation to equate
             % them.
-            relativePhotoContrast = maxPhotoContrast(1) / maxPhotoContrast(2);
+            relativePhotoContrast = maxPhotoContrastC / maxPhotoContrastD;
             if relativePhotoContrast >= 1
                 obj.relativePhotoContrastCorrection = [1/relativePhotoContrast,1];
             else
@@ -154,16 +170,16 @@ classdef PsychDichopticFlickerDiscrim < handle
             % Check that the minimum modulation contrast specified between
             % testPhotoContrast and refPhotoContrast does not encounter
             % quantization errors for the spectral modulation that is
-            % loaded into each combiLED. We can only check this if we are
-            % not in simulateMode
-            if ~obj.simulateMode
-                for side = 1:2
-                    minContrast = obj.relativePhotoContrastCorrection(side) * 10^min(obj.testPhotoContrast, obj.refPhotoContrast);
-                    quantizeErrorFlags = ...
-                        obj.CombiLEDObjArr{side}.checkForQuantizationError(minContrast);
-                    assert(~any(quantizeErrorFlags));
-                end
-            end
+            % loaded into each combiLED.
+            minContrast1 = obj.relativePhotoContrastCorrection(1) * 10^min(obj.testPhotoContrast, obj.refPhotoContrast);
+            quantizeErrorFlags = ...
+                obj.CombiLEDObjC.checkForQuantizationError(minContrast1);
+            assert(~any(quantizeErrorFlags));
+
+            minContrast2 = obj.relativePhotoContrastCorrection(2) * 10^min(obj.testPhotoContrast, obj.refPhotoContrast);
+            quantizeErrorFlags = ...
+                obj.CombiLEDObjD.checkForQuantizationError(minContrast2);
+            assert(~any(quantizeErrorFlags));
 
         end
 

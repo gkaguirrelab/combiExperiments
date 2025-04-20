@@ -1,36 +1,40 @@
 function initializeDisplay(obj)
 
-if isempty(obj.CombiLEDObjC) && isempty(obj.CombiLEDObjD) && ~obj.simulateStimuli
-    if obj.verbose
-        fprintf('One or both of the CombiLEDObjs is empty; update this property and call the initializeDisplay method');
+% Check that the CombiLED objects are both defined
+if ~obj.simulateMode
+    for side = 1:2
+        if isempty(obj.CombiLEDObjArr{side})
+            fprintf('One or both of the CombiLEDObjs is empty; update this property and call the initializeDisplay method\n');
+        end
     end
 end
 
+% We will present the stimuli for a long time, so set the stimulus duration
+% to something arbitrarily long
+stimulusDurationSecs = 1e3;
+
 % Ensure that the CombiLEDs are configured to present our stimuli
 % properly (if we are not simulating the stimuli)
-if ~obj.simulateStimuli
+if ~obj.simulateMode
 
     % Alert the user
     if obj.verbose
         fprintf('Initializing CombiLEDObj\n')
     end
 
-    obj.CombiLEDObjC.setSettings(obj.modResultC);    
-    obj.CombiLEDObjC.setDuration(obj.stimulusDurationSecs);
-    obj.CombiLEDObjC.setWaveformIndex(1); % sinusoidal flicker
+    for side = 1:2
 
-    obj.CombiLEDObjD.setSettings(obj.modResultD);    
-    obj.CombiLEDObjD.setDuration(obj.stimulusDurationSecs);
-    obj.CombiLEDObjD.setWaveformIndex(1); % sinusoidal flicker
-    
-    % Subject the stimulus onset and offset to a half-cosine ramp
-    obj.CombiLEDObjC.setAMIndex(2); % half-cosine windowing
-    obj.CombiLEDObjC.setAMFrequency(1/obj.stimulusDurationSecs);
-    obj.CombiLEDObjC.setAMValues([0.25,0]); % 0.25 second half-cosine on; second value unused
+        % Pass the modResult, and set to a sinusoidal flicker
+        obj.CombiLEDObjArr{side}.setSettings(obj.modResultArr{side});
+        obj.CombiLEDObjArr{side}.setDuration(stimulusDurationSecs);
+        obj.CombiLEDObjArr{side}.setWaveformIndex(1); % sinusoidal flicker
 
-    obj.CombiLEDObjD.setAMIndex(2); % half-cosine windowing
-    obj.CombiLEDObjD.setAMFrequency(1/obj.stimulusDurationSecs);
-    obj.CombiLEDObjD.setAMValues([0.25,0]); % 0.25 second half-cosine on; second value unused
+        % Subject the stimulus onset and offset to a half-cosine ramp
+        obj.CombiLEDObjArr{side}.setAMIndex(2); % half-cosine windowing
+        obj.CombiLEDObjArr{side}.setAMFrequency(1/stimulusDurationSecs);
+        obj.CombiLEDObjArr{side}.setAMValues([0.25,0]); % 0.25 second half-cosine on; second value unused
+
+    end
 
 end
 

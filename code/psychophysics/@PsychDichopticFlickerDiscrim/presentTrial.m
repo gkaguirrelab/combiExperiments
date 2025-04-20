@@ -6,16 +6,11 @@ questData = obj.questData;
 % Get the current trial index
 currTrialIdx = size(questData.trialData,1)+1;
 
-% Determine if we are simulating the stimuli
-simulateStimuli = obj.simulateStimuli;
-simulateResponse = obj.simulateResponse;
+% Determine if we are simulating the stimuli and observer
+simulateMode = obj.simulateMode;
 
 % Determine if we are giving feedback on each trial
 giveFeedback = obj.giveFeedback;
-
-% Determine if we are randomly assigning the reference flicker on each trial,
-% or fixing it to CombiLED A
-randomCombi = obj.randomCombi;
 
 % The calling function sets the reference frequency, and the contrast of
 % the test and ref
@@ -23,69 +18,63 @@ refFreqHz = obj.refFreqHz;
 refModContrast = obj.refModContrast;
 testModContrast = obj.testModContrast;
 
-% Get the stimParam to use for this trial. Can use either a staircase or
+% Get the adjustment for the relative difference in photoreceptor contrast
+% between the two modResults / combiLEDs
+relativePhotoContrastCorrection = obj.relativePhotoContrastCorrection;
+
+% Get the testParam to use for this trial. Can use either a staircase or
 % QUEST+
 if obj.useStaircase
-    stimParam = obj.staircase(currTrialIdx);
+    testParam = obj.staircase(currTrialIdx);
 else
-    stimParam = qpQuery(questData);
+    testParam = qpQuery(questData);
 end
 
 % The difference between the reference and test frequency is given by the
-% qpStimParam, which is in units of decibels
-testFreqHz = refFreqHz * db2pow(stimParam);
+% testParam, which is in units of decibels
+testFreqHz = refFreqHz * db2pow(testParam);
 
-% Adjust the contrast that is sent to the device to account for any
-% device attenuation of the modulation at high temporal frequencies
-testContrastAdjusted =  testModContrast / contrastAttenuationByFreq(testFreqHz);
-refContrastAdjusted =  refModContrast / contrastAttenuationByFreq(refFreqHz);
+% Define the stimulus params. This is a 2x2x3 vector with the dimensions
+% corresponding to:
+%       interval, combiLED (1 or 2), and param (contrast, freq,phase)
+stimParams = zeros(2,2,3);
 
-% The ref phase is always 0
-refPhase = round(rand())*pi;
-
-% Determine if we have random test phase or not
-if obj.randomizePhase
-    testPhase = round(rand())*pi;
-else
-    testPhase = refPhase + pi/2;
-    if testPhase > 2*pi
-        testPhase = refPhase - pi/2;
-    end
+% During the first interval, the reference flicker is shown on both sides.
+% The phase is random, but matched on the two sides.
+firstIntervalPhase = round(rand())*pi;
+for side = 1:2
+    % Contrast
+    stimParams(1,side,1) = ...
+        relativePhotoContrastCorrection(side) * ...
+        (refModContrast / contrastAttenuationByFreq(refFreqHz));
+    % Frequency
+    stimParams(1,side,2) = refFreqHz;
+    % Phase
+    stimParams(1,side,3) = firstIntervalPhase;
 end
 
-% Assemble the param sets
-testParams = [testContrastAdjusted,testFreqHz,testPhase];
-refParams = [refContrastAdjusted,refFreqHz,refPhase];
+% During the second interval, one of the sides presents the test frequency.
+% This is selected at random.
+testSide = 1+logical(round(rand()));
+refSide = mod(testSide,2)+1;
 
-if randomCombi
-    % OPTION 1: Randomly assign the stimuli to the intervals
-    switch 1+logical(round(rand()))
-        case 1
-            intervalParams(1,:) = testParams;
-            intervalParams(2,:) = refParams;
-            testInterval = 1;
-        case 2
-            intervalParams(1,:) = refParams;
-            intervalParams(2,:) = testParams;
-            testInterval = 2;
-        otherwise
-            error('Not a valid testInterval')
-    end
-else
-    % OPTION 2: Fix the reference flicker to the first interval,
-    % and thus to Combi LED A. 
-    intervalParams(1,:) = refParams;
-    intervalParams(2,:) = testParams;
-    testInterval = 2;
-end
+% Assign the refSide stimuli for the second interval. The phase is again
+% randomized
+secondIntervalRefPhase = round(rand())*pi;
+stimParams(2,refSide,1) = ...
+    relativePhotoContrastCorrection(refSide) * ...
+    (refModContrast / contrastAttenuationByFreq(refFreqHz));
+stimParams(2,refSide,2) = refFreqHz;
+stimParams(2,refSide,3) = secondIntervalRefPhase;
 
-% Adjust the contrast again to null small differences in photoreceptor
-% contrast between the modulations in the two combiLEDs
-intervalParams(:,1) = intervalParams(:,1) .* obj.relativePhotoContrastCorrection';
-
-% Note which interval contains the faster flicker, which is used for
-% feedback
-[~,fasterInterval] = max(intervalParams(:,2));
+% Assign the testSide stimuli for the second interval. The phase is offset
+% by pi/2 from the refSide.
+secondIntervalTestPhase = wrapTo2Pi(secondIntervalRefPhase + pi/2);
+stimParams(2,testSide,1) = ...
+    relativePhotoContrastCorrection(testSide) * ...
+    (testModContrast / contrastAttenuationByFreq(testFreqHz));
+stimParams(2,testSide,2) = testFreqHz;
+stimParams(2,testSide,3) = secondIntervalTestPhase;
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -113,125 +102,129 @@ audioObjs.ready = audioplayer(readySound,Fs);
 audioObjs.correct = audioplayer(correctSound,Fs);
 audioObjs.incorrect = audioplayer(incorrectSound,Fs);
 
-% Create a figure that will be used to collect key presses
-if ~simulateResponse
+% Create a figure that will be used to collect key presses if we are using
+% the keyboard
+if ~simulateMode && obj.useKeyboardFlag
     [currKeyPress,S] = createResponseWindow();
 end
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Freq [%2.2f, %2.2f Hz] Contrast [%2.2g, %2.2g]...', ...
-        currTrialIdx,intervalParams(1,2),intervalParams(2,2),testModContrast, refModContrast);
+    fprintf('Trial %d; Freq [%2.2f, %2.2f Hz]...', ...
+        currTrialIdx,stimParams(2,:,2));
 end
 
 % Present the stimuli
-if ~simulateStimuli
+if simulateMode
 
-    % Alert the subject the trial is about to start
-    stopTimeSeconds = cputime() + 1;
-    obj.waitUntil(stopTimeSeconds);
+    %% Simulate
+    encodeTimeSecs = nan;
+    sideChoice = obj.getSimulatedResponse(testParam,testSide);
+    responseTimeSecs = nan;
 
-    % Present the two intervals simultaneously
-    % Prepare the stimulus
-    stopTime = cputime() + obj.interStimulusIntervalSecs;
+else
 
-    obj.CombiLEDObjC.setContrast(intervalParams(1,1));
-    obj.CombiLEDObjC.setFrequency(intervalParams(1,2));
-    obj.CombiLEDObjC.setPhaseOffset(intervalParams(1,3));
+    %% First interval
 
-    obj.CombiLEDObjD.setContrast(intervalParams(2,1));
-    obj.CombiLEDObjD.setFrequency(intervalParams(2,2));
-    obj.CombiLEDObjD.setPhaseOffset(intervalParams(2,3));
-
+    % Prepare the combiLEDs and wait half a second
+    stopTime = cputime() + 0.5;
+    interval = 1;
+    for side = 1:2
+        for param = 1:3
+            obj.CombiLEDObjArr{side}.setContrast(intervalParams(interval,side,param));
+        end
+    end
     obj.waitUntil(stopTime);
 
-    % Present the stimuli. Wait 1/4 of the stimuli and then move on to 
-    % the response, thus allowing the subject to respond during the stimuli. 
-    stopTime = cputime() + 0.5;
-
-    obj.CombiLEDObjC.startModulation;
-    obj.CombiLEDObjD.startModulation;
+    % Start the stimuli and sound a tone. Wait a second so that the subject
+    % has to look at these for a moment.
+    stopTime = cputime() + 1;
+    for side = 1:2
+        obj.CombiLEDObjArr{side}.startModulation;
+    end
     audioObjs.low.play;
     obj.waitUntil(stopTime);
 
-end
-
-% Start the response interval
-
-% Choose between keyboard or gamepad input
-
-if ~simulateResponse
-
-    if obj.useKeyboardFlag % Using keyboard
-        % Check for keyboard input
-        [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
+    % Wait for the subject to indicate that they have encoded the stimulus,
+    % which they do by pressing a key, or pressing one of the top buttons
+    % on the gamepad
+    if obj.useKeyboardFlag
+        [~,encodeTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
             'leftarrow', 'rightarrow'});
+    else
+        [~,encodeTimeSecs] = getGamepadResponse(Inf,[1 2 3 4]);
+    end
 
+    % Stop the stimuli
+    for side = 1:2
+        obj.CombiLEDObjArr{side}.stopModulation;
+    end
+
+    %% Second interval
+
+    % During the ISI, prepare the stimuli
+    stopTime = cputime() + obj.isiSecs;
+    interval = 2;
+    for side = 1:2
+        for param = 1:3
+            obj.CombiLEDObjArr{side}.setContrast(intervalParams(interval,side,param));
+        end
+    end
+    obj.waitUntil(stopTime);
+
+    % Start the stimuli and sound a tone. Wait a half a second so that the
+    % subject has to look at these for a moment.
+    stopTime = cputime() + 0.5;
+    for side = 1:2
+        obj.CombiLEDObjArr{side}.startModulation;
+    end
+    audioObjs.mid.play;
+    obj.waitUntil(stopTime);
+
+    % Start the response interval
+    if obj.useKeyboardFlag
+        [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
+            'leftarrow', 'rightarrow'});
         if ~isempty(keyPress)
             switch keyPress
                 case {'1','numpad1','leftarrow'}
-                    intervalChoice = 1;
+                    sideChoice = 1;
                 case {'2','numpad2','rightarrow'}
-                    intervalChoice = 2;
+                    sideChoice = 2;
             end
         end
-
-    else  % Using gamepad
-
-        intervalStartSecs = second(datetime(),'secondofday');
-
-        while true % Keep looping until a button is pressed
-
-            % Check for gamepad input
-            % Left side
-            buttonState5 = Gamepad('GetButton', 1, 5); % 5th button on 1st gamepad
-            buttonState7 = Gamepad('GetButton', 1, 7);
-            % Right side
-            buttonState6 = Gamepad('GetButton', 1, 6);
-            buttonState8 = Gamepad('GetButton', 1, 8);
-
-            if buttonState5 == 1 || buttonState7 == 1
-                intervalChoice = 1;
-                responseTimeSecs = second(datetime(),'secondofday') - intervalStartSecs;
-                break
-            elseif buttonState6 == 1 || buttonState8 == 1
-                intervalChoice = 2;
-                responseTimeSecs = second(datetime(),'secondofday') - intervalStartSecs;
-                break
+        % Close the response window
+        close(S.fh);
+    else
+        % Using gamepad
+        [buttonPress, responseTimeSecs] = getGamepadResponse(Inf,[5 7 6 8]);
+        if ~isempty(buttonPress)
+            switch buttonPress
+                case [5 7]
+                    sideChoice = 1;
+                case [6 8]
+                    sideChoice = 2;
             end
-
         end
-
     end
 
-    close(S.fh);
-else
-    intervalChoice = obj.getSimulatedResponse(stimParam,testInterval);
-    responseTimeSecs = nan;
+    % Stop the stimuli
+    for side = 1:2
+        obj.CombiLEDObjArr{side}.stopModulation;
+    end
+    
 end
 
-% Stop the stimulus in case it is still running
-if ~simulateStimuli
-    obj.CombiLEDObjC.stopModulation;
-    obj.CombiLEDObjD.stopModulation;
-end
-
-% Determine if the subject has selected the ref or test interval
-if intervalChoice == testInterval
-    outcome = 2;
-else
-    outcome = 1;
-end
-
-% Determine if the subject has selected the faster interval and handle
+% Determine if the subject has selected the correct side and handle
 % audio feedback
-if intervalChoice==fasterInterval
+if sideChoice==testSide
     % Correct
+    outcome = 2;
     correct = true;
     if obj.verbose
         fprintf('correct');
     end
-    if ~simulateStimuli
+    if ~simulateMode
         % We are not simulating, and the response was correct.
         % Regardless of whether we are giving feedback or not, we will
         % play the "correct" tone
@@ -240,11 +233,12 @@ if intervalChoice==fasterInterval
     end
 else
     % incorrect
+    outcome = 1;
     correct = false;
     if obj.verbose
         fprintf('incorrect');
     end
-    if ~simulateStimuli
+    if ~simulateMode
         % We are not simulating
         if giveFeedback
             % We are giving feedback, so play the "incorrect" tone
@@ -264,12 +258,12 @@ if obj.verbose
 end
 
 % Update questData
-questData = qpUpdate(questData,stimParam,outcome);
+questData = qpUpdate(questData,testParam,outcome);
 
 % Add in the stimulus information
-questData.trialData(currTrialIdx).testPhase = testPhase;
-questData.trialData(currTrialIdx).testInterval = testInterval;
-questData.trialData(currTrialIdx).fasterInterval = fasterInterval;
+questData.trialData(currTrialIdx).stimParams = stimParams;
+questData.trialData(currTrialIdx).testSide = testSide;
+questData.trialData(currTrialIdx).encodeTimeSecs = encodeTimeSecs;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
 

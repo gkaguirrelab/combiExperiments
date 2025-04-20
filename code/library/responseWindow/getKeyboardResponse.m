@@ -1,5 +1,5 @@
 
-function [keyPress, responseTimeSecs] = getResponse(currKeyPress,responseDurSecs,validResponseSet)
+function [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,responseDurSecs,validResponseSet)
 
 % Initialize the retun values
 keyPress = '';

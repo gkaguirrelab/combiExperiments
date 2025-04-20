@@ -1,11 +1,11 @@
 function initializeQP(obj)
 
 % Pull out some information from the obj
-simulateMode = obj.simulateMode;
+simulateResponse = obj.simulateResponse;
 verbose = obj.verbose;
 
 % Handle simulation and the outcome function
-if simulateMode
+if simulateResponse
     simulatePsiParams = obj.simulatePsiParams;
     qpOutcomeF = @(x) qpSimulatedObserver(x,obj.psychometricFuncHandle,simulatePsiParams);
 else
