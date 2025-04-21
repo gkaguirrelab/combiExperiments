@@ -20,10 +20,10 @@ sortedStimParamsDomainList = stimParamsDomainList(sortOrder);
 % Get the trialData
 trialData = obj.questData.trialData;
 
-% If we are on the first trial, use a starting point that is 1/3 from the
+% If we are on the first trial, use a starting point that is 1/4 from the
 % most intense option in the sortedStimParamsDomainList
 if currTrialIdx==1
-    stimIdx = round(length(sortedStimParamsDomainList)*0.33);
+    stimIdx = round(length(sortedStimParamsDomainList)*0.25);
     stimParam = sortedStimParamsDomainList(stimIdx);
     return
 end

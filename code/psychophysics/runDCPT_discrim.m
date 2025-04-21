@@ -7,13 +7,13 @@ function runDCPT_discrim(subjectID,NDlabel,varargin)
 % Description:
 %   This function organizes the collection of data using the
 %   PsychDichopticFlickerDiscrim psychometric object. This is a measure of
-%   the ability of an observer to discriminate a change in the appearance of
-%   a flickering stimulus. On each of many trials the observer is shown a
-%   "reference" flicker on both sides of a dichoptic apparatus. After they
-%   have indicated readiness, the flicker is stopped and, after a brief
-%   ISI, a different, "test" flicker is presented on one side (selected
-%   randomly) while the reference flicker is re-presented on the other
-%   side. The obserer is asked to report which side has changed. A
+%   the ability of an observer to discriminate a change in the appearance
+%   of a flickering stimulus. On each of many trials the observer is shown
+%   a "reference" flicker on both sides of a dichoptic apparatus. After
+%   they have indicated readiness, the flicker is stopped and, after a
+%   brief ISI, a different, "test" flicker is presented on one side
+%   (selected randomly) while the reference flicker is re-presented on the
+%   other side. The obserer is asked to report which side has changed. A
 %   staircase or QUEST+ procedure is used to vary the test flicker to
 %   identify the frequency difference required to produce threshold
 %   discrimination performance.
@@ -38,7 +38,7 @@ function runDCPT_discrim(subjectID,NDlabel,varargin)
 %                           directions to be studied. columns mod dir, rows
 %                           are contrast level. Provides the low and high
 %                           contrast levels to be studied. The default
-%                           values are approximately 5x and 20x detection
+%                           values are approximately 10x and 20x detection
 %                           thresholds from pilot temporal contrast
 %                           sensitivity functions detection measures. We
 %                           found thresholds of approximately 0.005
@@ -59,7 +59,7 @@ function runDCPT_discrim(subjectID,NDlabel,varargin)
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
 p.addParameter('refFreqHz',[3.0000, 5.0454, 8.4853, 14.2705, 24.0000],@isnumeric);
-p.addParameter('targetPhotoContrast',[0.025,0.05; 0.05, 0.3],@isnumeric);
+p.addParameter('targetPhotoContrast',[0.0375, 0.075; 0.075, 0.15],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
@@ -69,7 +69,7 @@ p.addParameter('stimParamsHi',{linspace(0,5,51),linspace(0,5,51)},@isnumeric);
 p.addParameter('stimParamsLow',{linspace(-5,0,51),linspace(-5,0,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
-p.addParameter('useStaircase',false,@islogical);
+p.addParameter('useStaircase',true,@islogical);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
@@ -216,6 +216,7 @@ for bb=1:nBlocks
                 if isfile(psychObjFilename)
                     % Load the object
                     load(psychObjFilename,'psychObj');
+                    % Update the path to the file in case this has changed
                     psychObj.filename = psychObjFilename;
                     % Put in the fresh CombiLEDObjs
                     psychObj.CombiLEDObjArr = CombiLEDObjArr;
@@ -312,11 +313,7 @@ for bb=1:nBlocks
                 % empty the CombiLEDObj handles and save the psychObj
                 psychObj.CombiLEDObjArr = {};
                 % Save the psychObj
-                save(psychObjFilename,'psychObj');
-                % Update the filename field of the psychObj, in case we are
-                % collecting data on a computer with a different absolute path to
-                % the data save location
-                psychObj.filename = psychObjFilename;
+                save(psychObj.filename,'psychObj');
             end
         end
     end

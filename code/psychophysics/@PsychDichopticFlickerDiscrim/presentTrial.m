@@ -40,8 +40,8 @@ testFreqHz = refFreqHz * db2pow(testParam);
 stimParams = zeros(2,2,3);
 
 % During the first interval, the reference flicker is shown on both sides.
-% The phase is random, but matched on the two sides.
-firstIntervalPhase = round(rand())*pi;
+% The phase is randomly set, but matched on the two sides.
+firstIntervalPhase = rand()*pi;
 for side = 1:2
     % Contrast
     stimParams(1,side,1) = ...
@@ -60,16 +60,20 @@ refSide = mod(testSide,2)+1;
 
 % Assign the refSide stimuli for the second interval. The phase is again
 % randomized
-secondIntervalRefPhase = round(rand())*pi;
+secondIntervalRefPhase = rand()*pi;
 stimParams(2,refSide,1) = ...
     relativePhotoContrastCorrection(refSide) * ...
     (refModContrast / contrastAttenuationByFreq(refFreqHz));
 stimParams(2,refSide,2) = refFreqHz;
 stimParams(2,refSide,3) = secondIntervalRefPhase;
 
-% Assign the testSide stimuli for the second interval. The phase is offset
-% by pi/2 from the refSide.
-secondIntervalTestPhase = wrapTo2Pi(secondIntervalRefPhase + pi/2);
+% Assign the testSide stimuli for the second interval. The phase is the
+% same for the reference and test. If we wanted to make them offset by 90°,
+% could use this line instead:
+%{
+    secondIntervalTestPhase = wrapTo2Pi(secondIntervalRefPhase + pi/2);
+%}
+secondIntervalTestPhase = secondIntervalRefPhase;
 stimParams(2,testSide,1) = ...
     relativePhotoContrastCorrection(testSide) * ...
     (testModContrast / contrastAttenuationByFreq(testFreqHz));
@@ -110,8 +114,8 @@ end
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Freq [%2.2f, %2.2f Hz]...', ...
-        currTrialIdx,stimParams(2,:,2));
+    fprintf('Trial %d; Ref Contrast %2.2f; Ref freq %2.2f, Test freq %2.2f; Side %d...', ...
+        currTrialIdx,stimParams(1,1,1),stimParams(2,refSide,2),stimParams(2,testSide,2),testSide);
 end
 
 % Present the stimuli
@@ -126,40 +130,26 @@ else
 
     %% First interval
 
-    % Prepare the combiLEDs and wait half a second
-    stopTime = cputime() + 0.5;
+    % Prepare the combiLEDs
     interval = 1;
     for side = 1:2
-        % for param = 1:3
-            param = 1; % contrast
-            obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,param));
-        % end
+       obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,1));
+       obj.CombiLEDObjArr{side}.setFrequency(stimParams(interval,side,2));
+       obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(interval,side,3));
     end
+
+    % Wait half a second to make sure that the CombiLEDs have received
+    % these new settings
+    stopTime = cputime() + 0.5;
     obj.waitUntil(stopTime);
 
-    % Start the stimuli and sound a tone. Wait a second so that the subject
-    % has to look at these for a moment.
-    stopTime = cputime() + 1;
+    % Start the stimuli and sound a tone. Wait for stimDurSecs.
+    stopTime = cputime() + obj.stimDurSecs;
     for side = 1:2
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.low.play;
     obj.waitUntil(stopTime);
-
-    % Wait for the subject to indicate that they have encoded the stimulus,
-    % which they do by pressing a key, or pressing one of the top buttons
-    % on the gamepad
-    if obj.useKeyboardFlag
-        [~,encodeTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2', ...
-            'leftarrow', 'rightarrow'});
-    else
-        [~,encodeTimeSecs] = getGamepadResponse(Inf,[1 2 3 4]);
-    end
-
-    % Stop the stimuli
-    for side = 1:2
-        obj.CombiLEDObjArr{side}.stopModulation;
-    end
 
     %% Second interval
 
@@ -167,10 +157,9 @@ else
     stopTime = cputime() + obj.isiSecs;
     interval = 2;
     for side = 1:2
-        % for param = 1:3
-        param = 1; % conrast
-            obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,param));
-        % end
+       obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,1));
+       obj.CombiLEDObjArr{side}.setFrequency(stimParams(interval,side,2));
+       obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(interval,side,3));
     end
     obj.waitUntil(stopTime);
 
@@ -202,24 +191,30 @@ else
         [buttonPress, responseTimeSecs] = getGamepadResponse(Inf,[5 7 6 8]);
         if ~isempty(buttonPress)
             switch buttonPress
-                case [5 7]
+                case {5 7}
                     sideChoice = 1;
-                case [6 8]
+                case {6 8}
                     sideChoice = 2;
             end
         end
     end
 
-    % Stop the stimuli
+    % Stop the stimuli (needed as the subject may have responded before the
+    % stimuli have completed)
     for side = 1:2
         obj.CombiLEDObjArr{side}.stopModulation;
     end
-    
+
+    % Wait half a second for an inter-trial-interval
+    stopTime = cputime() + 0.5;
+    obj.waitUntil(stopTime);
+
 end
 
-% Determine if the subject has selected the correct side and handle
-% audio feedback
-if sideChoice==testSide
+% We define a correct response as selecting the side that contains the
+% reference stimulus. Determine if the subject has selected the correct
+% side and handle audio feedback
+if sideChoice==refSide
     % Correct
     outcome = 2;
     correct = true;
@@ -264,8 +259,8 @@ questData = qpUpdate(questData,testParam,outcome);
 
 % Add in the stimulus information
 questData.trialData(currTrialIdx).stimParams = stimParams;
+questData.trialData(currTrialIdx).refSide = refSide;
 questData.trialData(currTrialIdx).testSide = testSide;
-questData.trialData(currTrialIdx).encodeTimeSecs = encodeTimeSecs;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
 

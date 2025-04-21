@@ -36,6 +36,7 @@ classdef PsychDichopticFlickerDiscrim < handle
         refModContrast
         testPhotoContrast
         testModContrast
+        stimDurSecs
         isiSecs
     end
 
@@ -76,7 +77,8 @@ classdef PsychDichopticFlickerDiscrim < handle
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('refPhotoContrast',0.1,@isnumeric);
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
-            p.addParameter('isiSecs',0.5,@isnumeric);
+            p.addParameter('stimDurSecs',3,@isnumeric);
+            p.addParameter('isiSecs',0,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',true,@islogical);            
@@ -96,7 +98,8 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.modResultArr = modResultArr;
             obj.refFreqHz = refFreqHz;
             obj.testPhotoContrast = p.Results.testPhotoContrast;
-            obj.refPhotoContrast = p.Results.refPhotoContrast;
+            obj.refPhotoContrast = p.Results.refPhotoContrast;            
+            obj.stimDurSecs = p.Results.stimDurSecs;            
             obj.isiSecs = p.Results.isiSecs;            
             obj.simulateMode = p.Results.simulateMode;
             obj.giveFeedback = p.Results.giveFeedback;

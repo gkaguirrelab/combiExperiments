@@ -9,10 +9,6 @@ if ~obj.simulateMode
     end
 end
 
-% We will present the stimuli for a long time, so set the stimulus duration
-% to something arbitrarily long
-stimulusDurationSecs = 1e3;
-
 % Ensure that the CombiLEDs are configured to present our stimuli
 % properly (if we are not simulating the stimuli)
 if ~obj.simulateMode
@@ -26,12 +22,12 @@ if ~obj.simulateMode
 
         % Pass the modResult, and set to a sinusoidal flicker
         obj.CombiLEDObjArr{side}.setSettings(obj.modResultArr{side});
-        obj.CombiLEDObjArr{side}.setDuration(stimulusDurationSecs);
+        obj.CombiLEDObjArr{side}.setDuration(obj.stimDurSecs);
         obj.CombiLEDObjArr{side}.setWaveformIndex(1); % sinusoidal flicker
 
         % Subject the stimulus onset and offset to a half-cosine ramp
         obj.CombiLEDObjArr{side}.setAMIndex(2); % half-cosine windowing
-        obj.CombiLEDObjArr{side}.setAMFrequency(1/stimulusDurationSecs);
+        obj.CombiLEDObjArr{side}.setAMFrequency(1/obj.stimDurSecs);
         obj.CombiLEDObjArr{side}.setAMValues([0.25,0]); % 0.25 second half-cosine on; second value unused
 
     end

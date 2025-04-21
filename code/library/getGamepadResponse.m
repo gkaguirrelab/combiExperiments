@@ -32,11 +32,6 @@ while waitingForButton
     end
 
 end
-if buttonCheckIdx ==1
-    buttonCheckIdx = length(validResponseSet);
-else
-    buttonCheckIdx = buttonCheckIdx - 1;
-end
 
 % Prepare the return variables
 responseTimeSecs = second(datetime(),'secondofday') - intervalStartSecs;
