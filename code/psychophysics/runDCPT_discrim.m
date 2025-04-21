@@ -72,8 +72,8 @@ p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
-p.addParameter('simulateMode',true,@islogical);
-p.addParameter('useKeyboardFlag',true,@islogical);
+p.addParameter('simulateMode',false,@islogical);
+p.addParameter('useKeyboardFlag',false,@islogical);
 p.parse(varargin{:})
 
 %  Pull out some variablse from the p.Results structure
@@ -142,7 +142,7 @@ else
 
     % Test that the CombiLED objects now have the correct identifier
     % strings, and update the gamma table
-    for side = 1:nsides
+    for side = 1:nSides
         assert(CombiLEDObjArr{side}.identifierString == combiLEDIDs{side});
         CombiLEDObjArr{side}.setGamma(cal{side}.processedData.gammaTable);
     end

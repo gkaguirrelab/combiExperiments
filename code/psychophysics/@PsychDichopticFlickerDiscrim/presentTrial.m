@@ -130,9 +130,10 @@ else
     stopTime = cputime() + 0.5;
     interval = 1;
     for side = 1:2
-        for param = 1:3
-            obj.CombiLEDObjArr{side}.setContrast(intervalParams(interval,side,param));
-        end
+        % for param = 1:3
+            param = 1; % contrast
+            obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,param));
+        % end
     end
     obj.waitUntil(stopTime);
 
@@ -166,9 +167,10 @@ else
     stopTime = cputime() + obj.isiSecs;
     interval = 2;
     for side = 1:2
-        for param = 1:3
-            obj.CombiLEDObjArr{side}.setContrast(intervalParams(interval,side,param));
-        end
+        % for param = 1:3
+        param = 1; % conrast
+            obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,param));
+        % end
     end
     obj.waitUntil(stopTime);
 
