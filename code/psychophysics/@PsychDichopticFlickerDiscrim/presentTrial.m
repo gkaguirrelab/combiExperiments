@@ -40,15 +40,19 @@ testFreqHz = refFreqHz * db2pow(testParam);
 stimParams = zeros(2,2,3);
 
 % Decide which inteval will have the test flicker.
-testInterval = round(rand())+1;
-if testInterval ==1
-    refInterval =2;
-else
-    refInterval =1;
-end
-% During the reference interval, flicker is shown on both sides.
-% The phase is randomly set, but matched on the two sides.
-refIntervalPhase = rand()*pi;
+testInterval = 1+round(rand());
+refInterval = mod(testInterval,2)+1;
+
+% Define the phase parameters for the reference interval. The phase is
+% randomly selected and set to be pi/2 out of phase between the two sides.
+% We also need to account for the delay in starting the 2nd combiLED
+% relative to the first.
+refIntervalPhaseBySide(1) = rand()*pi;
+refIntervalPhaseBySide(2) = wrapTo2Pi(refIntervalPhaseBySide(1) + pi/2 + ...
+           2 * pi * refFreqHz * obj.combiLEDStartTimeSecs);
+
+% Set the parameters for the reference interval. The same contrast and
+% frequency is shown on the two sides. 
 for side = 1:2
     % Contrast
     stimParams(refInterval,side,1) = ...
@@ -56,42 +60,40 @@ for side = 1:2
         (refModContrast / contrastAttenuationByFreq(refFreqHz));
     % Frequency
     stimParams(refInterval,side,2) = refFreqHz;
-    % Phase
-    if side ==1
-        stimParams(refInterval,side,3) = refIntervalPhase;
-    else
-        stimParams(refInterval,side,3) = wrapTo2Pi(refIntervalPhase + pi/2);
-    end
+    % Phase 
+    stimParams(refInterval,side,3) = refIntervalPhaseBySide(side);
 end
 
-% During the second interval, one of the sides presents the test frequency.
-% This is selected at random.
-testSide = 1+logical(round(rand()));
+% During the parameters for the test interval. One of the sides presents
+% the test frequency. This is selected at random.
+testSide = 1+round(rand());
 refSide = mod(testSide,2)+1;
 
-% Assign the refSide stimuli for the second interval. The phase is again
-% randomized
-secondIntervalRefPhase = rand()*pi;
+% Define the phase parameters for the test interval. The phase is
+% randomly selected and set to be pi/2 out of phase between the two sides.
+% We also need to account for the delay in starting the 2nd combiLED
+% relative to the first.
+testIntervalPhaseSide1 = rand()*pi;
+stimParams(testInterval,1,3) = testIntervalPhaseSide1;
+if testSide == 1
+    stimParams(testInterval,2,3) = wrapTo2Pi(testIntervalPhaseSide1 + pi/2 + ...
+        2 * pi * refFreqHz * obj.combiLEDStartTimeSecs);
+else
+    stimParams(testInterval,2,3) = wrapTo2Pi(testIntervalPhaseSide1 + pi/2 + ...
+        2 * pi * testFreqHz * obj.combiLEDStartTimeSecs);
+end
+
+% Assign the refSide stimuli for the test interval.
 stimParams(testInterval,refSide,1) = ...
     relativePhotoContrastCorrection(refSide) * ...
     (refModContrast / contrastAttenuationByFreq(refFreqHz));
 stimParams(testInterval,refSide,2) = refFreqHz;
-stimParams(testInterval,refSide,3) = secondIntervalRefPhase;
 
-% Assign the testSide stimuli for the second interval. The phase is offset by 90°. If we wanted to make them the
-% same for the reference and test,
-% could use this line instead:
-%{
-    secondIntervalTestPhase = secondIntervalRefPhase;
-%}
-
-secondIntervalTestPhase = wrapTo2Pi(secondIntervalRefPhase + pi/2);
-
+% Assign the testSide stimuli for the test interval.
 stimParams(testInterval,testSide,1) = ...
     relativePhotoContrastCorrection(testSide) * ...
     (testModContrast / contrastAttenuationByFreq(testFreqHz));
 stimParams(testInterval,testSide,2) = testFreqHz;
-stimParams(testInterval,testSide,3) = secondIntervalTestPhase;
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -127,18 +129,16 @@ end
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Ref Contrast %2.2f; Ref freq %2.2f, Test freq %2.2f; Test Interval %d...', ...
-        currTrialIdx,stimParams(1,1,1),stimParams(2,refSide,2),stimParams(2,testSide,2),testInterval);
+    fprintf('Trial %d; Ref Contrast %2.2f; Ref freq %2.2f, Test freq %2.2f; Test Interval %d, Test side %d...', ...
+        currTrialIdx,stimParams(1,1,1),stimParams(2,refSide,2),stimParams(2,testSide,2),testInterval,testSide);
 end
 
 % Present the stimuli
 if simulateMode
 
     %% Simulate
-    encodeTimeSecs = nan;
-    sideChoice = obj.getSimulatedResponse(testParam,testSide);
+    intervalChoice = obj.getSimulatedResponse(testParam,testSide);
     responseTimeSecs = nan;
-
 else
 
     %% First interval
@@ -166,18 +166,19 @@ else
 
     %% Second interval
 
-    % During the ISI, prepare the stimuli
-    stopTime = cputime() + obj.isiSecs;
+    % During the ISI, prepare the stimuli. Only update the side that
+    % contained the test stimulus (the reference side will be unchanged)
     interval = 2;
-    for side = 1:2
-       obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,1));
-       obj.CombiLEDObjArr{side}.setFrequency(stimParams(interval,side,2));
-       obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(interval,side,3));
-    end
+    tic
+    stopTime = cputime() + obj.isiSecs;
+    obj.CombiLEDObjArr{testSide}.setContrast(stimParams(interval,testSide,1));
+    obj.CombiLEDObjArr{testSide}.setFrequency(stimParams(interval,testSide,2));
+    obj.CombiLEDObjArr{testSide}.setPhaseOffset(stimParams(interval,testSide,3));
     obj.waitUntil(stopTime);
+    toc
 
     % Start the stimuli and sound a tone. Wait a half a second so that the
-    % subject has to look at these for a moment.
+    % subject has to look at these for a moment. 
     stopTime = cputime() + 0.5;
     for side = 1:2
         obj.CombiLEDObjArr{side}.startModulation;
@@ -192,9 +193,9 @@ else
         if ~isempty(keyPress)
             switch keyPress
                 case {'1','numpad1','leftarrow'}
-                    sideChoice = 1;
+                    intervalChoice = 1;
                 case {'2','numpad2','rightarrow'}
-                    sideChoice = 2;
+                    intervalChoice = 2;
             end
         end
         % Close the response window
@@ -205,9 +206,9 @@ else
         if ~isempty(buttonPress)
             switch buttonPress
                 case {5 7}
-                    sideChoice = 1;
+                    intervalChoice = 1;
                 case {6 8}
-                    sideChoice = 2;
+                    intervalChoice = 2;
             end
         end
     end
@@ -224,10 +225,10 @@ else
 
 end
 
-% We define a correct response as selecting the side that contains the
-% reference stimulus. Determine if the subject has selected the correct
-% side and handle audio feedback
-if sideChoice==testInterval
+% We define a correct response as selecting the interval that contains the
+% test stimulus. Determine if the subject has selected the correct interval
+% and handle audio feedback
+if intervalChoice==testInterval
     % Correct
     outcome = 2;
     correct = true;
@@ -274,6 +275,8 @@ questData = qpUpdate(questData,testParam,outcome);
 questData.trialData(currTrialIdx).stimParams = stimParams;
 questData.trialData(currTrialIdx).refSide = refSide;
 questData.trialData(currTrialIdx).testSide = testSide;
+questData.trialData(currTrialIdx).refInterval = refInterval;
+questData.trialData(currTrialIdx).testInterval = testInterval;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
 

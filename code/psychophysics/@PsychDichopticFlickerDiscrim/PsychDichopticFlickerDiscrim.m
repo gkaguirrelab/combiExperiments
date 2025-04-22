@@ -38,6 +38,7 @@ classdef PsychDichopticFlickerDiscrim < handle
         testModContrast
         stimDurSecs
         isiSecs
+        combiLEDStartTimeSecs = 0.03;
     end
 
     % These may be modified after object creation
@@ -78,7 +79,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.addParameter('refPhotoContrast',0.1,@isnumeric);
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
             p.addParameter('stimDurSecs',3,@isnumeric);
-            p.addParameter('isiSecs',0,@isnumeric);
+            p.addParameter('isiSecs',0.75,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',true,@islogical);            
