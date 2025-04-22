@@ -39,18 +39,29 @@ testFreqHz = refFreqHz * db2pow(testParam);
 %       interval, combiLED (1 or 2), and param (contrast, freq,phase)
 stimParams = zeros(2,2,3);
 
-% During the first interval, the reference flicker is shown on both sides.
+% Decide which inteval will have the test flicker.
+testInterval = round(rand())+1;
+if testInterval ==1
+    refInterval =2;
+else
+    refInterval =1;
+end
+% During the reference interval, flicker is shown on both sides.
 % The phase is randomly set, but matched on the two sides.
-firstIntervalPhase = rand()*pi;
+refIntervalPhase = rand()*pi;
 for side = 1:2
     % Contrast
-    stimParams(1,side,1) = ...
+    stimParams(refInterval,side,1) = ...
         relativePhotoContrastCorrection(side) * ...
         (refModContrast / contrastAttenuationByFreq(refFreqHz));
     % Frequency
-    stimParams(1,side,2) = refFreqHz;
+    stimParams(refInterval,side,2) = refFreqHz;
     % Phase
-    stimParams(1,side,3) = firstIntervalPhase;
+    if side ==1
+        stimParams(refInterval,side,3) = refIntervalPhase;
+    else
+        stimParams(refInterval,side,3) = wrapTo2Pi(refIntervalPhase + pi/2);
+    end
 end
 
 % During the second interval, one of the sides presents the test frequency.
@@ -61,24 +72,26 @@ refSide = mod(testSide,2)+1;
 % Assign the refSide stimuli for the second interval. The phase is again
 % randomized
 secondIntervalRefPhase = rand()*pi;
-stimParams(2,refSide,1) = ...
+stimParams(testInterval,refSide,1) = ...
     relativePhotoContrastCorrection(refSide) * ...
     (refModContrast / contrastAttenuationByFreq(refFreqHz));
-stimParams(2,refSide,2) = refFreqHz;
-stimParams(2,refSide,3) = secondIntervalRefPhase;
+stimParams(testInterval,refSide,2) = refFreqHz;
+stimParams(testInterval,refSide,3) = secondIntervalRefPhase;
 
-% Assign the testSide stimuli for the second interval. The phase is the
-% same for the reference and test. If we wanted to make them offset by 90°,
+% Assign the testSide stimuli for the second interval. The phase is offset by 90°. If we wanted to make them the
+% same for the reference and test,
 % could use this line instead:
 %{
-    secondIntervalTestPhase = wrapTo2Pi(secondIntervalRefPhase + pi/2);
+    secondIntervalTestPhase = secondIntervalRefPhase;
 %}
-secondIntervalTestPhase = secondIntervalRefPhase;
-stimParams(2,testSide,1) = ...
+
+secondIntervalTestPhase = wrapTo2Pi(secondIntervalRefPhase + pi/2);
+
+stimParams(testInterval,testSide,1) = ...
     relativePhotoContrastCorrection(testSide) * ...
     (testModContrast / contrastAttenuationByFreq(testFreqHz));
-stimParams(2,testSide,2) = testFreqHz;
-stimParams(2,testSide,3) = secondIntervalTestPhase;
+stimParams(testInterval,testSide,2) = testFreqHz;
+stimParams(testInterval,testSide,3) = secondIntervalTestPhase;
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -114,8 +127,8 @@ end
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Ref Contrast %2.2f; Ref freq %2.2f, Test freq %2.2f; Side %d...', ...
-        currTrialIdx,stimParams(1,1,1),stimParams(2,refSide,2),stimParams(2,testSide,2),testSide);
+    fprintf('Trial %d; Ref Contrast %2.2f; Ref freq %2.2f, Test freq %2.2f; Test Interval %d...', ...
+        currTrialIdx,stimParams(1,1,1),stimParams(2,refSide,2),stimParams(2,testSide,2),testInterval);
 end
 
 % Present the stimuli
@@ -214,7 +227,7 @@ end
 % We define a correct response as selecting the side that contains the
 % reference stimulus. Determine if the subject has selected the correct
 % side and handle audio feedback
-if sideChoice==refSide
+if sideChoice==testInterval
     % Correct
     outcome = 2;
     correct = true;

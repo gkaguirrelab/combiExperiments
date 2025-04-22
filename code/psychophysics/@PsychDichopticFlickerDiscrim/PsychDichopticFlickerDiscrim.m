@@ -159,14 +159,16 @@ classdef PsychDichopticFlickerDiscrim < handle
             % quantization errors for the spectral modulation that is
             % loaded into each combiLED. We can only check this if we are
             % not in simulateMode
-            if ~obj.simulateMode
-                for side = 1:2
-                    minContrast = obj.relativePhotoContrastCorrection(side) * 10^min(obj.testPhotoContrast, obj.refPhotoContrast);
-                    quantizeErrorFlags = ...
-                        obj.CombiLEDObjArr{side}.checkForQuantizationError(minContrast);
-                    assert(~any(quantizeErrorFlags));
-                end
-            end
+            % Commented out because not relevant for discrimination above
+            % threshold
+            % if ~obj.simulateMode
+            %     for side = 1:2
+            %         minContrast = obj.relativePhotoContrastCorrection(side) * 10^min(obj.testPhotoContrast, obj.refPhotoContrast);
+            %         quantizeErrorFlags = ...
+            %             obj.CombiLEDObjArr{side}.checkForQuantizationError(minContrast);
+            %         assert(~any(quantizeErrorFlags));
+            %     end
+            % end
 
         end
 
