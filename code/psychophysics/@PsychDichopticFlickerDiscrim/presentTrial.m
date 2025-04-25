@@ -130,7 +130,7 @@ end
 % Handle verbosity
 if obj.verbose
     fprintf('Trial %d; Ref Contrast %2.2f; Ref freq %2.2f, Test freq %2.2f; Test Interval %d, Test side %d...', ...
-        currTrialIdx,stimParams(1,1,1),stimParams(2,refSide,2),stimParams(2,testSide,2),testInterval,testSide);
+        currTrialIdx,stimParams(1,1,1),stimParams(testInterval,refSide,2),stimParams(testInterval,testSide,2),testInterval,testSide);
 end
 
 % Present the stimuli
