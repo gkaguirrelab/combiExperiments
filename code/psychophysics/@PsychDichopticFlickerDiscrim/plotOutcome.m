@@ -44,8 +44,16 @@ stim = zeros(length(stimCounts),questData.nStimParams);
 for cc = 1:length(stimCounts)
     stim(cc) = stimCounts(cc).stim;
     nTrials(cc) = sum(stimCounts(cc).outcomeCounts);
-    pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+    % Check if the test was on the high or low side of the reference
+    if obj.questData.stimParamsDomainList{1}(2) == abs(obj.questData.stimParamsDomainList{1}(2))
+        pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+        % For high side, want proportion correct
+    else  
+        pSelectTest(cc) = 1 - stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+         % For low side, want proportion incorrect
+    end
 end
+
 
 % Plot these
 markerSizeIdx = discretize(nTrials,3);
@@ -73,7 +81,11 @@ plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 % Labels and range
 ylim([-0.1 1.1]);
 xlabel('stimulus difference [dB]')
-ylabel('proportion pick test as faster');
+if obj.questData.stimParamsDomainList{1}(2) == abs(obj.questData.stimParamsDomainList{1}(2))
+    ylabel('proportion correct')
+else
+    ylabel('proportion incorrect')
+end
 title('Psychometric function');
 
 % Entropy by trial
