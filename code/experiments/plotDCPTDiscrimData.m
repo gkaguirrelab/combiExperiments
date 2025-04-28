@@ -4,11 +4,12 @@ function plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhoto
 % % e.g.,
 %{
 
-subjectID = 'HERO_sam';
+subjectID = 'HERO_rsb';
 refFreqSetHz = [3.0000, 5.0454, 8.4853, 14.2705, 24.0000]
 modDirections = {'LminusM_wide' 'LightFlux'};
-targetPhotoContrast = [0.025 0.05]; % or [0.05 0.3]
+targetPhotoContrast = [0.0375 0.075]; % or [0.075 0.15]
 NDLabel = {'0x5'};
+plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
 %}
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
@@ -75,7 +76,14 @@ for ii = 1:length(modDirections)
             for cc = 1:length(stimCounts)
                 stim(cc) = stimCounts(cc).stim;
                 nTrials(cc) = sum(stimCounts(cc).outcomeCounts);
-                pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+                % Check if the test was on the high or low side of the reference
+                if questData.stimParamsDomainList{1}(2) == abs(questData.stimParamsDomainList{1}(2))
+                    pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+                    % For high side, want proportion correct
+                else
+                    pSelectTest(cc) = 1 - stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+                    % For low side, want proportion incorrect
+                end
             end
 
             % Plot these
@@ -138,7 +146,7 @@ for ii = 1:length(modDirections)
             xlabel('stimulus difference [dB]');
         end
         if rr == 1
-            ylabel('proportion pick test as faster');
+            ylabel('proportion correct (above 0) proportion incorrect (below 0)');
         end
 
         % Add a title
