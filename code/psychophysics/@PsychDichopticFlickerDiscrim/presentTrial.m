@@ -45,11 +45,12 @@ refInterval = mod(testInterval,2)+1;
 
 % Define the phase parameters for the reference interval. The phase is
 % randomly selected and set to be pi/2 out of phase between the two sides.
-% We also need to account for the delay in starting the 2nd combiLED
-% relative to the first.
+% We have considered accounting for the delay in starting the 2nd combiLED
+% relative to the first, but have decided this is too small of an effect to
+% address.
 refIntervalPhaseBySide(1) = rand()*pi;
 refIntervalPhaseBySide(2) = wrapTo2Pi(refIntervalPhaseBySide(1) + pi/2 + ...
-           2 * pi * refFreqHz * obj.combiLEDStartTimeSecs);
+           2 * pi * refFreqHz);
 
 % Set the parameters for the reference interval. The same contrast and
 % frequency is shown on the two sides. 
@@ -71,16 +72,17 @@ refSide = mod(testSide,2)+1;
 
 % Define the phase parameters for the test interval. The phase is
 % randomly selected and set to be pi/2 out of phase between the two sides.
-% We also need to account for the delay in starting the 2nd combiLED
-% relative to the first.
+% We have considered accounting for the delay in starting the 2nd combiLED
+% relative to the first, but have decided this is too small of an effect to
+% address.
 testIntervalPhaseSide1 = rand()*pi;
 stimParams(testInterval,1,3) = testIntervalPhaseSide1;
 if testSide == 1
     stimParams(testInterval,2,3) = wrapTo2Pi(testIntervalPhaseSide1 + pi/2 + ...
-        2 * pi * refFreqHz * obj.combiLEDStartTimeSecs);
+        2 * pi * refFreqHz);
 else
     stimParams(testInterval,2,3) = wrapTo2Pi(testIntervalPhaseSide1 + pi/2 + ...
-        2 * pi * testFreqHz * obj.combiLEDStartTimeSecs);
+        2 * pi * testFreqHz);
 end
 
 % Assign the refSide stimuli for the test interval.
@@ -156,9 +158,12 @@ else
     stopTime = cputime() + 0.5;
     obj.waitUntil(stopTime);
 
-    % Start the stimuli and sound a tone. Wait for stimDurSecs.
+    % Start the stimuli and sound a tone. Wait for stimDurSecs. 
+    % We observe that starting the combiLEDs in reverse order results in
+    % less of a timing discrepancy between them. We do not yet fully
+    % understand why this might be the case.
     stopTime = cputime() + obj.stimDurSecs;
-    for side = 1:2
+    for side = [2 1]
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.low.play;
@@ -169,18 +174,16 @@ else
     % During the ISI, prepare the stimuli. Only update the side that
     % contained the test stimulus (the reference side will be unchanged)
     interval = 2;
-    tic
     stopTime = cputime() + obj.isiSecs;
     obj.CombiLEDObjArr{testSide}.setContrast(stimParams(interval,testSide,1));
     obj.CombiLEDObjArr{testSide}.setFrequency(stimParams(interval,testSide,2));
     obj.CombiLEDObjArr{testSide}.setPhaseOffset(stimParams(interval,testSide,3));
     obj.waitUntil(stopTime);
-    toc
 
     % Start the stimuli and sound a tone. Wait a half a second so that the
     % subject has to look at these for a moment. 
     stopTime = cputime() + 0.5;
-    for side = 1:2
+    for side = [2 1]
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.mid.play;

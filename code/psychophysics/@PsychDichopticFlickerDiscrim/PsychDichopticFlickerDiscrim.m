@@ -38,6 +38,7 @@ classdef PsychDichopticFlickerDiscrim < handle
         testModContrast
         stimDurSecs
         isiSecs
+        rampDurSecs
         combiLEDStartTimeSecs = 0.03;
     end
 
@@ -80,6 +81,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
             p.addParameter('stimDurSecs',3,@isnumeric);
             p.addParameter('isiSecs',0.75,@isnumeric);
+            p.addParameter('rampDurSecs', 0.5,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',true,@islogical);            
@@ -101,7 +103,8 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.testPhotoContrast = p.Results.testPhotoContrast;
             obj.refPhotoContrast = p.Results.refPhotoContrast;            
             obj.stimDurSecs = p.Results.stimDurSecs;            
-            obj.isiSecs = p.Results.isiSecs;            
+            obj.isiSecs = p.Results.isiSecs;
+            obj.rampDurSecs = p.Results.rampDurSecs;
             obj.simulateMode = p.Results.simulateMode;
             obj.giveFeedback = p.Results.giveFeedback;
             obj.useStaircase = p.Results.useStaircase;

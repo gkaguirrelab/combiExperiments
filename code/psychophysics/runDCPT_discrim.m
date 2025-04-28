@@ -58,15 +58,16 @@ function runDCPT_discrim(subjectID,NDlabel,varargin)
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
-p.addParameter('refFreqHz',[3.0000, 5.0454, 8.4853, 14.2705, 24.0000],@isnumeric);
-p.addParameter('targetPhotoContrast',[0.0375, 0.075; 0.075, 0.15],@isnumeric);
+p.addParameter('refFreqHz',[3.0000    4.8206    7.7460   12.4467   20.0000],@isnumeric);
+p.addParameter('targetPhotoContrast',[0.0125, 0.15; 0.025, 0.30],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);
+p.addParameter('combiClockAdjust',[1.0006,0.9992],@isnumeric);
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('stimParamsHi',{linspace(0,5,51),linspace(0,5,51)},@isnumeric);
-p.addParameter('stimParamsLow',{linspace(-5,0,51),linspace(-5,0,51)},@isnumeric);
+p.addParameter('stimParamsHi',{linspace(2,6,51),linspace(2,6,51)},@isnumeric);
+p.addParameter('stimParamsLow',{linspace(-6,-2,51),linspace(-6,-2,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
@@ -89,6 +90,7 @@ verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
 simulateMode = p.Results.simulateMode;
 useKeyboardFlag = p.Results.useKeyboardFlag;
+combiClockAdjust = p.Results.combiClockAdjust;
 
 % Set our experimentName
 experimentName = 'DCPT';
@@ -145,6 +147,7 @@ else
     for side = 1:nSides
         assert(CombiLEDObjArr{side}.identifierString == combiLEDIDs{side});
         CombiLEDObjArr{side}.setGamma(cal{side}.processedData.gammaTable);
+        CombiLEDObjArr{side}.setClockAdjustFactor(combiClockAdjust(side));
     end
 end
 

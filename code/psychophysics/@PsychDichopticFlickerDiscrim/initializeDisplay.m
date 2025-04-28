@@ -24,16 +24,12 @@ if ~obj.simulateMode
         obj.CombiLEDObjArr{side}.setSettings(obj.modResultArr{side});
         obj.CombiLEDObjArr{side}.setWaveformIndex(1); % sinusoidal flicker
 
-        % Duration. We make side 2 shorter by combiLEDStartTimeSecs to
-        % account for the time it takes to tell the first combiLED to start
-        % the modulation
-        thisDuration = obj.stimDurSecs - (side-1) * obj.combiLEDStartTimeSecs;
-        obj.CombiLEDObjArr{side}.setDuration(thisDuration);
+        % Duration.
+        obj.CombiLEDObjArr{side}.setDuration(obj.stimDurSecs);
 
         % Subject the stimulus onset and offset to a half-cosine ramp
-        obj.CombiLEDObjArr{side}.setAMIndex(2); % half-cosine windowing
-        obj.CombiLEDObjArr{side}.setAMFrequency(1/obj.stimDurSecs);
-        obj.CombiLEDObjArr{side}.setAMValues([0.1,0]); % 0.1 second half-cosine on; second value unused
+        obj.CombiLEDObjArr{side}.setRampIndex(1); % half-cosine windowing
+        obj.CombiLEDObjArr{side}.setRampDuration(obj.rampDurSecs);
 
     end
 
