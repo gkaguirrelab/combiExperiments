@@ -7,7 +7,7 @@ function plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhoto
 subjectID = 'HERO_rsb';
 refFreqSetHz = [3.0000, 5.0454, 8.4853, 14.2705, 24.0000]
 modDirections = {'LminusM_wide' 'LightFlux'};
-targetPhotoContrast = [0.0375 0.075]; % or [0.075 0.15]
+targetPhotoContrast = [0.0375 0.075]; % or [0.075 0.15] for high contrast
 NDLabel = {'0x5'};
 plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
 %}
@@ -61,6 +61,16 @@ for ii = 1:length(modDirections)
             stimParamsDomainList = psychObj.stimParamsDomainList;
             psiParamsDomainList = psychObj.psiParamsDomainList;
             nTrials = length(psychObj.questData.trialData);
+            stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
+
+
+            % Check if the test was on the high or low side of the reference
+            for cc = 1:length(stimCounts)
+                oldQuestData(cc) = questData(1).trialData(cc).outcome;
+                if questData.stimParamsDomainList{1}(2) ~= abs(questData.stimParamsDomainList{1}(2))
+                    questData(1).trialData(cc).outcome = ~(questData(1).trialData(cc).outcome - 1) +1;
+                end
+            end
 
             % Get the Max Likelihood psi params, temporarily turning off verbosity.
             lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
@@ -71,7 +81,6 @@ for ii = 1:length(modDirections)
             psychObj.verbose = storeVerbose;
 
             % Get the proportion selected "test" for each stimulus
-            stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
             stim = zeros(length(stimCounts),questData.nStimParams);
             for cc = 1:length(stimCounts)
                 stim(cc) = stimCounts(cc).stim;
