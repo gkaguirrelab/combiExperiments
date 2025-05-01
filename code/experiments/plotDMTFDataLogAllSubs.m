@@ -100,6 +100,8 @@ for nn = 1:length(NDlabelsAll)
         mdl = fitlm(xData,yData,'RobustOpts','on');
         [yFitDb,yCI] = predict(mdl,xFitLog);
         plot(xFit,yFitDb,':b','LineWidth',2);
+        plot(xFit,yCI(:,1),'-.b','LineWidth',1);
+        plot(xFit,yCI(:,2),'-.b','LineWidth',1);
         
         % Add the title
         bounds = coefCI(mdl,0.2)-mdl.Coefficients.Estimate;
@@ -126,9 +128,13 @@ for nn = 1:length(NDlabelsAll)
                 varVals(rr) = std(residuals(idx)).^2;
         end
         plot(10.^binCenters,varVals,'o-m','LineWidth',2);        
-        plot(10.^binCenters,meanVals(:,1),'o-b','LineWidth',2);
-        plot(10.^binCenters,meanVals(:,2),'x-b','LineWidth',2);
-        plot(10.^binCenters,mean(meanVals,2),'*-b','LineWidth',2);
+
+        % Uncoment these lines to show the bias per bin
+        %{
+            plot(10.^binCenters,meanVals(:,1),'o-b','LineWidth',2);
+            plot(10.^binCenters,meanVals(:,2),'x-b','LineWidth',2);
+            plot(10.^binCenters,mean(meanVals,2),'*-b','LineWidth',2);
+        %}
 
         % Report the model fit and CIs
         CIs = coefCI(mdl,0.05);
