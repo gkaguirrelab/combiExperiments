@@ -38,12 +38,13 @@ function runDCPT_discrim(subjectID,NDlabel,varargin)
 %                           directions to be studied. columns mod dir, rows
 %                           are contrast level. Provides the low and high
 %                           contrast levels to be studied. The default
-%                           values are approximately 10x and 20x detection
+%                           values are approximately 10x and 30x detection
 %                           thresholds from pilot temporal contrast
 %                           sensitivity functions detection measures. We
 %                           found thresholds of approximately 0.005
 %                           contrast for L-M and 0.01 contrast for LF at
-%                           lower temporal frequencies.
+%                           lower temporal frequencies. This seemed too
+%                           high fo L-M, so we used 5x and 15x instead.
 %
 % Outputs:
 %   none
@@ -59,15 +60,15 @@ function runDCPT_discrim(subjectID,NDlabel,varargin)
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
 p.addParameter('refFreqHz',[3.0000    4.8206    7.7460   12.4467   20.0000],@isnumeric);
-p.addParameter('targetPhotoContrast',[0.0125, 0.15; 0.025, 0.30],@isnumeric);
+p.addParameter('targetPhotoContrast',[0.025, 0.15; 0.075, 0.30],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);
 p.addParameter('combiClockAdjust',[1.0006,0.9992],@isnumeric);
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('stimParamsHi',{linspace(2,6,51),linspace(2,6,51)},@isnumeric);
-p.addParameter('stimParamsLow',{linspace(-6,-2,51),linspace(-6,-2,51)},@isnumeric);
+p.addParameter('stimParamsHi',{linspace(1,6,51),linspace(1,6,51)},@isnumeric);
+p.addParameter('stimParamsLow',{linspace(-6,-1,51),linspace(-6,-1,51)},@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
