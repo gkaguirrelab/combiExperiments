@@ -31,8 +31,16 @@ else
 end
 
 % The difference between the reference and test frequency is given by the
-% testParam, which is in units of decibels
-testFreqHz = refFreqHz * db2pow(testParam);
+% testParam, which is in units of decibels. The stimParamSide setting tells
+% us if we are setting the test frequency higher or lower than the ref.
+switch obj.stimParamSide
+    case 'hi'
+        testFreqHz = refFreqHz * db2pow(testParam);
+    case 'low'
+        testFreqHz = refFreqHz / db2pow(testParam);
+    otherwise
+        error('not a valid stimParamSide setting')
+end
 
 % Define the stimulus params. This is a 2x2x3 vector with the dimensions
 % corresponding to:
@@ -139,7 +147,7 @@ end
 if simulateMode
 
     %% Simulate
-    intervalChoice = obj.getSimulatedResponse(testParam,testSide);
+    intervalChoice = obj.getSimulatedResponse(testParam,testInterval);
     responseTimeSecs = nan;
 else
 

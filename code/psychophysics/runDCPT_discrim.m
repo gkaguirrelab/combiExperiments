@@ -60,15 +60,14 @@ function runDCPT_discrim(subjectID,NDlabel,varargin)
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
 p.addParameter('refFreqHz',[3.0000    4.8206    7.7460   12.4467   20.0000],@isnumeric);
-p.addParameter('targetPhotoContrast',[0.025, 0.15; 0.075, 0.30],@isnumeric);
+p.addParameter('targetPhotoContrast',[0.025, 0.10; 0.075, 0.30],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);
 p.addParameter('combiClockAdjust',[1.0006,0.9992],@isnumeric);
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('stimParamsHi',{linspace(1,6,51),linspace(1,6,51)},@isnumeric);
-p.addParameter('stimParamsLow',{linspace(-6,-1,51),linspace(-6,-1,51)},@isnumeric);
+p.addParameter('stimParams',linspace(0,6,51),@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
@@ -82,6 +81,7 @@ p.parse(varargin{:})
 modDirections = p.Results.modDirections;
 refFreqHz = p.Results.refFreqHz;
 targetPhotoContrast = p.Results.targetPhotoContrast;
+stimParams = p.Results.stimParams;
 combiLEDLabels = p.Results.combiLEDLabels;
 combiLEDIDs = p.Results.combiLEDIDs;
 nTrialsPerBlock = p.Results.nTrialsPerBlock;
@@ -97,13 +97,13 @@ combiClockAdjust = p.Results.combiClockAdjust;
 experimentName = 'DCPT';
 
 % Set the labels for the high and low stimulus ranges
-stimParamLabels = {'stimParamsHi','stimParamsLow'};
+stimParamSide = {'hi','low'};
 
 % Define some basic trial type quantities
 nSides = 2;
 nFreqs = length(refFreqHz);
 nConstrasts = size(targetPhotoContrast,1);
-nRanges = length(stimParamLabels);
+nRanges = length(stimParamSide);
 
 % Set a random seed
 rng('shuffle');
@@ -210,10 +210,7 @@ for bb=1:nBlocks
                 psychFileStem = [subjectID '_' modDirections{directionIdx} '_' experimentName ...
                     '_cont-' strrep(num2str(targetPhotoContrast(contrastIdx, directionIdx)),'.','x') ...
                     '_refFreq-' num2str(refFreqHz(freqIdx)) 'Hz' ...
-                    '_' stimParamLabels{rangeIdx}];
-
-                % Obtain the relevant stimParam values
-                stimParamsDomainList = p.Results.(stimParamLabels{rangeIdx}){directionIdx};
+                    '_' stimParamSide{rangeIdx}];
 
                 % Create or load the psychometric object
                 psychObjFilename = fullfile(dataDir,[psychFileStem '.mat']);
@@ -241,7 +238,8 @@ for bb=1:nBlocks
                         'testPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...
                         'simulateMode',simulateMode,...
                         'useStaircase',useStaircase,...
-                        'stimParamsDomainList',stimParamsDomainList,...
+                        'stimParamsDomainList',stimParams,...
+                        'stimParamSide',stimParamSide{rangeIdx},...
                         'verbose',verbosePsychObj, ...
                         'useKeyboardFlag',useKeyboardFlag);
                     % Store the filename
@@ -265,13 +263,15 @@ for bb=1:nBlocks
     psychObjArray{1,1,1}.initializeDisplay;
 
     % Start the block
-    if useKeyboardFlag
-        % If using keyboard
-        fprintf('Press enter to start block %d...',bb);
-        input('');
-    else
-        fprintf('Press button 1, 2, 3, or 4 to start block %d...',bb);
-        getGamepadResponse(inf,[1 2 3 4]);
+    if ~simulateMode
+        if useKeyboardFlag
+            % If using keyboard
+            fprintf('Press enter to start block %d...',bb);
+            input('');
+        else
+            fprintf('Press button 1, 2, 3, or 4 to start block %d...',bb);
+            getGamepadResponse(inf,[1 2 3 4]);
+        end
     end
 
     % Assert that we have a sufficient number of trials per block to

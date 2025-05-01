@@ -40,6 +40,7 @@ classdef PsychDichopticFlickerDiscrim < handle
         isiSecs
         rampDurSecs
         combiLEDStartTimeSecs = 0.03;
+        stimParamSide
     end
 
     % These may be modified after object creation
@@ -76,7 +77,8 @@ classdef PsychDichopticFlickerDiscrim < handle
         function obj = PsychDichopticFlickerDiscrim(CombiLEDObjArr, modResultArr, refFreqHz,varargin)
 
             % input parser
-            p = inputParser; p.KeepUnmatched = false;
+            p = inputParser; p.KeepUnmatched = false;           
+            p.addParameter('stimParamSide','hi',@ischar); % valid values {'hi','low'}
             p.addParameter('refPhotoContrast',0.1,@isnumeric);
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
             p.addParameter('stimDurSecs',3,@isnumeric);
@@ -88,10 +90,10 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.addParameter('staircaseRule',[1,3],@isnumeric);
             p.addParameter('psychometricFuncHandle',@qpCumulativeNormalLapse,@ishandle);
             p.addParameter('psiParamLabels',{'μ','σ','λ'},@iscell);
-            p.addParameter('simulatePsiParams',[0,0.3,0.05],@isnumeric);
+            p.addParameter('simulatePsiParams',[0,2,0.00],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,3,51),linspace(0,0,1)},@isnumeric);
+                {linspace(0,0,1),linspace(0,4,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})
@@ -100,6 +102,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.CombiLEDObjArr = CombiLEDObjArr;
             obj.modResultArr = modResultArr;
             obj.refFreqHz = refFreqHz;
+            obj.stimParamSide = p.Results.stimParamSide;
             obj.testPhotoContrast = p.Results.testPhotoContrast;
             obj.refPhotoContrast = p.Results.refPhotoContrast;            
             obj.stimDurSecs = p.Results.stimDurSecs;            
@@ -154,26 +157,15 @@ classdef PsychDichopticFlickerDiscrim < handle
             % the range of possible test frequencies (in dBs) relative to
             % the reference frequency. Check here that we can achieve the
             % called-for test and reference contrast given this.
-            maxTestFreqHz = obj.refFreqHz * db2pow(max(obj.stimParamsDomainList));
+            switch obj.stimParamSide
+                case 'hi'
+                    maxTestFreqHz = obj.refFreqHz * db2pow(max(obj.stimParamsDomainList));
+                case 'low'
+                    maxTestFreqHz = obj.refFreqHz / db2pow(max(obj.stimParamsDomainList));
+            end
             assert(obj.testModContrast/contrastAttenuationByFreq(maxTestFreqHz) < 1);
             assert(obj.refModContrast/contrastAttenuationByFreq(obj.refFreqHz) < 1);
-
-            % Check that the minimum modulation contrast specified between
-            % testPhotoContrast and refPhotoContrast does not encounter
-            % quantization errors for the spectral modulation that is
-            % loaded into each combiLED. We can only check this if we are
-            % not in simulateMode
-            % Commented out because not relevant for discrimination above
-            % threshold
-            % if ~obj.simulateMode
-            %     for side = 1:2
-            %         minContrast = obj.relativePhotoContrastCorrection(side) * 10^min(obj.testPhotoContrast, obj.refPhotoContrast);
-            %         quantizeErrorFlags = ...
-            %             obj.CombiLEDObjArr{side}.checkForQuantizationError(minContrast);
-            %         assert(~any(quantizeErrorFlags));
-            %     end
-            % end
-
+            
         end
 
         % Required methds

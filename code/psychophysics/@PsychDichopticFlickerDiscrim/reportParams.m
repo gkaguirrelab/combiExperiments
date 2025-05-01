@@ -66,7 +66,7 @@ fVal = qpFitError(psiParamsFit,stimCounts,questData.qpPF);
 
 % Report these values
 if verbose
-    if obj.simulateResponse
+    if obj.simulateMode
         fprintf('Simulated parameters: %2.3f, %2.3f\n',obj.simulatePsiParams);
     end
     fprintf('Max posterior QUEST+ parameters: %2.3f, %2.3f\n',psiParamsQuest);
