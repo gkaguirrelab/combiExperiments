@@ -78,8 +78,10 @@ for nn = 1:length(NDlabelsAll)
         a=gca();
         a.XTick = [1,2,4,8,16,32];
         a.YTick = [-6 -4 -2 0 2 4 6];
-        xlabel('Reference Frequency [Hz]')
-        ylabel('Error [dB]')
+        a.FontName = 'Helvetica';
+        a.FontSize = 16;
+        xlabel('Reference Frequency [Hz]', 'FontName', 'Helvetica', 'FontSize', 16)
+        ylabel('Error [dB]', 'FontName', 'Helvetica', 'FontSize', 16)
         box off
 
         % Add a fit line.
@@ -90,7 +92,7 @@ for nn = 1:length(NDlabelsAll)
         plot(xFit,yFitDb,'-b','LineWidth',2);
 
         % Add the title
-        title([subjectID ' ' modDirections{dd} ' ND' NDlabelsAll{nn} sprintf(' [%2.1f,%2.1f]',mdl.Coefficients.Estimate)],'Interpreter','none');
+        title([subjectID ' ' modDirections{dd} ' ND' NDlabelsAll{nn} sprintf(' [%2.1f,%2.1f]',mdl.Coefficients.Estimate)],'Interpreter','none', 'FontName', 'Helvetica', 'FontSize', 16);
 
         % Add a plot line to indicate the variance of the residuals
         residuals = mdl.Residuals.Raw;

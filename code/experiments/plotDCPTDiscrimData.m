@@ -4,12 +4,11 @@ function plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhoto
 % % e.g.,
 %{
 
-subjectID = 'HERO_rsb';
+subjectID = 'HERO_sam';
 refFreqSetHz = [3.0000, 5.0454, 8.4853, 14.2705, 24.0000]
 modDirections = {'LminusM_wide' 'LightFlux'};
-targetPhotoContrast = [0.0375 0.075]; % or [0.075 0.15] for high contrast
+targetPhotoContrast = [0.025 0.05]; % or [0.05 0.3]
 NDLabel = {'0x5'};
-plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
 %}
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
@@ -61,16 +60,6 @@ for ii = 1:length(modDirections)
             stimParamsDomainList = psychObj.stimParamsDomainList;
             psiParamsDomainList = psychObj.psiParamsDomainList;
             nTrials = length(psychObj.questData.trialData);
-            stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
-
-
-            % Check if the test was on the high or low side of the reference
-            for cc = 1:length(stimCounts)
-                oldQuestData(cc) = questData(1).trialData(cc).outcome;
-                if questData.stimParamsDomainList{1}(2) ~= abs(questData.stimParamsDomainList{1}(2))
-                    questData(1).trialData(cc).outcome = ~(questData(1).trialData(cc).outcome - 1) +1;
-                end
-            end
 
             % Get the Max Likelihood psi params, temporarily turning off verbosity.
             lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
@@ -81,18 +70,12 @@ for ii = 1:length(modDirections)
             psychObj.verbose = storeVerbose;
 
             % Get the proportion selected "test" for each stimulus
+            stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
             stim = zeros(length(stimCounts),questData.nStimParams);
             for cc = 1:length(stimCounts)
                 stim(cc) = stimCounts(cc).stim;
                 nTrials(cc) = sum(stimCounts(cc).outcomeCounts);
-                % Check if the test was on the high or low side of the reference
-                if questData.stimParamsDomainList{1}(2) == abs(questData.stimParamsDomainList{1}(2))
-                    pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
-                    % For high side, want proportion correct
-                else
-                    pSelectTest(cc) = 1 - stimCounts(cc).outcomeCounts(2)/nTrials(cc);
-                    % For low side, want proportion incorrect
-                end
+                pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
             end
 
             % Plot these
@@ -155,7 +138,7 @@ for ii = 1:length(modDirections)
             xlabel('stimulus difference [dB]');
         end
         if rr == 1
-            ylabel('proportion correct (above 0) proportion incorrect (below 0)');
+            ylabel('proportion pick test as faster');
         end
 
         % Add a title
@@ -569,14 +552,3 @@ end
 % 
 % end
 end
-
-
-
-
-
-
-
-
-
-
-
