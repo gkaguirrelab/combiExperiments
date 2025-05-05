@@ -5,9 +5,10 @@ function plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhoto
 %{
 
 subjectID = 'HERO_sam';
-refFreqSetHz = [3.0000, 5.0454, 8.4853, 14.2705, 24.0000]
+refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
 modDirections = {'LminusM_wide' 'LightFlux'};
-targetPhotoContrast = [0.025 0.05]; % or [0.05 0.3]
+targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
+% L minus M is [0.025, 0.075] and Light Flux is [0.10, 0.30]
 NDLabel = {'0x5'};
 %}
 
@@ -17,7 +18,12 @@ projectName='combiLED';
 experimentName = 'DCPT';
 
 % Set the labels for the high and low stimulus ranges
-stimParamLabels = {'stimParamsLow', 'stimParamsHi'};
+stimParamLabels = {'low', 'hi'};
+modDirectionsLabels = {'LminusM', 'LightFlux'}; % to be used only for the title
+
+% Set number of contrast levels and sides
+nContrasts = 2;
+nSides = 2;
 
 % Define the modulation and data directories
 subjectDir = fullfile(...
@@ -28,137 +34,172 @@ subjectDir = fullfile(...
 
 %% Plot the full psychometric functions
 
-% Set up a figure
-figHandle = figure(1);
-figuresize(750,250,'units','pt');
-tcl = tiledlayout(length(modDirections),length(refFreqSetHz),'TileSpacing','compact','Padding','tight');
+for directionIdx = 1:length(modDirections)
+  
+    % Set up a figure
+    figHandle = figure(directionIdx);
+    figuresize(750,1200,'units','pt')
 
-for ii = 1:length(modDirections)
-    %title(tcl, [modDirections{ii} ' Photo Contrast: ' num2str(targetPhotoContrast(ii))]);
-    for rr = 1:length(refFreqSetHz)
-        dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDLabel{1} '_shifted'],experimentName);
-        nexttile;
-        hold on
+    tcl = tiledlayout(length(refFreqSetHz),nContrasts);
+    title(tcl, [modDirectionsLabels{directionIdx} ' with Photo Contrasts: ' num2str(targetPhotoContrast(1, directionIdx)) ', ' num2str(targetPhotoContrast(2, directionIdx))]);
 
-        % To plot the psychometric function - collect the high and low side
-        % estimate objects in an array
-        psychObjArray = {};
+    for freqIdx = 1:length(refFreqSetHz)
+        dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDLabel{1} '_shifted'],experimentName);
 
-        for ss = 1:2
+        for contrastIdx = 1:nContrasts
 
-            % Load this measure
-            psychFileStem = [subjectID '_' modDirections{ii} ...
-                '_' experimentName...
-                '_cont-' strrep(num2str(targetPhotoContrast(ii)),'.','x') ...
-                '_refFreq-' num2str(refFreqSetHz(rr)) 'Hz' ...
-                '_' stimParamLabels{ss}];
-            filename = fullfile(dataDir,psychFileStem);
-            load(filename,'psychObj');
+            nexttile;
+            hold on
 
-            % Store some of these parameters
-            questData = psychObj.questData;
-            stimParamsDomainList = psychObj.stimParamsDomainList;
-            psiParamsDomainList = psychObj.psiParamsDomainList;
-            nTrials = length(psychObj.questData.trialData);
+            % To plot the psychometric functions on the same graph - collect the high and low side
+            % estimate objects in an array
+            psychObjArray = {};
+
+            for sideIdx = 1:nSides
+
+                % Load this measure
+                psychFileStem = [subjectID '_' modDirections{directionIdx} ...
+                    '_' experimentName...
+                    '_cont-' strrep(num2str(targetPhotoContrast(contrastIdx, directionIdx)),'.','x') ...
+                    '_refFreq-' num2str(refFreqSetHz(freqIdx)) 'Hz' ...
+                    '_' stimParamLabels{sideIdx}];
+                filename = fullfile(dataDir,psychFileStem);
+                load(filename,'psychObj');
+
+                % Store some of these parameters
+                questData = psychObj.questData;
+                stimParamsDomainList = psychObj.stimParamsDomainList;
+                psiParamsDomainList = psychObj.psiParamsDomainList;
+                nTrials = length(psychObj.questData.trialData);
+
+                % Get the Max Likelihood psi params, temporarily turning off verbosity.
+                lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
+                ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
+                storeVerbose = psychObj.verbose;
+                psychObj.verbose = false;
+                [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObj.reportParams('lb',lb,'ub',ub,'nBoots',100);
+                psychObj.verbose = storeVerbose;
+
+                % Get the proportion selected "test" for each stimulus
+                stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
+                stim = zeros(length(stimCounts),questData.nStimParams);
+                for cc = 1:length(stimCounts)
+                    stim(cc) = stimCounts(cc).stim;
+                    nTrials(cc) = sum(stimCounts(cc).outcomeCounts);
+                    pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+                end
+
+                % Plot these
+                markerSizeIdx = discretize(nTrials,3);
+                markerSizeSet = [25,50,100];
+                markerShapeSet = ['o', '^'];   
+                markerColorSet = [0, 0, 0.5; 0.5, 0, 0];   % blue, red. low, high
+                for cc = 1:length(stimCounts)
+                    scatter(stim(cc),pSelectTest(cc),markerSizeSet(markerSizeIdx(cc)), ...
+                        'Marker', markerShapeSet(sideIdx), ...
+                        'MarkerFaceColor', markerColorSet(sideIdx,:), ...
+                        'MarkerEdgeColor','k', ...
+                        'MarkerFaceAlpha',nTrials(cc)/max(nTrials));
+                         % 'MarkerFaceColor',[pSelectTest(cc) 0 1-pSelectTest(cc)], 
+                    hold on
+                end
+
+                psychObjArray{sideIdx} = psychObj;
+
+            end
+
+            % Add the psychometric functions
+            stimParamsDomainListLow = [psychObjArray{1}.stimParamsDomainList];
+            stimParamsDomainListHigh = [psychObjArray{2}.stimParamsDomainList];
 
             % Get the Max Likelihood psi params, temporarily turning off verbosity.
-            lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
-            ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
-            storeVerbose = psychObj.verbose;
-            psychObj.verbose = false;
-            [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObj.reportParams('lb',lb,'ub',ub,'nBoots',100);
-            psychObj.verbose = storeVerbose;
 
-            % Get the proportion selected "test" for each stimulus
-            stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
-            stim = zeros(length(stimCounts),questData.nStimParams);
-            for cc = 1:length(stimCounts)
-                stim(cc) = stimCounts(cc).stim;
-                nTrials(cc) = sum(stimCounts(cc).outcomeCounts);
-                pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
+            % Finding ub and lb for the high and low side psychometric objects
+            lbLow = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
+            ubLow = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
+            % ubLow = [0,50,0];
+
+            lbHigh = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
+            ubHigh = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+            % ubHigh = [0,50,0];
+
+            % Low side
+            % Temporarily turn off verbosity
+            storeVerboseLow = psychObjArray{1}.verbose;
+            psychObjArray{1}.verbose = false;
+
+            [psiParamsQuestLow, psiParamsFitLow, psiParamsCILow, fValLow] = psychObjArray{1}.reportParams('lb',lbLow,'ub',ubLow,'nBoots',100);
+
+            psychObjArray{1}.verbose = storeVerboseLow;
+
+            % High side
+            % Temporarily turn off verbosity
+            storeVerboseHigh = psychObjArray{2}.verbose;
+            psychObjArray{2}.verbose = false;
+
+            [psiParamsQuestHigh, psiParamsFitHigh, psiParamsCIHigh, fValHigh] = psychObjArray{2}.reportParams('lb',lbHigh,'ub',ubHigh,'nBoots',100);
+
+            psychObjArray{2}.verbose = storeVerboseHigh;
+
+            % Forcing the lapse rate to be 0 for both sides
+            psiParamsFitLow(1, 3) = 0;
+            psiParamsFitHigh(1, 3) = 0;
+    
+            % Plotting
+            % Low side
+            hold on
+            for cc = 1:length(stimParamsDomainListLow)
+                outcomes = psychObjArray{1}.questData.qpPF(stimParamsDomainListLow(cc),psiParamsFitLow);
+                fitCorrect(cc) = outcomes(2);
+            end
+            plot(abs(stimParamsDomainListLow),fitCorrect,'Color', [0, 0, 0.5]);
+
+            fitCorrect = [];
+
+            % High side
+            for cc = 1:length(stimParamsDomainListHigh)
+                outcomes = psychObjArray{2}.questData.qpPF(stimParamsDomainListHigh(cc),psiParamsFitHigh);
+                fitCorrect(cc) = outcomes(2);
+            end
+            plot(stimParamsDomainListHigh,fitCorrect,'Color', [0.5, 0, 0]);
+            hold off
+
+            % Add a marker for the 50% point
+            %        outcomes = psychObj.questData.qpPF(psiParamsFit(1),psiParamsFit);
+            %        plot([psiParamsFit(1), psiParamsFit(1)],[0, outcomes(2)],':k')
+            %        plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
+
+            % Labels and range
+            xlim([0 6.0]);
+            ylim([-0.1 1.1]);
+            if freqIdx == length(refFreqSetHz)  % Bottom row
+                xlabel('absolute stimulus difference [dB]');
+            end
+            if contrastIdx == 1 % Left column
+                ylabel('proportion pick test interval');
             end
 
-            % Plot these
-            markerSizeIdx = discretize(nTrials,3);
-            markerSizeSet = [25,50,100];
-            for cc = 1:length(stimCounts)
-                scatter(stim(cc),pSelectTest(cc),markerSizeSet(markerSizeIdx(cc)),'o', ...
-                    'MarkerFaceColor',[pSelectTest(cc) 0 1-pSelectTest(cc)], ...
-                    'MarkerEdgeColor','k', ...
-                    'MarkerFaceAlpha',nTrials(cc)/max(nTrials));
-                hold on
-            end
+            % Add a title
+            str = sprintf('%2.1f Hz',psychObjArray{1}.refFreqHz);
+            title(str);
+            box off
 
-            psychObjArray{ss} = psychObj;
-        end
-
-        % Add the psychometric function
-        stimParamsDomainList = [psychObjArray{1}.stimParamsDomainList, psychObjArray{2}.stimParamsDomainList];
-
-        % Get the Max Likelihood psi params, temporarily turning off verbosity.
-
-        % Finding ub and lb based on the high and low side psychometric objects
-        lb1 = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
-        lb2 = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
-        lb = min(lb1, lb2);
-        % ub1 = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
-        % ub2 = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
-        ub1 = [0,50,0];
-        ub2 = [0,50,0];
-        ub = max(ub1, ub2);
-
-        storeVerbose1 = psychObjArray{1}.verbose;
-        storeVerbose2 = psychObjArray{2}.verbose;
-        psychObjArray{1}.verbose = false;
-        psychObjArray{2}.verbose = false;
-
-        [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObjArray{1}.reportCombinedParams(psychObjArray{2}, 'lb', lb, 'ub', ub, 'nBoots', 100);
-
-        psychObjArray{1}.verbose = storeVerbose1;
-        psychObjArray{2}.verbose = storeVerbose2;
-
-        % Forcing the lapse rate to be 0
-        psiParamsFit(1, 3) = 0;
-
-        for cc = 1:length(stimParamsDomainList)
-            outcomes = psychObjArray{1}.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
-            fitCorrect(cc) = outcomes(2);
-        end
-        plot(stimParamsDomainList,fitCorrect,'-k');
-
-        % Add a marker for the 50% point
-        %        outcomes = psychObj.questData.qpPF(psiParamsFit(1),psiParamsFit);
-        %        plot([psiParamsFit(1), psiParamsFit(1)],[0, outcomes(2)],':k')
-        %        plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
-
-        % Labels and range
-        xlim([-4.0 4.0]);
-        ylim([-0.1 1.1]);
-        if rr == 6
-            xlabel('stimulus difference [dB]');
-        end
-        if rr == 1
-            ylabel('proportion pick test as faster');
-        end
-
-        % Add a title
-        str = sprintf('%2.1f Hz',psychObj.refFreqHz);
-        title(str);
-        box off
-
-        % Store the slope of the psychometric function
-        if ii == 1
-            slopeVals(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
-            slopeValCI(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
-            slopeValCI(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+            % Store the slope of the psychometric function
+            % if directionIdx == 1
+            %     slopeVals(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+            %     slopeValCI(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+            %     slopeValCI(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+            %
+            % end
+            %
+            % if directionIdx == 2
+            %     slopeVals2(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
+            %     slopeValCI2(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
+            %     slopeValCI2(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
+            % end
 
         end
 
-        if ii == 2
-            slopeVals2(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
-            slopeValCI2(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
-            slopeValCI2(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
-        end
     end
 
 end
@@ -172,21 +213,21 @@ end
 % figuresize(750,250,'units','pt');
 % tiledlayout(length(modDirections),1,"TileSpacing","compact",'Padding','tight');
 % 
-% for ii = 1:length(modDirections)
-%     for rr = 1:length(refFreqSetHz)
+% for directionIdx = 1:length(modDirections)
+%     for freqIdx= 1:length(refFreqSetHz)
 % 
-%         dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDLabel{1} '_shifted'],experimentName);
+%         dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDLabel{1} '_shifted'],experimentName);
 % 
 %         xData = log10(refFreqSetHz);
 % 
-%         for ss = 1:2 % High and low side estimates
+%         for sideIdx = 1:2 % High and low side estimates
 % 
 %             % Load this measure
-%             psychFileStem = [subjectID '_' modDirections{ii} ...
+%             psychFileStem = [subjectID '_' modDirections{directionIdx} ...
 %                 '_' experimentName '_' ...
-%                 strrep(num2str(targetPhotoContrast(ii)),'.','x') ...
+%                 strrep(num2str(targetPhotoContrast(directionIdx)),'.','x') ...
 %                 '_refFreq-' num2str(refFreqSetHz(rr)) 'Hz' ...
-%                 '_' stimParamLabels{ss}];
+%                 '_' stimParamLabels{sideIdx}];
 %             filename = fullfile(dataDir,psychFileStem);
 %             load(filename,'psychObj');
 % 
@@ -195,24 +236,24 @@ end
 % 
 %             % Calculate slopes and CIs for the current mod direction and
 %             % estimate type
-%             if ii == 1
-%                 if ss == 1
+%             if directionIdx == 1
+%                 if sideIdx == 1
 %                     slopeVals_LminusM_LowTest(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
 %                     slopeValCI_LminusM_LowTest(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
 %                     slopeValCI_LminusM_LowTest(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
-%                 elseif ss == 2
+%                 elseif sideIdx == 2
 %                     slopeVals_LminusM_HiTest(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
 %                     slopeValCI_LminusM_HiTest(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
 %                     slopeValCI_LminusM_HiTest(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
 %                 end
 %             end
 % 
-%             if ii == 2
-%                 if ss == 1
+%             if directionIdx == 2
+%                 if sideIdx == 1
 %                     slopeVals_LightFlux_LowTest(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
 %                     slopeValCI_LightFlux_LowTest(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
 %                     slopeValCI_LightFlux_LowTest(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
-%                 elseif ss == 2
+%                 elseif sideIdx == 2
 %                     slopeVals_LightFlux_HiTest(rr) = normpdf(0,psiParamsFit(1),psiParamsFit(2));
 %                     slopeValCI_LightFlux_HiTest(rr,1) = normpdf(0,psiParamsCI(1,1),psiParamsCI(1,2));
 %                     slopeValCI_LightFlux_HiTest(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
@@ -223,7 +264,7 @@ end
 % 
 %     end
 % 
-%     if ii == 1 % L minus M
+%     if directionIdx == 1 % L minus M
 % 
 %         nexttile;
 %         hold on;
@@ -231,7 +272,7 @@ end
 %         plot(xData, slopeVals_LminusM_LowTest, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
 %         plot(xData,  slopeVals_LminusM_HiTest, '-o', 'LineWidth', 2, 'Color', [0, 0.5, 0]);
 % 
-%         for rr = 1:length(refFreqSetHz)
+%         for freqIdx= 1:length(refFreqSetHz)
 %             % Plot the confidence interval for each slope value
 %             plot([xData(rr), xData(rr)], [slopeValCI_LminusM_LowTest(rr, 1), slopeValCI_LminusM_LowTest(rr, 2)], '-', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
 %             plot([xData(rr), xData(rr)], [slopeValCI_LminusM_HiTest(rr, 1), slopeValCI_LminusM_HiTest(rr, 2)], '-g', 'LineWidth', 3, 'Color', [0, 0.5, 0]); % vertical line for CI
@@ -239,7 +280,7 @@ end
 % 
 %         title('L minus M');
 % 
-%     elseif ii == 2 % LightFlux
+%     elseif directionIdx == 2 % LightFlux
 % 
 %         nexttile;
 %         hold on;
@@ -247,7 +288,7 @@ end
 %         plot(xData, slopeVals_LightFlux_LowTest, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
 %         plot(xData, slopeVals_LightFlux_HiTest, '-o', 'LineWidth', 2, 'Color', [0, 0.5, 0]);
 % 
-%         for rr = 1:length(refFreqSetHz)
+%         for freqIdx= 1:length(refFreqSetHz)
 %             % Plot the confidence interval for each slope value
 %             plot([xData(rr), xData(rr)], [slopeValCI_LightFlux_LowTest(rr, 1), slopeValCI_LightFlux_LowTest(rr, 2)], '-b', 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
 %             plot([xData(rr), xData(rr)], [slopeValCI_LightFlux_HiTest(rr, 1), slopeValCI_LightFlux_HiTest(rr, 2)], '-g', 'LineWidth', 3, 'Color', [0, 0.5, 0]); % vertical line for CI
@@ -310,27 +351,27 @@ end
 % 
 %     hold on
 % 
-%     for ii = 1:length(modDirections)
-%         for rr = 1:length(refFreqSetHz)
+%     for directionIdx = 1:length(modDirections)
+%         for freqIdx= 1:length(refFreqSetHz)
 % 
-%             dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabel],experimentName);
+%             dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
 % 
 %             xData = log10(refFreqSetHz);
 % 
 %             psychObjArray = {};
 % 
-%             for ss = 1:2 % High and low side estimates
+%             for sideIdx = 1:2 % High and low side estimates
 % 
 %                 % Load this measure
-%                 psychFileStem = [subjectID '_' modDirections{ii} ...
+%                 psychFileStem = [subjectID '_' modDirections{directionIdx} ...
 %                     '_' experimentName '_' ...
-%                     strrep(num2str(targetPhotoContrast(ii)),'.','x') ...
+%                     strrep(num2str(targetPhotoContrast(directionIdx)),'.','x') ...
 %                     '_refFreq-' num2str(refFreqSetHz(rr)) 'Hz' ...
-%                     '_' stimParamLabels{ss}];
+%                     '_' stimParamLabels{sideIdx}];
 %                 filename = fullfile(dataDir,psychFileStem);
 %                 load(filename,'psychObj');
 % 
-%                 psychObjArray{ss} = psychObj;
+%                 psychObjArray{sideIdx} = psychObj;
 % 
 %             end
 % 
@@ -346,7 +387,7 @@ end
 % 
 %             % Calculate sigmas and CIs for the current mod direction and
 %             % estimate type
-%             if ii == 1
+%             if directionIdx == 1
 %                 % Sigmas
 %                 slopeVals_LminusM(rr) = psiParamsFit(2);
 %                 slopeValCI_LminusM(rr,1) = psiParamsCI(1,2);
@@ -358,7 +399,7 @@ end
 %                 % slopeValCI_LminusM(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
 %             end
 % 
-%             if ii == 2
+%             if directionIdx == 2
 %                 % Sigmas
 %                 slopeVals_LightFlux(rr) = psiParamsFit(2);
 %                 slopeValCI_LightFlux(rr,1) = psiParamsCI(1,2);
@@ -372,7 +413,7 @@ end
 % 
 %         end
 % 
-%         if ii == 1 % L minus M
+%         if directionIdx == 1 % L minus M
 % 
 %             if strcmp(subjectID, 'PILT_0003')
 %                 Color = [0, 0, 0.5];
@@ -385,7 +426,7 @@ end
 % 
 %             plot(xData, slopeVals_LminusM, '-o', 'LineWidth', 2, 'Color', Color);
 % 
-%             for rr = 1:length(refFreqSetHz)
+%             for freqIdx= 1:length(refFreqSetHz)
 %                 % Plot the confidence interval for each slope value
 %                 plot([xData(rr), xData(rr)], [slopeValCI_LminusM(rr, 1), slopeValCI_LminusM(rr, 2)], 'LineWidth', 3, 'Color', Color); % vertical line for CI
 %             end
@@ -396,7 +437,7 @@ end
 %                 legend('','0x5','','','','','','3x5')
 %             end
 % 
-%         elseif ii == 2 % LightFlux
+%         elseif directionIdx == 2 % LightFlux
 % 
 %             if strcmp(subjectID, 'PILT_0003')
 %                 Color = [0, 0, 0.5];
@@ -409,7 +450,7 @@ end
 % 
 %             plot(xData, slopeVals_LightFlux, '-o', 'LineWidth', 2, 'Color', Color);
 % 
-%             for rr = 1:length(refFreqSetHz)
+%             for freqIdx= 1:length(refFreqSetHz)
 %                 % Plot the confidence interval for each slope value
 %                 plot([xData(rr), xData(rr)], [slopeValCI_LightFlux(rr, 1), slopeValCI_LightFlux(rr, 2)], 'LineWidth', 3, 'Color', Color); % vertical line for CI
 %             end
@@ -445,18 +486,18 @@ end
 % figuresize(750,250,'units','pt');
 % % tiledlayout(length(modDirections),1,"TileSpacing","compact",'Padding','tight');
 % 
-% for ii = 1:length(modDirections)
-%     for rr = 1:length(refFreqSetHz)
+% for directionIdx = 1:length(modDirections)
+%     for freqIdx= 1:length(refFreqSetHz)
 % 
 %         NDlabel = NDLabel{2};
 % 
-%         dataDir = fullfile(subjectDir,[modDirections{ii} '_ND' NDlabel],experimentName);
+%         dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel],experimentName);
 % 
 %         xData = log10(refFreqSetHz);
 % 
 %         psychObjArray = {};
 % 
-%         for ss = 1:2 % High and low side estimates
+%         for sideIdx = 1:2 % High and low side estimates
 % 
 %             subjectID = 'PILT_0005';
 % 
@@ -469,15 +510,15 @@ end
 %             NDlabel = NDLabel{2};
 % 
 %             % Load this measure
-%             psychFileStem = [subjectID '_' modDirections{ii} ...
+%             psychFileStem = [subjectID '_' modDirections{directionIdx} ...
 %                 '_' experimentName '_' ...
-%                 strrep(num2str(targetPhotoContrast(ii)),'.','x') ...
+%                 strrep(num2str(targetPhotoContrast(directionIdx)),'.','x') ...
 %                 '_refFreq-' num2str(refFreqSetHz(rr)) 'Hz' ...
-%                 '_' stimParamLabels{ss}];
+%                 '_' stimParamLabels{sideIdx}];
 %             filename = fullfile(dataDir,psychFileStem);
 %             load(filename,'psychObj');
 % 
-%             psychObjArray{ss} = psychObj;
+%             psychObjArray{sideIdx} = psychObj;
 % 
 %         end
 % 
@@ -493,7 +534,7 @@ end
 % 
 %         % Calculate sigmas and CIs for the current mod direction and
 %         % estimate type
-%         if ii == 1
+%         if directionIdx == 1
 %             % Sigmas
 %             slopeVals_LminusM(rr) = psiParamsFit(2);
 %             slopeValCI_LminusM(rr,1) = psiParamsCI(1,2);
@@ -505,7 +546,7 @@ end
 %             % slopeValCI_LminusM(rr,2) = normpdf(0,psiParamsCI(2,1),psiParamsCI(2,2));
 %         end
 % 
-%         if ii == 2
+%         if directionIdx == 2
 %             % Sigmas
 %             slopeVals_LightFlux(rr) = psiParamsFit(2);
 %             slopeValCI_LightFlux(rr,1) = psiParamsCI(1,2);
@@ -519,24 +560,24 @@ end
 % 
 %     end
 % 
-%     if ii == 1 % L minus M
+%     if directionIdx == 1 % L minus M
 % 
 %         hold on;
 % 
 %         plot(xData, slopeVals_LminusM, '-o', 'LineWidth', 2, 'Color', [0, 0, 0.5]);
 % 
-%         for rr = 1:length(refFreqSetHz)
+%         for freqIdx= 1:length(refFreqSetHz)
 %             % Plot the confidence interval for each slope value
 %             plot([xData(rr), xData(rr)], [slopeValCI_LminusM(rr, 1), slopeValCI_LminusM(rr, 2)], 'LineWidth', 3, 'Color', [0, 0, 0.5]); % vertical line for CI
 %         end
 % 
-%     elseif ii == 2 % LightFlux
+%     elseif directionIdx == 2 % LightFlux
 % 
 %         hold on;
 % 
 %         plot(xData, slopeVals_LightFlux, '-o', 'LineWidth', 2, 'Color', [0, 0.5, 0]);
 % 
-%         for rr = 1:length(refFreqSetHz)
+%         for freqIdx= 1:length(refFreqSetHz)
 %             % Plot the confidence interval for each slope value
 %             plot([xData(rr), xData(rr)], [slopeValCI_LightFlux(rr, 1), slopeValCI_LightFlux(rr, 2)], 'LineWidth', 3, 'Color', [0, 0.5, 0]); % vertical line for CI
 %         end
