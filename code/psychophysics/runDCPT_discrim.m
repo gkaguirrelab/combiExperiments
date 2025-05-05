@@ -321,9 +321,19 @@ for bb=1:nBlocks
             end
         end
     end
-    BlockDone = load('gong.mat');
+    % Make a sound for the end of the block
+    BlockDone.fs = 8000;              % Sampling frequency (Hz)
+    duration = 0.25;         % Duration (seconds)
+    freq = 600;            % Tone frequency (Hz)
+    freq2 = 1200;
+    t = 0:1/BlockDone.fs:duration;    % Time vector
+    BlockDone.y = sin(2*pi*freq*t);   % Generate sine wave
+    BlockDone.y2 = sin(2*pi*freq2*t);
+    
     if bb<nBlocks
-        sound(BlockDone.y, BlockDone.Fs)
+        sound(BlockDone.y, BlockDone.fs);           % Play the sound
+        pause (0.26);
+        sound(BlockDone.y2, BlockDone.fs);           % Play the sound
     end
 end % block loop
 
