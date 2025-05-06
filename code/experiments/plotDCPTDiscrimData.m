@@ -176,7 +176,7 @@ for directionIdx = 1:length(modDirections)
                 xlabel('absolute stimulus difference [dB]');
             end
             if contrastIdx == 1 % Left column
-                ylabel('proportion pick test interval');
+                ylabel('proportion correct');
             end
 
             % Add a title
