@@ -42,7 +42,7 @@ modDirections = {'LminusM_wide','LightFlux'};
 
 % Loop through mod directions
 for dd = 1:length(modDirections)
-    for cc = 1:nContrasts
+    for ss = 1:length(sides) % hi anbd low % for cc = 1:nContrasts
         figure; hold on
 
         % Bootstrap params
@@ -51,10 +51,11 @@ for dd = 1:length(modDirections)
         numFreqs = numel(refFreqSetHz);
         plotSpec = {'-ro', '-bo'};
         markerColors = {'r', 'b'};
+        legHandles = {};
 
 
         experimentDir = fullfile(subjectDir,[char(modDirections{dd}) '_ND' char(NDLabel) '_shifted'],experimentName);
-        for ss = 1:length(sides) % hi anbd low
+        for cc = 1:nContrasts % hi anbd low
             for ff = 1:numFreqs
                 % Loading in psychObj file for each test frequency and mod direction
                 fileStem = [experimentDir, '/' , subjectID ,'_', modDirections{dd}, '_DCPT_cont-' ...
@@ -79,23 +80,25 @@ for dd = 1:length(modDirections)
 
             end
 
-
-            plot(refFreqSetHz, mu, plotSpec{ss}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{ss});
+            plot(refFreqSetHz(1), mu(1), plotSpec{1}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{1});
+            plot(refFreqSetHz(1), mu(1), plotSpec{2}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{2});
+            plot(refFreqSetHz, mu, plotSpec{cc}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{cc});
             for ff = 1:numFreqs
-                plot([refFreqSetHz(ff) refFreqSetHz(ff)],[CIlow(ff) CIhi(ff)], 'Color', markerColors{ss}, 'LineWidth', 2, 'MarkerSize', 6);
+                plot([refFreqSetHz(ff) refFreqSetHz(ff)],[CIlow(ff) CIhi(ff)], 'Color', markerColors{cc}, 'LineWidth', 2, 'MarkerSize', 6);
             end
-            
+
+            legHandles{end + 1} = (sprintf(num2str(targetPhotoContrast(cc, dd),'%2.2d Contrast')));
 
         end
         % Add labels
+        legend(legHandles);
         ylim([1 12]);
         ylabel('[Discrim Threshold (db)]');
         xlabel('Frequency (Hz)');
         xscale log;
         xticks(refFreqSetHz);
         xlim([2,30]);
-        title([modDirLabels{dd}, ' ' num2str(targetPhotoContrast(cc, dd)), '% Contrast']);
-        legend('Hi','','','', '', '', 'Low');
+        title([modDirLabels{dd}, ' ' char(sides(ss)), ' Side']);
 
     end
 end

@@ -75,8 +75,10 @@ for directionIdx = 1:length(modDirections)
                 % Get the Max Likelihood psi params, temporarily turning off verbosity.
                 lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
                 ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
+                ub(2) = 10; % because we messed up when we collected data
                 storeVerbose = psychObj.verbose;
                 psychObj.verbose = false;
+                % questData.qpPF = @qpPFWeibull;
                 [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObj.reportParams('lb',lb,'ub',ub,'nBoots',100);
                 psychObj.verbose = storeVerbose;
 
@@ -180,7 +182,7 @@ for directionIdx = 1:length(modDirections)
             end
 
             % Add a title
-            str = sprintf('%2.1f Hz',psychObjArray{1}.refFreqHz);
+            str = sprintf('%2.1d Hz; [μ,σ,λ] = [%2.2f,%2.2f,%2.2f]', psychObjArray{1}.refFreqHz, psiParamsFit);
             title(str);
             box off
 
