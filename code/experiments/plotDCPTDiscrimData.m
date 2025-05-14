@@ -4,7 +4,7 @@ function plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhoto
 % % e.g.,
 %{
 
-subjectID = 'HERO_sam';
+subjectID = 'HERO_rsb';
 refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
 modDirections = {'LminusM_wide' 'LightFlux'};
 targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 

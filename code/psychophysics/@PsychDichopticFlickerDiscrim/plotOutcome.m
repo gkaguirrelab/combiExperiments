@@ -14,6 +14,7 @@ nTrials = length(obj.questData.trialData);
 % Get the Max Likelihood psi params, temporarily turning off verbosity.
 lb = cellfun(@(x) min(x),obj.psiParamsDomainList);
 ub = cellfun(@(x) max(x),obj.psiParamsDomainList);
+ub(2) = 10; % we forgot to update psiParamsDomainList oops
 storeVerbose = obj.verbose;
 obj.verbose = false;
 [~, psiParamsFit] = obj.reportParams('lb',lb,'ub',ub);
