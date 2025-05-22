@@ -72,17 +72,34 @@ for dd = 1:length(modDirections)
                 % Report psiParams
                 lb = cellfun(@(x) min(x),currentFile.psychObj.psiParamsDomainList);
                 ub = cellfun(@(x) max(x),currentFile.psychObj.psiParamsDomainList);
-                ub(2) = 10; % we forgot to update psiParamsDomainList oops
-                [~, psiParamsFit,psiParamsCI] = currentFile.psychObj.reportParams('lb',lb,'ub',ub,'nBoots',nBoots,'confInterval',confInterval);
+                ub(2) = 15; % we forgot to update psiParamsDomainList oops
+                [~, psiParamsFit,psiParamsCI, psiParamsFitBoot] = currentFile.psychObj.reportParams('lb',lb,'ub',ub,'nBoots',nBoots,'confInterval',confInterval);
                 mu(ff) = psiParamsFit(2);
-                CIlow(ff) = psiParamsCI(1,2);
-                CIhi(ff) = psiParamsCI(2,2);
+
+                % Finding the confidence intervals for sensitivity
+                psiParamsFitBoot(:,2) = 1 ./ psiParamsFitBoot(:, 2);
+                psiParamsFitBoot = sort(psiParamsFitBoot);
+
+                idxCI = round(((1-confInterval)/2*nBoots));
+                sensitivityCI(1,:) = psiParamsFitBoot(idxCI,:);
+                sensitivityCI(2,:) = psiParamsFitBoot(nBoots-idxCI,:);
+
+                CIlow(ff) = sensitivityCI(1,2);
+                CIhi(ff) = sensitivityCI(2,2);
 
             end
 
-            plot(refFreqSetHz(1), mu(1), plotSpec{1}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{1});
-            plot(refFreqSetHz(1), mu(1), plotSpec{2}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{2});
-            plot(refFreqSetHz, mu, plotSpec{cc}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{cc});
+            % Converting thresholds to sensitivities
+            sensitivity = 1 ./ mu; 
+
+            % Start by plotting one dot in each color for the legend
+            plot(refFreqSetHz(1), sensitivity(1), plotSpec{1}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{1});
+            plot(refFreqSetHz(1), sensitivity(1), plotSpec{2}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{2});
+
+            % Plotting sensitivities
+            plot(refFreqSetHz, sensitivity, plotSpec{cc}, 'MarkerSize', 6,'MarkerFaceColor', markerColors{cc});
+
+            % Plotting confidence intervals
             for ff = 1:numFreqs
                 plot([refFreqSetHz(ff) refFreqSetHz(ff)],[CIlow(ff) CIhi(ff)], 'Color', markerColors{cc}, 'LineWidth', 2, 'MarkerSize', 6);
             end
@@ -91,9 +108,9 @@ for dd = 1:length(modDirections)
 
         end
         % Add labels
-        legend(legHandles);
-        ylim([1 12]);
-        ylabel('[Discrim Threshold (db)]');
+        legend(legHandles, 'Location','northwest');
+        ylim([0 1.2]);
+        ylabel('Sensitivity (1/discrim threshold)');
         xlabel('Frequency (Hz)');
         xscale log;
         xticks(refFreqSetHz);
