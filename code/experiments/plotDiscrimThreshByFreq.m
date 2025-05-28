@@ -42,7 +42,7 @@ modDirections = {'LminusM_wide','LightFlux'};
 
 % Loop through mod directions
 for dd = 1:length(modDirections)
-    for ss = 1:length(sides) % hi anbd low % for cc = 1:nContrasts
+    for ss = 1:length(sides) % hi and low % for cc = 1:nContrasts
         figure; hold on
 
         % Bootstrap params
@@ -86,6 +86,10 @@ for dd = 1:length(modDirections)
 
                 CIlow(ff) = sensitivityCI(1,2);
                 CIhi(ff) = sensitivityCI(2,2);
+
+                % Alternate method of calculating sensitivity CIs - less accurate
+                % sensitivityCI_hi(ff) = 1 ./ psiParamsCI(1,2);  % CIlow becomes the upper bound of sensitivity
+                % sensitivityCI_low(ff)  = 1 ./ psiParamsCI(2,2); % CIhi becomes the lower bound of sensitivity
 
             end
 

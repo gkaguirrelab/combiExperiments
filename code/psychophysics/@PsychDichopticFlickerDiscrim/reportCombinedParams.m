@@ -1,4 +1,4 @@
-function [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportCombinedParams(obj1, obj2, options)
+function [psiParamsQuest, psiParamsFit, psiParamsCI, psiParamsFitBoot, fVal] = reportCombinedParams(obj1, obj2, options)
 
 % To determine params using the combined data from two psychometric
 % objects, the high and low sides of the curve.
