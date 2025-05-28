@@ -3,7 +3,7 @@ function plotDCPTDiscrimData_combined(subjectID, refFreqSetHz, modDirections, ta
 % % e.g.,
 %{
 
-subjectID = 'HERO_rsb';
+subjectID = 'HERO_sam';
 refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
 modDirections = {'LminusM_wide' 'LightFlux'};
 targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
@@ -94,7 +94,7 @@ for directionIdx = 1:length(modDirections)
                 markerSizeIdx = discretize(nTrials,3);
                 markerSizeSet = [25,50,100];
                 markerShapeSet = ['o', '^'];   
-                markerColorSet = [0, 0, 0.5; 0.5, 0, 0];   % blue, red. low, high
+                markerColorSet = [0.5, 0, 0; 0, 0, 0.5];   % red, blue. low, high 
                 for cc = 1:length(stimCounts)
                     scatter(stim(cc),pSelectTest(cc),markerSizeSet(markerSizeIdx(cc)), ...
                         'Marker', markerShapeSet(sideIdx), ...

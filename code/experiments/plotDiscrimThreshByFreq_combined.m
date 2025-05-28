@@ -1,10 +1,11 @@
 function plotDiscrimThreshByFreq_combined(subjectID, NDLabel, refFreqSetHz, targetPhotoContrast)
-% Create some figures that summarize the psychometric fitting
+% Create some figures that summarize the psychometric fitting, from
+% combined high and low side data
 % Also saves pdfs of the psychometric fits
 % % e.g.,
 %{
 
-subjectID = 'HERO_rsb';
+subjectID = 'HERO_sam';
 refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
 modDirections = {'LminusM_wide' 'LightFlux'};
 targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
