@@ -67,7 +67,7 @@ p.addParameter('combiClockAdjust',[1.0006,0.9992],@isnumeric);
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('stimParams',linspace(0,6,51),@isnumeric);
+p.addParameter('stimParams',linspace(0,7,51),@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
@@ -181,6 +181,7 @@ for bb=1:nBlocks
 
     % Switch back and forth between the modulation directions
     directionIdx = mod(bb,2)+1;
+    
 
     % Load the mod results for this direction for the two combiLEDs
     for side = 1:nSides
