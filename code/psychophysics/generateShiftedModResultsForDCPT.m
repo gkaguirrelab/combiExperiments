@@ -44,7 +44,7 @@ function generateShiftedModResultsForDCPT(subjectID,observerAgeInYears,NDlabel,v
     subjectID = 'HERO_gka';
     observerAgeInYears = 55;
     NDlabel = '0x5';
-    generateModResultsForDCPT(subjectID,observerAgeInYears,NDlabel);
+    generateShiftedModResultsForDCPT(subjectID,observerAgeInYears,NDlabel);
 %}
 
 % Parse the parameters
