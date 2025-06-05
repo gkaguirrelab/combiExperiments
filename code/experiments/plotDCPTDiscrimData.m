@@ -4,12 +4,13 @@ function plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhoto
 % % e.g.,
 %{
 
-subjectID = 'HERO_rsb';
+subjectID = 'HERO_kik';
 refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
 modDirections = {'LminusM_wide' 'LightFlux'};
 targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
 % L minus M is [0.025, 0.075] and Light Flux is [0.10, 0.30]
 NDLabel = {'0x5'};
+plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
 %}
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
@@ -70,6 +71,7 @@ for directionIdx = 1:length(modDirections)
                 questData = psychObj.questData;
                 stimParamsDomainList = psychObj.stimParamsDomainList;
                 psiParamsDomainList = psychObj.psiParamsDomainList;
+                psiParamsDomainList{2} = stimParamsDomainList;
                 nTrials = length(psychObj.questData.trialData);
 
                 % Get the Max Likelihood psi params, temporarily turning off verbosity.
@@ -172,7 +174,7 @@ for directionIdx = 1:length(modDirections)
             %        plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 
             % Labels and range
-            xlim([0 6.0]);
+            xlim([0 6.75]);
             ylim([-0.1 1.1]);
             if freqIdx == length(refFreqSetHz)  % Bottom row
                 xlabel('absolute stimulus difference [dB]');
