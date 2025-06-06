@@ -3,12 +3,13 @@ function plotDCPTDiscrimData_combined(subjectID, refFreqSetHz, modDirections, ta
 % % e.g.,
 %{
 
-subjectID = 'HERO_sam';
+subjectID = 'HERO_kik';
 refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
 modDirections = {'LminusM_wide' 'LightFlux'};
 targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
 % L minus M is [0.025, 0.075] and Light Flux is [0.10, 0.30]
 NDLabel = {'0x5'};
+plotDCPTDiscrimData_combined(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
 %}
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
@@ -72,14 +73,14 @@ for directionIdx = 1:length(modDirections)
                 nTrials = length(psychObj.questData.trialData);
 
                 % Get the Max Likelihood psi params, temporarily turning off verbosity.
-                lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
-                ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
-                ub(2) = 10; % because we messed up when we collected data
-                storeVerbose = psychObj.verbose;
-                psychObj.verbose = false;
-                % questData.qpPF = @qpPFWeibull;
-                [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObj.reportParams('lb',lb,'ub',ub,'nBoots',100);
-                psychObj.verbose = storeVerbose;
+                % lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
+                % ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
+                % ub(2) = 10; % because we messed up when we collected data
+                % storeVerbose = psychObj.verbose;
+                % psychObj.verbose = false;
+                % % questData.qpPF = @qpPFWeibull;
+                % [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObj.reportParams('lb',lb,'ub',ub,'nBoots',100);
+                % psychObj.verbose = storeVerbose;
 
                 % Get the proportion selected "test" for each stimulus
                 stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
@@ -112,16 +113,19 @@ for directionIdx = 1:length(modDirections)
             % Add the psychometric function
             stimParamsDomainList = [psychObjArray{1}.stimParamsDomainList];
             % psychObjArray{2}.stimParamsDomainList is the same!
+            psiParamsDomainList = psychObjArray{1}.psiParamsDomainList;
+            psiParamsDomainList{2} = stimParamsDomainList;
     
             % Finding ub and lb based on the high and low side psychometric objects
-            lbLow = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
-            lbHigh = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
+            lbLow = cellfun(@(x) min(x),psiParamsDomainList);
+            lbHigh = cellfun(@(x) min(x),psiParamsDomainList);
             % ubLow = [0,50,0];
             lb = min(lbLow, lbHigh);
-            ubLow = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
-            ubHigh = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+            ubLow = cellfun(@(x) max(x),psiParamsDomainList);
+            ubHigh = cellfun(@(x) max(x),psiParamsDomainList);
             % ubHigh = [0,50,0];
             ub = max(ubLow, ubHigh);
+            ub(2) = 10; % oops we forgot to increase the stimDomainList in the psychObj
 
             % Temporarily turn off verbosity
             storeVerbose1 = psychObjArray{1}.verbose;
@@ -152,7 +156,7 @@ for directionIdx = 1:length(modDirections)
             %        plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 
             % Labels and range
-            xlim([0 6.0]);
+            xlim([0 6.75]);
             ylim([-0.1 1.1]);
             if freqIdx == length(refFreqSetHz)  % Bottom row
                 xlabel('absolute stimulus difference [dB]');

@@ -51,7 +51,7 @@ function runDCPT_discrim(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'HERO_sam';
+    subjectID = 'HERO_rsb';
     NDlabel = '0x5';
     runDCPT_discrim(subjectID,NDlabel);
 %}
