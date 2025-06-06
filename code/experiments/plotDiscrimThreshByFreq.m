@@ -4,7 +4,7 @@ function plotDiscrimThreshByFreq(subjectID, NDLabel, refFreqSetHz, targetPhotoCo
 % % e.g.,
 %{
 
-subjectID = 'HERO_sam';
+subjectID = 'HERO_kik';
 refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
 modDirections = {'LminusM_wide' 'LightFlux'};
 targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
@@ -70,8 +70,10 @@ for dd = 1:length(modDirections)
                 close(figHandle)
 
                 % Report psiParams
-                lb = cellfun(@(x) min(x),currentFile.psychObj.psiParamsDomainList);
-                ub = cellfun(@(x) max(x),currentFile.psychObj.psiParamsDomainList);
+                psiParamsDomainList = currentFile.psychObj.psiParamsDomainList;
+                psiParamsDomainList{2} = linspace(0,6.75, 51);
+                lb = cellfun(@(x) min(x),psiParamsDomainList);
+                ub = cellfun(@(x) max(x),psiParamsDomainList);
                 ub(2) = 15; % we forgot to update psiParamsDomainList oops
                 [~, psiParamsFit,psiParamsCI, psiParamsFitBoot] = currentFile.psychObj.reportParams('lb',lb,'ub',ub,'nBoots',nBoots,'confInterval',confInterval);
                 mu(ff) = psiParamsFit(2);
@@ -120,6 +122,8 @@ for dd = 1:length(modDirections)
         xticks(refFreqSetHz);
         xlim([2,30]);
         title([modDirLabels{dd}, ' ' char(sides(ss)), ' Side']);
+
+        pause(0.25);
 
     end
 end

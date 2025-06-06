@@ -5,12 +5,13 @@ function plotDiscrimThreshByFreq_combined(subjectID, NDLabel, refFreqSetHz, targ
 % % e.g.,
 %{
 
-subjectID = 'HERO_sam';
+subjectID = 'HERO_kik';
 refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
 modDirections = {'LminusM_wide' 'LightFlux'};
 targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
 % L minus M is [0.025, 0.075] and Light Flux is [0.10, 0.30]
 NDLabel = {'0x5'};
+plotDiscrimThreshByFreq_combined(subjectID, NDLabel, refFreqSetHz, targetPhotoContrast);
 %}
 if ~exist("targetPhotoContrast", 'var')
     targetPhotoContrast = [0.025, 0.075; 0.10, 0.30]; % rows = mod dir, columns high low
@@ -84,12 +85,14 @@ for dd = 1:length(modDirections)
             % Report combined psiParams
 
             % Finding ub and lb based on the high and low side psychometric objects
-            lbLow = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
-            lbHigh = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
+            psiParamsDomainList = psychObjArray{1}.psiParamsDomainList;
+            psiParamsDomainList{2} = linspace(0,6.75,51);
+            lbLow = cellfun(@(x) min(x),psiParamsDomainList);
+            lbHigh = cellfun(@(x) min(x),psiParamsDomainList);
             % ubLow = [0,50,0];
             lb = min(lbLow, lbHigh);
-            ubLow = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
-            ubHigh = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+            ubLow = cellfun(@(x) max(x),psiParamsDomainList);
+            ubHigh = cellfun(@(x) max(x),psiParamsDomainList);
             ubLow(2) = 15; % we forgot to update psiParamsDomainList oops
             ubHigh(2) = 15; % we forgot to update psiParamsDomainList oops
             % ubHigh = [0,50,0];
