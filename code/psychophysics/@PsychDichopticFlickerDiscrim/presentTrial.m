@@ -203,9 +203,9 @@ else
             'leftarrow', 'rightarrow'});
         if ~isempty(keyPress)
             switch keyPress
-                case {'1','numpad1','leftarrow'}
+                case {'1','numpad1','uparrow'}
                     intervalChoice = 1;
-                case {'2','numpad2','rightarrow'}
+                case {'2','numpad2','downarrow'}
                     intervalChoice = 2;
             end
         end
@@ -216,9 +216,9 @@ else
         [buttonPress, responseTimeSecs] = getGamepadResponse(Inf,[5 7 6 8]);
         if ~isempty(buttonPress)
             switch buttonPress
-                case {5 7}
+                case {5 6}
                     intervalChoice = 1;
-                case {6 8}
+                case {7 8}
                     intervalChoice = 2;
             end
         end

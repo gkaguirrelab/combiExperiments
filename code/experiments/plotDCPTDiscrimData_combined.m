@@ -1,6 +1,5 @@
-function plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
-% % Function to plot the high and low ends of a psychometric funciton on the
-% % same graph.
+function plotDCPTDiscrimData_combined(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
+% % Function to plot a single psychometric curve, combining the high and low side data.  
 % % e.g.,
 %{
 
@@ -10,7 +9,7 @@ modDirections = {'LminusM_wide' 'LightFlux'};
 targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
 % L minus M is [0.025, 0.075] and Light Flux is [0.10, 0.30]
 NDLabel = {'0x5'};
-plotDCPTDiscrimData(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
+plotDCPTDiscrimData_combined(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
 %}
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
@@ -52,8 +51,8 @@ for directionIdx = 1:length(modDirections)
             nexttile;
             hold on
 
-            % To plot the psychometric functions on the same graph - collect the high and low side
-            % estimate objects in an array
+            % To plot the psychometric curves with combined high and low side data - collect the 
+            % high and low side estimate objects in an array
             psychObjArray = {};
 
             for sideIdx = 1:nSides
@@ -71,18 +70,17 @@ for directionIdx = 1:length(modDirections)
                 questData = psychObj.questData;
                 stimParamsDomainList = psychObj.stimParamsDomainList;
                 psiParamsDomainList = psychObj.psiParamsDomainList;
-                psiParamsDomainList{2} = stimParamsDomainList;
                 nTrials = length(psychObj.questData.trialData);
 
                 % Get the Max Likelihood psi params, temporarily turning off verbosity.
-                lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
-                ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
-                ub(2) = 10; % because we messed up when we collected data
-                storeVerbose = psychObj.verbose;
-                psychObj.verbose = false;
-                % questData.qpPF = @qpPFWeibull;
-                [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObj.reportParams('lb',lb,'ub',ub,'nBoots',100);
-                psychObj.verbose = storeVerbose;
+                % lb = cellfun(@(x) min(x),psychObj.psiParamsDomainList);
+                % ub = cellfun(@(x) max(x),psychObj.psiParamsDomainList);
+                % ub(2) = 10; % because we messed up when we collected data
+                % storeVerbose = psychObj.verbose;
+                % psychObj.verbose = false;
+                % % questData.qpPF = @qpPFWeibull;
+                % [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObj.reportParams('lb',lb,'ub',ub,'nBoots',100);
+                % psychObj.verbose = storeVerbose;
 
                 % Get the proportion selected "test" for each stimulus
                 stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
@@ -97,7 +95,7 @@ for directionIdx = 1:length(modDirections)
                 markerSizeIdx = discretize(nTrials,3);
                 markerSizeSet = [25,50,100];
                 markerShapeSet = ['o', '^'];   
-                markerColorSet = [0, 0, 0.5; 0.5, 0, 0];   % blue, red. low, high
+                markerColorSet = [0.5, 0, 0; 0, 0, 0.5];   % red, blue. low, high 
                 for cc = 1:length(stimCounts)
                     scatter(stim(cc),pSelectTest(cc),markerSizeSet(markerSizeIdx(cc)), ...
                         'Marker', markerShapeSet(sideIdx), ...
@@ -111,63 +109,47 @@ for directionIdx = 1:length(modDirections)
                 psychObjArray{sideIdx} = psychObj;
 
             end
-
-            % Add the psychometric functions
-            stimParamsDomainListLow = [psychObjArray{1}.stimParamsDomainList];
-            stimParamsDomainListHigh = [psychObjArray{2}.stimParamsDomainList];
-
-            % Get the Max Likelihood psi params, temporarily turning off verbosity.
-
-            % Finding ub and lb for the high and low side psychometric objects
-            lbLow = cellfun(@(x) min(x),psychObjArray{1}.psiParamsDomainList);
-            ubLow = cellfun(@(x) max(x),psychObjArray{1}.psiParamsDomainList);
+            
+            % Add the psychometric function
+            stimParamsDomainList = [psychObjArray{1}.stimParamsDomainList];
+            % psychObjArray{2}.stimParamsDomainList is the same!
+            psiParamsDomainList = psychObjArray{1}.psiParamsDomainList;
+            psiParamsDomainList{2} = stimParamsDomainList;
+    
+            % Finding ub and lb based on the high and low side psychometric objects
+            lbLow = cellfun(@(x) min(x),psiParamsDomainList);
+            lbHigh = cellfun(@(x) min(x),psiParamsDomainList);
             % ubLow = [0,50,0];
-
-            lbHigh = cellfun(@(x) min(x),psychObjArray{2}.psiParamsDomainList);
-            ubHigh = cellfun(@(x) max(x),psychObjArray{2}.psiParamsDomainList);
+            lb = min(lbLow, lbHigh);
+            ubLow = cellfun(@(x) max(x),psiParamsDomainList);
+            ubHigh = cellfun(@(x) max(x),psiParamsDomainList);
             % ubHigh = [0,50,0];
+            ub = max(ubLow, ubHigh);
+            ub(2) = 10; % oops we forgot to increase the stimDomainList in the psychObj
 
-            % Low side
             % Temporarily turn off verbosity
-            storeVerboseLow = psychObjArray{1}.verbose;
+            storeVerbose1 = psychObjArray{1}.verbose;
+            storeVerbose2 = psychObjArray{2}.verbose;
             psychObjArray{1}.verbose = false;
-
-            [psiParamsQuestLow, psiParamsFitLow, psiParamsCILow, fValLow] = psychObjArray{1}.reportParams('lb',lbLow,'ub',ubLow,'nBoots',100);
-
-            psychObjArray{1}.verbose = storeVerboseLow;
-
-            % High side
-            % Temporarily turn off verbosity
-            storeVerboseHigh = psychObjArray{2}.verbose;
             psychObjArray{2}.verbose = false;
 
-            [psiParamsQuestHigh, psiParamsFitHigh, psiParamsCIHigh, fValHigh] = psychObjArray{2}.reportParams('lb',lbHigh,'ub',ubHigh,'nBoots',100);
+            [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = psychObjArray{1}.reportCombinedParams(psychObjArray{2}, 'lb', lb, 'ub', ub, 'nBoots', 100);
 
-            psychObjArray{2}.verbose = storeVerboseHigh;
+            psychObjArray{1}.verbose = storeVerbose1;
+            psychObjArray{2}.verbose = storeVerbose2;
 
-            % Forcing the lapse rate to be 0 for both sides
-            psiParamsFitLow(1, 3) = 0;
-            psiParamsFitHigh(1, 3) = 0;
+            % Forcing the lapse rate to be 0
+            psiParamsFit(1, 3) = 0;
     
             % Plotting
-            % Low side
             hold on
-            for cc = 1:length(stimParamsDomainListLow)
-                outcomes = psychObjArray{1}.questData.qpPF(stimParamsDomainListLow(cc),psiParamsFitLow);
+            for cc = 1:length(stimParamsDomainList)
+                outcomes = psychObjArray{2}.questData.qpPF(stimParamsDomainList(cc),psiParamsFit);
                 fitCorrect(cc) = outcomes(2);
             end
-            plot(abs(stimParamsDomainListLow),fitCorrect,'Color', [0, 0, 0.5]);
-
-            fitCorrect = [];
-
-            % High side
-            for cc = 1:length(stimParamsDomainListHigh)
-                outcomes = psychObjArray{2}.questData.qpPF(stimParamsDomainListHigh(cc),psiParamsFitHigh);
-                fitCorrect(cc) = outcomes(2);
-            end
-            plot(stimParamsDomainListHigh,fitCorrect,'Color', [0.5, 0, 0]);
+            plot(stimParamsDomainList,fitCorrect,'-k');  
             hold off
-
+  
             % Add a marker for the 50% point
             %        outcomes = psychObj.questData.qpPF(psiParamsFit(1),psiParamsFit);
             %        plot([psiParamsFit(1), psiParamsFit(1)],[0, outcomes(2)],':k')
@@ -182,6 +164,15 @@ for directionIdx = 1:length(modDirections)
             if contrastIdx == 1 % Left column
                 ylabel('proportion correct');
             end
+
+            % Adding legend
+            hold on;
+            p1 = plot(NaN, NaN, 'o', 'MarkerFaceColor', markerColorSet(1,:), 'MarkerEdgeColor','k');  % blue circle
+            p2 = plot(NaN, NaN, '^', 'MarkerFaceColor', markerColorSet(2,:), 'MarkerEdgeColor','k');  % red triangle
+            if freqIdx == 1 && contrastIdx == 1  % legend on 1st plot only
+                legend([p1, p2], {'Low', 'High'}, 'Location', 'northeastoutside');
+            end
+            hold off
 
             % Add a title
             str = sprintf('%2.1d Hz; [μ,σ,λ] = [%2.2f,%2.2f,%2.2f]', psychObjArray{1}.refFreqHz, psiParamsFit);

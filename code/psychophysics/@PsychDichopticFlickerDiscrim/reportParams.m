@@ -1,4 +1,4 @@
-function [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
+function [psiParamsQuest, psiParamsFit, psiParamsCI, psiParamsFitBoot, fVal] = reportParams(obj,options)
 
 % Only perform bootstrapping if that argument is passed
 arguments
