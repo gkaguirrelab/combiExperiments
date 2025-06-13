@@ -55,8 +55,8 @@ function runDCPT_discomfort_entoptic(subjectID,NDlabel,discomfortFlag,varargin)
 %{
     subjectID = 'HERO_rsb';
     NDlabel = '0x5';
-    discomfortFlag = 1;
-    runDCPT_discrim(subjectID,NDlabel, discomfortFlag);
+    discomfortFlag = 1; 
+    runDCPT_discomfort_entoptic(subjectID,NDlabel, discomfortFlag);
 %}
 
 % Parse the parameters
@@ -74,23 +74,30 @@ p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
+p.addParameter('makeOrder',false, @islogical);
+% p.addParameter('discomfortFlag',true, @islogical);
 p.parse(varargin{:})
 
-%  Pull out some variablse from the p.Results structure
+%  Pull out some variables from the p.Results structure
 modDirections = p.Results.modDirections;
 refFreqHz = p.Results.refFreqHz;
 targetPhotoContrast = p.Results.targetPhotoContrast;
 combiLEDLabels = p.Results.combiLEDLabels;
 combiLEDIDs = p.Results.combiLEDIDs;
 nBlocks = p.Results.nBlocks;
-useStaircase = p.Results.useStaircase;
 verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
 simulateMode = p.Results.simulateMode;
 combiClockAdjust = p.Results.combiClockAdjust;
+makeOrder = p.Results.makeOrder;
+% discomfortFlag = p.Results.discomfortFlag;
 
 % Set our experimentName
-experimentName = 'DCPT';
+if discomfortFlag
+    experimentName = 'DCPT_discomfort';
+else
+    experimentName = 'DCPT_entoptic';
+end
 
 % Set the labels discomfort and entoptic
 if discomfortFlag
@@ -104,6 +111,8 @@ nFreqs = length(refFreqHz);
 nConstrasts = size(targetPhotoContrast,1);
 nModDir = size(modDirections,1);
 nTrials = nFreqs*nConstrasts*nModDir;
+nTrialsPerBlock = nTrials/nModDir;
+nSides = 2;
 
 % Define the modulation and data directories
 subjectDir = fullfile(...
@@ -198,79 +207,80 @@ for bb=1:nBlocks
     % Assemble the psychObj array, looping over the high and low range of
     % the discrimination function AND the reference frequencies AND the
     % contrast
-    psychObjArray = cell(nFreqs,nConstrasts);
-    for freqIdx = 1:nFreqs
-        for contrastIdx = 1:nConstrasts
 
-            % Define the filestem for this psychometric object
-            dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel, '_shifted'],experimentName);
-            psychFileStem = [subjectID '_' experimentName '_' discomfortStr];
+    % Define the filestem for this psychometric object
+    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel, '_shifted'],experimentName);
+    psychFileStem = [subjectID '_' experimentName '_' discomfortStr];
 
-            % Create or load the psychometric object
-            psychObjFilename = fullfile(dataDir,[psychFileStem '.mat']);
+    % Create or load the psychometric object
+    psychObjFilename = fullfile(dataDir,[psychFileStem '.mat']);
 
-            % Store in the psychObjArray
-            psychObjArray{freqIdx, contrastIdx} = psychObj;
-
-            % Clear the psychObj
-            clear psychObj
-        end
+    if isfile(psychObjFilename)
+        % Load the object
+        load(psychObjFilename,'psychObj');
+        % Update the path to the file in case this has changed
+        psychObj.filename = psychObjFilename;
+        % Put in the fresh CombiLEDObjs
+        psychObj.CombiLEDObjArr = CombiLEDObjArr;
+        % Increment blockIdx
+        psychObj.blockIdx = psychObj.blockIdx+1;
+        psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
+    else
+        % Create the object
+        psychObj = PsychDichopticFlickerDiscomfort(...
+            CombiLEDObjArr, modResultArr, refFreqHz,...
+            'refPhotoContrast',targetPhotoContrast(:,directionIdx));
+        % Store the filename
+        psychObj.filename = psychObjFilename;
     end
+
 
     % Initialize the display for one of the psychObj elements. This routine
     % assumes that all of the psychObj elements that will be called during
     % the block use the same modulation, modulation background, temporal
     % profile (i.e., sinusoid), and trial duration.
-    psychObjArray{1,1,1}.initializeDisplay;
+    psychObj.initializeDisplay;
 
     % Start the block
-    if ~simulateMode
-        fprintf('Press enter to start block %d...',bb);
-        input('');
-    end
-   
+    fprintf('Press enter to start block %d...',bb);
+    input('');
+
     % TO DO make a set order we present to all participants.
-    % Create a random ordering of the three stimulus crossings (high and
-    % low range, frequencies, contrast levels)
-    nReps = nTrialsPerBlock / (nRanges*nFreqs*nConstrasts);
-    triplets = zeros(nRanges*nFreqs*nConstrasts,3);
-    [a,b,c] = ndgrid(1:nRanges,1:nFreqs,1:nConstrasts);
-    triplets(:,1) = a(:); triplets(:,2) = b(:); triplets(:,3) = c(:);
-    triplets = repmat(triplets,nReps,1);
-    permutedTriplets = triplets(randperm(nTrialsPerBlock),:);
+    % Create a random ordering of the two stimulus crossings (frequencies and contrast levels)
+    if makeOrder   % If creating a new random order
+        pairs = zeros(nFreqs*nConstrasts,2);
+        [a,b] = ndgrid(1:nFreqs,1:nConstrasts);
+        pairs(:,1) = a(:); pairs(:,2) = b(:);
+        pairs = repmat(pairs,nTrialsPerBlock,1);
+        permutedPairs = pairs(randperm(nTrialsPerBlock),:);
+        pairFileName = fullfile(dropboxBaseDir,dropboxSubDir,projectName,'DEMO_discrim/DCPT_discomfort_pairs');
+        save(pairFileName, permutedPairs);
+    else    % If using the pre-set order
+        pairFileName = fullfile(dropboxBaseDir,dropboxSubDir,projectName,'DEMO_discrim/DCPT_discomfort_pairs');
+        permutedPairs = load(pairFileName);
+    end
 
     % Store the block start time
     for freqIdx = 1:nFreqs
         for contrastIdx = 1:nConstrasts
             blockStartTime = datetime();
-            psychObjArray{freqIdx, contrastIdx}.blockStartTimes(psychObjArray{freqIdx, contrastIdx}.blockIdx) = blockStartTime;
+            psychObj.blockStartTimes(psychObj.blockIdx) = blockStartTime;
         end
     end
-    %% STOPPED HERE
     % Present nTrials
     for ii = 1:nTrialsPerBlock
-        psychObjArray{...
-            permutedTriplets(ii,1),...
-            permutedTriplets(ii,2),...
-            permutedTriplets(ii,3)}.presentTrial
+        currentPair = permutedPairs(ii,:);
+        psychObj.presentTrial(currentPair);
     end
 
     % Report completion of this block
     fprintf('done.\n');
 
-    % Store the psychObjArray entries
-    for rangeIdx = 1:nRanges
-        for freqIdx = 1:nFreqs
-            for contrastIdx = 1:nConstrasts
-                % Grab the next psychObj
-                psychObj = psychObjArray{rangeIdx, freqIdx, contrastIdx};
-                % empty the CombiLEDObj handles and save the psychObj
-                psychObj.CombiLEDObjArr = {};
-                % Save the psychObj
-                save(psychObj.filename,'psychObj');
-            end
-        end
-    end
+    % empty the CombiLEDObj handles and save the psychObj
+    psychObj.CombiLEDObjArr = {};
+    % Save the psychObj
+    save(psychObj.filename,'psychObj');
+
     % Make a sound for the end of the block
     BlockDone.fs = 8000;              % Sampling frequency (Hz)
     duration = 0.25;         % Duration (seconds)
@@ -288,16 +298,10 @@ for bb=1:nBlocks
 end % block loop
 
 % Clean up
-if ~simulateMode
     for side = 1:nSides
         CombiLEDObjArr{side}.goDark;
         CombiLEDObjArr{side}.serialClose;
     end
-end
 clear CombiLEDObjArr
-
-% Tell participant the task is done
-ExperimentDone = load('handel');
-sound(ExperimentDone.y,ExperimentDone.Fs)
 
 end % function
