@@ -93,7 +93,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.addParameter('simulatePsiParams',[0,2,0.00],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,4,51),linspace(0,0,1)},@isnumeric);
+                {linspace(0,0,1),linspace(0,6.75,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})
