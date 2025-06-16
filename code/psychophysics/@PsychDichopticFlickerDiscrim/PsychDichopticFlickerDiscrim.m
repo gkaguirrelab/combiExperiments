@@ -51,6 +51,9 @@ classdef PsychDichopticFlickerDiscrim < handle
         % then continue to collect data
         CombiLEDObjArr
 
+        % Object for EOG recording using Biopac
+        EOGControl
+
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
         useStaircase
@@ -74,7 +77,7 @@ classdef PsychDichopticFlickerDiscrim < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjArr, modResultArr, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjArr, modResultArr, EOGControl, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -101,6 +104,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             % Place various inputs and options into object properties
             obj.CombiLEDObjArr = CombiLEDObjArr;
             obj.modResultArr = modResultArr;
+            obj.EOGControl = EOGControl;
             obj.refFreqHz = refFreqHz;
             obj.stimParamSide = p.Results.stimParamSide;
             obj.testPhotoContrast = p.Results.testPhotoContrast;

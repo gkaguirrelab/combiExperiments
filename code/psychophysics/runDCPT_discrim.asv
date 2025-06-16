@@ -155,8 +155,8 @@ else
 
     % Open the connection to the LabJack
     if EOGFlag
-        dataOutDir = '/Users/flicexperimenter/Aguirre-Brainard Lab Dropbox/Flic Experimenter/FLIC_data/combiLED/HERO_rsb';
-        EOGControl = BiopackControl(dataOutDir);
+        dataOutDir = '';
+        EOGControl = BiopackControl(dataOutDir,varargin);
     end
 end
 
@@ -232,10 +232,7 @@ for bb=1:nBlocks
                     psychObj.CombiLEDObjArr = CombiLEDObjArr;
                     % Put in the fresh EOGControl
                     if EOGFlag
-                        psychObj.EOGControl = EOGControl;
-                    else
-                        psychObj.EOGControl = '';
-                    end
+                    psychObj.EOGControl = EOGControl;
                     % Increment blockIdx
                     psychObj.blockIdx = psychObj.blockIdx+1;
                     psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
@@ -364,7 +361,9 @@ if ~simulateMode
     end
 end
 clear CombiLEDObjArr
-clear EOGControl
+if EOGFlag
+    clear EOGControl
+end
 
 % Tell participant the task is done
 ExperimentDone = load('handel');
