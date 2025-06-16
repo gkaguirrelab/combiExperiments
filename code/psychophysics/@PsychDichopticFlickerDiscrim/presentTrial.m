@@ -1,5 +1,8 @@
 function presentTrial(obj)
 
+% Get the EOGControl
+EOGControl = obj.EOGControl;
+
 % Get the questData
 questData = obj.questData;
 
@@ -175,6 +178,11 @@ else
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.low.play;
+
+    % Start the EOG recording - slightly shorter than stimulus duration
+    EOGControl.trialDurationSecs = obj.stimDurSecs - 0.01; 
+    [EOGdata1] = EOGControl.recordTrial();
+
     obj.waitUntil(stopTime);
 
     %% Second interval
@@ -190,11 +198,19 @@ else
 
     % Start the stimuli and sound a tone. Wait a half a second so that the
     % subject has to look at these for a moment. 
-    stopTime = cputime() + 0.5;
+    stopTime = cputime() + 0.75;
     for side = [2 1]
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.mid.play;
+
+    % Start the EOG recording - slightly shorter than minimum stimulus duration
+    EOGControl.trialDurationSecs = 0.75 - 0.01; 
+    [EOGdata2] = EOGControl.recordTrial();
+    % Put the EOG data from each stimulus pair (one trial altogether) into the psychObj
+    newRow = [EOGdata1, EOGdata2];
+    obj.EOGdata(end+1, :) = newRow;
+
     obj.waitUntil(stopTime);
 
     % Start the response interval
