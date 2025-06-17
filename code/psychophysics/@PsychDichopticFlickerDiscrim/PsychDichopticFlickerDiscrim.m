@@ -54,9 +54,6 @@ classdef PsychDichopticFlickerDiscrim < handle
         % Object for EOG recording using Biopac
         EOGControl
 
-        % Struct array to save EOG data
-        EOGdata
-
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
         useStaircase

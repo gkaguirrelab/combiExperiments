@@ -207,9 +207,6 @@ else
     % Start the EOG recording - slightly shorter than minimum stimulus duration
     EOGControl.trialDurationSecs = 0.75 - 0.01; 
     [EOGdata2] = EOGControl.recordTrial();
-    % Put the EOG data from each stimulus pair (one trial altogether) into the psychObj
-    newRow = [EOGdata1, EOGdata2];
-    obj.EOGdata(end+1, :) = newRow;
 
     obj.waitUntil(stopTime);
 
@@ -306,6 +303,9 @@ questData.trialData(currTrialIdx).refInterval = refInterval;
 questData.trialData(currTrialIdx).testInterval = testInterval;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
+questData.trialData(currTrialIdx).EOGdata1 = EOGdata1;
+questData.trialData(currTrialIdx).EOGdata2 = EOGdata2;
+
 
 % Put staircaseData back into the obj
 obj.questData = questData;
