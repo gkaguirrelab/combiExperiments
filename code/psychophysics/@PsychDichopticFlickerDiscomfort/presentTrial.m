@@ -67,7 +67,7 @@ audioObjs.correct = audioplayer(correctSound,Fs);
 % Handle verbosity
 if obj.verbose
     fprintf('Trial %d; Ref Contrast %2.2f; Ref freq %2.2f, Test freq %2.2f;...', ...
-        currTrialIdx,stimParams(1,1),stimParams(refSide,2),stimParams(testSide,2));
+        currTrialIdx,stimParams(1,1),stimParams(1,2),stimParams(2,2));
 end
 
 % Present the stimuli
@@ -96,45 +96,52 @@ audioObjs.low.play;
 obj.waitUntil(stopTime);
 
 % Start the response interval
-if psychObj.discomfortFlag
-    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'1','2','3','4','5','6','7','8','9','0'});
-    if ~isempty(keyPress)
-        switch keyPress
-            case {'1'}
-                discomfortRating = 1;
-            case {'2'}
-                discomfortRating = 2;
-            case {'3'}
-                discomfortRating = 3;
-            case {'4'}
-                discomfortRating = 4;
-            case {'5'}
-                discomfortRating = 5;
-            case {'6'}
-                discomfortRating = 6;
-            case {'7'}
-                discomfortRating = 7;
-            case {'8'}
-                discomfortRating = 8;
-            case {'9'}
-                discomfortRating = 9;
-            case {'0'}
-                discomfortRating = 10;
+done = false;
+if obj.discomfortFlag
+    while ~done
+        [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'1','2','3','4','5','6','7','8','9','0'});
+        if ~isempty(keyPress)
+            switch keyPress
+                case {'1'}
+                    discomfortRating = 1;
+                case {'2'}
+                    discomfortRating = 2;
+                case {'3'}
+                    discomfortRating = 3;
+                case {'4'}
+                    discomfortRating = 4;
+                case {'5'}
+                    discomfortRating = 5;
+                case {'6'}
+                    discomfortRating = 6;
+                case {'7'}
+                    discomfortRating = 7;
+                case {'8'}
+                    discomfortRating = 8;
+                case {'9'}
+                    discomfortRating = 9;
+                case {'0'}
+                    discomfortRating = 10;
+            end
+            done = true;
         end
     end
     % Close the response window
     close(S.fh);
 else
-    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'1','2','3'});
-    if ~isempty(keyPress)
-        switch keyPress
-            case {'1'}
-                entopticResponse = 1;
-            case {'2'}
-                entopticResponse = 2;
-            case {'3'}
-                entopticResponse = 3;
+    while ~done
+        [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'1','2','3'});
+        if ~isempty(keyPress)
+            switch keyPress
+                case {'1'}
+                    entopticResponse = 1;
+                case {'2'}
+                    entopticResponse = 2;
+                case {'3'}
+                    entopticResponse = 3;
+            end
         end
+        done = true;
     end
     % Close the response window
     close(S.fh);
@@ -161,12 +168,12 @@ if obj.verbose
 end
 
 % Put staircaseData back into the obj
-if discomfortFlag
-    obj.discomfortRating(end) = discomfortRating;
-    obj.responseTimeSecs(end) = responseTimeSecs;
+if obj.discomfortFlag
+    obj.discomfortRating(end+1) = discomfortRating;
+    obj.responseTimeSecs(end+1) = responseTimeSecs;
 else
-    obj.entopticResponse(end) = entopticResponse;
-    obj.responseTimeSecs(end) = responseTimeSecs;
+    obj.entopticResponse(end+1) = entopticResponse;
+    obj.responseTimeSecs(end+1) = responseTimeSecs;
 end
 
 end

@@ -1,4 +1,4 @@
-function runDCPT_discomfort_entoptic(subjectID,NDlabel,varargin)
+function runDCPT_discomfort_entoptic(subjectID,NDlabel,discomfortFlag,varargin)
 % Show modulations and collect discomfort/entoptic ratings
 %
 % Syntax:
@@ -216,7 +216,8 @@ for bb=1:nBlocks
     dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel, '_shifted'],experimentName);
 
     % Create or load the psychometric object
-    psychObjFilename = fullfile(dataDir,[discomfortStr{1} '.mat']);
+    name = [discomfortStr, '.mat'];
+    psychObjFilename = fullfile(dataDir,name);
 
     if isfile(psychObjFilename)
         % Load the object
