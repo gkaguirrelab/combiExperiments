@@ -180,8 +180,10 @@ else
     audioObjs.low.play;
 
     % Start the EOG recording - slightly shorter than stimulus duration
-    EOGControl.trialDurationSecs = obj.stimDurSecs - 0.01; 
-    [EOGdata1] = EOGControl.recordTrial();
+    if obj.EOGFlag
+        EOGControl.trialDurationSecs = obj.stimDurSecs - 0.01;
+        [EOGdata1] = EOGControl.recordTrial();
+    end
 
     obj.waitUntil(stopTime);
 
@@ -205,8 +207,10 @@ else
     audioObjs.mid.play;
 
     % Start the EOG recording - slightly shorter than minimum stimulus duration
-    EOGControl.trialDurationSecs = 0.75 - 0.01; 
-    [EOGdata2] = EOGControl.recordTrial();
+    if obj.EOGFlag
+        EOGControl.trialDurationSecs = 0.75 - 0.01;
+        [EOGdata2] = EOGControl.recordTrial();
+    end
 
     obj.waitUntil(stopTime);
 
@@ -303,9 +307,10 @@ questData.trialData(currTrialIdx).refInterval = refInterval;
 questData.trialData(currTrialIdx).testInterval = testInterval;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
-questData.trialData(currTrialIdx).EOGdata1 = EOGdata1;
-questData.trialData(currTrialIdx).EOGdata2 = EOGdata2;
-
+if obj.EOGFlag
+    questData.trialData(currTrialIdx).EOGdata1 = EOGdata1;
+    questData.trialData(currTrialIdx).EOGdata2 = EOGdata2;
+end
 
 % Put staircaseData back into the obj
 obj.questData = questData;
