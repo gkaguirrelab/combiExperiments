@@ -158,7 +158,7 @@ else
     [currKeyPress,S] = createResponseWindow();
     currKeyPress = '';
 
-    fprintf('Did the participant see a Purkinje tree? 0 (no) 1 (yes): ');
+    fprintf('\nDid the participant see a Purkinje tree? 0 (no) 1 (yes): ');
 
     [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'0','1'});
 
@@ -203,6 +203,8 @@ if obj.discomfortFlag
 else
     obj.entopticResponse(end+1) = entopticResponse;
     obj.purkinjeResponse(end+1) = purkinjeResponse;
+    obj.contrastOrder(end+1) = currTargetPhotoContrast;
+    obj.refFreqOrder(end+1) = stimParams(1,2);
     obj.responseTimeSecs(end+1) = responseTimeSecs;
 end
 
