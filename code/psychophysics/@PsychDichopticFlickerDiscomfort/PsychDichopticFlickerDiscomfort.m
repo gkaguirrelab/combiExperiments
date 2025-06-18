@@ -51,6 +51,12 @@ classdef PsychDichopticFlickerDiscomfort < handle
         % then continue to collect data
         CombiLEDObjArr
 
+        % Object for EMG recording using Biopac
+        EMGControl
+
+        % Indicate whether using EMG
+        EMGFlag
+
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
         useStaircase
@@ -84,7 +90,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscomfort(CombiLEDObjArr, modResultArr, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscomfort(CombiLEDObjArr, modResultArr, EMGControl, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -112,6 +118,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
             % Place various inputs and options into object properties
             obj.CombiLEDObjArr = CombiLEDObjArr;
             obj.modResultArr = modResultArr;
+            obj.EMGControl = EMGControl;
             obj.refFreqHz = refFreqHz;
             obj.stimParamSide = p.Results.stimParamSide;
             obj.testPhotoContrast = p.Results.testPhotoContrast;
@@ -131,6 +138,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
             obj.verbose = p.Results.verbose;
             obj.discomfortFlag = p.Results.discomfortFlag;
             obj.useKeyboardFlag = p.Results.useKeyboardFlag;
+            obj.EMGFlag = EMGFlag;
 
             % Initialize the blockStartTimes field
             obj.blockStartTimes(1) = datetime();

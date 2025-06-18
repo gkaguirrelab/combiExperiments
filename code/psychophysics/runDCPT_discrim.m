@@ -75,6 +75,7 @@ p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
 p.addParameter('useKeyboardFlag',false,@islogical);
+p.addParameter('EOGFlag',true,@islogical);
 p.parse(varargin{:})
 
 %  Pull out some variablse from the p.Results structure
@@ -92,6 +93,7 @@ verbosePsychObj = p.Results.verbosePsychObj;
 simulateMode = p.Results.simulateMode;
 useKeyboardFlag = p.Results.useKeyboardFlag;
 combiClockAdjust = p.Results.combiClockAdjust;
+EOGFlag = p.Results.EOGFlag;
 
 % Set our experimentName
 experimentName = 'DCPT';
@@ -149,6 +151,12 @@ else
         assert(CombiLEDObjArr{side}.identifierString == combiLEDIDs{side});
         CombiLEDObjArr{side}.setGamma(cal{side}.processedData.gammaTable);
         CombiLEDObjArr{side}.setClockAdjustFactor(combiClockAdjust(side));
+    end
+
+    % Open the connection to the LabJack
+    if EOGFlag
+        dataOutDir = '/Users/flicexperimenter/Aguirre-Brainard Lab Dropbox/Flic Experimenter/FLIC_data/combiLED/HERO_rsb';
+        EOGControl = BiopackControl(dataOutDir);
     end
 end
 
@@ -222,6 +230,12 @@ for bb=1:nBlocks
                     psychObj.filename = psychObjFilename;
                     % Put in the fresh CombiLEDObjs
                     psychObj.CombiLEDObjArr = CombiLEDObjArr;
+                    % Put in the fresh EOGControl
+                    if EOGFlag
+                        psychObj.EOGControl = EOGControl;
+                    else
+                        psychObj.EOGControl = '';
+                    end
                     % Increment blockIdx
                     psychObj.blockIdx = psychObj.blockIdx+1;
                     psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
@@ -234,7 +248,7 @@ for bb=1:nBlocks
                 else
                     % Create the object
                     psychObj = PsychDichopticFlickerDiscrim(...
-                        CombiLEDObjArr, modResultArr, refFreqHz(freqIdx),...
+                        CombiLEDObjArr, modResultArr, EOGControl, refFreqHz(freqIdx),...
                         'refPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...
                         'testPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...
                         'simulateMode',simulateMode,...
@@ -300,6 +314,7 @@ for bb=1:nBlocks
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
+        % Present the trial
         psychObjArray{...
             permutedTriplets(ii,1),...
             permutedTriplets(ii,2),...
@@ -315,8 +330,9 @@ for bb=1:nBlocks
             for contrastIdx = 1:nConstrasts
                 % Grab the next psychObj
                 psychObj = psychObjArray{rangeIdx, freqIdx, contrastIdx};
-                % empty the CombiLEDObj handles and save the psychObj
+                % empty the CombiLEDObj and EOGControl handles and save the psychObj
                 psychObj.CombiLEDObjArr = {};
+                psychObj.EOGControl = {};
                 % Save the psychObj
                 save(psychObj.filename,'psychObj');
             end
@@ -344,8 +360,12 @@ if ~simulateMode
         CombiLEDObjArr{side}.goDark;
         CombiLEDObjArr{side}.serialClose;
     end
+    if EOGFlag
+        EOGControl.labjackOBJ.shutdown();
+    end
 end
 clear CombiLEDObjArr
+clear EOGControl
 
 % Tell participant the task is done
 ExperimentDone = load('handel');

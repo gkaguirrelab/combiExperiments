@@ -93,6 +93,13 @@ for side = [2 1]
     obj.CombiLEDObjArr{side}.startModulation;
 end
 audioObjs.low.play;
+
+% Start the EMG recording - slightly shorter than stimulus duration
+if obj.EMGFlag
+    EMGControl.trialDurationSecs = obj.stimDurSecs - 0.01;
+    [EMGdata] = EMGControl.recordTrial();
+end
+
 obj.waitUntil(stopTime);
 
 % Start the response interval
@@ -199,17 +206,25 @@ if obj.verbose
 end
 
 % Put staircaseData back into the obj
-if obj.discomfortFlag
-    obj.discomfortRating(end+1) = discomfortRating;
+
+if discomfortFlag
+    obj.discomfortRating(end) = discomfortRating;
+    obj.responseTimeSecs(end) = responseTimeSecs;
     obj.contrastOrder(end+1) = currTargetPhotoContrast;
     obj.refFreqOrder(end+1) = stimParams(1,2);
-    obj.responseTimeSecs(end+1) = responseTimeSecs;
+    if obj.EMGFlag
+        questData.trialData(currTrialIdx).discomfEMGdata = EMGdata;
+    end
 else
-    obj.entopticResponse(end+1) = entopticResponse;
+    obj.entopticResponse(end) = entopticResponse;
     obj.purkinjeResponse(end+1) = purkinjeResponse;
     obj.contrastOrder(end+1) = currTargetPhotoContrast;
     obj.refFreqOrder(end+1) = stimParams(1,2);
-    obj.responseTimeSecs(end+1) = responseTimeSecs;
+    obj.responseTimeSecs(end) = responseTimeSecs;
+    if obj.EMGFlag
+        questData.trialData(currTrialIdx).entoptEMGdata = EMGdata;
+    end
+
 end
 
 end

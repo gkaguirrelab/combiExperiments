@@ -1,5 +1,8 @@
 function presentTrial(obj)
 
+% Get the EOGControl
+EOGControl = obj.EOGControl;
+
 % Get the questData
 questData = obj.questData;
 
@@ -175,6 +178,13 @@ else
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.low.play;
+
+    % Start the EOG recording - slightly shorter than stimulus duration
+    if obj.EOGFlag
+        EOGControl.trialDurationSecs = obj.stimDurSecs - 0.01;
+        [EOGdata1] = EOGControl.recordTrial();
+    end
+
     obj.waitUntil(stopTime);
 
     %% Second interval
@@ -190,11 +200,18 @@ else
 
     % Start the stimuli and sound a tone. Wait a half a second so that the
     % subject has to look at these for a moment. 
-    stopTime = cputime() + 0.5;
+    stopTime = cputime() + 0.75;
     for side = [2 1]
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.mid.play;
+
+    % Start the EOG recording - slightly shorter than minimum stimulus duration
+    if obj.EOGFlag
+        EOGControl.trialDurationSecs = 0.75 - 0.01;
+        [EOGdata2] = EOGControl.recordTrial();
+    end
+
     obj.waitUntil(stopTime);
 
     % Start the response interval
@@ -290,6 +307,10 @@ questData.trialData(currTrialIdx).refInterval = refInterval;
 questData.trialData(currTrialIdx).testInterval = testInterval;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
+if obj.EOGFlag
+    questData.trialData(currTrialIdx).EOGdata1 = EOGdata1;
+    questData.trialData(currTrialIdx).EOGdata2 = EOGdata2;
+end
 
 % Put staircaseData back into the obj
 obj.questData = questData;
