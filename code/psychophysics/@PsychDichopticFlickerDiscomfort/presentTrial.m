@@ -99,7 +99,7 @@ audioObjs.low.play;
 
 % Start the EMG recording - slightly shorter than stimulus duration
 if obj.EMGFlag
-    EMGControl.trialDurationSecs = obj.stimDurSecs - 0.25;  % To account for LabJack connection lag
+    EMGControl.trialDurationSecs = obj.stimDurSecs - 0.5;  % To account for LabJack connection lag
     [EMGdata] = EMGControl.recordTrial();
 end
 

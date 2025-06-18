@@ -181,7 +181,7 @@ else
 
     % Start the EOG recording - slightly shorter than stimulus duration
     if obj.EOGFlag
-        EOGControl.trialDurationSecs = obj.stimDurSecs - 0.01;
+        EOGControl.trialDurationSecs = obj.stimDurSecs - 0.5;  % To account for LabJack connection lag
         [EOGdata1] = EOGControl.recordTrial();
     end
 
