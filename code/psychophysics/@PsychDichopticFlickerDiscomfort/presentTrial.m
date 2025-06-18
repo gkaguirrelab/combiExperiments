@@ -1,5 +1,8 @@
 function presentTrial(obj, currentPair, currTargetPhotoContrast)
 
+% Get the EOGControl
+EMGControl = obj.EMGControl;
+
 % Get the questData
 questData = obj.questData;
 
@@ -28,7 +31,7 @@ stimParams = zeros(2,3);
 % relative to the first, but have decided this is too small of an effect to
 % address.
 refIntervalPhaseBySide(1) = rand()*pi;
-refIntervalPhaseBySide(2) = refIntervalPhaseBySide(1) + 0.0015*refFreqHz*2*pi;n % Accounting for phase offset between combis
+refIntervalPhaseBySide(2) = refIntervalPhaseBySide(1) + 0.0015*refFreqHz*2*pi; % Accounting for phase offset between combis
 
 % The same contrast and frequency is shown on the two sides. 
 for side = 1:2
@@ -96,7 +99,7 @@ audioObjs.low.play;
 
 % Start the EMG recording - slightly shorter than stimulus duration
 if obj.EMGFlag
-    EMGControl.trialDurationSecs = obj.stimDurSecs - 0.01;
+    EMGControl.trialDurationSecs = obj.stimDurSecs - 0.25;  % To account for LabJack connection lag
     [EMGdata] = EMGControl.recordTrial();
 end
 
@@ -207,22 +210,27 @@ end
 
 % Put staircaseData back into the obj
 
-if discomfortFlag
-    obj.discomfortRating(end) = discomfortRating;
-    obj.responseTimeSecs(end) = responseTimeSecs;
+if ~iscell(obj.discomfEMGdata)
+    obj.discomfEMGdata = {};
+    obj.entoptEMGdata = {};
+end
+
+if obj.discomfortFlag
+    obj.discomfortRating(end+1) = discomfortRating;
+    obj.responseTimeSecs(end+1) = responseTimeSecs;
     obj.contrastOrder(end+1) = currTargetPhotoContrast;
     obj.refFreqOrder(end+1) = stimParams(1,2);
     if obj.EMGFlag
-        questData.trialData(currTrialIdx).discomfEMGdata = EMGdata;
+        obj.discomfEMGdata{end+1} = EMGdata;
     end
 else
-    obj.entopticResponse(end) = entopticResponse;
+    obj.entopticResponse(end+1) = entopticResponse;
     obj.purkinjeResponse(end+1) = purkinjeResponse;
     obj.contrastOrder(end+1) = currTargetPhotoContrast;
     obj.refFreqOrder(end+1) = stimParams(1,2);
-    obj.responseTimeSecs(end) = responseTimeSecs;
+    obj.responseTimeSecs(end+1) = responseTimeSecs;
     if obj.EMGFlag
-        questData.trialData(currTrialIdx).entoptEMGdata = EMGdata;
+        obj.entoptEMGdata{end+1} = EMGdata;
     end
 
 end
