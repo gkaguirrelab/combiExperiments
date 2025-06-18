@@ -75,6 +75,7 @@ p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
 p.addParameter('makeOrder',false, @islogical);
+p.addParameter('EMGFlag',true,@islogical);
 % p.addParameter('discomfortFlag',true, @islogical);
 p.parse(varargin{:})
 
@@ -91,6 +92,7 @@ simulateMode = p.Results.simulateMode;
 combiClockAdjust = p.Results.combiClockAdjust;
 makeOrder = p.Results.makeOrder;
 % discomfortFlag = p.Results.discomfortFlag;
+EMGFlag = p.Results.EMGFlag;
 
 % Set our experimentName
 if discomfortFlag
@@ -155,6 +157,12 @@ else
         assert(CombiLEDObjArr{side}.identifierString == combiLEDIDs{side});
         CombiLEDObjArr{side}.setGamma(cal{side}.processedData.gammaTable);
         CombiLEDObjArr{side}.setClockAdjustFactor(combiClockAdjust(side));
+    end
+
+    % Open the connection to the LabJack
+    if EMGFlag
+        dataOutDir = '/Users/flicexperimenter/Aguirre-Brainard Lab Dropbox/Flic Experimenter/FLIC_data/combiLED/HERO_rsb';
+        EMGControl = BiopackControl(dataOutDir);
     end
 end
 
@@ -222,13 +230,19 @@ for bb=1:nBlocks
         psychObj.filename = psychObjFilename;
         % Put in the fresh CombiLEDObjs
         psychObj.CombiLEDObjArr = CombiLEDObjArr;
+        % Put in the fresh EMGControl
+        if EMGFlag
+            psychObj.EMGControl = EMGControl;
+        else
+            psychObj.EMGControl = '';
+        end
         % Increment blockIdx
         psychObj.blockIdx = psychObj.blockIdx+1;
         psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
     else
         % Create the object
         psychObj = PsychDichopticFlickerDiscomfort(...
-            CombiLEDObjArr, modResultArr, refFreqHz,...
+            CombiLEDObjArr, modResultArr, EMGControl, refFreqHz,...
             'refPhotoContrast',targetPhotoContrast(:,directionIdx));
         % Store the filename
         psychObj.filename = psychObjFilename;
@@ -276,10 +290,12 @@ for bb=1:nBlocks
     % Report completion of this block
     fprintf('done.\n');
 
-    % empty the CombiLEDObj handles and save the psychObj
+    % empty the CombiLEDObj and EMGControl handles and save the psychObj
     psychObj.CombiLEDObjArr = {};
+    psychObj.EMGControl = {};
     % Save the psychObj
     save(psychObj.filename,'psychObj');
+
 
     % Make a sound for the end of the block
     BlockDone.fs = 8000;              % Sampling frequency (Hz)
@@ -298,10 +314,15 @@ for bb=1:nBlocks
 end % block loop
 
 % Clean up
-    for side = 1:nSides
-        CombiLEDObjArr{side}.goDark;
-        CombiLEDObjArr{side}.serialClose;
-    end
+for side = 1:nSides
+    CombiLEDObjArr{side}.goDark;
+    CombiLEDObjArr{side}.serialClose;
+end
+if EMGFlag
+    EMGControl.labjackOBJ.shutdown();
+end
+
 clear CombiLEDObjArr
+clear EMGControl
 
 end % function
