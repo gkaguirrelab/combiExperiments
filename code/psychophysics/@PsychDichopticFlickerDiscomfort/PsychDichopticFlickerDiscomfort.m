@@ -75,6 +75,16 @@ classdef PsychDichopticFlickerDiscomfort < handle
         % Choose between keyboard and gamepad
         useKeyboardFlag
 
+        % Choose between discomfort and entoptic experiment
+        discomfortFlag
+        % Where participant responses and timing results are stored!
+        discomfortRating
+        entopticResponse
+        purkinjeResponse
+        contrastOrder
+        refFreqOrder
+        responseTimeSecs
+
     end
 
     methods
@@ -102,6 +112,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
                 {linspace(0,0,1),linspace(0,6.75,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
+            p.addParameter('discomfortFlag',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
@@ -125,6 +136,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
             obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
+            obj.discomfortFlag = p.Results.discomfortFlag;
             obj.useKeyboardFlag = p.Results.useKeyboardFlag;
             obj.EMGFlag = EMGFlag;
 
@@ -173,7 +185,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
         % Required methds
         initializeQP(obj)
         initializeDisplay(obj)
-        presentTrial(obj)
+        presentTrial(obj, currentPair, currTargetPhotoContrast)
         stimParam = staircase(obj,currTrialIdx);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         waitUntil(obj,stopTimeSeconds)

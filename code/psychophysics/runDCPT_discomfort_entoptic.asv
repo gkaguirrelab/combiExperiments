@@ -1,4 +1,4 @@
-function runDCPT_discomfort_entoptic(subjectID,NDlabel,varargin)
+function runDCPT_discomfort_entoptic(subjectID,NDlabel,discomfortFlag,varargin)
 % Show modulations and collect discomfort/entoptic ratings
 %
 % Syntax:
@@ -75,9 +75,7 @@ p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
 p.addParameter('makeOrder',false, @islogical);
-p.addParameter('EMGFlag',true,@islogical);
 p.addParameter('discomfortFlag',true, @islogical);
-
 p.parse(varargin{:})
 
 %  Pull out some variables from the p.Results structure
@@ -92,11 +90,11 @@ verbosePsychObj = p.Results.verbosePsychObj;
 simulateMode = p.Results.simulateMode;
 combiClockAdjust = p.Results.combiClockAdjust;
 makeOrder = p.Results.makeOrder;
-EMGFlag = p.Results.EMGFlag;
 discomfortFlag = p.Results.discomfortFlag;
 dropBoxBaseDir = p.Results.dropBoxBaseDir;
 dropBoxSubDir = p.Results.dropBoxSubDir;
 projectName = p.Results.projectName;
+
 
 % Set our experimentName
 if discomfortFlag
@@ -162,12 +160,6 @@ else
         CombiLEDObjArr{side}.setGamma(cal{side}.processedData.gammaTable);
         CombiLEDObjArr{side}.setClockAdjustFactor(combiClockAdjust(side));
     end
-
-    % Open the connection to the LabJack
-    if EMGFlag
-        dataOutDir = '/Users/flicexperimenter/Aguirre-Brainard Lab Dropbox/Flic Experimenter/FLIC_data/combiLED/HERO_rsb';
-        EMGControl = BiopackControl(dataOutDir);
-    end
 end
 
 
@@ -177,7 +169,7 @@ if discomfortFlag
     fprintf('**********************************\n');
     fprintf('On each of many trials you will be presented with flickering\n');
     fprintf('lights in both eyes. When the lights stop flickering,\n');
-    fprintf('your job is to rate your discomfort \n');
+    fprintf('Your job is to rate your discomfort \n');
     fprintf('from watching the lights on a scale from 1 to 10.');
     fprintf('There are a total of %d trials.\n',nTrials);
     fprintf('**********************************\n\n');
@@ -186,11 +178,9 @@ else
 
     fprintf('**********************************\n');
     fprintf('On each of many trials you will be presented with flickering\n');
-    fprintf('lights in both eyes. \n');
-    fprintf('Question 1: When the lights stop flickering, your job is to rate \n');
-    fprintf('the strength of the entoptic percept on a scale of 0-9, \n');
-    fprintf('where 0 is no structure. \n');
-    fprintf('Question 2: Did you see a Purkinje tree? \n');
+    fprintf('lights in both eyes. You might see geometric or tree-like patterns\n');
+    fprintf('Your job is to report whether you see no spatial patterns (0), \n');
+    fprintf('geometric patterns (1), or tree-like patterns (2) after each trial.');
     fprintf('There are a total of %d trials.\n',nTrials);
     fprintf('**********************************\n\n');
 
@@ -226,7 +216,8 @@ for bb=1:nBlocks
     dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel, '_shifted'],experimentName);
 
     % Create or load the psychometric object
-    psychObjFilename = fullfile(dataDir,[discomfortStr{1} '.mat']);
+    name = [discomfortStr, '.mat'];
+    psychObjFilename = fullfile(dataDir,name);
 
     if isfile(psychObjFilename)
         % Load the object
@@ -235,21 +226,14 @@ for bb=1:nBlocks
         psychObj.filename = psychObjFilename;
         % Put in the fresh CombiLEDObjs
         psychObj.CombiLEDObjArr = CombiLEDObjArr;
-        % Put in the fresh EMGControl
-        if EMGFlag
-            psychObj.EMGControl = EMGControl;
-        else
-            psychObj.EMGControl = '';
-        end
         % Increment blockIdx
         psychObj.blockIdx = psychObj.blockIdx+1;
         psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
     else
         % Create the object
         psychObj = PsychDichopticFlickerDiscomfort(...
-            CombiLEDObjArr, modResultArr, EMGControl, refFreqHz,...
-            'refPhotoContrast',targetPhotoContrast(:,directionIdx), ...
-            'discomfortFlag', discomfortFlag);
+            CombiLEDObjArr, modResultArr, refFreqHz,...
+            'refPhotoContrast',targetPhotoContrast(:,directionIdx));
         % Store the filename
         psychObj.filename = psychObjFilename;
     end
@@ -278,7 +262,6 @@ for bb=1:nBlocks
     else    % If using the pre-set order
         pairFileName = fullfile(dropBoxBaseDir,dropBoxSubDir,projectName,'DEMO_discrim/DCPT_discomfort_pairs.mat');
         permutedPairs = load(pairFileName);
-        permutedPairs = permutedPairs.permutedPairs;
     end
 
     % Store the block start time
@@ -291,19 +274,16 @@ for bb=1:nBlocks
     % Present nTrials
     for ii = 1:nTrialsPerBlock
         currentPair = permutedPairs(ii,:);
-        currTargetPhotoContrast = targetPhotoContrast((permutedPairs(ii,2)),directionIdx);
-        psychObj.presentTrial(currentPair, currTargetPhotoContrast);
+        psychObj.presentTrial(currentPair);
     end
 
     % Report completion of this block
     fprintf('done.\n');
 
-    % empty the CombiLEDObj and EMGControl handles and save the psychObj
+    % empty the CombiLEDObj handles and save the psychObj
     psychObj.CombiLEDObjArr = {};
-    psychObj.EMGControl = {};
     % Save the psychObj
     save(psychObj.filename,'psychObj');
-
 
     % Make a sound for the end of the block
     BlockDone.fs = 8000;              % Sampling frequency (Hz)
@@ -322,15 +302,10 @@ for bb=1:nBlocks
 end % block loop
 
 % Clean up
-for side = 1:nSides
-    CombiLEDObjArr{side}.goDark;
-    CombiLEDObjArr{side}.serialClose;
-end
-if EMGFlag
-    EMGControl.labjackOBJ.shutdown();
-end
-
+    for side = 1:nSides
+        CombiLEDObjArr{side}.goDark;
+        CombiLEDObjArr{side}.serialClose;
+    end
 clear CombiLEDObjArr
-clear EMGControl
 
 end % function

@@ -28,7 +28,7 @@ stimParams = zeros(2,3);
 % relative to the first, but have decided this is too small of an effect to
 % address.
 refIntervalPhaseBySide(1) = rand()*pi;
-refIntervalPhaseBySide(2) = refIntervalPhaseBySide(1) + 0.0015*refFreqHz*2*pi;n % Accounting for phase offset between combis
+refIntervalPhaseBySide(2) = refIntervalPhaseBySide(1);
 
 % The same contrast and frequency is shown on the two sides. 
 for side = 1:2
@@ -93,23 +93,14 @@ for side = [2 1]
     obj.CombiLEDObjArr{side}.startModulation;
 end
 audioObjs.low.play;
-
-% Start the EMG recording - slightly shorter than stimulus duration
-if obj.EMGFlag
-    EMGControl.trialDurationSecs = obj.stimDurSecs - 0.01;
-    [EMGdata] = EMGControl.recordTrial();
-end
-
 obj.waitUntil(stopTime);
 
 % Start the response interval
 currKeyPress = '';  % To make sure currKeyPress doesn't have old data in it
 if obj.discomfortFlag
-    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'0','1','2','3','4','5','6','7','8','9','-'});
+    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'1','2','3','4','5','6','7','8','9','0'});
     if ~isempty(keyPress)
         switch keyPress
-            case {'0'}
-                discomfortRating = 0;
             case {'1'}
                 discomfortRating = 1;
             case {'2'}
@@ -128,14 +119,14 @@ if obj.discomfortFlag
                 discomfortRating = 8;
             case {'9'}
                 discomfortRating = 9;
-            case {'-'}
+            case {'0'}
                 discomfortRating = 10;
         end
     end
     % Close the response window
     close(S.fh);
 else
-    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'0','1','2','3','4','5','6','7','8','9','-'});
+    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'0','1','2','3','4','5','6','7','8','9'});
     if ~isempty(keyPress)
         switch keyPress
             case {'0'}
@@ -158,18 +149,16 @@ else
                 entopticResponse = 8;
             case {'9'}
                 entopticResponse = 9;
-            case {'-'}
-                entopticResponse = 10;
         end
     end
     % Close the response window
     close(S.fh);
 
-    % New response window for second question - Purkinje
+    % New response window for second question 
     [currKeyPress,S] = createResponseWindow();
     currKeyPress = '';
 
-    fprintf('\nDid the participant see a Purkinje tree? 0 (no) 1 (yes): ');
+    fprintf('Did the participant see a Purkinje tree? 0 (no) 1 (yes): ');
 
     [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'0','1'});
 
@@ -206,25 +195,14 @@ if obj.verbose
 end
 
 % Put staircaseData back into the obj
-
-if discomfortFlag
-    obj.discomfortRating(end) = discomfortRating;
-    obj.responseTimeSecs(end) = responseTimeSecs;
+if obj.discomfortFlag
+    obj.discomfortRating(end+1) = discomfortRating;
     obj.contrastOrder(end+1) = currTargetPhotoContrast;
     obj.refFreqOrder(end+1) = stimParams(1,2);
-    if obj.EMGFlag
-        questData.trialData(currTrialIdx).discomfEMGdata = EMGdata;
-    end
+    obj.responseTimeSecs(end+1) = responseTimeSecs;
 else
-    obj.entopticResponse(end) = entopticResponse;
-    obj.purkinjeResponse(end+1) = purkinjeResponse;
-    obj.contrastOrder(end+1) = currTargetPhotoContrast;
-    obj.refFreqOrder(end+1) = stimParams(1,2);
-    obj.responseTimeSecs(end) = responseTimeSecs;
-    if obj.EMGFlag
-        questData.trialData(currTrialIdx).entoptEMGdata = EMGdata;
-    end
-
+    obj.entopticResponse(end+1) = entopticResponse;
+    obj.responseTimeSecs(end+1) = responseTimeSecs;
 end
 
 end
