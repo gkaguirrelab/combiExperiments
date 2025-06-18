@@ -232,7 +232,8 @@ for bb=1:nBlocks
         % Create the object
         psychObj = PsychDichopticFlickerDiscomfort(...
             CombiLEDObjArr, modResultArr, refFreqHz,...
-            'refPhotoContrast',targetPhotoContrast(:,directionIdx));
+            'refPhotoContrast',targetPhotoContrast(:,directionIdx), ...
+            'discomfortFlag', discomfortFlag);
         % Store the filename
         psychObj.filename = psychObjFilename;
     end
@@ -261,6 +262,7 @@ for bb=1:nBlocks
     else    % If using the pre-set order
         pairFileName = fullfile(dropBoxBaseDir,dropBoxSubDir,projectName,'DEMO_discrim/DCPT_discomfort_pairs.mat');
         permutedPairs = load(pairFileName);
+        permutedPairs = permutedPairs.permutedPairs;
     end
 
     % Store the block start time
@@ -273,7 +275,8 @@ for bb=1:nBlocks
     % Present nTrials
     for ii = 1:nTrialsPerBlock
         currentPair = permutedPairs(ii,:);
-        psychObj.presentTrial(currentPair);
+        currTargetPhotoContrast = targetPhotoContrast((permutedPairs(ii,2)),directionIdx);
+        psychObj.presentTrial(currentPair, currTargetPhotoContrast);
     end
 
     % Report completion of this block

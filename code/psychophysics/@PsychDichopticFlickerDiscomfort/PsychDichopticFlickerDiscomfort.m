@@ -73,9 +73,11 @@ classdef PsychDichopticFlickerDiscomfort < handle
         discomfortFlag
         % Where participant responses and timing results are stored!
         discomfortRating
-
+        entopticResponse
+        purkinjeResponse
+        contrastOrder
+        refFreqOrder
         responseTimeSecs
-
 
     end
 
@@ -175,7 +177,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
         % Required methds
         initializeQP(obj)
         initializeDisplay(obj)
-        presentTrial(obj, currentPair)
+        presentTrial(obj, currentPair, currTargetPhotoContrast)
         stimParam = staircase(obj,currTrialIdx);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         waitUntil(obj,stopTimeSeconds)

@@ -154,7 +154,7 @@ else
     % Close the response window
     close(S.fh);
 
-    % New response window for second question - Purkinje
+    % New response window for second question 
     [currKeyPress,S] = createResponseWindow();
     currKeyPress = '';
 
@@ -202,7 +202,6 @@ if obj.discomfortFlag
     obj.responseTimeSecs(end+1) = responseTimeSecs;
 else
     obj.entopticResponse(end+1) = entopticResponse;
-    obj.purkinjeResponse(end+1) = purkinjeResponse;
     obj.responseTimeSecs(end+1) = responseTimeSecs;
 end
 
