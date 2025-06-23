@@ -3,10 +3,10 @@ function [outputArg1,outputArg2] = plotDiscomf(subjectID, modDirections, NDLabel
 %   Detailed explanation goes here
 % which directions to analyze
 %{
-subjectID = 'HERO_kik';
-modDirections = {'LminusM_wide' 'LightFlux'};
-NDLabel = {'0x5'};
-plotDiscomf(subjectID, modDirections, NDLabel);
+    subjectID = 'HERO_kik';
+    modDirections = {'LminusM_wide' 'LightFlux'};
+    NDLabel = {'0x5'};
+    plotDiscomf(subjectID, modDirections, NDLabel);
 %}
 
 modDirectionsLabels = {'LminusM', 'LightFlux'}; 
@@ -31,26 +31,19 @@ for directionIdx = 1:length(modDirections)
     contrast(directionIdx, :) = psychObj.contrastOrder;
     refFreq(directionIdx, :) = psychObj.refFreqOrder;
 end
-%% Plot the data 
+%% Plot the data
+figure
 hold on;
 
 colors = {'r', 'k'};
 markers = {'o', 's'};
 
 for directionIdx = 1:length(modDirections)
-    dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDLabel{1} '_shifted'],experimentName);
     y = ratings(directionIdx, :);
     x = refFreq(directionIdx, :);
     c = contrast(directionIdx, :);
 
-    if contains (modDirections{directionIdx}, 'LightFlux')
-        color = colors{1};
-        marker = markers{1};
-    else 
-        color = color{2};
-        marker = marker{2};
-    end
-plot(x, y, {color marker '-'}, 'LineWidth', 1.5, 'DisplayName', modDirections{directionIdx});
+    plot(x, y, [colors{directionIdx}, markers{directionIdx}], 'LineWidth', 1.5, 'DisplayName', modDirections{directionIdx});
 end
 
 xlabel('Freqeuncy');
@@ -63,6 +56,6 @@ hold off;
        
 
 
-
-outputArg1 = inputArg1;
-outputArg2 = inputArg2;
+% 
+% outputArg1 = inputArg1;
+% outputArg2 = inputArg2;
