@@ -155,8 +155,7 @@ else
 
     % Open the connection to the LabJack
     if EOGFlag
-        dataOutDir = '/Users/flicexperimenter/Aguirre-Brainard Lab Dropbox/Flic Experimenter/FLIC_data/combiLED/HERO_rsb';
-        EOGControl = BiopackControl(dataOutDir);
+        EOGControl = BiopackControl('');
     end
 end
 

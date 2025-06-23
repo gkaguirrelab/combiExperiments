@@ -31,7 +31,7 @@ stimParams = zeros(2,3);
 % relative to the first, but have decided this is too small of an effect to
 % address.
 refIntervalPhaseBySide(1) = rand()*pi;
-refIntervalPhaseBySide(2) = refIntervalPhaseBySide(1) + 0.0015*refFreqHz*2*pi; % Accounting for phase offset between combis
+refIntervalPhaseBySide(2) = refIntervalPhaseBySide(1) + 0.001*refFreqHz*2*pi; % Accounting for phase offset between combis
 
 % The same contrast and frequency is shown on the two sides. 
 for side = 1:2
@@ -108,7 +108,7 @@ obj.waitUntil(stopTime);
 % Start the response interval
 currKeyPress = '';  % To make sure currKeyPress doesn't have old data in it
 if obj.discomfortFlag
-    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'0','1','2','3','4','5','6','7','8','9','-'});
+    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'0','1','2','3','4','5','6','7','8','9','hyphen'});
     if ~isempty(keyPress)
         switch keyPress
             case {'0'}
@@ -131,7 +131,7 @@ if obj.discomfortFlag
                 discomfortRating = 8;
             case {'9'}
                 discomfortRating = 9;
-            case {'-'}
+            case {'hyphen'}
                 discomfortRating = 10;
         end
     end

@@ -156,13 +156,20 @@ else
 
     %% First interval
 
+    tic;
+
     % Prepare the combiLEDs
     interval = 1;
     for side = 1:2
        obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,1));
        obj.CombiLEDObjArr{side}.setFrequency(stimParams(interval,side,2));
        obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(interval,side,3));
+       obj.CombiLEDObjArr{side}.setStartDelay(0.5); %delay offset of the 
+       % first interval because it takes up to half a second to start the EOG recording.
+       obj.CombiLEDObjArr{side}.setDuration(obj.stimDurSecs);
     end
+
+    toc;
 
     % Wait half a second to make sure that the CombiLEDs have received
     % these new settings
@@ -173,21 +180,19 @@ else
     % We observe that starting the combiLEDs in reverse order results in
     % less of a timing discrepancy between them. We do not yet fully
     % understand why this might be the case.
-    stopTime = cputime() + obj.stimDurSecs;
     for side = [2 1]
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.low.play;
 
-    % Start the EOG recording - slightly shorter than stimulus duration
+    % Start the EOG recording 
+    % only record first interval and a little into ISI
     if obj.EOGFlag
-        EOGControl.trialDurationSecs = obj.stimDurSecs - 0.5;  % To account for LabJack connection lag
+        EOGControl.trialDurationSecs = obj.stimDurSecs;
         [EOGdata1] = EOGControl.recordTrial();
     end
 
-    obj.waitUntil(stopTime);
-
-    %% Second interval
+    %% ISI
 
     % During the ISI, prepare the stimuli. Only update the side that
     % contained the test stimulus (the reference side will be unchanged)
@@ -198,6 +203,8 @@ else
     obj.CombiLEDObjArr{testSide}.setPhaseOffset(stimParams(interval,testSide,3));
     obj.waitUntil(stopTime);
 
+    %% Second interval
+
     % Start the stimuli and sound a tone. Wait a half a second so that the
     % subject has to look at these for a moment. 
     stopTime = cputime() + 0.75;
@@ -205,12 +212,6 @@ else
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.mid.play;
-
-    % Start the EOG recording - slightly shorter than minimum stimulus duration
-    if obj.EOGFlag
-        EOGControl.trialDurationSecs = 0.75 - 0.01;
-        [EOGdata2] = EOGControl.recordTrial();
-    end
 
     obj.waitUntil(stopTime);
 
@@ -309,7 +310,6 @@ questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
 if obj.EOGFlag
     questData.trialData(currTrialIdx).EOGdata1 = EOGdata1;
-    questData.trialData(currTrialIdx).EOGdata2 = EOGdata2;
 end
 
 % Put staircaseData back into the obj

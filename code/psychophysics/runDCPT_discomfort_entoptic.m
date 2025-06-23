@@ -56,7 +56,7 @@ function runDCPT_discomfort_entoptic(subjectID,NDlabel,varargin)
     subjectID = 'HERO_rsb';
     NDlabel = '0x5';
     discomfortFlag = 1; 
-    runDCPT_discomfort_entoptic(subjectID,NDlabel, discomfortFlag);
+    runDCPT_discomfort_entoptic(subjectID,NDlabel, 'discomfortFlag', false);
 %}
 
 % Parse the parameters
@@ -77,7 +77,6 @@ p.addParameter('simulateMode',false,@islogical);
 p.addParameter('makeOrder',false, @islogical);
 p.addParameter('EMGFlag',true,@islogical);
 p.addParameter('discomfortFlag',true, @islogical);
-
 p.parse(varargin{:})
 
 %  Pull out some variables from the p.Results structure
