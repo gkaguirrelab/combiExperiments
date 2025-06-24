@@ -24,14 +24,19 @@ if (ispref(projectName))
 end
 
 % Get the DropBox path
+dropboxBaseDir = '';
 if ismac
     dbJsonConfigFile = '~/.dropbox/info.json';
     fid = fopen(dbJsonConfigFile);
-    raw = fread(fid,inf);
-    str = char(raw');
-    fclose(fid);
-    val = jsondecode(str);
-    dropboxBaseDir = val.business.path;
+    if fid == -1
+        warning('DropBox does not appear to be installed on this computer')
+    else
+        raw = fread(fid,inf);
+        str = char(raw');
+        fclose(fid);
+        val = jsondecode(str);
+        dropboxBaseDir = val.business.path;
+    end
 else
     error('Need to set up DropBox path finding for non-Mac machine')
 end
