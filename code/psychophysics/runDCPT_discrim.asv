@@ -155,7 +155,8 @@ else
 
     % Open the connection to the LabJack
     if EOGFlag
-        EOGControl = BiopackControl('');
+        dataOutDir = '';
+        EOGControl = BiopackControl(dataOutDir,varargin);
     end
 end
 
@@ -231,10 +232,7 @@ for bb=1:nBlocks
                     psychObj.CombiLEDObjArr = CombiLEDObjArr;
                     % Put in the fresh EOGControl
                     if EOGFlag
-                        psychObj.EOGControl = EOGControl;
-                    else
-                        psychObj.EOGControl = '';
-                    end
+                    psychObj.EOGControl = EOGControl;
                     % Increment blockIdx
                     psychObj.blockIdx = psychObj.blockIdx+1;
                     psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
@@ -313,7 +311,6 @@ for bb=1:nBlocks
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
-        % Present the trial
         psychObjArray{...
             permutedTriplets(ii,1),...
             permutedTriplets(ii,2),...
@@ -364,7 +361,9 @@ if ~simulateMode
     end
 end
 clear CombiLEDObjArr
-clear EOGControl
+if EOGFlag
+    clear EOGControl
+end
 
 % Tell participant the task is done
 ExperimentDone = load('handel');

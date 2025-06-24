@@ -10,7 +10,7 @@
 % corresponds to being 50% accurate when there is no physical difference
 % between the stimuli.
 
-classdef PsychDichopticFlickerDiscrim < handle
+classdef PsychDichopticFlickerDiscomfort < handle
 
     properties (Constant)
     end
@@ -51,11 +51,11 @@ classdef PsychDichopticFlickerDiscrim < handle
         % then continue to collect data
         CombiLEDObjArr
 
-        % Object for EOG recording using Biopac
-        EOGControl
+        % Object for EMG recording using Biopac
+        EMGControl
 
-        % Indicate whether using EOG  
-        EOGFlag
+        % Indicate whether using EMG
+        EMGFlag
 
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
@@ -75,12 +75,24 @@ classdef PsychDichopticFlickerDiscrim < handle
         % Choose between keyboard and gamepad
         useKeyboardFlag
 
+        % Choose between discomfort and entoptic experiment
+        discomfortFlag
+        % Where participant responses and timing results are stored!
+        discomfortRating
+        entopticResponse
+        purkinjeResponse
+        contrastOrder
+        refFreqOrder
+        responseTimeSecs
+        discomfEMGdata
+        entoptEMGdata
+
     end
 
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjArr, modResultArr, EOGControl, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscomfort(CombiLEDObjArr, modResultArr, EMGControl, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -102,13 +114,14 @@ classdef PsychDichopticFlickerDiscrim < handle
                 {linspace(0,0,1),linspace(0,6.75,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
-            p.addParameter('EOGFlag',true,@islogical);
+            p.addParameter('discomfortFlag',true,@islogical);
+            p.addParameter('EMGFlag',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
             obj.CombiLEDObjArr = CombiLEDObjArr;
             obj.modResultArr = modResultArr;
-            obj.EOGControl = EOGControl;
+            obj.EMGControl = EMGControl;
             obj.refFreqHz = refFreqHz;
             obj.stimParamSide = p.Results.stimParamSide;
             obj.testPhotoContrast = p.Results.testPhotoContrast;
@@ -126,8 +139,9 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
+            obj.discomfortFlag = p.Results.discomfortFlag;
             obj.useKeyboardFlag = p.Results.useKeyboardFlag;
-            obj.EOGFlag = p.Results.EOGFlag;
+            obj.EMGFlag = p.Results.EMGFlag;
 
             % Initialize the blockStartTimes field
             obj.blockStartTimes(1) = datetime();
@@ -162,25 +176,19 @@ classdef PsychDichopticFlickerDiscrim < handle
             end
 
             % There is a roll-off (attenuation) of the amplitude of
-            % modulations with frequency. The stimParamsDomainList gives
-            % the range of possible test frequencies (in dBs) relative to
-            % the reference frequency. Check here that we can achieve the
-            % called-for test and reference contrast given this.
-            switch obj.stimParamSide
-                case 'hi'
-                    maxTestFreqHz = obj.refFreqHz * db2pow(max(obj.stimParamsDomainList));
-                case 'low'
-                    maxTestFreqHz = obj.refFreqHz / db2pow(max(obj.stimParamsDomainList));
+            % modulations with frequency. Check here that we can achieve the
+            % called-for reference contrast given this.
+            
+            for ff = 1:length(obj.refFreqHz)
+                assert(obj.refModContrast(2)/contrastAttenuationByFreq(obj.refFreqHz(ff)) < 1);
             end
-            assert(obj.testModContrast/contrastAttenuationByFreq(maxTestFreqHz) < 1);
-            assert(obj.refModContrast/contrastAttenuationByFreq(obj.refFreqHz) < 1);
             
         end
 
         % Required methds
         initializeQP(obj)
         initializeDisplay(obj)
-        presentTrial(obj)
+        presentTrial(obj, currentPair, currTargetPhotoContrast)
         stimParam = staircase(obj,currTrialIdx);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         waitUntil(obj,stopTimeSeconds)
