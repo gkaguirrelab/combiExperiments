@@ -248,9 +248,11 @@ else
         obj.CombiLEDObjArr{side}.stopModulation;
     end
 
-    % Wait half a second for an inter-trial-interval
+    % Waitfor an inter-trial-interval
     stopTime = cputime() + 0.5;
     obj.waitUntil(stopTime);
+    % Note the effective ITI is 1s due to the 0.5s delay after codes are
+    % sent to the combiLED and the 0.5 s above.
 
 end
 
