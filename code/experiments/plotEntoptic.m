@@ -70,8 +70,8 @@ for directionIdx = 1:length(modDirections)
     x = sortedFreqs(directionIdx, :);
     lowcontrastVal = min(sortedContrast(directionIdx, :));
     highcontrastVal = max(sortedContrast(directionIdx, :));
-    lowcontrastIdx = find(sortedContrast(directionIdx, :) == lowcontrastVal)
-    highcontrastIdx = find(sortedContrast(directionIdx, :) == highcontrastVal)
+    lowcontrastIdx = find(sortedContrast(directionIdx, :) == lowcontrastVal);
+    highcontrastIdx = find(sortedContrast(directionIdx, :) == highcontrastVal);
 
     plot(x(lowcontrastIdx), y(lowcontrastIdx), [colors{directionIdx}, markers{1}], 'LineWidth', 1.5, 'markerSize', markerSize(directionIdx),...
         'DisplayName', [modDirectionsLabels{directionIdx}, ' ', contrastLabels{1}]);
