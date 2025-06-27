@@ -9,7 +9,8 @@ rng(cputime); % Ensure that the attention events differ each time
 simulateCombiLED = false;
 
 % The name of the calibration file to use
-calName = 'CombiLED_shortLLG_cassetteND1_longRandomA_classicEyePiece_ND0';
+calName = 'CombiLED-B_shortLLG_cassetteND1_longRandomA_classicEyePiece_ND0';
+calSubDir = 'LDOG';
 
 % Get observer properties
 observerID = GetWithDefault('Subject ID','xxxx');
@@ -35,7 +36,7 @@ trialDurShrink = 0.95; % Set the actual stimulus profile be slightly less than 1
 halfCosineRampDurSecs = 1.5;
 seq = [1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0];
 nTrialsPerAcq = length(seq);
-experimentStartKey = {'t'};
+experimentStartKey = 't';
 
 % Check if we are close to midnight, in which case there is a chance that
 % the time-keeping mechanism in this routine (seconds of the day) will fail
@@ -44,7 +45,7 @@ if hour(datetime()) > 22
 end
 
 % Load the calibration file
-cal = loadCalByName(calName);
+cal = loadCalByName(calName,calSubDir);
 
 % Get the photoreceptor set for this observer
 photoreceptors = photoreceptorDictionaryCanine();
@@ -57,7 +58,8 @@ matchConstraintSet = [3, 2.15, 2];
 % resulting modulations
 for ss = 1:3
     modResult{ss} = designModulation(stimDirs{ss},photoreceptors,cal,...
-        'searchBackground',false,...
+        'searchBackground',true,...
+        'primaryHeadRoom',0.025,...
         'contrastMatchConstraint',matchConstraintSet(ss));
     plotModResult(modResult{ss});
 end
@@ -74,10 +76,10 @@ modContrastByDir = desiredContrastLevelsByDir./maxContrastByDir;
 % We need to adjust the contrast by frequency to account for a small amount
 % of roll-off. This has the effect of "boosting" the called-for contrast at
 % high levels
-modContrastByFreq = 1./contrastAttentionByFreq(freqHzByDir);
+modContrastByFreq = 1./contrastAttenuationByFreq(freqHzByDir);
 
 % Check if we are going to clip the contrast levels
-contrastCheck = abs(modContrastByDir.*modContrastByFreq);
+contrastCheck = abs(modContrastByDir.*desiredContrastLevelsByDir);
 clipStimIdx = find(contrastCheck>1);
 if ~isempty(clipStimIdx)
     for ii = 1:length(clipStimIdx)
@@ -99,9 +101,8 @@ if ~simulateCombiLED
     % Setup the basic modulation properties
     obj.setWaveformIndex(1); % sinusoidal flicker
     obj.setBimodal(); % bimodal flicker around mid-point of the settings
-    obj.setAMIndex(2); % half-cosine windowing
-    obj.setAMFrequency(1/(trialDurSecs*2*trialDurShrink));
-    obj.setAMValues([halfCosineRampDurSecs,0]); % duration half-cosine ramp; second value unused
+    obj.setRampIndex(1); % half-cosine windowing
+    obj.setRampDuration(1.5); % 1.5 second ramp on
     obj.setDuration(trialDurSecs*trialDurShrink);
     obj.setSettings(modResult{1}); % send some settings so we are presenting the background
 
@@ -114,9 +115,6 @@ fprintf('   Press return when prelim acquisitions are done\n')
 fprintf('(button presses and TRs will be ignored untill then)\n')
 input(': ','s');
 fprintf('****************************************************\n')
-
-% Create a keypress response window
-[currKeyPress,S] = createResponseWindow();
 
 % Repeat acquisitions until we get a quit key
 notDone = true;
@@ -137,13 +135,26 @@ while notDone
     % Send the modulation settings to the combiLED
     if ~simulateCombiLED
         obj.setSettings(thisModResult);
-        obj.updateFrequency(thisFreq);
-        obj.updateContrast(deviceContrast);
+        obj.setFrequency(thisFreq);
+        obj.setContrast(deviceContrast);
     end
 
-    % Wait for a "t" stimulus to start the acquisition
-    fprintf('Waiting for a TR trigger...')
-    getResponse(currKeyPress,Inf,experimentStartKey);
+    % Create a keypress response window and wait for a t
+    fh = figure( 'units','pixels',...
+        'Name','Wait for t...',...
+        'position',[500 500 200 260],...
+        'menubar','none',...
+        'numbertitle','off','resize','off');
+    waitforbuttonpress;
+    notValidKeyFlag = true;
+    while notValidKeyFlag
+        if strcmp(fh.CurrentCharacter,experimentStartKey)
+            notValidKeyFlag = false;
+        else
+            waitforbuttonpress;
+        end
+    end
+    close(fh);
 
     % Announce we are starting
     fprintf('starting\n')
@@ -168,7 +179,7 @@ while notDone
 
         % Start the combiLED if we are not simulating
         if ~simulateCombiLED
-            obj.updateContrast(deviceContrast*seq(trialCounter));
+            obj.setContrast(deviceContrast*seq(trialCounter));
             obj.startModulation;
         end
 
@@ -207,14 +218,30 @@ while notDone
 
     % Announce that we are done this acquisition
     fprintf('\nFinished acquisition. Press space to prepare for the next acquisition, or q to quit...')
-    keyPress = getResponse(currKeyPress,Inf,{'space','q'});
-    switch keyPress
-        case 'q'
-            notDone = false;
-        otherwise
-            acqIdx = acqIdx + 1;
-            fprintf('preparing\n')
+
+    % Create a keypress response window and wait for space or q
+    fh = figure( 'units','pixels',...
+        'Name','Next acquisition...',...
+        'position',[500 500 200 260],...
+        'menubar','none',...
+        'numbertitle','off','resize','off');
+    waitforbuttonpress;
+    notValidKeyFlag = true;
+    while notValidKeyFlag
+        switch fh.CurrentCharacter
+            case ' '
+                acqIdx = acqIdx + 1;
+                fprintf('preparing\n')
+                notValidKeyFlag = false;
+            case 'q'
+                notDone = false;
+                notValidKeyFlag = false;
+            otherwise
+                waitforbuttonpress;
+        end
     end
+    close(fh);
+
 end
 
 % Announce that we are done
@@ -222,8 +249,4 @@ fprintf('Finished experiment.\n')
 
 % Clean up combiLED
 if ~simulateCombiLED; obj.serialClose; end
-
-% Close the keypress window
-close(S.fh);
-
 
