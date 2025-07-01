@@ -164,20 +164,24 @@ end
 if useKeyboardFlag
 
     fprintf('**********************************\n');
-    fprintf('On each of many trials you will be presented with flicker\n');
-    fprintf('on the left and right. Your job is to indicate which side\n');
-    fprintf('had the faster flickering stimulus by pressing the 1(left) or 2(right) key on the\n');
-    fprintf('keyboard. Each block has %d trials in a row after\n',nTrialsPerBlock);
+    fprintf('On each of many trials you will be presented with flickering lights\n');
+    fprintf('on the left and right. There will be two intervals showing the pairs of flickering lights.\n');
+    fprintf('Your job is to indicate which interval had the mismatched pair.\n');
+    fprintf('If the first interval had mismatched flicker, press the 1 key.\n');
+    fprintf('If the second interval had mismatched flicker, press the 2 key.\n');
+    fprintf('Each block has %d trials in a row after\n',nTrialsPerBlock);
     fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
     fprintf('**********************************\n\n');
 
 else
 
     fprintf('**********************************\n');
-    fprintf('On each of many trials you will be presented with flicker\n');
-    fprintf('on the left and right. Your job is to indicate which side\n');
-    fprintf('had the faster flickering stimulus by pressing the left or right\n');
-    fprintf('bumpers on the game pad. Each block has %d trials in a row after\n',nTrialsPerBlock);
+    fprintf('On each of many trials you will be presented with flickering lights\n');
+    fprintf('on the left and right. There will be two intervals showing the pairs of flickering lights.\n');
+    fprintf('Your job is to indicate which interval had the mismatched pair.\n');
+    fprintf('If the first interval had mismatched flicker, press one of the top bumpers.\n');
+    fprintf('If the second interval had mismatched flicker, press one of the bottom bumpers.\n');
+    fprintf('Each block has %d trials in a row after\n',nTrialsPerBlock);
     fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
     fprintf('**********************************\n\n');
 
