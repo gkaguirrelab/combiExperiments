@@ -80,6 +80,8 @@ for side = 1:2
     obj.CombiLEDObjArr{side}.setContrast(stimParams(side,1));
     obj.CombiLEDObjArr{side}.setFrequency(stimParams(side,2));
     obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(side,3));
+    obj.CombiLEDObjArr{side}.setStartDelay(2); %delay offset of the
+    % flicker because we want to record EMG / EOG baseline
 end
 
 % Wait half a second to make sure that the CombiLEDs have received
@@ -98,8 +100,9 @@ end
 audioObjs.low.play;
 
 % Start the EMG recording - slightly shorter than stimulus duration
+% 10 second EMG recording - 2 seconds before, 4 seconds during, 4 second after
 if obj.EMGFlag
-    EMGControl.trialDurationSecs = obj.stimDurSecs - 0.5;  % To account for LabJack connection lag
+    EMGControl.trialDurationSecs = obj.stimDurSecs + 6; % Additional 2 seconds before and 4 seconds after stimulus (2 + 4 = 6)
     [EMGdata] = EMGControl.recordTrial();
 end
 

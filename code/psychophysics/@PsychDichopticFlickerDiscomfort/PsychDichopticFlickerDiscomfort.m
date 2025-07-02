@@ -99,7 +99,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
             p.addParameter('stimParamSide','hi',@ischar); % valid values {'hi','low'}
             p.addParameter('refPhotoContrast',0.1,@isnumeric);
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
-            p.addParameter('stimDurSecs',3,@isnumeric);
+            p.addParameter('stimDurSecs',4,@isnumeric);
             p.addParameter('isiSecs',0.75,@isnumeric);
             p.addParameter('rampDurSecs', 0.5,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);

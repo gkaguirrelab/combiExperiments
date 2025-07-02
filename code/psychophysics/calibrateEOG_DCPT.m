@@ -4,14 +4,14 @@ function calibrateEOG_DCPT(subjectID, sessionNumber)
 EOGControl = BiopackControl('');
 
 % Load and play the audio file
-% There is a one second pause before the voice begins to allow for EOG
-% startup, and two seconds between each "Look" command
-[y, Fs] = audioread('/Users/flicexperimenter/Documents/MATLAB/projects/combiExperiments/code/experiments/EOGCalInstructions.m4a');
+% There is a two second pause before the voice begins to allow for EOG
+% startup, and 0.25 seconds between each command
+[y, Fs] = audioread('/Users/flicexperimenter/Documents/MATLAB/projects/combiExperiments/code/experiments/EOGCalInstructions.mp3');
 sound(y, Fs);  % Play it back
 
 audioStartTime = cputime();
 
-EOGControl.trialDurationSecs = 45; % Set EOG duration
+EOGControl.trialDurationSecs = 25; % Set EOG duration
 % Start recording
 EOGStartTime = cputime();
 [EOGData] = EOGControl.recordTrial();
@@ -54,6 +54,17 @@ fullPath = fullfile(EOGDir, fileName);
 
 % Save the session data struct to a .mat file
 save(fullPath, 'sessionData');
+
+% Plot the session data
+figure;
+plot(sessionData.EOGData.timebase,sessionData.EOGData.response);
+xlabel('Time (seconds)');
+ylabel('Amplitude');
+
+% Saving the plot
+plotName = ['EOGSession' num2str(sessionNumber) 'CalPlot.jpg'];
+plotPath = fullfile(EOGDir, plotName);
+saveas(gcf, plotPath); 
 
 end
 
