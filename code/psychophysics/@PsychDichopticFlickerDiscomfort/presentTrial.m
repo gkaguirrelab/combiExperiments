@@ -80,7 +80,7 @@ for side = 1:2
     obj.CombiLEDObjArr{side}.setContrast(stimParams(side,1));
     obj.CombiLEDObjArr{side}.setFrequency(stimParams(side,2));
     obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(side,3));
-    obj.CombiLEDObjArr{side}.setStartDelay(2); %delay offset of the
+    obj.CombiLEDObjArr{side}.setStartDelay(0.5); %delay offset of the
     % flicker because we want to record EMG / EOG baseline
 end
 
