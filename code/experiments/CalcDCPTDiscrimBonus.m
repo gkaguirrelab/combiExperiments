@@ -1,5 +1,5 @@
 function CalcDCPTDiscrimBonus(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
-% % Function to plot a single psychometric curve, combining the high and low side data.  
+% % Function to calculate the bonus for the most recent session (200 trials)  
 % % e.g.,
 %{
 
