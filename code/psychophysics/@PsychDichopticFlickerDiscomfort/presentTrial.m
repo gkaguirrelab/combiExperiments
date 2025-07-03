@@ -100,13 +100,17 @@ end
 audioObjs.low.play;
 
 % Start the EMG recording - slightly shorter than stimulus duration
-% 10 second EMG recording - 2 seconds before, 4 seconds during, 4 second after
+% 10 second EMG recording - 2 seconds before, 4 seconds during, 2 second after
 if obj.EMGFlag
-    EMGControl.trialDurationSecs = obj.stimDurSecs + 6; % Additional 2 seconds before and 4 seconds after stimulus (2 + 4 = 6)
+    EMGControl.trialDurationSecs = obj.stimDurSecs + 4; % Additional 2 seconds before and 2 seconds after stimulus (2 + 2 = 4)
     [EMGdata] = EMGControl.recordTrial();
 end
 
 obj.waitUntil(stopTime);
+
+% play a beep so the experimenter knows they can enter the response.
+audioObjs.ready.play;
+obj.waitUntil(cputime()+1);
 
 % Start the response interval
 currKeyPress = '';  % To make sure currKeyPress doesn't have old data in it
