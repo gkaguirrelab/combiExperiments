@@ -1,7 +1,9 @@
 function presentTrial(obj, currentPair, currTargetPhotoContrast)
 
 % Get the EOGControl
-EMGControl = obj.EMGControl;
+if obj.EMGFlag
+    EMGControl = obj.EMGControl;
+end
 
 % Get the questData
 questData = obj.questData;

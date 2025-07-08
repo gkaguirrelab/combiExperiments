@@ -80,7 +80,7 @@ classdef PsychDichopticFlickerDiscrim < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjArr, modResultArr, EOGControl, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjArr, modResultArr, EOGControl, EOGFlag, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -102,7 +102,6 @@ classdef PsychDichopticFlickerDiscrim < handle
                 {linspace(0,0,1),linspace(0,6.75,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
-            p.addParameter('EOGFlag',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
@@ -127,7 +126,6 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
             obj.verbose = p.Results.verbose;
             obj.useKeyboardFlag = p.Results.useKeyboardFlag;
-            obj.EOGFlag = p.Results.EOGFlag;
 
             % Initialize the blockStartTimes field
             obj.blockStartTimes(1) = datetime();

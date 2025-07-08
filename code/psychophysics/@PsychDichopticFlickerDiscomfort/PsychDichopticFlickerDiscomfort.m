@@ -92,7 +92,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscomfort(CombiLEDObjArr, modResultArr, EMGControl, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscomfort(CombiLEDObjArr, modResultArr, EMGControl, EMGFlag, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -115,7 +115,6 @@ classdef PsychDichopticFlickerDiscomfort < handle
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
             p.addParameter('discomfortFlag',true,@islogical);
-            p.addParameter('EMGFlag',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
@@ -141,7 +140,6 @@ classdef PsychDichopticFlickerDiscomfort < handle
             obj.verbose = p.Results.verbose;
             obj.discomfortFlag = p.Results.discomfortFlag;
             obj.useKeyboardFlag = p.Results.useKeyboardFlag;
-            obj.EMGFlag = p.Results.EMGFlag;
 
             % Initialize the blockStartTimes field
             obj.blockStartTimes(1) = datetime();

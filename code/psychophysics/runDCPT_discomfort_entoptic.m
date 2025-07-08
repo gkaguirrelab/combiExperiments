@@ -1,8 +1,8 @@
-function runDCPT_discomfort_entoptic(subjectID,NDlabel,varargin)
+function runDCPT_discomfort_entoptic(subjectID,NDlabel,EMGFlag, varargin)
 % Show modulations and collect discomfort/entoptic ratings
 %
 % Syntax:
-%   runDCPT_discomfort_entoptic(subjectID,NDlabel,discomfortFlag)
+%   runDCPT_discomfort_entoptic(subjectID,NDlabel,'discomfortFlag',discomfortFlag);
 %
 % Description:
 %   This function organizes the collection of data using the
@@ -55,8 +55,9 @@ function runDCPT_discomfort_entoptic(subjectID,NDlabel,varargin)
 %{
     subjectID = 'HERO_rsb';
     NDlabel = '0x5';
-    discomfortFlag = 1; 
-    runDCPT_discomfort_entoptic(subjectID,NDlabel, 'discomfortFlag', false);
+    discomfortFlag = true; 
+    EMGFlag = false;
+    runDCPT_discomfort_entoptic(subjectID,NDlabel, EMGFlag, 'discomfortFlag', discomfortFlag);
 %}
 
 % Parse the parameters
@@ -75,7 +76,6 @@ p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
 p.addParameter('makeOrder',false, @islogical);
-p.addParameter('EMGFlag',true,@islogical);
 p.addParameter('discomfortFlag',true, @islogical);
 p.parse(varargin{:})
 
@@ -91,7 +91,6 @@ verbosePsychObj = p.Results.verbosePsychObj;
 simulateMode = p.Results.simulateMode;
 combiClockAdjust = p.Results.combiClockAdjust;
 makeOrder = p.Results.makeOrder;
-EMGFlag = p.Results.EMGFlag;
 discomfortFlag = p.Results.discomfortFlag;
 dropBoxBaseDir = p.Results.dropBoxBaseDir;
 dropBoxSubDir = p.Results.dropBoxSubDir;
@@ -166,6 +165,8 @@ else
     if EMGFlag
         dataOutDir = '/Users/flicexperimenter/Aguirre-Brainard Lab Dropbox/Flic Experimenter/FLIC_data/combiLED/HERO_rsb';
         EMGControl = BiopackControl(dataOutDir);
+    else
+        EMGControl = '';
     end
 end
 
@@ -234,6 +235,8 @@ for bb=1:nBlocks
         psychObj.filename = psychObjFilename;
         % Put in the fresh CombiLEDObjs
         psychObj.CombiLEDObjArr = CombiLEDObjArr;
+        % Put in the fresh EMGFlag
+        psychObj.EMGFlag = EMGFlag;
         % Put in the fresh EMGControl
         if EMGFlag
             psychObj.EMGControl = EMGControl;
@@ -246,7 +249,7 @@ for bb=1:nBlocks
     else
         % Create the object
         psychObj = PsychDichopticFlickerDiscomfort(...
-            CombiLEDObjArr, modResultArr, EMGControl, refFreqHz,...
+            CombiLEDObjArr, modResultArr, EMGControl, EMGFlag, refFreqHz,...
             'refPhotoContrast',targetPhotoContrast(:,directionIdx), ...
             'discomfortFlag', discomfortFlag);
         % Store the filename

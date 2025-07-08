@@ -1,7 +1,9 @@
 function presentTrial(obj)
 
 % Get the EOGControl
-EOGControl = obj.EOGControl;
+if obj.EOGFlag
+    EOGControl = obj.EOGControl;
+end
 
 % Get the questData
 questData = obj.questData;
@@ -161,12 +163,12 @@ else
     % Prepare the combiLEDs
     interval = 1;
     for side = 1:2
-       obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,1));
-       obj.CombiLEDObjArr{side}.setFrequency(stimParams(interval,side,2));
-       obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(interval,side,3));
-       obj.CombiLEDObjArr{side}.setStartDelay(0.5); %delay offset of the 
-       % first interval because it takes up to half a second to start the EOG recording.
-       obj.CombiLEDObjArr{side}.setDuration(obj.stimDurSecs);
+        obj.CombiLEDObjArr{side}.setContrast(stimParams(interval,side,1));
+        obj.CombiLEDObjArr{side}.setFrequency(stimParams(interval,side,2));
+        obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(interval,side,3));
+        obj.CombiLEDObjArr{side}.setStartDelay(0.5); %delay offset of the
+        % first interval because it takes up to half a second to start the EOG recording.
+        obj.CombiLEDObjArr{side}.setDuration(obj.stimDurSecs);
     end
 
     toc;
@@ -185,12 +187,17 @@ else
     end
     audioObjs.low.play;
 
+   % Wait for first interval if not doing EOG
+   stopTime = cputime() + obj.stimDurSecs;
+
     % Start the EOG recording 
     % only record first interval and a little into ISI
     if obj.EOGFlag
         EOGControl.trialDurationSecs = obj.stimDurSecs;
         [EOGdata1] = EOGControl.recordTrial();
     end
+
+    obj.waitUntil(stopTime);
 
     %% ISI
 

@@ -1,8 +1,8 @@
-function runDCPT_discrim(subjectID,NDlabel,varargin)
+function runDCPT_discrim(subjectID,NDlabel,EOGFlag,varargin)
 % Collect a session of dichoptic flicker discrimination measure,emts
 %
 % Syntax:
-%   runDCPT_discrim(subjectID,NDlabel)
+%   runDCPT_discrim(subjectID,NDlabel,EOGFlag)
 %
 % Description:
 %   This function organizes the collection of data using the
@@ -53,7 +53,8 @@ function runDCPT_discrim(subjectID,NDlabel,varargin)
 %{
     subjectID = 'HERO_rsb';
     NDlabel = '0x5';
-    runDCPT_discrim(subjectID,NDlabel);
+    EOGFlag = false;
+    runDCPT_discrim(subjectID,NDlabel, EOGFlag);
 %}
 
 % Parse the parameters
@@ -75,7 +76,6 @@ p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
 p.addParameter('useKeyboardFlag',false,@islogical);
-p.addParameter('EOGFlag',true,@islogical);
 p.parse(varargin{:})
 
 %  Pull out some variablse from the p.Results structure
@@ -93,7 +93,6 @@ verbosePsychObj = p.Results.verbosePsychObj;
 simulateMode = p.Results.simulateMode;
 useKeyboardFlag = p.Results.useKeyboardFlag;
 combiClockAdjust = p.Results.combiClockAdjust;
-EOGFlag = p.Results.EOGFlag;
 
 % Set our experimentName
 experimentName = 'DCPT';
@@ -156,6 +155,8 @@ else
     % Open the connection to the LabJack
     if EOGFlag
         EOGControl = BiopackControl('');
+    else
+        EOGControl = '';
     end
 end
 
@@ -233,6 +234,8 @@ for bb=1:nBlocks
                     psychObj.filename = psychObjFilename;
                     % Put in the fresh CombiLEDObjs
                     psychObj.CombiLEDObjArr = CombiLEDObjArr;
+                    % Put in the fresh EOGFlag
+                    psychObj.EOGFlag = EOGFlag;
                     % Put in the fresh EOGControl
                     if EOGFlag
                         psychObj.EOGControl = EOGControl;
@@ -251,7 +254,7 @@ for bb=1:nBlocks
                 else
                     % Create the object
                     psychObj = PsychDichopticFlickerDiscrim(...
-                        CombiLEDObjArr, modResultArr, EOGControl, refFreqHz(freqIdx),...
+                        CombiLEDObjArr, modResultArr, EOGControl, EOGFlag, refFreqHz(freqIdx),...
                         'refPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...
                         'testPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...
                         'simulateMode',simulateMode,...
