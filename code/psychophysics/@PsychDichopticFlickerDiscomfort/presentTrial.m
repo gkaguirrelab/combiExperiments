@@ -71,7 +71,7 @@ audioObjs.correct = audioplayer(correctSound,Fs);
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Ref Contrast %2.2f; Ref freq %2.2f; Test freq %2.2f. Enter a number from 1-10 (0 for 10): ', ...
+    fprintf('Trial %d; Ref Contrast %2.2f; Ref freq %2.2f; Test freq %2.2f. Enter a number from 1-10 (- for 10): ', ...
         currTrialIdx,stimParams(1,1),stimParams(1,2),stimParams(2,2));
 end
 
@@ -147,7 +147,7 @@ if obj.discomfortFlag
     % Close the response window
     close(S.fh);
 else
-    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'0','1','2','3','4','5','6','7','8','9','-'});
+    [keyPress, responseTimeSecs] = getKeyboardResponse(currKeyPress,Inf,{'0','1','2','3','4','5','6','7','8','9','hyphen'});
     if ~isempty(keyPress)
         switch keyPress
             case {'0'}
@@ -170,7 +170,7 @@ else
                 entopticResponse = 8;
             case {'9'}
                 entopticResponse = 9;
-            case {'-'}
+            case {'hyphen'}
                 entopticResponse = 10;
         end
     end

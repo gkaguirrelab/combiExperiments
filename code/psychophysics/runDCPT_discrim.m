@@ -53,7 +53,7 @@ function runDCPT_discrim(subjectID,NDlabel,EOGFlag,varargin)
 %{
     subjectID = 'HERO_rsb';
     NDlabel = '0x5';
-    EOGFlag = false;
+    EOGFlag = true;
     runDCPT_discrim(subjectID,NDlabel, EOGFlag);
 %}
 

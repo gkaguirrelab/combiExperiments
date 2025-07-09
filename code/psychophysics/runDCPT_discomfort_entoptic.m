@@ -56,7 +56,7 @@ function runDCPT_discomfort_entoptic(subjectID,NDlabel,EMGFlag, varargin)
     subjectID = 'HERO_rsb';
     NDlabel = '0x5';
     discomfortFlag = true; 
-    EMGFlag = false;
+    EMGFlag = true;
     runDCPT_discomfort_entoptic(subjectID,NDlabel, EMGFlag, 'discomfortFlag', discomfortFlag);
 %}
 
@@ -178,7 +178,7 @@ if discomfortFlag
     fprintf('On each of many trials you will be presented with flickering\n');
     fprintf('lights in both eyes. When the lights stop flickering,\n');
     fprintf('your job is to rate your discomfort \n');
-    fprintf('from watching the lights on a scale from 1 to 10.');
+    fprintf('from watching the lights on a scale from 0 to 10.');
     fprintf('There are a total of %d trials.\n',nTrials);
     fprintf('**********************************\n\n');
 
@@ -188,7 +188,7 @@ else
     fprintf('On each of many trials you will be presented with flickering\n');
     fprintf('lights in both eyes. \n');
     fprintf('Question 1: When the lights stop flickering, your job is to rate \n');
-    fprintf('the strength of the entoptic percept on a scale of 0-9, \n');
+    fprintf('the strength of the entoptic percept on a scale of 0-10, \n');
     fprintf('where 0 is no structure. \n');
     fprintf('Question 2: Did you see a Purkinje tree? \n');
     fprintf('There are a total of %d trials.\n',nTrials);

@@ -1,5 +1,12 @@
 function calibrateEOG_DCPT(subjectID, sessionNumber)
 
+% Examples:
+%{
+    subjectID = 'HERO_rsb';
+    sessionNumber = 1;
+    calibrateEOG_DCPT(subjectID, sessionNumber)
+%}
+
 % Open the connection to the LabJack
 EOGControl = BiopackControl('');
 
