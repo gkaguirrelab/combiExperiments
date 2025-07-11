@@ -121,7 +121,7 @@ subjectDir = fullfile(...
 % device does not change with modulation direction
 for side = 1:nSides
     modResultFile{side} = ...
-        fullfile(subjectDir,[modDirections{1} '_ND' NDlabel],['modResult_' combiLEDLabels{side} '.mat']);
+        fullfile(subjectDir,[modDirections{1} '_ND' NDlabel '_shifted'],['modResult_' combiLEDLabels{side} '.mat']);
     load(modResultFile{side},'modResult');
     cal{side} = modResult.meta.cal;
 end
