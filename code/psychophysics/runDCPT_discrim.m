@@ -377,6 +377,6 @@ clear EOGControl
 ExperimentDone = load('handel');
 sound(ExperimentDone.y,ExperimentDone.Fs)
 
-CalcDCPTDiscrimBonus(subjectID, refFreqHz, modDirections, targetPhotoContrast, NDlabel);
+CalcDCPTDiscrimBonus(subjectID, refFreqHz, modDirections, targetPhotoContrast, NDLabel);
 
 end % function

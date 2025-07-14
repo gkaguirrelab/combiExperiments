@@ -121,6 +121,7 @@ classdef PsychDichopticFlickerDiscomfort < handle
             obj.CombiLEDObjArr = CombiLEDObjArr;
             obj.modResultArr = modResultArr;
             obj.EMGControl = EMGControl;
+            obj.EMGFlag = EMGFlag;
             obj.refFreqHz = refFreqHz;
             obj.stimParamSide = p.Results.stimParamSide;
             obj.testPhotoContrast = p.Results.testPhotoContrast;
