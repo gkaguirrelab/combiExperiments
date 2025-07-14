@@ -155,6 +155,7 @@ else
     % Open the connection to the LabJack
     if EOGFlag
         EOGControl = BiopackControl('');
+        fprintf('------Collecting EOG Data------\n')
     else
         EOGControl = '';
     end

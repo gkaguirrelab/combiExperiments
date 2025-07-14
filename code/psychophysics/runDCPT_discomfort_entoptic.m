@@ -96,6 +96,7 @@ dropBoxBaseDir = p.Results.dropBoxBaseDir;
 dropBoxSubDir = p.Results.dropBoxSubDir;
 projectName = p.Results.projectName;
 
+
 % Set our experimentName
 if discomfortFlag
     experimentName = 'DCPT_discomfort';
@@ -165,6 +166,7 @@ else
     if EMGFlag
         dataOutDir = '/Users/flicexperimenter/Aguirre-Brainard Lab Dropbox/Flic Experimenter/FLIC_data/combiLED/HERO_rsb';
         EMGControl = BiopackControl(dataOutDir);
+        fprintf('------Collecting EMG Data------\n')
     else
         EMGControl = '';
     end
