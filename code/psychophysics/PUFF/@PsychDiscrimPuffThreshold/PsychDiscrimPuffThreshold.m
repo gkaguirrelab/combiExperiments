@@ -33,10 +33,10 @@ classdef PsychDiscrimPuffThreshold < handle
     % These may be modified after object creation
     properties (SetAccess=public)
 
-        % The display object. This is modifiable so that we can re-load
+        % The air puff object. This is modifiable so that we can re-load
         % the psychometric object, update this handle, and then continue
         % to collect data
-        CombiAirObj
+        AirPuffObj
 
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
@@ -55,7 +55,7 @@ classdef PsychDiscrimPuffThreshold < handle
     methods
 
         % Constructor
-        function obj = PsychDiscrimPuffThreshold(CombiAirObj,refPuffPSI,varargin)
+        function obj = PsychDiscrimPuffThreshold(AirPuffObj,refPuffPSI,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -72,7 +72,7 @@ classdef PsychDiscrimPuffThreshold < handle
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
-            obj.CombiAirObj = CombiAirObj;
+            obj.AirPuffObj = AirPuffObj;
             obj.refPuffPSI = refPuffPSI;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
@@ -93,7 +93,7 @@ classdef PsychDiscrimPuffThreshold < handle
             % Check that the max required pressure is within the safety
             % range
             maxPressurePSI = refPuffPSI * db2pow(max(obj.stimParamsDomainList));
-            if maxPressurePSI > 40
+            if maxPressurePSI > 20
                 error('Max called-for stimulus exceeds allowable limits');
             end
 

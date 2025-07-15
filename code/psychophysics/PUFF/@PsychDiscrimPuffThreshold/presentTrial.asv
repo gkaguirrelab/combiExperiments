@@ -33,23 +33,26 @@ testPuffPSI = refPuffPSI * db2pow(stimParam);
 testParams = [stimulusDurationSecs,testPuffPSI];
 refParams = [stimulusDurationSecs,refPuffPSI];
 
-% Randomly assign the stimuli to the intervals
+% Give labels to the sides
+sides = {'L','R'};
+
+% Randomly assign the stimuli to the sides [L,R]
 switch 1+logical(round(rand()))
     case 1
-        intervalParams(1,:) = testParams;
-        intervalParams(2,:) = refParams;
-        testInterval = 1;
+        sideParams(1,:) = testParams;
+        sideParams(2,:) = refParams;
+        testSide = 1;
     case 2
-        intervalParams(1,:) = refParams;
-        intervalParams(2,:) = testParams;
-        testInterval = 2;
+        sideParams(1,:) = refParams;
+        sideParams(2,:) = testParams;
+        testSide = 2;
     otherwise
-        error('Not a valid testInterval')
+        error('Not a valid testSide')
 end
 
 % Note which interval contains the more intense stimulus, which is used for
 % feedback
-[~,moreIntenseInterval] = max(intervalParams(:,2));
+[~,moreIntenseSide] = max(sideParams(:,2));
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -78,25 +81,26 @@ end
 % Handle verbosity
 if obj.verbose
     fprintf('Trial %d; Pressure PSI [%2.2f, %2.2f Hz]...', ...
-        currTrialIdx,intervalParams(1,2),intervalParams(2,2));
+        currTrialIdx,sideParams(1,2),sideParams(2,2));
 end
 
 % Present the stimuli
 if ~simulateStimuli
+
+    % Prepare the stimuli
+    for ss = 1:length(sides)
+        obj.AirPuffObj.setDuration(sides{ss},sideParams(ss,1)*1000);
+        obj.AirPuffObj.setPressure(sides{ss},sideParams(ss,2));
+    end
 
     % Alert the subject the trial is about to start
     audioObjs.ready.play;
     stopTimeSeconds = cputime() + 1;
     obj.waitUntil(stopTimeSeconds);
 
-    % Present the two intervals
-    for ii=1:2
-
-        % Prepare the stimulus
-        obj.CombiAirObj.setDurationDirect(intervalParams(ii,1)*1000);
-        obj.CombiAirObj.setPressureDirect(intervalParams(ii,2));
-
-        % Present the stimulus. If it is the first interval, wait the
+        % Present the stimuli. Randomly select a side to address first
+        
+        . If it is the first interval, wait the
         % entire stimulusDuration. If it is the second interval. just wait
         % 1/4 of the stimulus and then move on to the response, thus
         % allowing the subject to respond during the second stimulus.
@@ -105,7 +109,7 @@ if ~simulateStimuli
         else
             stopTime = cputime() + 0.25*obj.stimulusDurationSecs;
         end
-        obj.CombiAirObj.triggerPuffDirect;
+        obj.AirPuffObj.triggerPuffDirect;
         if ii==1
             audioObjs.low.play;
         else
@@ -126,17 +130,17 @@ if ~simulateResponse
     end
     close(S.fh);
 else
-    intervalChoice = obj.getSimulatedResponse(stimParam,testInterval);
+    intervalChoice = obj.getSimulatedResponse(stimParam,testSide);
     responseTimeSecs = nan;
 end
 
 % Set the pressure back to zero
 if ~simulateStimuli
-    obj.CombiAirObj.setPressureDirect(0);
+    obj.AirPuffObj.setPressureDirect(0);
 end
 
 % Determine if the subject has selected the ref or test interval
-if intervalChoice == testInterval
+if intervalChoice == testSide
     outcome = 2;
 else
     outcome = 1;
@@ -144,7 +148,7 @@ end
 
 % Determine if the subject has selected the faster interval and handle
 % audio feedback
-if intervalChoice==moreIntenseInterval
+if intervalChoice==moreIntenseSide
     % Correct
     correct = true;
     if obj.verbose
@@ -186,8 +190,8 @@ end
 questData = qpUpdate(questData,stimParam,outcome);
 
 % Add in the stimulus information
-questData.trialData(currTrialIdx).testInterval = testInterval;
-questData.trialData(currTrialIdx).fasterInterval = moreIntenseInterval;
+questData.trialData(currTrialIdx).testSide = testSide;
+questData.trialData(currTrialIdx).fasterInterval = moreIntenseSide;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
 
