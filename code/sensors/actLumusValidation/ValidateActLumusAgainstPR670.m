@@ -29,7 +29,8 @@ weights = [13.84012939453125, 7.627602905273427, 6.596852600097645, ...
 actLumusChannelSPDs = actLumusChannelSPDs./weights;
 
 % These are the ActLumus counts reported for each channel when the device
-% was directed towards the integrating sphere.
+% was directed towards the integrating sphere. These values can be found in
+% the file "LabSphereActLumus.xlsx".
 actLumusCountsPerChannel = ...
     [0.0028, 0.0033, 0.0047, 0.0076, 0.0134, 0.0209, 0.037, 0.0619, 0.08];
 
@@ -65,5 +66,12 @@ xlabel('Predicted radiance [W/m^2]','FontSize',14)
 ylabel('ActLumus observed [W/m^2]','FontSize',14)
 axis square 
 
+% We can calculate the melanopic lux that corresponds to the sphere
+% spectrum, and compare this to the value reported by the ActLumus
+% software.
+actLumusMelLux = 29.24;
 
+% Conver the sphere SPD to irradiance in 2mm sampling from 380:780 in units
+% of W per m2
+irradiance_Wperm2 = (interp1(wavelengths,pr670MeasuredSPD,380:2:780)*pi);
 
