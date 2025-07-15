@@ -4,7 +4,7 @@
 % Have participants redo the practice if they get more than 50% (4)
 % incorrect responses
 
-subjectID = 'FLIC_0006';
+subjectID = 'DEMO_discrim'; % DO NOT CHANGE
 refFreqHz = [3.0000, 20.0000];
 NDlabel = '0x5';
 stimParams = linspace(5, 6, 10);
