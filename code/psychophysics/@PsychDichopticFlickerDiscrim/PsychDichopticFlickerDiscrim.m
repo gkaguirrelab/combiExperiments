@@ -109,6 +109,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.modResultArr = modResultArr;
             obj.EOGControl = EOGControl;
             obj.refFreqHz = refFreqHz;
+            obj.EOGFlag = EOGFlag;
             obj.stimParamSide = p.Results.stimParamSide;
             obj.testPhotoContrast = p.Results.testPhotoContrast;
             obj.refPhotoContrast = p.Results.refPhotoContrast;            
