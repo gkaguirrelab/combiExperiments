@@ -54,11 +54,6 @@ end
 % feedback
 [~,moreIntenseSide] = max(sideParams(:,2));
 
-% Randomly pick which side is triggered first. There is a delay difference
-% of a couple of milliseconds between the start of the first and second
-% puff
-firstTriggerSide = 1+logical(round(rand()));
-
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
 dur = 0.1; % Duration in seconds
@@ -85,32 +80,30 @@ end
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Pressure PSI [%2.2f, %2.2f Hz]...', ...
+    fprintf('Trial %d; Pressure PSI [%2.2f, %2.2f PSI]...', ...
         currTrialIdx,sideParams(1,2),sideParams(2,2));
 end
 
 % Present the stimuli
 if ~simulateStimuli
 
+    % Alert the subject the trial is about to start and set a timer
+    audioObjs.ready.play;
+    stopTimeSeconds = cputime() + 1;
+
     % Prepare the stimuli
     for ss = 1:length(sides)
         obj.AirPuffObj.setDuration(sides{ss},sideParams(ss,1)*1000);
+        pause(0.2);
         obj.AirPuffObj.setPressure(sides{ss},sideParams(ss,2));
+        pause(0.2);
     end
 
-    % Alert the subject the trial is about to start
-    audioObjs.ready.play;
-    stopTimeSeconds = cputime() + 1;
+    % Wait until the stop time
     obj.waitUntil(stopTimeSeconds);
 
-    % Present the stimuli. Randomly select a side to address first
-    if firstTriggerSide == 1
-        obj.AirPuffObj.triggerPuff(sides{1});
-        obj.AirPuffObj.triggerPuff(sides{2});
-    else
-        obj.AirPuffObj.triggerPuff(sides{2});
-        obj.AirPuffObj.triggerPuff(sides{1});
-    end
+    % Simultaneous, bilateral puff
+    obj.AirPuffObj.triggerPuff('B');
 
 % Start the response interval
 if ~simulateResponse
@@ -187,7 +180,6 @@ questData = qpUpdate(questData,stimParam,outcome);
 % Add in the stimulus information
 questData.trialData(currTrialIdx).testSide = testSide;
 questData.trialData(currTrialIdx).moreIntenseSide = moreIntenseSide;
-questData.trialData(currTrialIdx).firstTriggerSide = firstTriggerSide;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
 

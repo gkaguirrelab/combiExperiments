@@ -1,8 +1,8 @@
 function initializeDisplay(obj)
 
-if isempty(obj.CombiAirObj) && ~obj.simulateStimuli
+if isempty(obj.AirPuffObj) && ~obj.simulateStimuli
     if obj.verbose
-        fprintf('CombiAirObj is empty; update this property and call the initializeDisplay method');
+        fprintf('AirPuffObj is empty; update this property and call the initializeDisplay method');
     end
 end
 
@@ -12,7 +12,7 @@ if ~obj.simulateStimuli
 
     % Alert the user
     if obj.verbose
-        fprintf('Initializing CombiAirObj\n')
+        fprintf('Initializing AirPuffObj\n')
     end
 
 end

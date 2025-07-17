@@ -7,18 +7,22 @@ if isempty(obj.serialObjSolenoid)
 end
 
 % Sanity check the side string
-assert(contains(side,{'L','R'}));
-
-% Prepare the command
-command = sprintf([side 'PULSE']);
+assert(contains(side,{'L','R','LR','RL','B'}));
 
 % Send the command and read the echo
-writeline(obj.serialObjSolenoid,command);
-commandEcho = readline(obj.serialObjSolenoid);
+switch side
+    case 'L'
+        writeline(obj.serialObjSolenoid,'LPULSE');
+    case 'R'
+        writeline(obj.serialObjSolenoid,'RPULSE');
+    case {'RL','LR','B'}
+        writeline(obj.serialObjSolenoid,'ALLPULSE');
+end
 
 % Say
 if obj.verbose
-fprintf(strcat(commandEcho,"\n"))
+    commandEcho = readline(obj.serialObjSolenoid);
+    fprintf(strcat(commandEcho,"\n"))
 end
 
 end

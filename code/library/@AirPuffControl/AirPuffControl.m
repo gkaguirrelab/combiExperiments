@@ -9,11 +9,11 @@ classdef AirPuffControl < handle
 
         baudrateEPC = 19200;
         linebreakEPC = "CR";
-        portcodeEPC = 'B400I036';
+        portcodeEPC = ["B400I036","tty"];
 
         baudrateSolenoid = 115200;
         linebreakSolenoid = "CR/LF";
-        portcodeSolenoid = 'usbmodem101';
+        portcodeSolenoid = ["usbmodem","01","tty"];
 
     end
 

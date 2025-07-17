@@ -9,7 +9,9 @@ if ~ismac
 end
 
 %% Open connection to the EPC
-portIdxEPC = find(and(contains(portList,obj.portcodeEPC),contains(portList,'tty')));
+for ii = 1:length(portList)
+    portIdxEPC(ii) = all(arrayfun(@(substr) contains(portList(ii), substr, 'IgnoreCase', true), obj.portcodeEPC));
+end
 portEPC = portList(portIdxEPC);
 
 % We can't find a port
@@ -30,7 +32,9 @@ end
 
 
 %% Open connection to the solenoids (which are controlled by an arduino)
-portIdxSolenoid = find(and(contains(portList,obj.portcodeSolenoid),contains(portList,'tty')));
+for ii = 1:length(portList)
+    portIdxSolenoid(ii) = all(arrayfun(@(substr) contains(portList(ii), substr, 'IgnoreCase', true), obj.portcodeSolenoid));
+end
 portSolenoid = portList(portIdxSolenoid);
 
 % We can't find a port
