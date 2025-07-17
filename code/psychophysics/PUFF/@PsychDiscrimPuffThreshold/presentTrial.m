@@ -13,9 +13,11 @@ simulateResponse = obj.simulateResponse;
 % Determine if we are giving feedback on each trial
 giveFeedback = obj.giveFeedback;
 
-% The calling function sets the refPuffPSI and the duration of each puff
+% The calling function sets the refPuffPSI, the duration of each puff, and
+% the inter-trial interval range
 refPuffPSI = obj.refPuffPSI;
-stimulusDurationSecs = obj.stimulusDurationSecs;
+puffDurSecs = obj.puffDurSecs;
+itiRangeSecs = obj.itiRangeSecs;
 
 % Get the stimParam to use for this trial. Can use either a staircase or
 % QUEST+
@@ -30,8 +32,8 @@ end
 testPuffPSI = refPuffPSI * db2pow(stimParam);
 
 % Assemble the param sets
-testParams = [stimulusDurationSecs,testPuffPSI];
-refParams = [stimulusDurationSecs,refPuffPSI];
+testParams = [puffDurSecs,testPuffPSI];
+refParams = [puffDurSecs,refPuffPSI];
 
 % Give labels to the sides
 sides = {'L','R'};
@@ -73,11 +75,6 @@ audioObjs.correct = audioplayer(correctSound,Fs);
 audioObjs.incorrect = audioplayer(incorrectSound,Fs);
 audioObjs.bad = audioplayer(badSound,Fs);
 
-% Create a figure that will be used to collect key presses
-if ~simulateResponse
-    [currKeyPress,S] = createResponseWindow();
-end
-
 % Handle verbosity
 if obj.verbose
     fprintf('Trial %d; Pressure PSI [%2.2f, %2.2f PSI]...', ...
@@ -87,9 +84,11 @@ end
 % Present the stimuli
 if ~simulateStimuli
 
-    % Alert the subject the trial is about to start and set a timer
-    audioObjs.ready.play;
-    stopTimeSeconds = cputime() + 1;
+    % Alert the subject the trial is about to start and set a timer to
+    % delay by a variable amount defined by itiRangeSecs
+    audioObjs.low.play;
+    itiDur = min(itiRangeSecs)+range(itiRangeSecs)*rand();
+    stopTimeSeconds = cputime() + itiDur;
 
     % Prepare the stimuli
     for ss = 1:length(sides)
@@ -105,26 +104,18 @@ if ~simulateStimuli
     % Simultaneous, bilateral puff
     obj.AirPuffObj.triggerPuff('B');
 
+    % Response time out
+    stopTimeSeconds = cputime() + 0.5;
+    obj.waitUntil(stopTimeSeconds);
+
+
 % Start the response interval
 if ~simulateResponse
-    [keyPress, responseTimeSecs] = getResponse(currKeyPress,Inf,{'1','2','numpad1','numpad2'});
-    switch keyPress
-        case {'1','numpad1'}
-            sideChoice = 1;
-        case {'2','numpad2'}
-            sideChoice = 2;
-    end
-    close(S.fh);
+    FlushEvents
+    [sideChoice, responseTimeSecs] = obj.getResponse();
 else
     sideChoice = obj.getSimulatedResponse(stimParam,testSide);
     responseTimeSecs = nan;
-end
-
-% Set the pressure back to zero
-if ~simulateStimuli
-    for ss = 1:length(sides)
-        obj.AirPuffObj.setPressure(sides{ss},0);
-    end
 end
 
 % Determine if the subject has selected the ref or test side
@@ -147,7 +138,7 @@ if sideChoice==moreIntenseSide
         % Regardless of whether we are giving feedback or not, we will
         % play the "correct" tone
         audioObjs.correct.play;
-        obj.waitUntil(cputime()+0.5);
+        obj.waitUntil(cputime()+1.0);
     end
 else
     % incorrect
@@ -163,9 +154,9 @@ else
         else
             % We are not giving feedback, so play the same "correct"
             % tone that is played for correct responses
-            audioObjs.correct.play;
+            audioObjs.mid.play;
         end
-        obj.waitUntil(cputime()+0.5);
+        obj.waitUntil(cputime()+1.0);
     end
 end
 
@@ -181,6 +172,7 @@ questData = qpUpdate(questData,stimParam,outcome);
 questData.trialData(currTrialIdx).testSide = testSide;
 questData.trialData(currTrialIdx).moreIntenseSide = moreIntenseSide;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
+questData.trialData(currTrialIdx).itiDur = itiDur;
 questData.trialData(currTrialIdx).correct = correct;
 
 % Put staircaseData back into the obj

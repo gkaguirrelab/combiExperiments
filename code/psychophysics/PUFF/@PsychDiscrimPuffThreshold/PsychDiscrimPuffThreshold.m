@@ -26,8 +26,8 @@ classdef PsychDiscrimPuffThreshold < handle
         stimParamsDomainList
         psiParamsDomainList
         refPuffPSI
-        stimulusDurationSecs = 0.5;
-        interStimulusIntervalSecs = 2;
+        puffDurSecs;
+        itiRangeSecs;
     end
 
     % These may be modified after object creation
@@ -64,10 +64,12 @@ classdef PsychDiscrimPuffThreshold < handle
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',false,@islogical);            
             p.addParameter('staircaseRule',[1,3],@isnumeric);
-            p.addParameter('simulatePsiParams',[0,0.6],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(0,2,51),@isnumeric);
+            p.addParameter('puffDurSecs',0.2,@isnumeric);
+            p.addParameter('itiRangeSecs',[1,1.5],@isnumeric);
+            p.addParameter('simulatePsiParams',[0,2],@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(0,4,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,2,51)},@isnumeric);
+                {linspace(0,0,1),linspace(0,4,51)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -79,6 +81,8 @@ classdef PsychDiscrimPuffThreshold < handle
             obj.giveFeedback = p.Results.giveFeedback;
             obj.useStaircase = p.Results.useStaircase;
             obj.staircaseRule = p.Results.staircaseRule;
+            obj.puffDurSecs = p.Results.puffDurSecs;
+            obj.itiRangeSecs = p.Results.itiRangeSecs;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
             obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
@@ -115,6 +119,7 @@ classdef PsychDiscrimPuffThreshold < handle
         presentTrial(obj)
         stimParam = staircase(obj,currTrialIdx);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
+        [intervalChoice, responseTimeSecs] = getResponse(obj);
         waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
         figHandle = plotOutcome(obj,visible)
