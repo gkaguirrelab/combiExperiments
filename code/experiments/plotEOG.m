@@ -1,15 +1,15 @@
-function CalcDCPTDiscrimBonus(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
-% % Function to calculate the bonus for the most recent session (200 trials)  
+function  plotEOG(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
+% % Function to plot the data for EOG during trials  
 % % e.g.,
 %{
 
-    subjectID = 'HERO_kik';
+    subjectID = 'FLIC_0005';
     refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
     modDirections = {'LminusM_wide' 'LightFlux'};
     targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
             % L minus M is [0.025, 0.075] and Light Flux is [0.10, 0.30]
     NDLabel = {'0x5'};
-    CalcDCPTDiscrimBonus(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
+    plotEOG(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
 %}
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
@@ -32,8 +32,7 @@ subjectDir = fullfile(...
     projectName,...
     subjectID);
 
-%% calculate percent correct and bonus in a series of nested loops
-totalCorrect = 0;
+%% Plot the full psychometric functions
 
 for directionIdx = 1:length(modDirections)
     for freqIdx = 1:length(refFreqSetHz)
@@ -53,24 +52,26 @@ for directionIdx = 1:length(modDirections)
 
                 % Store some of these parameters
                 questData = psychObj.questData;
-                stimParamsDomainList = psychObj.stimParamsDomainList;
-                psiParamsDomainList = psychObj.psiParamsDomainList;
-                nTrials = length(psychObj.questData.trialData);
+                nTrials = size(questData.trialData,1);
+                figure 
+                hold on
 
-                % Get the proportion selected "test" the most recent
-                % sessionn (5 trials of each condition per session)
-                correct = [questData.trialData(end-4:end).correct];
-                nCorrect = sum(correct);
-                totalCorrect = totalCorrect + nCorrect;
-            end
-        end
-    end
+                cols = ceil(sqrt(nTrials));
+                rows = ceil(nTrials / cols);
+
+                %Create tiled layout
+                tiled = tiledlayout(rows, cols);
+                title(tiled, ['EOG ' modDirectionsLabels{directionIdx} ' ' num2str(refFreqSetHz(freqIdx)) ' ' num2str(targetPhotoContrast(contrastIdx, directionIdx)) ' ' stimParamLabels{sideIdx}])
+                for trialIdx = 1:nTrials
+                    nexttile;
+                    plot(psychObj.questData.trialData(trialIdx).EOGdata1.timebase, psychObj.questData.trialData(trialIdx).EOGdata1.response)
+                title(['Trial ' num2str(trialIdx)])
+                end
+
+            end % sides
+        end % contrast
+    end %frequencies
+end % mod direction
+
+
 end
-
-pCorrect = totalCorrect/(length(correct)*length(modDirections)*length(refFreqSetHz)*nContrasts*nSides);
-bonusDollars = totalCorrect*.05;
-
-fprintf('You achieved %d percent correct on this session. Your bonus is $ %.2f !', round(pCorrect*100), bonusDollars)
-
-end
-
