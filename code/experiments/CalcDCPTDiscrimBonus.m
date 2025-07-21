@@ -59,8 +59,7 @@ for directionIdx = 1:length(modDirections)
 
                 % Get the proportion selected "test" the most recent
                 % sessionn (5 trials of each condition per session)
-                %correct = [questData.trialData(end-4:end).correct];
-                correct = [questData.trialData(1:5).correct];
+                correct = [questData.trialData(end-4:end).correct];
                 nCorrect = sum(correct);
                 totalCorrect = totalCorrect + nCorrect;
             end
