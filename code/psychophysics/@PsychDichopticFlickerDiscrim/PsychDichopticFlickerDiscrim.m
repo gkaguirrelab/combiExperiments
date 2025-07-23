@@ -61,6 +61,9 @@ classdef PsychDichopticFlickerDiscrim < handle
         % next trial
         useStaircase
 
+        % To set the staircase start value
+        stairCaseStartDb
+
         % Can switch between simulating and not simulating
         simulateMode
 
@@ -92,7 +95,8 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.addParameter('rampDurSecs', 0.5,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('useStaircase',true,@islogical);            
+            p.addParameter('useStaircase',true,@islogical);
+            p.addParameter('stairCaseStartDb',1,@isnumeric);
             p.addParameter('staircaseRule',[1,3],@isnumeric);
             p.addParameter('psychometricFuncHandle',@qpCumulativeNormalLapse,@ishandle);
             p.addParameter('psiParamLabels',{'μ','σ','λ'},@iscell);
@@ -119,6 +123,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.simulateMode = p.Results.simulateMode;
             obj.giveFeedback = p.Results.giveFeedback;
             obj.useStaircase = p.Results.useStaircase;
+            obj.stairCaseStartDb = p.Results.stairCaseStartDb;
             obj.staircaseRule = p.Results.staircaseRule;
             obj.psychometricFuncHandle = p.Results.psychometricFuncHandle;
             obj.psiParamLabels = p.Results.psiParamLabels;
@@ -180,7 +185,7 @@ classdef PsychDichopticFlickerDiscrim < handle
         initializeQP(obj)
         initializeDisplay(obj)
         presentTrial(obj)
-        stimParam = staircase(obj,currTrialIdx);
+        stimParam = staircase(obj,currTrialIdx, stairCaseStartDb);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
