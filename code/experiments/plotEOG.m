@@ -16,6 +16,8 @@ dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir='FLIC_data';
 projectName='combiLED';
 experimentName = 'DCPT';
+calFolder = 'EOGCalibration';
+calFile = 'EOGSession1Cal.mat';
 
 % Set the labels for the high and low stimulus ranges
 stimParamLabels = {'low', 'hi'};
@@ -31,6 +33,18 @@ subjectDir = fullfile(...
     dropBoxSubDir,...
     projectName,...
     subjectID);
+
+%% Load and Plot calibration data
+filename = fullfile(subjectDir, calFolder, calFile);
+calData = load(filename, 'sessionData');
+yData = calData.sessionData.EOGData.response;
+yMin = min(yData);
+yMax = max(yData);
+figure
+ hold on
+ title('EOG Calibration', 'FontSize', 18,'FontWeight','bold');
+ plot(calData.sessionData.EOGData.timebase, calData.sessionData.EOGData.response);
+
 
 %% Plot the full psychometric functions
 
@@ -56,16 +70,12 @@ for directionIdx = 1:length(modDirections)
                 figure 
                 hold on
 
-                cols = ceil(sqrt(nTrials));
-                rows = ceil(nTrials / cols);
-
                 %Create tiled layout
-                tiled = tiledlayout(rows, cols);
-                title(tiled, ['EOG ' modDirectionsLabels{directionIdx} ' ' num2str(refFreqSetHz(freqIdx)) ' ' num2str(targetPhotoContrast(contrastIdx, directionIdx)) ' ' stimParamLabels{sideIdx}])
-                for trialIdx = 1:nTrials
-                    nexttile;
-                    plot(psychObj.questData.trialData(trialIdx).EOGdata1.timebase, psychObj.questData.trialData(trialIdx).EOGdata1.response)
-                title(['Trial ' num2str(trialIdx)])
+        
+                title(['EOG ' modDirectionsLabels{directionIdx} ' ' num2str(refFreqSetHz(freqIdx)) ' ' num2str(targetPhotoContrast(contrastIdx, directionIdx)) ' ' stimParamLabels{sideIdx}])
+                for trialIdx = 1:nTrials 
+                    plot(psychObj.questData.trialData(trialIdx).EOGdata1.timebase, psychObj.questData.trialData(trialIdx).EOGdata1.response, 'DisplayName',['Trial ' num2str(trialIdx)]);
+                    ylim([yMin yMax])
                 end
 
             end % sides
