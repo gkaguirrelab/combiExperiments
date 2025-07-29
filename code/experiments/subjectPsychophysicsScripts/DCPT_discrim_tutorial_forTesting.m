@@ -5,11 +5,11 @@
 % incorrect responses
 
 subjectID = 'DEMO_discrim'; % DO NOT CHANGE
-refFreqHz = [12.4467];
+refFreqHz = [3.0000    4.8206    7.7460   12.4467   20.0000];
 NDlabel = '0x5';
 stimParams = linspace(0, 6.75, 10);
 nTrialsPerBlock = 20;
-nBlocks = 2;
+nBlocks = 10;
 targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];
 EOGFlag = true; 
 

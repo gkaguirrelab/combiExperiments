@@ -260,10 +260,14 @@ for bb=1:nBlocks
                     sessionsCompleted = length(psychObj.questData.trialData) / nTrialsPerCondition;
                     if sessionsCompleted <= 3
                         psychObj.useStaircase = true;
-                        fprintf(['Using staircase: ' psychObj.useStaircase]);
+                        if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1  % Print staircase status for 1st psychObj only
+                            fprintf('Using staircase: %d\n', psychObj.useStaircase);
+                        end
                     else
                         psychObj.useStaircase = false;
-                        fprintf(['Using staircase: ' psychObj.useStaircase]);
+                        if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1
+                            fprintf('Using staircase: %d\n', psychObj.useStaircase);
+                        end
                     end
 
                 else
@@ -280,6 +284,11 @@ for bb=1:nBlocks
                         'useKeyboardFlag',useKeyboardFlag);
                     % Store the filename
                     psychObj.filename = psychObjFilename;
+                    % Double check that the staircase is set to true for 1st psychObj
+                    if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1
+                        fprintf('Using staircase: %d\n', psychObj.useStaircase);
+                    end
+
                 end
 
                 % Store in the psychObjArray
