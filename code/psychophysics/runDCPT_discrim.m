@@ -71,7 +71,7 @@ p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('stimParams',linspace(0,6.75,51),@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
-p.addParameter('useStaircase',false,@islogical);
+p.addParameter('useStaircase',true,@islogical);
 p.addParameter('stairCaseStartDb',1,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
@@ -104,8 +104,9 @@ stimParamSide = {'hi','low'};
 % Define some basic trial type quantities
 nSides = 2;
 nFreqs = length(refFreqHz);
-nConstrasts = size(targetPhotoContrast,1);
+nContrasts = size(targetPhotoContrast,1);
 nRanges = length(stimParamSide);
+nTrialsPerCondition = nBlocks*nTrialsPerBlock / (length(modDirections)*nFreqs*nRanges*nContrasts);
 
 % Set a random seed
 rng('shuffle');
@@ -215,10 +216,10 @@ for bb=1:nBlocks
     % Assemble the psychObj array, looping over the high and low range of
     % the discrimination function AND the reference frequencies AND the
     % contrast
-    psychObjArray = cell(nRanges,nFreqs,nConstrasts);
+    psychObjArray = cell(nRanges,nFreqs,nContrasts);
     for rangeIdx = 1:nRanges
         for freqIdx = 1:nFreqs
-            for contrastIdx = 1:nConstrasts
+            for contrastIdx = 1:nContrasts
 
                 % Define the filestem for this psychometric object
                 dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel, '_shifted'],experimentName);
@@ -247,12 +248,24 @@ for bb=1:nBlocks
                     % Increment blockIdx
                     psychObj.blockIdx = psychObj.blockIdx+1;
                     psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
-                    % Update the useStaircase flag in case this has changed
-                    psychObj.useStaircase = useStaircase;
                     % Update the simulateMode in case this has changed
                     psychObj.simulateMode = simulateMode;
                     % Update the keyboard flag
                     psychObj.useKeyboardFlag = useKeyboardFlag;
+
+                    % Decide whether to use staircase or Quest+ based on
+                    % number of sessions completed
+                    % If less than 3 sessions completed, want staircase
+                    % 3 sessions = 15 trials/cond in the current version
+                    sessionsCompleted = length(psychObj.questData.trialData) / nTrialsPerCondition;
+                    if sessionsCompleted <= 3
+                        psychObj.useStaircase = true;
+                        fprintf(['Using staircase: ' psychObj.useStaircase]);
+                    else
+                        psychObj.useStaircase = false;
+                        fprintf(['Using staircase: ' psychObj.useStaircase]);
+                    end
+
                 else
                     % Create the object
                     psychObj = PsychDichopticFlickerDiscrim(...
@@ -299,13 +312,13 @@ for bb=1:nBlocks
 
     % Assert that we have a sufficient number of trials per block to
     % present every stimulus type an equal and integer number of times
-    assert(mod(nTrialsPerBlock,nRanges*nFreqs*nConstrasts)==0);
+    assert(mod(nTrialsPerBlock,nRanges*nFreqs*nContrasts)==0);
 
     % Create a random ordering of the three stimulus crossings (high and
     % low range, frequencies, contrast levels)
-    nReps = nTrialsPerBlock / (nRanges*nFreqs*nConstrasts);
-    triplets = zeros(nRanges*nFreqs*nConstrasts,3);
-    [a,b,c] = ndgrid(1:nRanges,1:nFreqs,1:nConstrasts);
+    nReps = nTrialsPerBlock / (nRanges*nFreqs*nContrasts);
+    triplets = zeros(nRanges*nFreqs*nContrasts,3);
+    [a,b,c] = ndgrid(1:nRanges,1:nFreqs,1:nContrasts);
     triplets(:,1) = a(:); triplets(:,2) = b(:); triplets(:,3) = c(:);
     triplets = repmat(triplets,nReps,1);
     permutedTriplets = triplets(randperm(nTrialsPerBlock),:);
@@ -313,7 +326,7 @@ for bb=1:nBlocks
     % Store the block start time
     for rangeIdx = 1:nRanges
         for freqIdx = 1:nFreqs
-            for contrastIdx = 1:nConstrasts
+            for contrastIdx = 1:nContrasts
                 blockStartTime = datetime();
                 psychObjArray{rangeIdx, freqIdx, contrastIdx}.blockStartTimes(psychObjArray{rangeIdx,freqIdx, contrastIdx}.blockIdx) = blockStartTime;
             end
@@ -335,7 +348,7 @@ for bb=1:nBlocks
     % Store the psychObjArray entries
     for rangeIdx = 1:nRanges
         for freqIdx = 1:nFreqs
-            for contrastIdx = 1:nConstrasts
+            for contrastIdx = 1:nContrasts
                 % Grab the next psychObj
                 psychObj = psychObjArray{rangeIdx, freqIdx, contrastIdx};
                 % empty the CombiLEDObj and EOGControl handles and save the psychObj
