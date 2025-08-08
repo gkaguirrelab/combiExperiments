@@ -233,8 +233,11 @@ for bb=1:nBlocks
                 if isfile(psychObjFilename)
                     % Load the object
                     load(psychObjFilename,'psychObj');
-                    % Update the path to the file in case this has changed
-                    psychObj.filename = psychObjFilename;
+                    if ~strcmp(psychObj.filename, psychObjFilename) % file name is different from what is in the object
+                        warning('File name stored in psychObj does not match generated filename. Overwriting stored fliename to match.')
+                        % Update the path to the file in case this has changed
+                        psychObj.filename = psychObjFilename;
+                    end
                     % Put in the fresh CombiLEDObjs
                     psychObj.CombiLEDObjArr = CombiLEDObjArr;
                     % Put in the fresh EOGFlag
