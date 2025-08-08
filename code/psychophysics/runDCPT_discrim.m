@@ -258,7 +258,7 @@ for bb=1:nBlocks
                     % If less than 3 sessions completed, want staircase
                     % 3 sessions = 15 trials/cond in the current version
                     sessionsCompleted = length(psychObj.questData.trialData) / nTrialsPerCondition;
-                    if sessionsCompleted <= 3
+                    if sessionsCompleted < 3
                         psychObj.useStaircase = true;
                         if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1  % Print staircase status for 1st psychObj only
                             fprintf('Using staircase: %d\n', psychObj.useStaircase);
