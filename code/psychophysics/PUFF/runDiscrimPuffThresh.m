@@ -1,40 +1,49 @@
-function runDiscrimPuffThresh(subjectID,refPuffPSI,varargin)
-% Psychometric measurement of discrmination thresholds at a set of
-% frequencies for two post-receptoral directions (LMS and L-M).
+function runDiscrimPuffThresh(subjectID,varargin)
+% Psychometric measurement of discrmination threshold for simultaneous air
+% puffs of varying intensity.
 %
 % Examples:
 %{
-    subjectID = 'DEMO_0001';
-    refPuffPSI = 10;
-    runDiscrimPuffThresh(subjectID,refPuffPSI);
+    subjectID = 'HERO_gka';
+    runDiscrimPuffThresh(subjectID,'simulateFlag',true);
 %}
 
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
-p.addParameter('projectName','combiAir',@ischar);
-p.addParameter('stimParamsHi',linspace(0,1,51),@isnumeric);
-p.addParameter('stimParamsLow',linspace(-1,0,51),@isnumeric);
-p.addParameter('nTrialsPerBlock',20,@isnumeric);
-p.addParameter('nBlocks',5,@isnumeric);
+p.addParameter('projectName','PuffLight',@ischar);
+p.addParameter('refPuffSetPSI',logspace(log10(5),log10(20),7),@isnumeric);
+p.addParameter('stimParamsHi',linspace(0,3,15),@isnumeric);
+p.addParameter('stimParamsLow',linspace(-3,0,15),@isnumeric);
+p.addParameter('nTrialsPerObj',5,@isnumeric);
+p.addParameter('nBlocks',1,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
-p.addParameter('verboseCombiAir',false,@islogical);
+p.addParameter('simulateFlag',false,@islogical);
+p.addParameter('verbosePuffObj',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
-nTrialsPerBlock = p.Results.nTrialsPerBlock;
+nTrialsPerObj = p.Results.nTrialsPerObj;
 nBlocks = p.Results.nBlocks;
+refPuffSetPSI = p.Results.refPuffSetPSI;
 useStaircase = p.Results.useStaircase;
-verboseCombiAir = p.Results.verboseCombiAir;
+simulateFlag = p.Results.simulateFlag;
+verbosePuffObj = p.Results.verbosePuffObj;
 verbosePsychObj = p.Results.verbosePsychObj;
+
+% The number of stimulus intensity levels
+nLevels = length(refPuffSetPSI);
 
 % Set our experimentName
 experimentName = 'DSCM';
 
 % Set the labels for the high and low stimulus ranges
 stimParamLabels = {'stimParamsHi','stimParamsLow'};
+
+% Calculate the total number of trials per block
+nTrialsPerBlock = nTrialsPerObj * nLevels * length(stimParamLabels);
 
 % Set a random seed
 rng('shuffle');
@@ -46,8 +55,11 @@ subjectDir = fullfile(...
     p.Results.projectName,...
     subjectID);
 
-% Set up the CombiAir
-CombiAirObj = CombiAirControl('verbose',verboseCombiAir);
+% Set up the AirPuffObj
+AirPuffObj = PuffControl('verbose',verbosePuffObj);
+
+% Set up the CombiLED LightObj
+LightObj = [];
 
 % Provide instructions
 fprintf('**********************************\n');
@@ -63,18 +75,21 @@ if ~isfolder(dataDir)
     mkdir(dataDir)
 end
 
-% Prepare to loop over blocks
-for bb=1:nBlocks
+% Assemble the psychObj array, randomzing over the set of reference
+% puff intensities, and looping over the high and low range of
+% the discrimination function
+psychObjArray = {};
 
-    % Assemble the psychObj array, looping over the high and low range of
-    % the discrimination function
-    psychObjArray = {};
+for nn = 1:nLevels
+
+    % Get this reference intensity
+    refPuffPSI = refPuffSetPSI(nn);
+
     for ss = 1:2
 
         % Define the filestem for this psychometric object
-        psychFileStem = [subjectID '_' experimentName ...
-            '_refPSI-' num2str(refPuffPSI) ...
-            '_' stimParamLabels{ss}];
+        psychFileStem = sprintf( [subjectID '_' experimentName ...
+            '_refPSI-%2.2f_' stimParamLabels{ss}],refPuffPSI );
 
         % Obtain the relevant stimParam values
         stimParamsDomainList = p.Results.(stimParamLabels{ss});
@@ -84,8 +99,8 @@ for bb=1:nBlocks
         if isfile(filename)
             % Load the object
             load(filename,'psychObj');
-            % Put in the fresh CombiAirObj
-            psychObj.CombiAirObj = CombiAirObj;
+            % Put in the fresh AirPuffObj
+            psychObj.AirPuffObj = AirPuffObj;
             % Initiate the CombiAir settings
             psychObj.initializeDisplay;
             % Increment blockIdx
@@ -95,20 +110,28 @@ for bb=1:nBlocks
             psychObj.useStaircase = useStaircase;
         else
             % Create the object
-            psychObj = PsychDiscrimPuffThreshold(CombiAirObj,refPuffPSI,...
+            psychObj = PsychDiscrimPuffThreshold(AirPuffObj,LightObj,refPuffPSI,...
                 'stimParamsDomainList',stimParamsDomainList,...
+                'simulateStimuli',simulateFlag,'simulateResponse',simulateFlag,...
                 'verbose',verbosePsychObj,'useStaircase',useStaircase);
             % Store the filename
             psychObj.filename = filename;
         end
 
         % Store in the psychObjArray
-        psychObjArray{ss} = psychObj;
+        psychObjArray{end+1} = psychObj;
 
         % Clear the psychObj
         clear psychObj
 
     end
+end
+
+nPsychObjs = length(psychObjArray);
+assert(nPsychObjs == nLevels*2);
+
+% Prepare to loop over blocks
+for bb=1:nBlocks
 
     % Start the block
     Speak('Ready');
@@ -116,33 +139,36 @@ for bb=1:nBlocks
     input('');
 
     % Store the block start time
-    for ss = 1:2
+    for ss = 1:nPsychObjs
         blockStartTime = datetime();
         psychObjArray{ss}.blockStartTimes(psychObjArray{ss}.blockIdx) = blockStartTime;
     end
 
-    % Present nTrials.
-    for ii = 1:nTrialsPerBlock
-        psychObjIdx = mod(ii,2)+1;
-        psychObjArray{psychObjIdx}.presentTrial
+    % Present nTrialsPerObj * nPsychObjs in permuted sets
+    for ii = 1:nTrialsPerObj
+        % Create a random ordering of the psych objects
+        [~,psychObjIdx] = sort(rand(1,nPsychObjs));
+        for tt = 1:nPsychObjs
+            psychObjArray{psychObjIdx(tt)}.presentTrial
+        end
     end
 
     % Report completion of this block
     fprintf('done.\n');
 
     % Store the psychObjArray entries
-    for ss = 1:2
+    for ss = 1:nPsychObjs
         % Grab the next psychObj
         psychObj = psychObjArray{ss};
-        % empty the CombiAirObj handle and save the psychObj
-        psychObj.CombiAirObj = [];
+        % empty the AirPuffObj handle and save the psychObj
+        psychObj.AirPuffObj = [];
         save(psychObj.filename,'psychObj');
     end
 
 end % block loop
 
 % Clean up
-CombiAirObj.serialClose;
-clear CombiAirObj
+AirPuffObj.serialClose;
+clear AirPuffObj
 
 end % function

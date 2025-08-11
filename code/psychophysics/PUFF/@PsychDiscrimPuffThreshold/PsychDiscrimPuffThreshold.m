@@ -1,10 +1,7 @@
 % Object to support conducting a 2AFC air puff discrimination task,
 % using QUEST+ to select stimuli in an effort to estimate the sigma (slope)
-% of a cumulative normal Gaussian. The search is also asked to estimate the
-% mu (mean) of the cumulative normal, which prompts QUEST+ to explore both
-% above and below the reference stimulus. In fitting and reporting the
-% results we lock the mu to 0, which corresponds to being 50% accurate when
-% there is no physical difference between the stimuli.
+% of a cumulative normal Gaussian. Test stimuli above or below the
+% reference frequency are examined in separate calls to this routine.
 
 classdef PsychDiscrimPuffThreshold < handle
 
@@ -38,6 +35,11 @@ classdef PsychDiscrimPuffThreshold < handle
         % to collect data
         AirPuffObj
 
+        % The combi LED object. This is modifiable so that we can re-load
+        % the psychometric object, update this handle, and then continue
+        % to collect data 
+        LightObj
+
         % Can switch between using a staircase and QUEST+ to select the
         % next trial
         useStaircase
@@ -55,7 +57,7 @@ classdef PsychDiscrimPuffThreshold < handle
     methods
 
         % Constructor
-        function obj = PsychDiscrimPuffThreshold(AirPuffObj,refPuffPSI,varargin)
+        function obj = PsychDiscrimPuffThreshold(AirPuffObj,LightObj,refPuffPSI,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -64,12 +66,12 @@ classdef PsychDiscrimPuffThreshold < handle
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',false,@islogical);            
             p.addParameter('staircaseRule',[1,3],@isnumeric);
-            p.addParameter('puffDurSecs',0.2,@isnumeric);
+            p.addParameter('puffDurSecs',0.150,@isnumeric);
             p.addParameter('itiRangeSecs',[1,1.5],@isnumeric);
-            p.addParameter('simulatePsiParams',[0,2],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(0,4,51),@isnumeric);
+            p.addParameter('simulatePsiParams',[0,0.5],@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(0,2,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,4,51)},@isnumeric);
+                {linspace(0,0,1),linspace(0,3,51)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -97,7 +99,7 @@ classdef PsychDiscrimPuffThreshold < handle
             % Check that the max required pressure is within the safety
             % range
             maxPressurePSI = refPuffPSI * db2pow(max(obj.stimParamsDomainList));
-            if maxPressurePSI > 20
+            if maxPressurePSI > 35
                 error('Max called-for stimulus exceeds allowable limits');
             end
 

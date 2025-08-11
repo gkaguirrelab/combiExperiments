@@ -4,12 +4,9 @@ function [intervalChoice, responseTimeSecs] = getResponse(obj)
 responseDurMicroSecs = Inf;
 
 % Determine the identities of the responses
-keyPress1 = [30, 89];
-keyPress2 = [31, 90];
+keyPress1 = KbName({'a','1','LeftArrow'});
+keyPress2 = KbName({'s','2','RightArrow'});
 KbResponse = [];
-
-% Silence command window key press echoes
-ListenChar(2)
 
 % Enter a while loop
 waitingForKey = true;
@@ -48,8 +45,5 @@ else
             intervalChoice = [];
     end
 end
-
-% Restore command window key press echoes
-ListenChar(0)
 
 end

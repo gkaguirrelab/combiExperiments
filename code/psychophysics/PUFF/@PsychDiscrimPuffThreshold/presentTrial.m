@@ -18,6 +18,7 @@ giveFeedback = obj.giveFeedback;
 refPuffPSI = obj.refPuffPSI;
 puffDurSecs = obj.puffDurSecs;
 itiRangeSecs = obj.itiRangeSecs;
+itiDur = []; % Define this in case we are in simulate mode
 
 % Get the stimParam to use for this trial. Can use either a staircase or
 % QUEST+
@@ -52,7 +53,7 @@ switch 1+logical(round(rand()))
         error('Not a valid testSide')
 end
 
-% Note which interval contains the more intense stimulus, which is used for
+% Note which side contains the more intense stimulus, which is used for
 % feedback
 [~,moreIntenseSide] = max(sideParams(:,2));
 
@@ -102,12 +103,12 @@ if ~simulateStimuli
     obj.waitUntil(stopTimeSeconds);
 
     % Simultaneous, bilateral puff
-    obj.AirPuffObj.triggerPuff('B');
+    obj.AirPuffObj.triggerPuff('ALL');
 
     % Response time out
     stopTimeSeconds = cputime() + 0.5;
     obj.waitUntil(stopTimeSeconds);
-
+end
 
 % Start the response interval
 if ~simulateResponse
