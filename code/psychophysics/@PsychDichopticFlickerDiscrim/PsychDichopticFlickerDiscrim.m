@@ -23,14 +23,11 @@ classdef PsychDichopticFlickerDiscrim < handle
     properties (SetAccess=private)
         modResultArr
         relativePhotoContrastCorrection
-        questData
         simulatePsiParams
         giveFeedback
         staircaseRule % [nUp, nDown]
-        psychometricFuncHandle
         psiParamLabels
         stimParamsDomainList
-        psiParamsDomainList
         refFreqHz
         refPhotoContrast
         refModContrast
@@ -78,6 +75,22 @@ classdef PsychDichopticFlickerDiscrim < handle
         % Choose between keyboard and gamepad
         useKeyboardFlag
 
+        %% The set of parameters below are modifiable as we wished to
+        %% update the properties of a psychometric object for one subject
+        %% after data collection had begun.
+
+        % The range of psychometric function parameter values that QUEST+
+        % will consider
+        psiParamsDomainList
+
+        % The psychometric function used to guide QUEST+
+        psychometricFuncHandle
+
+        % The parameters of the QUEST+ object, and the accumulated trial
+        % data
+        questData
+
+
     end
 
     methods
@@ -98,12 +111,12 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.addParameter('useStaircase',true,@islogical);
             p.addParameter('stairCaseStartDb',1,@isnumeric);
             p.addParameter('staircaseRule',[1,3],@isnumeric);
-            p.addParameter('psychometricFuncHandle',@qpCumulativeNormalLapse,@ishandle);
+            p.addParameter('psychometricFuncHandle',@qpCumulativeNormalShifted,@ishandle);
             p.addParameter('psiParamLabels',{'μ','σ','λ'},@iscell);
             p.addParameter('simulatePsiParams',[0,2,0.00],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,6.75,51),linspace(0,0,1)},@isnumeric);
+                {linspace(0,5,25),linspace(0,6.75,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})

@@ -233,11 +233,23 @@ for bb=1:nBlocks
                 if isfile(psychObjFilename)
                     % Load the object
                     load(psychObjFilename,'psychObj');
+                    % Handle the possibility that the psychObj file has
+                    % been moved
                     if ~strcmp(psychObj.filename, psychObjFilename) % file name is different from what is in the object
-                        warning('File name stored in psychObj does not match generated filename. Overwriting stored fliename to match.')
+                        warning('File name stored in psychObj does not match generated filename. Overwriting stored filename to match.')
                         % Update the path to the file in case this has changed
                         psychObj.filename = psychObjFilename;
                     end
+                    % After starting data collection we changed the form
+                    % of the psychometric function. This happened mid-data
+                    % collection for one participant. Here we update the
+                    % function and psiParams domain, and issues a warning.
+                    if ~strcmp(char(psychObj.psychometricFuncHandle),'qpCumulativeNormalShifted')
+                        warning('Updating the psychometric function to qpCumulativeNormalShifted.');
+                        psychObj.psychometricFuncHandle = @qpCumulativeNormalShifted;
+                        psychObj.questData.qpPF = @qpCumulativeNormalShifted;
+                        psychObj.psiParamsDomainList{1} = linspace(0,5,25);
+                    end                   
                     % Put in the fresh CombiLEDObjs
                     psychObj.CombiLEDObjArr = CombiLEDObjArr;
                     % Put in the fresh EOGFlag
@@ -255,7 +267,6 @@ for bb=1:nBlocks
                     psychObj.simulateMode = simulateMode;
                     % Update the keyboard flag
                     psychObj.useKeyboardFlag = useKeyboardFlag;
-
                     % Decide whether to use staircase or Quest+ based on
                     % number of sessions completed
                     % If less than 3 sessions completed, want staircase
