@@ -32,6 +32,13 @@ end
 % qpStimParam, which is in units of decibels
 testPuffPSI = refPuffPSI * db2pow(stimParam);
 
+% If the testPuffPSI is great than the maximum allowed PSI value, adjust
+% the stimParam to stay within the max allowed
+if testPuffPSI > obj.maxAllowedPressurePSI
+    stimParam = pow2db(45 / refPuffPSI);
+    testPuffPSI = refPuffPSI * db2pow(stimParam);
+end
+
 % Assemble the param sets
 testParams = [puffDurSecs,testPuffPSI];
 refParams = [puffDurSecs,refPuffPSI];

@@ -14,6 +14,7 @@ classdef PsychDiscrimPuffThreshold < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
+        maxAllowedPressurePSI = 45;
         questData
         simulatePsiParams
         simulateResponse
@@ -77,6 +78,7 @@ classdef PsychDiscrimPuffThreshold < handle
 
             % Place various inputs and options into object properties
             obj.AirPuffObj = AirPuffObj;
+            obj.LightObj = LightObj;
             obj.refPuffPSI = refPuffPSI;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
@@ -99,8 +101,8 @@ classdef PsychDiscrimPuffThreshold < handle
             % Check that the max required pressure is within the safety
             % range
             maxPressurePSI = refPuffPSI * db2pow(max(obj.stimParamsDomainList));
-            if maxPressurePSI > 35
-                error('Max called-for stimulus exceeds allowable limits');
+            if maxPressurePSI > obj.maxAllowedPressurePSI
+                warning('Measurements will be limited by max allowed pressure');
             end
 
             % Initialize the blockStartTimes field

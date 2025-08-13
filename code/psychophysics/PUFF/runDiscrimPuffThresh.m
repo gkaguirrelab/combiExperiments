@@ -1,4 +1,4 @@
-function runDiscrimPuffThresh(subjectID,varargin)
+function runDiscrimPuffThresh(subjectID,whichDirection,varargin)
 % Psychometric measurement of discrmination threshold for simultaneous air
 % puffs of varying intensity.
 %
@@ -13,7 +13,7 @@ p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
-p.addParameter('refPuffSetPSI',logspace(log10(5),log10(20),7),@isnumeric);
+p.addParameter('refPuffSetPSI',logspace(log10(2),log10(20),5),@isnumeric);
 p.addParameter('stimParamsHi',linspace(0,3,15),@isnumeric);
 p.addParameter('stimParamsLow',linspace(-3,0,15),@isnumeric);
 p.addParameter('nTrialsPerObj',5,@isnumeric);
@@ -21,6 +21,7 @@ p.addParameter('nBlocks',1,@isnumeric);
 p.addParameter('useStaircase',false,@islogical);
 p.addParameter('simulateFlag',false,@islogical);
 p.addParameter('verbosePuffObj',false,@islogical);
+p.addParameter('verboseLightObj',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.parse(varargin{:})
 
@@ -31,6 +32,7 @@ refPuffSetPSI = p.Results.refPuffSetPSI;
 useStaircase = p.Results.useStaircase;
 simulateFlag = p.Results.simulateFlag;
 verbosePuffObj = p.Results.verbosePuffObj;
+verboseLightObj = p.Results.verboseLightObj;
 verbosePsychObj = p.Results.verbosePsychObj;
 
 % The number of stimulus intensity levels
@@ -49,17 +51,24 @@ nTrialsPerBlock = nTrialsPerObj * nLevels * length(stimParamLabels);
 rng('shuffle');
 
 % Define the modulation and data directories
-subjectDir = fullfile(...
+modDir = fullfile(...
     p.Results.dropBoxBaseDir,...
     p.Results.dropBoxSubDir,...,
     p.Results.projectName,...
-    subjectID);
+    whichDirection);
+
+subjectDir = fullfile(modDir,subjectID);
 
 % Set up the AirPuffObj
 AirPuffObj = PuffControl('verbose',verbosePuffObj);
 
 % Set up the CombiLED LightObj
-LightObj = [];
+LightObj = CombiLEDcontrol('verbose',verboseLightObj);
+
+% Load the modResult
+modResultFile = fullfile(modDir,'modResult.mat');
+
+% 
 
 % Provide instructions
 fprintf('**********************************\n');
