@@ -10,7 +10,7 @@
 % corresponds to being 50% accurate when there is no physical difference
 % between the stimuli.
 
-classdef PsychDichopticFlickerDiscrimSide < handle
+classdef PsychDichopticFlickerOneInt < handle
 
     properties (Constant)
     end
@@ -96,7 +96,7 @@ classdef PsychDichopticFlickerDiscrimSide < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscrimSide(CombiLEDObjArr, modResultArr, EOGControl, EOGFlag, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerOneInt(CombiLEDObjArr, modResultArr, EOGControl, EOGFlag, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -104,7 +104,7 @@ classdef PsychDichopticFlickerDiscrimSide < handle
             p.addParameter('refPhotoContrast',0.1,@isnumeric);
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
             p.addParameter('stimDurSecs',3,@isnumeric);
-            p.addParameter('isiSecs',0.5,@isnumeric);
+            p.addParameter('isiSecs',0.75,@isnumeric);
             p.addParameter('rampDurSecs', 0.5,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
