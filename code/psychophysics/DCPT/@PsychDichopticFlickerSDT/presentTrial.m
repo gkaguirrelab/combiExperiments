@@ -27,13 +27,18 @@ testModContrast = obj.testModContrast;
 % between the two modResults / combiLEDs
 relativePhotoContrastCorrection = obj.relativePhotoContrastCorrection;
 
-% Get the testParam to use for this trial. Can use either a staircase or
-% QUEST+
-if obj.useStaircase
-    stairCaseStartDb = obj.stairCaseStartDb;
-    testParam = obj.staircase(currTrialIdx, stairCaseStartDb);
+% Half of the time, randomized, we will present a 0 db stimulus.
+if rand()>0.5
+    testParam = 0;
 else
-    testParam = qpQuery(questData);
+    % Get the testParam to use for this trial. Can use either a staircase or
+    % QUEST+
+    if obj.useStaircase
+        stairCaseStartDb = obj.stairCaseStartDb;
+        testParam = obj.staircase(currTrialIdx, stairCaseStartDb);
+    else
+        testParam = qpQuery(questData);
+    end
 end
 
 % The difference between the reference and test frequency is given by the
@@ -129,9 +134,10 @@ if simulateMode
     %% Simulate
     answerChoice = obj.getSimulatedResponse(testParam);
     responseTimeSecs = nan;
+    EOGdata1 = nan;
 else
 
-    %% First interval
+    %% Stimulus
 
     tic;
 
@@ -152,10 +158,10 @@ else
     stopTime = cputime() + 0.5;
     obj.waitUntil(stopTime);
 
-    % Start the stimuli and sound a tone. Wait for stimDurSecs. 
-    % We observe that starting the combiLEDs in reverse order results in
-    % less of a timing discrepancy between them. We do not yet fully
-    % understand why this might be the case.
+    % Start the stimuli and sound a tone. Wait for stimDurSecs. We observe
+    % that starting the combiLEDs in reverse order results in less of a
+    % timing discrepancy between them. We do not yet understand why this
+    % might be the case.
     for side = [2 1]
         obj.CombiLEDObjArr{side}.startModulation;
     end
@@ -213,15 +219,24 @@ else
 
 end
 
-% We define a correct response as selecting the interval that contains the
-% test stimulus. Determine if the subject has selected the correct interval
-% and handle audio feedback
-if answerChoice==2   % If they say they're different, which they always are
+% The adaptive procedure is operates upon "same / different" responses. We
+% handle this outcome here
+outcome = answerChoice;
+respondYes = logical(answerChoice-1);
+
+% A correct response occurs when:
+%   testParam ~= 0 and answerChoice == 2 (a "hit")
+%   testParam == 0 and answerChoice == 1 (a "correct rejection");
+% An incorrect occurs otherwise, and is a "false alarm" or a "miss"
+if and(testParam~=0,answerChoice==2) || and(testParam==0,answerChoice==1)
     % Correct
-    outcome = 2;
     correct = true;
     if obj.verbose
-        fprintf('correct');
+        if and(testParam~=0,answerChoice==2)
+            fprintf('hit');
+        else
+            fprintf('correct rejection');
+        end
     end
     if ~simulateMode
         % We are not simulating, and the response was correct.
@@ -229,13 +244,16 @@ if answerChoice==2   % If they say they're different, which they always are
         % play the "correct" tone
         audioObjs.correct.play;
         obj.waitUntil(cputime()+1);
-    end
+    end    
 else
-    % incorrect
-    outcome = 1;
+    % Incorrect
     correct = false;
     if obj.verbose
-        fprintf('incorrect');
+        if and(testParam~=0,answerChoice==1)
+            fprintf('miss');
+        else
+            fprintf('false alarm');
+        end
     end
     if ~simulateMode
         % We are not simulating
@@ -265,9 +283,8 @@ questData.trialData(currTrialIdx).refSide = refSide;
 questData.trialData(currTrialIdx).testSide = testSide;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
-if obj.EOGFlag
-    questData.trialData(currTrialIdx).EOGdata1 = EOGdata1;
-end
+questData.trialData(currTrialIdx).respondYes = respondYes;
+questData.trialData(currTrialIdx).EOGdata1 = EOGdata1;
 
 % Put staircaseData back into the obj
 obj.questData = questData;

@@ -1,4 +1,4 @@
-function runDCPT_oneInt(subjectID,NDlabel,EOGFlag,varargin)
+function runDCPT_SDT(subjectID,NDlabel,EOGFlag,varargin)
 % Collect a session of dichoptic flicker discrimination measure,emts
 %
 % Syntax:
@@ -54,7 +54,7 @@ function runDCPT_oneInt(subjectID,NDlabel,EOGFlag,varargin)
     subjectID = 'DEMO_2';
     NDlabel = '0x5';
     EOGFlag = false;
-    runDCPT_oneInt(subjectID,NDlabel, EOGFlag);
+    runDCPT_SDT(subjectID,NDlabel, EOGFlag);
 %}
 
 % Parse the parameters
@@ -96,7 +96,7 @@ useKeyboardFlag = p.Results.useKeyboardFlag;
 combiClockAdjust = p.Results.combiClockAdjust;
 
 % Set our experimentName
-experimentName = 'DCPT_OneInt';
+experimentName = 'DCPT_SDT';
 
 % Set the labels for the high and low stimulus ranges
 stimParamSide = {'hi','low'};
@@ -286,7 +286,7 @@ for bb=1:nBlocks
 
                 else
                     % Create the object
-                    psychObj = PsychDichopticFlickerOneInt(...
+                    psychObj = PsychDichopticFlickerSDT(...
                         CombiLEDObjArr, modResultArr, EOGControl, EOGFlag, refFreqHz(freqIdx),...
                         'refPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...
                         'testPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...

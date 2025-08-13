@@ -10,7 +10,7 @@
 % corresponds to being 50% accurate when there is no physical difference
 % between the stimuli.
 
-classdef PsychDichopticFlickerOneInt < handle
+classdef PsychDichopticFlickerSDT < handle
 
     properties (Constant)
     end
@@ -96,7 +96,7 @@ classdef PsychDichopticFlickerOneInt < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerOneInt(CombiLEDObjArr, modResultArr, EOGControl, EOGFlag, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerSDT(CombiLEDObjArr, modResultArr, EOGControl, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -108,15 +108,15 @@ classdef PsychDichopticFlickerOneInt < handle
             p.addParameter('rampDurSecs', 0.5,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('useStaircase',true,@islogical);
+            p.addParameter('useStaircase',false,@islogical);
             p.addParameter('stairCaseStartDb',1,@isnumeric);
             p.addParameter('staircaseRule',[1,3],@isnumeric);
-            p.addParameter('psychometricFuncHandle',@qpCumulativeNormalShifted,@ishandle);
-            p.addParameter('psiParamLabels',{'μ','σ','λ'},@iscell);
-            p.addParameter('simulatePsiParams',[0,2,0.00],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
+            p.addParameter('psychometricFuncHandle',@LesmesTransducerFunc,@ishandle);
+            p.addParameter('psiParamLabels',{'fpRate','τ','γ'},@iscell);
+            p.addParameter('simulatePsiParams',[0.05,2.0,2.0],@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(0,5,25),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,5,25),linspace(0,6.75,51),linspace(0,0,1)},@isnumeric);
+                {linspace(0.001,0.251,15),linspace(0.1,5.1,15),linspace(1,10,15)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})
@@ -126,7 +126,6 @@ classdef PsychDichopticFlickerOneInt < handle
             obj.modResultArr = modResultArr;
             obj.EOGControl = EOGControl;
             obj.refFreqHz = refFreqHz;
-            obj.EOGFlag = EOGFlag;
             obj.stimParamSide = p.Results.stimParamSide;
             obj.testPhotoContrast = p.Results.testPhotoContrast;
             obj.refPhotoContrast = p.Results.refPhotoContrast;            
