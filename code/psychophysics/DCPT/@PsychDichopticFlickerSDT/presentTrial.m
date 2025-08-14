@@ -132,6 +132,7 @@ if simulateMode
     answerChoice = obj.getSimulatedResponse(testParam);
     responseTimeSecs = nan;
     EOGdata = nan;
+
 else
 
     %% Stimulus
@@ -143,12 +144,6 @@ else
         obj.CombiLEDObjArr{side}.setContrast(stimParams(side,1));
         obj.CombiLEDObjArr{side}.setFrequency(stimParams(side,2));
         obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(side,3));
-        obj.CombiLEDObjArr{side}.setDuration(obj.stimDurSecs);
-
-        % Introduce a delay in the start of the stimulus to allow the EOG
-        % recording to start
-        obj.CombiLEDObjArr{side}.setStartDelay(0.5);
-
     end
 
     toc;
@@ -168,17 +163,22 @@ else
     audioObjs.low.play;
 
    % Define the time at which the stimulus will end
-   stopTime = cputime() + obj.stimDurSecs;
+   stopTime = cputime() + obj.stimDurSecs + obj.trialStartDelaySecs;
 
     % Start the EOG recording. This is a modal operation, so we are paused
     % here until the recording stops.
     if ~isempty(EOGControl)
         EOGControl.trialDurationSecs = obj.stimDurSecs;
         EOGdata = EOGControl.recordTrial();
+    else
+        EOGdata = [];
     end
 
     % Finish waiting for the stimulus to end
     obj.waitUntil(stopTime);
+
+    % Play a tone to indicate end of stimulus presentation
+    audioObjs.mid.play;
 
     % Start the response interval
     if obj.useKeyboardFlag

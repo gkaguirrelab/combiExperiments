@@ -27,6 +27,10 @@ if ~obj.simulateMode
         % Duration.
         obj.CombiLEDObjArr{side}.setDuration(obj.stimDurSecs);
 
+        % Introduce a delay in the start of the stimulus to allow the EOG
+        % recording to start
+        obj.CombiLEDObjArr{side}.setStartDelay(obj.trialStartDelaySecs);
+       
         % Subject the stimulus onset and offset to a half-cosine ramp
         obj.CombiLEDObjArr{side}.setRampIndex(1); % half-cosine windowing
         obj.CombiLEDObjArr{side}.setRampDuration(obj.rampDurSecs);

@@ -47,6 +47,7 @@ classdef PsychDichopticFlickerSDT < handle
         testModContrast
         stimDurSecs
         rampDurSecs
+        trialStartDelaySecs
         combiLEDStartTimeSecs = 0.03;
         stimParamSide
     end
@@ -90,6 +91,7 @@ classdef PsychDichopticFlickerSDT < handle
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
             p.addParameter('stimDurSecs',3,@isnumeric);
             p.addParameter('rampDurSecs', 0.5,@isnumeric);
+            p.addParameter('trialStartDelaySecs', 0.5,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('psychometricFuncHandle',@LesmesTransducerFunc,@ishandle);
@@ -112,6 +114,7 @@ classdef PsychDichopticFlickerSDT < handle
             obj.refPhotoContrast = p.Results.refPhotoContrast;            
             obj.stimDurSecs = p.Results.stimDurSecs;            
             obj.rampDurSecs = p.Results.rampDurSecs;
+            obj.trialStartDelaySecs = p.Results.trialStartDelaySecs;           
             obj.simulateMode = p.Results.simulateMode;
             obj.giveFeedback = p.Results.giveFeedback;
             obj.psychometricFuncHandle = p.Results.psychometricFuncHandle;
@@ -128,9 +131,6 @@ classdef PsychDichopticFlickerSDT < handle
 
             % Initialize Quest+
             obj.initializeQP;
-
-            % Initialize the CombiLEDs
-            obj.initializeDisplay;
 
             % Determine the modulation contrast depth that produces the
             % desired photoreceptor contrast on average across the two

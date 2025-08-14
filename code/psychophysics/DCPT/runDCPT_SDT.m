@@ -44,13 +44,13 @@ function runDCPT_SDT(subjectID,NDlabel,varargin)
     subjectID = 'DEMO_2';
     NDlabel = '0x5';
     collectEOGFlag = false;
-    runDCPT_SDT(subjectID,NDlabel,'simulateMode',true);
+    runDCPT_SDT(subjectID,NDlabel,'collectEOGFlag',false);
 %}
 
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
-p.addParameter('refFreqHz',[3.0000    4.8206    7.7460   12.4467   20.0000],@isnumeric);
+p.addParameter('refFreqHz',logspace(log10(3),log10(20),7),@isnumeric);
 p.addParameter('targetPhotoContrast',[0.025, 0.10; 0.075, 0.30],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);
@@ -59,7 +59,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
-p.addParameter('nBlocks',10,@isnumeric);
+p.addParameter('nBlocks',14,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
@@ -93,6 +93,7 @@ nSides = 2;
 nFreqs = length(refFreqHz);
 nContrasts = size(targetPhotoContrast,1);
 nRanges = length(stimParamSide);
+nDirections = length(modDirections);
 
 % Set a random seed
 rng('shuffle');
@@ -178,11 +179,15 @@ else
 
 end
 
-% Prepare to loop over blocks
-for bb=1:nBlocks
 
-    % Switch back and forth between the modulation directions
-    directionIdx = mod(bb,2)+1;
+%% Initialize the psychObjArray
+% Assemble the psychObj array, looping over the high and low range of
+% the discrimination function AND the reference frequencies AND the
+% contrast
+psychObjArray = cell(nDirections,nRanges,nFreqs,nContrasts);
+
+% Loop over directions
+for directionIdx = 1:nDirections
 
     % Load the mod results for this direction for the two combiLEDs
     for side = 1:nSides
@@ -199,10 +204,7 @@ for bb=1:nBlocks
         mkdir(dataDir)
     end
 
-    % Assemble the psychObj array, looping over the high and low range of
-    % the discrimination function AND the reference frequencies AND the
-    % contrast
-    psychObjArray = cell(nRanges,nFreqs,nContrasts);
+    % Loop over range, freq, and contrast (within a direction)
     for rangeIdx = 1:nRanges
         for freqIdx = 1:nFreqs
             for contrastIdx = 1:nContrasts
@@ -253,20 +255,37 @@ for bb=1:nBlocks
                 end
 
                 % Store in the psychObjArray
-                psychObjArray{rangeIdx, freqIdx, contrastIdx} = psychObj;
+                psychObjArray{directionIdx, rangeIdx, freqIdx, contrastIdx} = psychObj;
 
                 % Clear the psychObj
                 clear psychObj
             end
         end
-
     end
+end
 
-    % Initialize the display for one of the psychObj elements. This routine
-    % assumes that all of the psychObj elements that will be called during
-    % the block use the same modulation, modulation background, temporal
-    % profile (i.e., sinusoid), and trial duration.
-    psychObjArray{1,1,1}.initializeDisplay;
+
+%% Present trials
+
+% Assert that the number of blocks is an integer multiple of the number of
+% frequencies and mod directions
+assert(mod(nBlocks,nFreqs*nDirections)==0);
+
+% Create a permuted order of the reference frequencies to examine across
+% blocks
+[~,freqIdx] = sort(rand(1,nFreqs));
+freqIdxSet(1:2:nFreqs*2-1) = freqIdx;
+[~,freqIdx] = sort(rand(1,nFreqs));
+freqIdxSet(2:2:nFreqs*2) = freqIdx;
+
+% Prepare to loop over blocks
+for bb=1:nBlocks
+
+    % Get this freqIdx
+    freqIdx = freqIdxSet(bb);
+
+    % Switch back and forth between the modulation directions
+    directionIdx = mod(bb,2)+1;
 
     % Start the block
     if ~simulateMode
@@ -282,34 +301,39 @@ for bb=1:nBlocks
 
     % Assert that we have a sufficient number of trials per block to
     % present every stimulus type an equal and integer number of times
-    assert(mod(nTrialsPerBlock,nRanges*nFreqs*nContrasts)==0);
+    assert(mod(nTrialsPerBlock,nRanges*nContrasts)==0);
 
-    % Create a random ordering of the three stimulus crossings (high and
-    % low range, frequencies, contrast levels)
-    nReps = nTrialsPerBlock / (nRanges*nFreqs*nContrasts);
-    triplets = zeros(nRanges*nFreqs*nContrasts,3);
-    [a,b,c] = ndgrid(1:nRanges,1:nFreqs,1:nContrasts);
-    triplets(:,1) = a(:); triplets(:,2) = b(:); triplets(:,3) = c(:);
-    triplets = repmat(triplets,nReps,1);
-    permutedTriplets = triplets(randperm(nTrialsPerBlock),:);
+    % Create a random ordering of ranges (high and low) and contrasts (hi
+    % or low).
+    nReps = nTrialsPerBlock / (nRanges*nContrasts);
+    tuples = zeros(nRanges*nContrasts,2);
+    [a,b] = ndgrid(1:nRanges,1:nContrasts);
+    tuples(:,1) = a(:); tuples(:,2) = b(:);
+    tuples = repmat(tuples,nReps,1);
+    permutedTuples = tuples(randperm(nTrialsPerBlock),:);
 
     % Store the block start time
     for rangeIdx = 1:nRanges
-        for freqIdx = 1:nFreqs
-            for contrastIdx = 1:nContrasts
-                blockStartTime = datetime();
-                psychObjArray{rangeIdx, freqIdx, contrastIdx}.blockStartTimes(psychObjArray{rangeIdx,freqIdx, contrastIdx}.blockIdx) = blockStartTime;
-            end
+        for contrastIdx = 1:nContrasts
+            blockStartTime = datetime();
+            psychObjArray{directionIdx, rangeIdx, freqIdx, contrastIdx}.blockStartTimes(psychObjArray{directionIdx,rangeIdx,freqIdx, contrastIdx}.blockIdx) = blockStartTime;
         end
     end
+
+    % Initialize the display for one of the psychObj elements. This routine
+    % assumes that all of the psychObj elements that will be called during
+    % the block use the same modulation, modulation background, temporal
+    % profile (i.e., sinusoid), and trial duration.
+    psychObjArray{directionIdx,permutedTuples(1,1),freqIdx,permutedTuples(1,2)}.initializeDisplay;
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
         % Present the trial
         psychObjArray{...
-            permutedTriplets(ii,1),...
-            permutedTriplets(ii,2),...
-            permutedTriplets(ii,3)}.presentTrial
+            directionIdx,...
+            permutedTuples(ii,1),...
+            freqIdx,...
+            permutedTuples(ii,2)}.presentTrial
     end
 
     % Report completion of this block
@@ -317,18 +341,17 @@ for bb=1:nBlocks
 
     % Store the psychObjArray entries
     for rangeIdx = 1:nRanges
-        for freqIdx = 1:nFreqs
-            for contrastIdx = 1:nContrasts
-                % Grab the next psychObj
-                psychObj = psychObjArray{rangeIdx, freqIdx, contrastIdx};
-                % empty the CombiLEDObj and EOGControl handles and save the psychObj
-                psychObj.CombiLEDObjArr = {};
-                psychObj.EOGControl = {};
-                % Save the psychObj
-                save(psychObj.filename,'psychObj');
-            end
+        for contrastIdx = 1:nContrasts
+            % Grab the next psychObj
+            psychObj = psychObjArray{directionIdx, rangeIdx, freqIdx, contrastIdx};
+            % empty the CombiLEDObj and EOGControl handles and save the psychObj
+            psychObj.CombiLEDObjArr = {};
+            psychObj.EOGControl = {};
+            % Save the psychObj
+            save(psychObj.filename,'psychObj');
         end
     end
+
     % Make a sound for the end of the block
     BlockDone.fs = 8000;              % Sampling frequency (Hz)
     duration = 0.25;         % Duration (seconds)
