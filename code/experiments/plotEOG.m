@@ -10,7 +10,9 @@ function  plotEOG(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, N
             % L minus M is [0.025, 0.075] and Light Flux is [0.10, 0.30]
     NDLabel = {'0x5'};
     plotEOG(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
+
 %}
+
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir='FLIC_data';
@@ -26,6 +28,7 @@ modDirectionsLabels = {'LminusM', 'LightFlux'}; % to be used only for the title
 % Set number of contrast levels and sides
 nContrasts = 2;
 nSides = 2;
+trialsPerSession = 5;
 
 % Define the modulation and data directories
 subjectDir = fullfile(...
@@ -46,14 +49,26 @@ figure
  plot(calData.sessionData.EOGData.timebase, calData.sessionData.EOGData.response);
 
 
-%% Plot the full psychometric functions
+%% Plot the EOG data for each trial
 
-for directionIdx = 1:length(modDirections)
-    for freqIdx = 1:length(refFreqSetHz)
+    
+
+for directionIdx = 1:length(modDirections)% black and white or red green
+    figure('Name', ['EOG Direction: ' modDirectionsLabels{directionIdx}], 'Units', 'normalized', 'Position', [0.05 0.1 0.9 0.8]);
+    t = tiledlayout(nContrasts*nSides, length(refFreqSetHz), 'TileSpacing', 'compact', 'Padding', 'compact');
+    title(t, ['EOG Responses - ' modDirectionsLabels{directionIdx}]);
+    for freqIdx = 1:length(refFreqSetHz) %stimulus frequency
         dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDLabel{1} '_shifted'],experimentName);
         for contrastIdx = 1:nContrasts
             psychObjArray = {};
-            for sideIdx = 1:nSides
+            for sideIdx = 1:nSides %hi or low side
+                % Compute row index: rows 1-4 correspond to [C1S1; C1S2; C2S1; C2S2]
+                rowIdx = (contrastIdx - 1) * nSides + sideIdx;
+
+                % Determine tile index (column-major): row + (col-1)*numRows
+                tileIdx = rowIdx + (freqIdx - 1) * (nContrasts * nSides);
+                nexttile(tileIdx);
+                hold on
 
                 % Load this measure
                 psychFileStem = [subjectID '_' modDirections{directionIdx} ...
@@ -67,21 +82,73 @@ for directionIdx = 1:length(modDirections)
                 % Store some of these parameters
                 questData = psychObj.questData;
                 nTrials = size(questData.trialData,1);
-                figure 
-                hold on
+                nSessions = nTrials./trialsPerSession;
 
-                %Create tiled layout
-        
-                title(['EOG ' modDirectionsLabels{directionIdx} ' ' num2str(refFreqSetHz(freqIdx)) ' ' num2str(targetPhotoContrast(contrastIdx, directionIdx)) ' ' stimParamLabels{sideIdx}])
-                for trialIdx = 1:nTrials 
-                    plot(psychObj.questData.trialData(trialIdx).EOGdata1.timebase, psychObj.questData.trialData(trialIdx).EOGdata1.response, 'DisplayName',['Trial ' num2str(trialIdx)]);
-                    ylim([yMin yMax])
+                % Generate base colors for each session (distinct hues)
+                baseColors = lines(nSessions);  % Use 'lines' colormap for distinct base hues
+
+                % For each session, create 5 lighter shades of its base color
+                for s = 1:nSessions
+                    baseColor = baseColors(s,:);
+                    % Generate 5 shades: from dark to light by blending with white
+                    for t = 1:trialsPerSession
+                        alpha = (t - 1) / (trialsPerSession - 1);  % 0 (dark) to 1 (light)
+                        trialColors{s}(t,:) = (1 - alpha) * baseColor + alpha * [1 1 1];  % blend with white
+                    end
                 end
 
+                % figure
+                % hold on
+
+                title([num2str(refFreqSetHz(freqIdx)) ' Hz, ' num2str(targetPhotoContrast(contrastIdx, directionIdx)*100) '% contrast, ' stimParamLabels{sideIdx}])
+
+                trialsPerSession = 5;
+                for ss = 1:nSessions
+                    for trialOffset = 1:trialsPerSession
+                        trialIdx = (ss - 1) * trialsPerSession + trialOffset;
+
+                        EOGTrialData = psychObj.questData.trialData(trialIdx).EOGdata1.response(1,:);
+                        meanResponse(trialIdx,sideIdx,contrastIdx, freqIdx, directionIdx) = mean(EOGTrialData);
+                        rawEOGdata(trialIdx,sideIdx,contrastIdx, freqIdx, directionIdx,:)= EOGTrialData;
+                        stdResponse(trialIdx, sideIdx, contrastIdx, freqIdx, directionIdx,:)= std(EOGTrialData); %%added this
+                        meanCorrected(trialIdx,:) = EOGTrialData - meanResponse(trialIdx,sideIdx,contrastIdx, freqIdx, directionIdx);
+
+                        plot(psychObj.questData.trialData(trialIdx).EOGdata1.timebase, ...
+                            meanCorrected(trialIdx,:), ...
+                            'Color', trialColors{ss}(trialOffset,:), ...
+                            'DisplayName', ['Trial ' num2str(trialIdx)]);
+                        ylim([yMin yMax]);
+                        ylabel('response (mV)')
+                        xlabel('time (sec)')
+                       
+
+                    end    
+                end
             end % sides
         end % contrast
     end %frequencies
+overallMean(directionIdx) = mean(meanResponse(:,:,:,:, directionIdx),[1 2 3 4]);
+overallStd(directionIdx) = mean(stdResponse(:,:,:,:,directionIdx),[1 2 3 4]); %%added this
+%add std of rawEOGdata for the mean here, use these for error bars
 end % mod direction
+
+%%Histogram added this
+
+figure('Name', 'EOG Mean by Direction');
+b = bar(overallMean);
+hold on
+errorbar(1:numel(overallMean), overallMean, overallStd,...
+    'LineStyle', 'none');
+hold off
+
+set(gca, 'XTick', 1:numel(overallMean), ...
+         'XTickLabel', modDirectionsLabels, ...
+         'TickLabelInterpreter', 'none');
+
+ylabel('response (mV)');
+title('EOG mean ± SD by direction');
+xlim([0.5, numel(overallMean)+0.5]);
 
 
 end
+
