@@ -1,28 +1,18 @@
-function runDCPT_SDT(subjectID,NDlabel,EOGFlag,varargin)
-% Collect a session of dichoptic flicker discrimination measure,emts
+function runDCPT_SDT(subjectID,NDlabel,varargin)
+% Collect a session of dichoptic flicker discrimination data
 %
 % Syntax:
-%   runDCPT_discrim(subjectID,NDlabel,EOGFlag)
+%   runDCPT_SDT(subjectID,NDlabel)
 %
 % Description:
 %   This function organizes the collection of data using the
-%   PsychDichopticFlickerDiscrim psychometric object. This is a measure of
-%   the ability of an observer to discriminate a change in the appearance
-%   of a flickering stimulus. On each of many trials the observer is shown
-%   a "reference" flicker on both sides of a dichoptic apparatus. After
-%   they have indicated readiness, the flicker is stopped and, after a
-%   brief ISI, a different, "test" flicker is presented on one side
-%   (selected randomly) while the reference flicker is re-presented on the
-%   other side. The obserer is asked to report which side has changed. A
-%   staircase or QUEST+ procedure is used to vary the test flicker to
-%   identify the frequency difference required to produce threshold
-%   discrimination performance.
+%   @PsychDichopticFlickerSDT psychometric object.
 %
 %   This routine connects to the CombiLED stimulus devices, creates and
-%   subsequently loads the psychometric objects, and presents trials. Trial
-%   are organized into blocks. A given block presents each of several
-%   reference frequencies crossed with one or more reference contrasts.
-%   Blocks alternate between different photoreceptor directions.
+%   subsequently loads the psychometric objects, and presents trials.
+%   Trials are organized into blocks. A given block presents each of
+%   several reference frequencies crossed with one or more reference
+%   contrasts. Blocks alternate between different photoreceptor directions.
 %
 % Inputs:
 %   subjectID             - Char vector or string. The ID of the subject.
@@ -53,8 +43,8 @@ function runDCPT_SDT(subjectID,NDlabel,EOGFlag,varargin)
 %{
     subjectID = 'DEMO_2';
     NDlabel = '0x5';
-    EOGFlag = false;
-    runDCPT_SDT(subjectID,NDlabel, EOGFlag);
+    collectEOGFlag = false;
+    runDCPT_SDT(subjectID,NDlabel,'simulateMode',true);
 %}
 
 % Parse the parameters
@@ -68,14 +58,12 @@ p.addParameter('combiClockAdjust',[1.0006,0.9992],@isnumeric);
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
-p.addParameter('stimParams',linspace(0,6.75,25),@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
-p.addParameter('useStaircase',true,@islogical);
-p.addParameter('stairCaseStartDb',1,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
+p.addParameter('collectEOGFlag',true,@islogical);
 p.addParameter('useKeyboardFlag',false,@islogical);
 p.parse(varargin{:})
 
@@ -83,15 +71,14 @@ p.parse(varargin{:})
 modDirections = p.Results.modDirections;
 refFreqHz = p.Results.refFreqHz;
 targetPhotoContrast = p.Results.targetPhotoContrast;
-stimParams = p.Results.stimParams;
 combiLEDLabels = p.Results.combiLEDLabels;
 combiLEDIDs = p.Results.combiLEDIDs;
 nTrialsPerBlock = p.Results.nTrialsPerBlock;
 nBlocks = p.Results.nBlocks;
-useStaircase = p.Results.useStaircase;
 verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
 simulateMode = p.Results.simulateMode;
+collectEOGFlag = p.Results.collectEOGFlag;
 useKeyboardFlag = p.Results.useKeyboardFlag;
 combiClockAdjust = p.Results.combiClockAdjust;
 
@@ -106,7 +93,6 @@ nSides = 2;
 nFreqs = length(refFreqHz);
 nContrasts = size(targetPhotoContrast,1);
 nRanges = length(stimParamSide);
-nTrialsPerCondition = nBlocks*nTrialsPerBlock / (length(modDirections)*nFreqs*nRanges*nContrasts);
 
 % Set a random seed
 rng('shuffle');
@@ -131,6 +117,7 @@ end
 % Set up the CombiLED
 if simulateMode
     CombiLEDObjArr = {[],[]};
+    EOGControl = [];
 else
     % Open the CombiLED
     for side = 1:nSides
@@ -155,11 +142,11 @@ else
     end
 
     % Open the connection to the LabJack
-    if EOGFlag
+    if collectEOGFlag
         EOGControl = BiopackControl('');
         fprintf('------Collecting EOG Data------\n')
     else
-        EOGControl = '';
+        EOGControl = [];
     end
 end
 
@@ -169,10 +156,10 @@ if useKeyboardFlag
 
     fprintf('**********************************\n');
     fprintf('On each of many trials you will be presented with flickering lights\n');
-    fprintf('on the left and right. There will be two intervals showing the pairs of flickering lights.\n');
-    fprintf('Your job is to indicate which interval had the mismatched pair.\n');
-    fprintf('If the first interval had mismatched flicker, press the 1 key.\n');
-    fprintf('If the second interval had mismatched flicker, press the 2 key.\n');
+    fprintf('on the left and right.\n');
+    fprintf('Your job is to indicate if the pair matches in speed or not.\n');
+    fprintf('If the pair is the same, press the 1 key.\n');
+    fprintf('If the pair is different, press the 2 key.\n');
     fprintf('Each block has %d trials in a row after\n',nTrialsPerBlock);
     fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
     fprintf('**********************************\n\n');
@@ -181,10 +168,10 @@ else
 
     fprintf('**********************************\n');
     fprintf('On each of many trials you will be presented with flickering lights\n');
-    fprintf('on the left and right. There will be two intervals showing the pairs of flickering lights.\n');
-    fprintf('Your job is to indicate which interval had the mismatched pair.\n');
-    fprintf('If the first interval had mismatched flicker, press one of the top bumpers.\n');
-    fprintf('If the second interval had mismatched flicker, press one of the bottom bumpers.\n');
+    fprintf('on the left and right.\n');
+    fprintf('Your job is to indicate if the pair matches in speed or not.\n');
+    fprintf('If the pair is the same, press one of the top bumpers.\n');
+    fprintf('If the pair is different, press one of the bottom bumpers.\n');
     fprintf('Each block has %d trials in a row after\n',nTrialsPerBlock);
     fprintf('which you may take a brief break. There are a total of %d blocks.\n',nBlocks);
     fprintf('**********************************\n\n');
@@ -196,7 +183,6 @@ for bb=1:nBlocks
 
     % Switch back and forth between the modulation directions
     directionIdx = mod(bb,2)+1;
-    
 
     % Load the mod results for this direction for the two combiLEDs
     for side = 1:nSides
@@ -240,26 +226,10 @@ for bb=1:nBlocks
                         % Update the path to the file in case this has changed
                         psychObj.filename = psychObjFilename;
                     end
-                    % After starting data collection we changed the form
-                    % of the psychometric function. This happened mid-data
-                    % collection for one participant. Here we update the
-                    % function and psiParams domain, and issues a warning.
-                    if ~strcmp(char(psychObj.psychometricFuncHandle),'qpCumulativeNormalShifted')
-                        warning('Updating the psychometric function to qpCumulativeNormalShifted.');
-                        psychObj.psychometricFuncHandle = @qpCumulativeNormalShifted;
-                        psychObj.questData.qpPF = @qpCumulativeNormalShifted;
-                        psychObj.psiParamsDomainList{1} = linspace(0,5,25);
-                    end                   
                     % Put in the fresh CombiLEDObjs
                     psychObj.CombiLEDObjArr = CombiLEDObjArr;
-                    % Put in the fresh EOGFlag
-                    psychObj.EOGFlag = EOGFlag;
                     % Put in the fresh EOGControl
-                    if EOGFlag
-                        psychObj.EOGControl = EOGControl;
-                    else
-                        psychObj.EOGControl = '';
-                    end
+                    psychObj.EOGControl = EOGControl;
                     % Increment blockIdx
                     psychObj.blockIdx = psychObj.blockIdx+1;
                     psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
@@ -267,41 +237,18 @@ for bb=1:nBlocks
                     psychObj.simulateMode = simulateMode;
                     % Update the keyboard flag
                     psychObj.useKeyboardFlag = useKeyboardFlag;
-                    % Decide whether to use staircase or Quest+ based on
-                    % number of sessions completed
-                    % If less than 3 sessions completed, want staircase
-                    % 3 sessions = 15 trials/cond in the current version
-                    sessionsCompleted = length(psychObj.questData.trialData) / nTrialsPerCondition;
-                    if sessionsCompleted < 3
-                        psychObj.useStaircase = true;
-                        if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1  % Print staircase status for 1st psychObj only
-                            fprintf('Using staircase: %d\n', psychObj.useStaircase);
-                        end
-                    else
-                        psychObj.useStaircase = false;
-                        if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1
-                            fprintf('Using staircase: %d\n', psychObj.useStaircase);
-                        end
-                    end
-
                 else
                     % Create the object
                     psychObj = PsychDichopticFlickerSDT(...
-                        CombiLEDObjArr, modResultArr, EOGControl, EOGFlag, refFreqHz(freqIdx),...
+                        CombiLEDObjArr, modResultArr, EOGControl, refFreqHz(freqIdx),...
                         'refPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...
                         'testPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...
                         'simulateMode',simulateMode,...
-                        'useStaircase',useStaircase,...
-                        'stimParamsDomainList',stimParams,...
                         'stimParamSide',stimParamSide{rangeIdx},...
                         'verbose',verbosePsychObj, ...
                         'useKeyboardFlag',useKeyboardFlag);
                     % Store the filename
                     psychObj.filename = psychObjFilename;
-                    % Double check that the staircase is set to true for 1st psychObj
-                    if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1
-                        fprintf('Using staircase: %d\n', psychObj.useStaircase);
-                    end
 
                 end
 
@@ -390,12 +337,13 @@ for bb=1:nBlocks
     t = 0:1/BlockDone.fs:duration;    % Time vector
     BlockDone.y = sin(2*pi*freq*t);   % Generate sine wave
     BlockDone.y2 = sin(2*pi*freq2*t);
-    
+
     if bb<nBlocks
         sound(BlockDone.y, BlockDone.fs);           % Play the sound
         pause (0.26);
         sound(BlockDone.y2, BlockDone.fs);           % Play the sound
     end
+
 end % block loop
 
 % Clean up
@@ -404,7 +352,7 @@ if ~simulateMode
         CombiLEDObjArr{side}.goDark;
         CombiLEDObjArr{side}.serialClose;
     end
-    if EOGFlag
+    if collectEOGFlag
         EOGControl.labjackOBJ.shutdown();
     end
 end
@@ -415,6 +363,7 @@ clear EOGControl
 ExperimentDone = load('handel');
 sound(ExperimentDone.y,ExperimentDone.Fs)
 
+% Calculate the performance bonus
 CalcDCPTDiscrimBonus(subjectID, refFreqHz, modDirections, targetPhotoContrast, NDlabel);
 
 end % function
