@@ -1,14 +1,16 @@
-% Object to support conducting a 2AFC flicker discrimination task. The
-% testing procedure involves showing a binocular, dichoptic reference
-% flicker of a specified frequency and photoreceptor contrast. The observer
-% presses a button when they feel they have properly encoded the stimulus.
-% After a variable delay the flicker returns, but on one side the flicker
-% frequency has been changed. The observer is asked to report the side on
-% which the change has occurred. QUEST+ is used to select stimuli in an
-% effort to estimate the sigma (slope) of a cumulative normal Gaussian that
-% defines the discrimination function. The mean (mu) is set to zero, which
-% corresponds to being 50% accurate when there is no physical difference
-% between the stimuli.
+% Object to support conducting a single-interval, "signal detection" style
+% measurement. Within a split hemi-field dichoptic display the observer is
+% shown flickering lights, one at the reference frequency and one at a test
+% frequency. The observer indicates if the frequency of the flicker is the
+% same or different on the two sides. An adaptive procedure is used to
+% determine the test frequency, guided by a psychometric function that
+% estimates the false positive rate, the threshold frequency difference (in
+% dB) that corresponds to d'= 1, and the steepness of the discrimination
+% function. The occurence of "0 dB" trials is enhanced at the start of the
+% testing procedure so that around 50% of the initial trials present
+% the same flicker frequency on the two sides. The observer is given
+% "correct" feedback for hits and correct rejections. The adaptive
+% procedure results in about an 80% correct rate overall.
 
 classdef PsychDichopticFlickerSDT < handle
 
@@ -21,11 +23,21 @@ classdef PsychDichopticFlickerSDT < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
+        % The range of psychometric function parameter values that QUEST+
+        % will consider
+        psiParamsDomainList
+
+        % The psychometric function used to guide QUEST+
+        psychometricFuncHandle
+
+        % The parameters of the QUEST+ object, and the accumulated trial
+        % data
+        questData
+
         modResultArr
         relativePhotoContrastCorrection
         simulatePsiParams
         giveFeedback
-        staircaseRule % [nUp, nDown]
         psiParamLabels
         stimParamsDomainList
         refFreqHz
@@ -34,7 +46,6 @@ classdef PsychDichopticFlickerSDT < handle
         testPhotoContrast
         testModContrast
         stimDurSecs
-        isiSecs
         rampDurSecs
         combiLEDStartTimeSecs = 0.03;
         stimParamSide
@@ -51,16 +62,6 @@ classdef PsychDichopticFlickerSDT < handle
         % Object for EOG recording using Biopac
         EOGControl
 
-        % Indicate whether using EOG  
-        EOGFlag
-
-        % Can switch between using a staircase and QUEST+ to select the
-        % next trial
-        useStaircase
-
-        % To set the staircase start value
-        stairCaseStartDb
-
         % Can switch between simulating and not simulating
         simulateMode
 
@@ -75,28 +76,12 @@ classdef PsychDichopticFlickerSDT < handle
         % Choose between keyboard and gamepad
         useKeyboardFlag
 
-        %% The set of parameters below are modifiable as we wished to
-        %% update the properties of a psychometric object for one subject
-        %% after data collection had begun.
-
-        % The range of psychometric function parameter values that QUEST+
-        % will consider
-        psiParamsDomainList
-
-        % The psychometric function used to guide QUEST+
-        psychometricFuncHandle
-
-        % The parameters of the QUEST+ object, and the accumulated trial
-        % data
-        questData
-
-
     end
 
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerSDT(CombiLEDObjArr, modResultArr, EOGControl, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerSDT(CombiLEDObjArr,modResultArr,EOGControl,refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -104,19 +89,15 @@ classdef PsychDichopticFlickerSDT < handle
             p.addParameter('refPhotoContrast',0.1,@isnumeric);
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
             p.addParameter('stimDurSecs',3,@isnumeric);
-            p.addParameter('isiSecs',0.75,@isnumeric);
             p.addParameter('rampDurSecs', 0.5,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('useStaircase',false,@islogical);
-            p.addParameter('stairCaseStartDb',1,@isnumeric);
-            p.addParameter('staircaseRule',[1,3],@isnumeric);
             p.addParameter('psychometricFuncHandle',@LesmesTransducerFunc,@ishandle);
             p.addParameter('psiParamLabels',{'fpRate','τ','γ'},@iscell);
-            p.addParameter('simulatePsiParams',[0.05,2.0,2.0],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(0,5,25),@isnumeric);
+            p.addParameter('simulatePsiParams',[0.05,1,1],@isnumeric);
+            p.addParameter('stimParamsDomainList',[0 logspace(log10(0.1),log10(5),24)],@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0.001,0.251,15),linspace(0.1,5.1,15),linspace(1,10,15)},@isnumeric);
+                {linspace(0.001,0.251,15),linspace(0.1,3.1,15),logspace(-1,0.7,15)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})
@@ -130,13 +111,9 @@ classdef PsychDichopticFlickerSDT < handle
             obj.testPhotoContrast = p.Results.testPhotoContrast;
             obj.refPhotoContrast = p.Results.refPhotoContrast;            
             obj.stimDurSecs = p.Results.stimDurSecs;            
-            obj.isiSecs = p.Results.isiSecs;
             obj.rampDurSecs = p.Results.rampDurSecs;
             obj.simulateMode = p.Results.simulateMode;
             obj.giveFeedback = p.Results.giveFeedback;
-            obj.useStaircase = p.Results.useStaircase;
-            obj.stairCaseStartDb = p.Results.stairCaseStartDb;
-            obj.staircaseRule = p.Results.staircaseRule;
             obj.psychometricFuncHandle = p.Results.psychometricFuncHandle;
             obj.psiParamLabels = p.Results.psiParamLabels;
             obj.simulatePsiParams = p.Results.simulatePsiParams;

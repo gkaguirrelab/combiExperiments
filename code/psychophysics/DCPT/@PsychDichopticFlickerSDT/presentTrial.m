@@ -1,9 +1,7 @@
 function presentTrial(obj)
 
 % Get the EOGControl
-if obj.EOGFlag
-    EOGControl = obj.EOGControl;
-end
+EOGControl = obj.EOGControl;
 
 % Get the questData
 questData = obj.questData;
@@ -27,18 +25,17 @@ testModContrast = obj.testModContrast;
 % between the two modResults / combiLEDs
 relativePhotoContrastCorrection = obj.relativePhotoContrastCorrection;
 
-% Half of the time, randomized, we will present a 0 db stimulus.
-if rand()>0.5
+% We enhance the proportion of trials that present a 0 db stimulus at the
+% start of the measurement. The probability of a forced 0 dB trial starts
+% at 0.5, and then falls to zero following a decaying exponential under the
+% control of a parameter. The value used reaches a probability of 0.1 after
+% about 30 trials.
+nullTrialProbTimeConstant = 0.99;
+if rand() < 0.5 * nullTrialProbTimeConstant ^ currTrialIdx 
     testParam = 0;
 else
-    % Get the testParam to use for this trial. Can use either a staircase or
-    % QUEST+
-    if obj.useStaircase
-        stairCaseStartDb = obj.stairCaseStartDb;
-        testParam = obj.staircase(currTrialIdx, stairCaseStartDb);
-    else
-        testParam = qpQuery(questData);
-    end
+    % Get the testParam to use for this trial using QUEST+
+    testParam = qpQuery(questData);
 end
 
 % The difference between the reference and test frequency is given by the
@@ -68,23 +65,23 @@ refSide = mod(testSide,2)+1;
 % We have considered accounting for the delay in starting the 2nd combiLED
 % relative to the first, but have decided this is too small of an effect to
 % address.
-testIntervalPhaseSide1 = rand()*pi;
-stimParams(1,3) = testIntervalPhaseSide1;
+testSidePhase = rand()*pi;
+stimParams(1,3) = testSidePhase;
 if testSide == 1
-    stimParams(2,3) = wrapTo2Pi(testIntervalPhaseSide1 + pi/2 + ...
+    stimParams(2,3) = wrapTo2Pi(testSidePhase + pi/2 + ...
         2 * pi * refFreqHz);
 else
-    stimParams(2,3) = wrapTo2Pi(testIntervalPhaseSide1 + pi/2 + ...
+    stimParams(2,3) = wrapTo2Pi(testSidePhase + pi/2 + ...
         2 * pi * testFreqHz);
 end
 
-% Assign the refSide stimuli for the interval.
+% Assign the refSide stimuli.
 stimParams(refSide,1) = ...
     relativePhotoContrastCorrection(refSide) * ...
     (refModContrast / contrastAttenuationByFreq(refFreqHz));
 stimParams(refSide,2) = refFreqHz;
 
-% Assign the testSide stimuli for the interval.
+% Assign the testSide stimuli
 stimParams(testSide,1) = ...
     relativePhotoContrastCorrection(testSide) * ...
     (testModContrast / contrastAttenuationByFreq(testFreqHz));
@@ -134,7 +131,7 @@ if simulateMode
     %% Simulate
     answerChoice = obj.getSimulatedResponse(testParam);
     responseTimeSecs = nan;
-    EOGdata1 = nan;
+    EOGdata = nan;
 else
 
     %% Stimulus
@@ -146,9 +143,12 @@ else
         obj.CombiLEDObjArr{side}.setContrast(stimParams(side,1));
         obj.CombiLEDObjArr{side}.setFrequency(stimParams(side,2));
         obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(side,3));
-        obj.CombiLEDObjArr{side}.setStartDelay(0.5); %delay offset of the
-        % first interval because it takes up to half a second to start the EOG recording.
         obj.CombiLEDObjArr{side}.setDuration(obj.stimDurSecs);
+
+        % Introduce a delay in the start of the stimulus to allow the EOG
+        % recording to start
+        obj.CombiLEDObjArr{side}.setStartDelay(0.5);
+
     end
 
     toc;
@@ -167,15 +167,17 @@ else
     end
     audioObjs.low.play;
 
-   % Wait for interval if not doing EOG
+   % Define the time at which the stimulus will end
    stopTime = cputime() + obj.stimDurSecs;
 
-    % Start the EOG recording, record interval
-    if obj.EOGFlag
+    % Start the EOG recording. This is a modal operation, so we are paused
+    % here until the recording stops.
+    if ~isempty(EOGControl)
         EOGControl.trialDurationSecs = obj.stimDurSecs;
-        [EOGdata1] = EOGControl.recordTrial();
+        EOGdata = EOGControl.recordTrial();
     end
 
+    % Finish waiting for the stimulus to end
     obj.waitUntil(stopTime);
 
     % Start the response interval
@@ -198,24 +200,19 @@ else
         if ~isempty(buttonPress)
             switch buttonPress
                 case {5 6}   % Upper bumpers on the gamepad 
-                    answerChoice = 1;  % yes, they're the same
+                    answerChoice = 1;  % same
                 case {7 8}   % Lower bumpers on the gamepad
-                    answerChoice = 2;   % no, they're not the same
+                    answerChoice = 2;   % different
             end
         end
     end
 
-    % Stop the stimuli (needed as the subject may have responded before the
-    % stimuli have completed)
-    for side = 1:2
-        obj.CombiLEDObjArr{side}.stopModulation;
-    end
-
-    % Waitfor an inter-trial-interval
+    % Wait for an inter-trial-interval. This is in addition to the one
+    % second of delay at the start of the trial (0.5 seconds to allow the
+    % EOG to start, and 0.5 seconds to allow the combiLEDs to receive
+    % instructions)
     stopTime = cputime() + 0.5;
     obj.waitUntil(stopTime);
-    % Note the effective ITI is 1s due to the 0.5s delay after codes are
-    % sent to the combiLED and the 0.5 s above.
 
 end
 
@@ -284,7 +281,7 @@ questData.trialData(currTrialIdx).testSide = testSide;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).correct = correct;
 questData.trialData(currTrialIdx).respondYes = respondYes;
-questData.trialData(currTrialIdx).EOGdata1 = EOGdata1;
+questData.trialData(currTrialIdx).EOGdata = EOGdata;
 
 % Put staircaseData back into the obj
 obj.questData = questData;

@@ -31,7 +31,7 @@ xlabel('trial number');
 ylabel('stimulus difference [dB]')
 title('stimulus by trial');
 
-% Now the proportion "respond yes" for each stimulus type, and the
+% Now the proportion "respond different" for each stimulus type, and the
 % psychometric function fit. Marker transparancy (and size) visualizes
 % number of trials (more opaque -> more trials), while marker color
 % visualizes percent correct (more red -> more respond yes).
@@ -53,15 +53,15 @@ markerSizeIdx = [3 markerSizeIdx];
 markerSizeSet = [25,50,100];
 for cc = 1:length(stimCounts)
     if cc == 1
-    scatter(stim(cc),pRespondDifferent(cc),markerSizeSet(markerSizeIdx(cc)),'diamond', ...
-        'MarkerFaceColor',[pRespondDifferent(cc) 0 1-pRespondDifferent(cc)], ...
-        'MarkerEdgeColor','k', ...
-        'MarkerFaceAlpha',nTrials(cc)/max(nTrials));
+        scatter(stim(cc),pRespondDifferent(cc),markerSizeSet(markerSizeIdx(cc)),'diamond', ...
+            'MarkerFaceColor',[pRespondDifferent(cc) 0 1-pRespondDifferent(cc)], ...
+            'MarkerEdgeColor','k', ...
+            'MarkerFaceAlpha',nTrials(cc)/max(nTrials));
     else
-    scatter(stim(cc),pRespondDifferent(cc),markerSizeSet(markerSizeIdx(cc)),'o', ...
-        'MarkerFaceColor',[pRespondDifferent(cc) 0 1-pRespondDifferent(cc)], ...
-        'MarkerEdgeColor','k', ...
-        'MarkerFaceAlpha',nTrials(cc)/max(nTrials));
+        scatter(stim(cc),pRespondDifferent(cc),markerSizeSet(markerSizeIdx(cc)),'o', ...
+            'MarkerFaceColor',[pRespondDifferent(cc) 0 1-pRespondDifferent(cc)], ...
+            'MarkerEdgeColor','k', ...
+            'MarkerFaceAlpha',nTrials(cc)/max(nTrials));
     end
     hold on
 end
@@ -72,11 +72,6 @@ for cc = 1:length(stimParamsDomainList)
     fitRespondYes(cc) = outcomes(2);
 end
 plot(stimParamsDomainList,fitRespondYes,'-k')
-
-% Add a marker for the 50% point
-% outcomes = obj.questData.qpPF(psiParamsFit(1),psiParamsFit);
-% plot([psiParamsFit(1), psiParamsFit(1)],[0, outcomes(2)],':k')
-% plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 
 % Labels and range
 ylim([-0.1 1.1]);
