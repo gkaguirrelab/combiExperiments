@@ -15,6 +15,7 @@ classdef PsychDiscrimPuffThreshold < handle
     % Calling function can see, but not modify
     properties (SetAccess=private)
         maxAllowedPressurePSI = 45;
+        modResult
         questData
         simulatePsiParams
         simulateResponse
@@ -36,7 +37,7 @@ classdef PsychDiscrimPuffThreshold < handle
         % to collect data
         AirPuffObj
 
-        % The combi LED object. This is modifiable so that we can re-load
+        % The combiLED object. This is modifiable so that we can re-load
         % the psychometric object, update this handle, and then continue
         % to collect data 
         LightObj
@@ -58,7 +59,7 @@ classdef PsychDiscrimPuffThreshold < handle
     methods
 
         % Constructor
-        function obj = PsychDiscrimPuffThreshold(AirPuffObj,LightObj,refPuffPSI,varargin)
+        function obj = PsychDiscrimPuffThreshold(AirPuffObj,LightObj,refPuffPSI,modResult,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -67,6 +68,7 @@ classdef PsychDiscrimPuffThreshold < handle
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',false,@islogical);            
             p.addParameter('staircaseRule',[1,3],@isnumeric);
+            p.addParameter('lightPulseContrast',1.0,@isnumeric);
             p.addParameter('puffDurSecs',0.150,@isnumeric);
             p.addParameter('itiRangeSecs',[1,1.5],@isnumeric);
             p.addParameter('simulatePsiParams',[0,0.5],@isnumeric);
@@ -80,6 +82,7 @@ classdef PsychDiscrimPuffThreshold < handle
             obj.AirPuffObj = AirPuffObj;
             obj.LightObj = LightObj;
             obj.refPuffPSI = refPuffPSI;
+            obj.modResult = modResult;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;
@@ -112,7 +115,7 @@ classdef PsychDiscrimPuffThreshold < handle
             % Initialize Quest+
             obj.initializeQP;
 
-            % Initialize the CombiAir
+            % Initialize the CombiLED
             obj.initializeDisplay;
 
         end

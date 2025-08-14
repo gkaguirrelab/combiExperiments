@@ -1,19 +1,28 @@
 function initializeDisplay(obj)
 
-if isempty(obj.AirPuffObj) && ~obj.simulateStimuli
+if isempty(obj.LightObj) && ~obj.simulateStimuli
     if obj.verbose
-        fprintf('AirPuffObj is empty; update this property and call the initializeDisplay method');
+        fprintf('LightObj is empty; update this property and call the initializeDisplay method');
     end
 end
 
-% Ensure that the CombiAir is configured to present our stimuli
+% Ensure that the CombiLED is configured to present our stimuli
 % properly (if we are not simulating the stimuli)
-if ~obj.simulateStimuli
+if ~obj.simulateMode
 
     % Alert the user
     if obj.verbose
-        fprintf('Initializing AirPuffObj\n')
+        fprintf('Initializing CombiLEDObj\n')
     end
+
+    obj.LightObj.setSettings(obj.modResult);
+    obj.LightObj.setUnimodal();
+    obj.LightObj.setWaveformIndex(2); % square-wave
+    obj.LightObj.setFrequency(1/6);
+    obj.LightObj.setDuration(3);
+    obj.LightObj.setPhaseOffset(pi);
+    obj.LightObj.setRampIndex(1); % half-cosine windowing
+    obj.LightObj.setRampDuration(0.5);
 
 end
 
