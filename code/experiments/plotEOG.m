@@ -3,7 +3,7 @@ function  plotEOG(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, N
 % % e.g.,
 %{
 
-    subjectID = 'FLIC_0005';
+    subjectID = 'FLIC_0007';
     refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
     modDirections = {'LminusM_wide' 'LightFlux'};
     targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
@@ -13,41 +13,46 @@ function  plotEOG(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, N
 
 %}
 
+for iSession = 1:10
+    dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
+    dropBoxSubDir='FLIC_data';
+    projectName='combiLED';
+    experimentName = 'DCPT';
+    calFolder = 'EOGCalibration';
+    calFile = ['EOGSession', num2str(iSession), 'Cal.mat'];
 
-dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
-dropBoxSubDir='FLIC_data';
-projectName='combiLED';
-experimentName = 'DCPT';
-calFolder = 'EOGCalibration';
-calFile = 'EOGSession1Cal.mat';
+    % Set the labels for the high and low stimulus ranges
+    stimParamLabels = {'low', 'hi'};
+    modDirectionsLabels = {'LminusM', 'LightFlux'}; % to be used only for the title
 
-% Set the labels for the high and low stimulus ranges
-stimParamLabels = {'low', 'hi'};
-modDirectionsLabels = {'LminusM', 'LightFlux'}; % to be used only for the title
+    % Set number of contrast levels and sides
+    nContrasts = 2;
+    nSides = 2;
+    trialsPerSession = 5;
 
-% Set number of contrast levels and sides
-nContrasts = 2;
-nSides = 2;
-trialsPerSession = 5;
+    % Define the modulation and data directories
+    subjectDir = fullfile(...
+        dropBoxBaseDir,...
+        dropBoxSubDir,...
+        projectName,...
+        subjectID);
 
-% Define the modulation and data directories
-subjectDir = fullfile(...
-    dropBoxBaseDir,...
-    dropBoxSubDir,...
-    projectName,...
-    subjectID);
-
-%% Load and Plot calibration data
-filename = fullfile(subjectDir, calFolder, calFile);
-calData = load(filename, 'sessionData');
-yData = calData.sessionData.EOGData.response;
-yMin = min(yData);
-yMax = max(yData);
-figure
- hold on
- title('EOG Calibration', 'FontSize', 18,'FontWeight','bold');
- plot(calData.sessionData.EOGData.timebase, calData.sessionData.EOGData.response);
-
+    %% Load and Plot calibration data
+    filename = fullfile(subjectDir, calFolder, calFile);
+    if isfile(filename)
+        calData = load(filename, 'sessionData');
+        yData = calData.sessionData.EOGData.response;
+        yMin = min(yData);
+        yMax = max(yData);
+        figure
+        hold on
+        title('EOG Calibration', 'FontSize', 18,'FontWeight','bold');
+        plot(calData.sessionData.EOGData.timebase, calData.sessionData.EOGData.response);
+    end
+end
+%array where each entry is the degrees/mv in each session. 10 numbers, 1
+%for each session (repeat when calibrations repeat)
+DegPerMv = [];
 
 %% Plot the EOG data for each trial
 
@@ -112,16 +117,15 @@ for directionIdx = 1:length(modDirections)% black and white or red green
                         rawEOGdata(trialIdx,sideIdx,contrastIdx, freqIdx, directionIdx,:)= EOGTrialData;
                         stdResponse(trialIdx, sideIdx, contrastIdx, freqIdx, directionIdx,:)= std(EOGTrialData); %%added this
                         meanCorrected(trialIdx,:) = EOGTrialData - meanResponse(trialIdx,sideIdx,contrastIdx, freqIdx, directionIdx);
-
+                        % convert to degrees using DegPerMv
+                        meanCorrectedDeg(trialIdx,:)= meanCorrected(trialIdx,:)*DegPerMv(ss);
                         plot(psychObj.questData.trialData(trialIdx).EOGdata1.timebase, ...
-                            meanCorrected(trialIdx,:), ...
+                            meanCorrectedDeg(trialIdx,:), ...
                             'Color', trialColors{ss}(trialOffset,:), ...
                             'DisplayName', ['Trial ' num2str(trialIdx)]);
                         ylim([yMin yMax]);
-                        ylabel('response (mV)')
+                        ylabel('response (Degrees)')
                         xlabel('time (sec)')
-                       
-
                     end    
                 end
             end % sides
