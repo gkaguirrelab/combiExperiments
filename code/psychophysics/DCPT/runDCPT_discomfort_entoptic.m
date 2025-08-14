@@ -53,22 +53,22 @@ function runDCPT_discomfort_entoptic(subjectID,NDlabel,EMGFlag, varargin)
 %
 % Examples:
 %{
-    subjectID = 'HERO_rsb';
+    subjectID = 'DEMO_3';
     NDlabel = '0x5';
     discomfortFlag = true; 
-    EMGFlag = true;
+    EMGFlag = false;
     runDCPT_discomfort_entoptic(subjectID,NDlabel, EMGFlag, 'discomfortFlag', discomfortFlag);
 %}
 
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
-p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
-p.addParameter('refFreqHz',[3.0000    4.8206    7.7460   12.4467   20.0000],@isnumeric);
-p.addParameter('targetPhotoContrast',[0.025, 0.10; 0.075, 0.30],@isnumeric);
+p.addParameter('modDirections',{'LightFlux'},@iscell);
+p.addParameter('refFreqHz',logspace(log10(3),log10(20),7),@isnumeric);
+p.addParameter('targetPhotoContrast',[0.10; 0.30],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);
 p.addParameter('combiClockAdjust',[1.0006,0.9992],@isnumeric);
-p.addParameter('nBlocks',2, @isnumeric);
+p.addParameter('nBlocks',1, @isnumeric);
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
@@ -201,9 +201,8 @@ end
 % Prepare to loop over blocks
 for bb=1:nBlocks
 
-    % Switch back and forth between the modulation directions
-    directionIdx = mod(bb,2)+1;
-    
+    % One modulation direction - light flux
+    directionIdx = 1; 
 
     % Load the mod results for this direction for the two combiLEDs
     for side = 1:nSides

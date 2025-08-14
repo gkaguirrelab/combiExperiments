@@ -42,9 +42,9 @@ function runDCPT_SDT(subjectID,NDlabel,varargin)
 % Examples:
 %{
     subjectID = 'DEMO_3';
-    NDlabel = '0x5';
+    NDlabel = '3x0';
     collectEOGFlag = false;
-    runDCPT_SDT(subjectID,NDlabel,'collectEOGFlag',false,'simulateMode',true);
+    runDCPT_SDT(subjectID,NDlabel,'collectEOGFlag',false);
 %}
 
 % Parse the parameters
