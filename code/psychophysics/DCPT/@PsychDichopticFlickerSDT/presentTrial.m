@@ -1,4 +1,11 @@
-function presentTrial(obj)
+function presentTrial(obj,forceTestParam)
+
+% Handle the nargin for forceTestParam. If the forceTestParam
+% is passed, then this value is used for the testParam for
+% the trial.
+if nargin == 1
+    forceTestParam = [];
+end
 
 % Get the EOGControl
 EOGControl = obj.EOGControl;
@@ -25,17 +32,22 @@ testModContrast = obj.testModContrast;
 % between the two modResults / combiLEDs
 relativePhotoContrastCorrection = obj.relativePhotoContrastCorrection;
 
-% We enhance the proportion of trials that present a 0 db stimulus at the
-% start of the measurement. The probability of a forced 0 dB trial starts
-% at 0.5, and then falls to zero following a decaying exponential under the
-% control of a parameter. The value used reaches a probability of 0.1 after
-% about 30 trials.
-nullTrialProbTimeConstant = 0.99;
-if rand() < 0.5 * nullTrialProbTimeConstant ^ currTrialIdx 
-    testParam = 0;
+% If forceTestParam is set, then use this value
+if ~isempty(forceTestParam)
+    testParam = forceTestParam;
 else
-    % Get the testParam to use for this trial using QUEST+
-    testParam = qpQuery(questData);
+    % We enhance the proportion of trials that present a 0 db stimulus at
+    % the start of the measurement. The probability of a forced 0 dB trial
+    % starts at 0.5, and then falls to zero following a decaying
+    % exponential under the control of a parameter. The value used reaches
+    % a probability of 0.1 after about 30 trials.
+    nullTrialProbTimeConstant = 0.99;
+    if rand() < 0.5 * nullTrialProbTimeConstant ^ currTrialIdx
+        testParam = 0;
+    else
+        % Get the testParam to use for this trial using QUEST+
+        testParam = qpQuery(questData);
+    end
 end
 
 % The difference between the reference and test frequency is given by the

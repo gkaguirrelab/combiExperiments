@@ -97,9 +97,9 @@ classdef PsychDichopticFlickerSDT < handle
             p.addParameter('psychometricFuncHandle',@LesmesTransducerFunc,@ishandle);
             p.addParameter('psiParamLabels',{'fpRate','τ','γ'},@iscell);
             p.addParameter('simulatePsiParams',[0.05,1,1],@isnumeric);
-            p.addParameter('stimParamsDomainList',[0 logspace(log10(0.1),log10(5),24)],@isnumeric);
+            p.addParameter('stimParamsDomainList',[0 logspace(log10(0.1),log10(5),30)],@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0.001,0.251,15),linspace(0.1,3.1,15),logspace(-1,0.7,15)},@isnumeric);
+                {linspace(0.001,0.251,15),linspace(0.1,3.1,15),logspace(-0.3,0.7,15)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})
@@ -173,7 +173,7 @@ classdef PsychDichopticFlickerSDT < handle
         % Required methds
         initializeQP(obj)
         initializeDisplay(obj)
-        presentTrial(obj)
+        presentTrial(obj,forceTestParam)
         stimParam = staircase(obj,currTrialIdx, stairCaseStartDb);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         waitUntil(obj,stopTimeSeconds)

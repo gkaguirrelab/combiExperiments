@@ -41,17 +41,17 @@ function runDCPT_SDT(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'DEMO_2';
+    subjectID = 'DEMO_3';
     NDlabel = '0x5';
     collectEOGFlag = false;
-    runDCPT_SDT(subjectID,NDlabel,'collectEOGFlag',false);
+    runDCPT_SDT(subjectID,NDlabel,'collectEOGFlag',false,'simulateMode',true);
 %}
 
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
-p.addParameter('modDirections',{'LminusM_wide','LightFlux'},@iscell);
+p.addParameter('modDirections',{'LightFlux'},@iscell);
 p.addParameter('refFreqHz',logspace(log10(3),log10(20),7),@isnumeric);
-p.addParameter('targetPhotoContrast',[0.025, 0.10; 0.075, 0.30],@isnumeric);
+p.addParameter('targetPhotoContrast',[0.10; 0.30],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);
 p.addParameter('combiClockAdjust',[1.0006,0.9992],@isnumeric);
@@ -64,6 +64,7 @@ p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
 p.addParameter('collectEOGFlag',true,@islogical);
+p.addParameter('demoModeFlag',false,@islogical);
 p.addParameter('useKeyboardFlag',false,@islogical);
 p.parse(varargin{:})
 
@@ -79,6 +80,7 @@ verboseCombiLED = p.Results.verboseCombiLED;
 verbosePsychObj = p.Results.verbosePsychObj;
 simulateMode = p.Results.simulateMode;
 collectEOGFlag = p.Results.collectEOGFlag;
+demoModeFlag = p.Results.demoModeFlag;
 useKeyboardFlag = p.Results.useKeyboardFlag;
 combiClockAdjust = p.Results.combiClockAdjust;
 
@@ -271,21 +273,23 @@ end
 % frequencies and mod directions
 assert(mod(nBlocks,nFreqs*nDirections)==0);
 
-% Create a permuted order of the reference frequencies to examine across
+% Create a random order of the reference frequencies to examine across
 % blocks
-[~,freqIdx] = sort(rand(1,nFreqs));
-freqIdxSet(1:2:nFreqs*2-1) = freqIdx;
-[~,freqIdx] = sort(rand(1,nFreqs));
-freqIdxSet(2:2:nFreqs*2) = freqIdx;
+nReps = nBlocks / (nFreqs*nDirections);
+tuples = zeros(nFreqs*nDirections,2);
+[a,b] = ndgrid(1:nDirections,1:nFreqs);
+tuples(:,1) = a(:); tuples(:,2) = b(:);
+tuples = repmat(tuples,nReps,1);
+directionFrequencyTuples = tuples(randperm(nBlocks),:);
 
 % Prepare to loop over blocks
 for bb=1:nBlocks
 
-    % Get this freqIdx
-    freqIdx = freqIdxSet(bb);
+    % Get the modulation direction
+    directionIdx = directionFrequencyTuples(bb,1);
 
-    % Switch back and forth between the modulation directions
-    directionIdx = mod(bb,2)+1;
+    % Get this freqIdx
+    freqIdx = directionFrequencyTuples(bb,2);
 
     % Start the block
     if ~simulateMode
@@ -310,7 +314,7 @@ for bb=1:nBlocks
     [a,b] = ndgrid(1:nRanges,1:nContrasts);
     tuples(:,1) = a(:); tuples(:,2) = b(:);
     tuples = repmat(tuples,nReps,1);
-    permutedTuples = tuples(randperm(nTrialsPerBlock),:);
+    rangeContrastTuples = tuples(randperm(nTrialsPerBlock),:);
 
     % Store the block start time
     for rangeIdx = 1:nRanges
@@ -324,16 +328,35 @@ for bb=1:nBlocks
     % assumes that all of the psychObj elements that will be called during
     % the block use the same modulation, modulation background, temporal
     % profile (i.e., sinusoid), and trial duration.
-    psychObjArray{directionIdx,permutedTuples(1,1),freqIdx,permutedTuples(1,2)}.initializeDisplay;
+    psychObjArray{directionIdx,rangeContrastTuples(1,1),freqIdx,rangeContrastTuples(1,2)}.initializeDisplay;
+
+    % If we are in demo mode, create a set of 0 and 4 dB testParam values
+    % to use
+    if demoModeFlag
+        demoTestParams = zeros(1,nTrialsPerBlock);
+        demoTestParams(1:floor(nTrialsPerBlock/2)) = 4;
+        demoTestParams = demoTestParams(randperm(nTrialsPerBlock));
+    end
 
     % Present nTrials
     for ii = 1:nTrialsPerBlock
-        % Present the trial
-        psychObjArray{...
-            directionIdx,...
-            permutedTuples(ii,1),...
-            freqIdx,...
-            permutedTuples(ii,2)}.presentTrial
+        % Determine if we are in data collection or demo mode
+        if demoModeFlag
+            % Use the previously calculated 0 dB and large dB stimulus
+            % values
+            psychObjArray{...
+                directionIdx,...
+                rangeContrastTuples(ii,1),...
+                freqIdx,...
+                rangeContrastTuples(ii,2)}.presentTrial(demoTestParams(ii))
+        else
+            % Call for a regular trial
+            psychObjArray{...
+                directionIdx,...
+                rangeContrastTuples(ii,1),...
+                freqIdx,...
+                rangeContrastTuples(ii,2)}.presentTrial
+        end
     end
 
     % Report completion of this block
