@@ -57,8 +57,8 @@ for directionIdx = 1:length(modDirections)
                 nTrials = length(psychObj.questData.trialData);
 
                 % Get the proportion selected "test" the most recent
-                % sessionn (10 trials of each condition per session)
-                correct = [questData.trialData(end-9:end).correct];
+                % sessionn (20 trials of each condition per session)
+                correct = [questData.trialData(end-19:end).correct];
                 nCorrect = sum(correct);
                 totalCorrect = totalCorrect + nCorrect;
             end
