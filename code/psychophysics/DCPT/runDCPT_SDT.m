@@ -41,10 +41,10 @@ function runDCPT_SDT(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'DEMO_3';
-    NDlabel = '3x0';
-    collectEOGFlag = false;
-    runDCPT_SDT(subjectID,NDlabel,'collectEOGFlag',false);
+    subjectID = 'FLIC_1010';
+    NDlabel = '0x5';
+    collectEOGFlag = true;
+    runDCPT_SDT(subjectID,NDlabel,'collectEOGFlag',collectEOGFlag);
 %}
 
 % Parse the parameters
@@ -59,7 +59,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
-p.addParameter('nBlocks',14,@isnumeric);
+p.addParameter('nBlocks',28,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
@@ -334,7 +334,7 @@ for bb=1:nBlocks
     % to use
     if demoModeFlag
         demoTestParams = zeros(1,nTrialsPerBlock);
-        demoTestParams(1:floor(nTrialsPerBlock/2)) = 4;
+        demoTestParams(1:floor(nTrialsPerBlock/2)) = 5;
         demoTestParams = demoTestParams(randperm(nTrialsPerBlock));
     end
 
@@ -368,8 +368,8 @@ for bb=1:nBlocks
             % Grab the next psychObj
             psychObj = psychObjArray{directionIdx, rangeIdx, freqIdx, contrastIdx};
             % empty the CombiLEDObj and EOGControl handles and save the psychObj
-            psychObj.CombiLEDObjArr = {};
-            psychObj.EOGControl = {};
+%            psychObj.CombiLEDObjArr = {};
+%            psychObj.EOGControl = {};
             % Save the psychObj
             save(psychObj.filename,'psychObj');
         end

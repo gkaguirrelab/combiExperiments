@@ -3,11 +3,11 @@ function CalcDCPT_SDTDiscrimBonus(subjectID, refFreqSetHz, modDirections, target
 % % e.g.,
 %{
 
-    subjectID = 'HERO_sam';
+    subjectID = 'FLIC_1010';
     refFreqSetHz = logspace(log10(3),log10(20),7);
     modDirections = {'LightFlux'};
     targetPhotoContrast = [0.10; 0.30];  % [Low contrast levels; high contrast levels] 
-    NDLabel = {'3x0'};
+    NDLabel = {'0x5'};
     CalcDCPT_SDTDiscrimBonus(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
 %}
 
