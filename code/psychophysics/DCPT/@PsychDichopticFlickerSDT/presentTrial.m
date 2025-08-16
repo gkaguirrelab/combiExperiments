@@ -1,9 +1,13 @@
 function presentTrial(obj,forceTestParam)
 
-% Handle the nargin for forceTestParam. If the forceTestParam
-% is passed, then this value is used for the testParam for
-% the trial.
-if nargin == 1
+% Handle the nargin for forceTestParam. If the forceTestParam is passed,
+% then the closest value within stimParamsDomainList is used for the
+% testParam for the trial.
+if nargin == 2
+    stimParamsDomainList = obj.stimParamsDomainList;
+    [~,stimIdx] = min(abs(stimParamsDomainList-forceTestParam));
+    forceTestParam = stimParamsDomainList(stimIdx);
+else
     forceTestParam = [];
 end
 

@@ -316,11 +316,13 @@ for bb=1:nBlocks
     tuples = repmat(tuples,nReps,1);
     rangeContrastTuples = tuples(randperm(nTrialsPerBlock),:);
 
-    % Store the block start time
+    % Store the block start time and refresh the combiLED and EOG objects
     for rangeIdx = 1:nRanges
         for contrastIdx = 1:nContrasts
             blockStartTime = datetime();
             psychObjArray{directionIdx, rangeIdx, freqIdx, contrastIdx}.blockStartTimes(psychObjArray{directionIdx,rangeIdx,freqIdx, contrastIdx}.blockIdx) = blockStartTime;
+            psychObjArray{directionIdx, rangeIdx, freqIdx, contrastIdx}.CombiLEDObjArr = CombiLEDObjArr;
+            psychObjArray{directionIdx, rangeIdx, freqIdx, contrastIdx}.EOGControl = EOGControl;
         end
     end
 
@@ -330,11 +332,11 @@ for bb=1:nBlocks
     % profile (i.e., sinusoid), and trial duration.
     psychObjArray{directionIdx,rangeContrastTuples(1,1),freqIdx,rangeContrastTuples(1,2)}.initializeDisplay;
 
-    % If we are in demo mode, create a set of 0 and 4 dB testParam values
+    % If we are in demo mode, create a set of 0 and ~4 dB testParam values
     % to use
-    if demoModeFlag
+    if demoModeFlag        
         demoTestParams = zeros(1,nTrialsPerBlock);
-        demoTestParams(1:floor(nTrialsPerBlock/2)) = 5;
+        demoTestParams(1:floor(nTrialsPerBlock/2)) = 3.8177;
         demoTestParams = demoTestParams(randperm(nTrialsPerBlock));
     end
 
@@ -368,8 +370,8 @@ for bb=1:nBlocks
             % Grab the next psychObj
             psychObj = psychObjArray{directionIdx, rangeIdx, freqIdx, contrastIdx};
             % empty the CombiLEDObj and EOGControl handles and save the psychObj
-%            psychObj.CombiLEDObjArr = {};
-%            psychObj.EOGControl = {};
+           psychObj.CombiLEDObjArr = {};
+           psychObj.EOGControl = {};
             % Save the psychObj
             save(psychObj.filename,'psychObj');
         end
