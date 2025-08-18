@@ -41,10 +41,9 @@ function runDCPT_SDT(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'FLIC_1010';
+    subjectID = 'DEMO_2';
     NDlabel = '0x5';
-    collectEOGFlag = true;
-    runDCPT_SDT(subjectID,NDlabel,'collectEOGFlag',collectEOGFlag);
+    runDCPT_SDT(subjectID,NDlabel,'simulateMode',true);
 %}
 
 % Parse the parameters
@@ -336,7 +335,7 @@ for bb=1:nBlocks
     % to use
     if demoModeFlag        
         demoTestParams = zeros(1,nTrialsPerBlock);
-        demoTestParams(1:floor(nTrialsPerBlock/2)) = 3.8177;
+        demoTestParams(1:floor(nTrialsPerBlock/2)) = 4.3690;
         demoTestParams = demoTestParams(randperm(nTrialsPerBlock));
     end
 
