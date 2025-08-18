@@ -407,7 +407,8 @@ clear CombiLEDObjArr
 clear EOGControl
 
 % Tell participant the task is done
-ExperimentDone = load('handel');
-sound(ExperimentDone.y,ExperimentDone.Fs)
+sound(BlockDone.y, BlockDone.fs);           % Play the sound
+pause (0.26);
+sound(BlockDone.y2, BlockDone.fs);           % Play the sound
 
 end % function
