@@ -100,13 +100,15 @@ end
 % Present the stimuli
 if ~simulateStimuli
 
-    % Set the durations
+    % Define when the pre-puff period ends
+    stopTimeSeconds = cputime() + obj.prePuffLightSecs;
+
+    % Start the light pulse
+    obj.LightObj.startModulation;
+
+    % Set the puff durations
     obj.AirPuffObj.setDuration('L',obj.puffDurSecs*1000);
     obj.AirPuffObj.setDuration('R',obj.puffDurSecs*1000);
-
-    % Wait a variable amount of time for the inter-trial-interval
-    itiDur = min(itiRangeSecs)+range(itiRangeSecs)*rand();
-    stopTimeSeconds = cputime() + obj.isiSecs;
 
     % Prepare the stimuli for the first interval
     obj.AirPuffObj.setPressure('L',intervalParams(1,1));
@@ -187,6 +189,16 @@ else
     end
 end
 
+if ~simulateStimuli
+
+    % Wait a variable amount of time for the inter-trial-interval
+    itiDur = min(itiRangeSecs)+range(itiRangeSecs)*rand();
+    stopTimeSeconds = cputime() + obj.isiSecs;
+
+    % Finish waiting out the ITI
+    obj.waitUntil(stopTimeSeconds);
+
+end
 % Finish the line of text output
 if obj.verbose
     fprintf('\n');

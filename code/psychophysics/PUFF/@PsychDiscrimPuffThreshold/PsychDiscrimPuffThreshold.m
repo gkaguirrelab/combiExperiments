@@ -26,8 +26,10 @@ classdef PsychDiscrimPuffThreshold < handle
         staircaseRule
         stimParamsDomainList
         psiParamsDomainList
+        lightPulseContrast
         refPuffPSI
         puffDurSecs;
+        prePuffLightSecs
         itiRangeSecs;
         isiSecs = 1.0;
     end
@@ -72,8 +74,9 @@ classdef PsychDiscrimPuffThreshold < handle
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',false,@islogical);            
             p.addParameter('staircaseRule',[1,3],@isnumeric);
-            p.addParameter('lightPulseContrast',1.0,@isnumeric);
+            p.addParameter('lightPulseContrast',0.5,@isnumeric);
             p.addParameter('puffDurSecs',0.33,@isnumeric);
+            p.addParameter('prePuffLightSecs',3,@isnumeric);
             p.addParameter('itiRangeSecs',[1,1.5],@isnumeric);
             p.addParameter('simulatePsiParams',[0,0.5],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,3,15),@isnumeric);
@@ -93,7 +96,9 @@ classdef PsychDiscrimPuffThreshold < handle
             obj.giveFeedback = p.Results.giveFeedback;
             obj.useStaircase = p.Results.useStaircase;
             obj.staircaseRule = p.Results.staircaseRule;
+            obj.lightPulseContrast = p.Results.lightPulseContrast;            
             obj.puffDurSecs = p.Results.puffDurSecs;
+            obj.prePuffLightSecs = p.Results.prePuffLightSecs;            
             obj.itiRangeSecs = p.Results.itiRangeSecs;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
             obj.stimParamsDomainList = p.Results.stimParamsDomainList;
@@ -127,7 +132,7 @@ classdef PsychDiscrimPuffThreshold < handle
             obj.initializeQP;
 
             % Initialize the CombiLED
-%            obj.initializeDisplay;
+            obj.initializeDisplay;
 
         end
 
