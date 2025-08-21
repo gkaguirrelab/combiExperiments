@@ -8,7 +8,7 @@ end
 
 % Ensure that the CombiLED is configured to present our stimuli
 % properly (if we are not simulating the stimuli)
-if ~obj.simulateMode
+if ~obj.simulateStimuli
 
     % Alert the user
     if obj.verbose

@@ -15,8 +15,10 @@ classdef PsychDiscrimPuffThreshold < handle
     % Calling function can see, but not modify
     properties (SetAccess=private)
         maxAllowedPressurePSI = 45;
+        maxAllowedRefPSIPerSec = 1;
         modResult
         questData
+        stimParamSide
         simulatePsiParams
         simulateResponse
         simulateStimuli
@@ -27,6 +29,7 @@ classdef PsychDiscrimPuffThreshold < handle
         refPuffPSI
         puffDurSecs;
         itiRangeSecs;
+        isiSecs = 1.0;
     end
 
     % These may be modified after object creation
@@ -63,18 +66,19 @@ classdef PsychDiscrimPuffThreshold < handle
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
+            p.addParameter('stimParamSide','hi',@ischar); % {'hi','low'}
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
             p.addParameter('useStaircase',false,@islogical);            
             p.addParameter('staircaseRule',[1,3],@isnumeric);
             p.addParameter('lightPulseContrast',1.0,@isnumeric);
-            p.addParameter('puffDurSecs',0.150,@isnumeric);
+            p.addParameter('puffDurSecs',0.33,@isnumeric);
             p.addParameter('itiRangeSecs',[1,1.5],@isnumeric);
             p.addParameter('simulatePsiParams',[0,0.5],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(0,2,51),@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(0,3,15),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,3,51)},@isnumeric);
+                {linspace(0,0,1),linspace(0,3,15)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -83,6 +87,7 @@ classdef PsychDiscrimPuffThreshold < handle
             obj.LightObj = LightObj;
             obj.refPuffPSI = refPuffPSI;
             obj.modResult = modResult;
+            obj.stimParamSide = p.Results.stimParamSide;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;
@@ -103,9 +108,15 @@ classdef PsychDiscrimPuffThreshold < handle
 
             % Check that the max required pressure is within the safety
             % range
-            maxPressurePSI = refPuffPSI * db2pow(max(obj.stimParamsDomainList));
+            maxPressurePSI = obj.refPuffPSI * db2pow(max(obj.stimParamsDomainList));
             if maxPressurePSI > obj.maxAllowedPressurePSI
                 warning('Measurements will be limited by max allowed pressure');
+            end
+
+            % Check that the PSI * stimulus duration is not greater than
+            % maxAllowedRefPSIPerSec
+            if obj.refPuffPSI*obj.puffDurSecs > obj.maxAllowedRefPSIPerSec
+                error('The PSI * duration of the reference stimulus exceeds the safety limit');
             end
 
             % Initialize the blockStartTimes field
@@ -116,7 +127,7 @@ classdef PsychDiscrimPuffThreshold < handle
             obj.initializeQP;
 
             % Initialize the CombiLED
-            obj.initializeDisplay;
+%            obj.initializeDisplay;
 
         end
 

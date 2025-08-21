@@ -12,9 +12,9 @@ stimParamsDomainList = obj.stimParamsDomainList;
 nTrials = length(obj.questData.trialData);
 
 % Get the Max Likelihood psi params, temporarily turning off verbosity.
-% Also, lock the mu parameter to be zero.
-lb = [0,min(obj.psiParamsDomainList{2})];
-ub = [0,max(obj.psiParamsDomainList{2})];
+lb = cellfun(@(x) min(x),obj.psiParamsDomainList);
+ub = cellfun(@(x) max(x),obj.psiParamsDomainList);
+ub(2) = 10; % we forgot to update psiParamsDomainList oops
 storeVerbose = obj.verbose;
 obj.verbose = false;
 [~, psiParamsFit] = obj.reportParams('lb',lb,'ub',ub);
@@ -48,6 +48,7 @@ for cc = 1:length(stimCounts)
     pSelectTest(cc) = stimCounts(cc).outcomeCounts(2)/nTrials(cc);
 end
 
+
 % Plot these
 markerSizeIdx = discretize(nTrials,3);
 markerSizeSet = [25,50,100];
@@ -74,7 +75,7 @@ plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 % Labels and range
 ylim([-0.1 1.1]);
 xlabel('stimulus difference [dB]')
-ylabel('proportion pick test as faster');
+ylabel('proportion correct')
 title('Psychometric function');
 
 % Entropy by trial
@@ -86,7 +87,7 @@ ylabel('entropy');
 title('Entropy by trial number')
 
 % Add a supertitle
-str = sprintf('Ref freq = %d Hz; [mu, sigma] = [%2.3f,%2.3f]',...
+str = sprintf('Ref freq = %d Hz; [μ,σ,λ] = [%2.3f,%2.3f,%2.3f]',...
     obj.refPuffPSI,psiParamsFit);
 sgtitle(str);
 

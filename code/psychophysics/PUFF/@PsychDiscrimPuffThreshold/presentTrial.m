@@ -23,46 +23,54 @@ itiDur = []; % Define this in case we are in simulate mode
 % Get the stimParam to use for this trial. Can use either a staircase or
 % QUEST+
 if obj.useStaircase
-    stimParam = obj.staircase(currTrialIdx);
+    testParam = obj.staircase(currTrialIdx);
 else
-    stimParam = qpQuery(questData);
+    testParam = qpQuery(questData);
 end
 
 % The difference between the reference and test frequency is given by the
-% qpStimParam, which is in units of decibels
-testPuffPSI = refPuffPSI * db2pow(stimParam);
+% testParam, which is in units of decibels. The stimParamSide setting tells
+% us if we are setting the test frequency higher or lower than the ref.
+switch obj.stimParamSide
+    case 'hi'
+        testPuffPSI = refPuffPSI * db2pow(testParam);
+    case 'low'
+        testPuffPSI = refPuffPSI / db2pow(testParam);
+    otherwise
+        error('not a valid stimParamSide setting')
+end
 
 % If the testPuffPSI is great than the maximum allowed PSI value, adjust
 % the stimParam to stay within the max allowed
 if testPuffPSI > obj.maxAllowedPressurePSI
-    stimParam = pow2db(45 / refPuffPSI);
-    testPuffPSI = refPuffPSI * db2pow(stimParam);
+    maxStimParam = pow2db(obj.maxAllowedPressurePSI / refPuffPSI);
+    [~,idx]=find(obj.stimParamsDomainList<maxStimParam,1,"last");
+    testParam = obj.stimParamsDomainList(idx);
+    testPuffPSI = refPuffPSI * db2pow(testParam);
+    warning('test param reduced to be within allowed safety range');
 end
 
 % Assemble the param sets
-testParams = [puffDurSecs,testPuffPSI];
-refParams = [puffDurSecs,refPuffPSI];
+testParams = [testPuffPSI,puffDurSecs];
+refParams = [refPuffPSI,puffDurSecs];
 
-% Give labels to the sides
-sides = {'L','R'};
-
-% Randomly assign the stimuli to the sides [L,R]
+% Randomly assign the stimuli the first or second interval
 switch 1+logical(round(rand()))
     case 1
-        sideParams(1,:) = testParams;
-        sideParams(2,:) = refParams;
-        testSide = 1;
+        intervalParams(1,:) = testParams;
+        intervalParams(2,:) = refParams;
+        testInterval = 1;
     case 2
-        sideParams(1,:) = refParams;
-        sideParams(2,:) = testParams;
-        testSide = 2;
+        intervalParams(1,:) = refParams;
+        intervalParams(2,:) = testParams;
+        testInterval = 2;
     otherwise
-        error('Not a valid testSide')
+        error('Not a valid interval')
 end
 
 % Note which side contains the more intense stimulus, which is used for
 % feedback
-[~,moreIntenseSide] = max(sideParams(:,2));
+[~,moreIntenseInterval] = max(intervalParams(:,1));
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
@@ -86,58 +94,68 @@ audioObjs.bad = audioplayer(badSound,Fs);
 % Handle verbosity
 if obj.verbose
     fprintf('Trial %d; Pressure PSI [%2.2f, %2.2f PSI]...', ...
-        currTrialIdx,sideParams(1,2),sideParams(2,2));
+        currTrialIdx,intervalParams(1,1),intervalParams(2,1));
 end
 
 % Present the stimuli
 if ~simulateStimuli
 
-    % Alert the subject the trial is about to start and set a timer to
-    % delay by a variable amount defined by itiRangeSecs
-    audioObjs.low.play;
+    % Set the durations
+    obj.AirPuffObj.setDuration('L',obj.puffDurSecs*1000);
+    obj.AirPuffObj.setDuration('R',obj.puffDurSecs*1000);
+
+    % Wait a variable amount of time for the inter-trial-interval
     itiDur = min(itiRangeSecs)+range(itiRangeSecs)*rand();
-    stopTimeSeconds = cputime() + itiDur;
+    stopTimeSeconds = cputime() + obj.isiSecs;
 
-    % Prepare the stimuli
-    for ss = 1:length(sides)
-        obj.AirPuffObj.setDuration(sides{ss},sideParams(ss,1)*1000);
-        pause(0.2);
-        obj.AirPuffObj.setPressure(sides{ss},sideParams(ss,2));
-        pause(0.2);
-    end
+    % Prepare the stimuli for the first interval
+    obj.AirPuffObj.setPressure('L',intervalParams(1,1));
+    obj.AirPuffObj.setPressure('R',intervalParams(1,1));
 
-    % Wait until the stop time
     obj.waitUntil(stopTimeSeconds);
+    
+    % Define the duration of the first interval
+    stopTimeSeconds = cputime() + obj.isiSecs;
+
+    % Play the first interval sound
+    audioObjs.low.play;
 
     % Simultaneous, bilateral puff
     obj.AirPuffObj.triggerPuff('ALL');
 
-    % Response time out
-    stopTimeSeconds = cputime() + 0.5;
+    % Pause for the duration of the puff
+    pause(obj.puffDurSecs);
+
+    % Prepare the stimuli for the second interval
+    obj.AirPuffObj.setPressure('L',intervalParams(2,1));
+    obj.AirPuffObj.setPressure('R',intervalParams(2,1));
+
+    % Finish waiting out the first interval
     obj.waitUntil(stopTimeSeconds);
+
+    % Play the second interval tone tone
+    audioObjs.mid.play;
+
+    % Simultaneous, bilateral puff
+    obj.AirPuffObj.triggerPuff('ALL');
+
 end
 
 % Start the response interval
 if ~simulateResponse
     FlushEvents
-    [sideChoice, responseTimeSecs] = obj.getResponse();
+    [intervalChoice, responseTimeSecs] = obj.getResponse();
 else
-    sideChoice = obj.getSimulatedResponse(stimParam,testSide);
+    intervalChoice = obj.getSimulatedResponse(testParam,testInterval);
     responseTimeSecs = nan;
 end
 
-% Determine if the subject has selected the ref or test side
-if sideChoice == testSide
-    outcome = 2;
-else
-    outcome = 1;
-end
-
-% Determine if the subject has selected the more intense side and handle
-% audio feedback
-if sideChoice==moreIntenseSide
+% Determine if the subject has selected the more intense interval and
+% handle audio feedback
+if intervalChoice==moreIntenseInterval
     % Correct
     correct = true;
+    outcome = 2;
     if obj.verbose
         fprintf('correct');
     end
@@ -151,6 +169,7 @@ if sideChoice==moreIntenseSide
 else
     % incorrect
     correct = false;
+    outcome = 1;
     if obj.verbose
         fprintf('incorrect');
     end
@@ -174,11 +193,11 @@ if obj.verbose
 end
 
 % Update questData
-questData = qpUpdate(questData,stimParam,outcome);
+questData = qpUpdate(questData,testParam,outcome);
 
 % Add in the stimulus information
-questData.trialData(currTrialIdx).testSide = testSide;
-questData.trialData(currTrialIdx).moreIntenseSide = moreIntenseSide;
+questData.trialData(currTrialIdx).testInterval = testInterval;
+questData.trialData(currTrialIdx).moreIntenseInterval = moreIntenseInterval;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).itiDur = itiDur;
 questData.trialData(currTrialIdx).correct = correct;
