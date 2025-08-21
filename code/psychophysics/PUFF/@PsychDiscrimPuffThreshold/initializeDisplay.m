@@ -15,13 +15,11 @@ if ~obj.simulateStimuli
         fprintf('Initializing CombiLEDObj\n')
     end
 
-    pulseDuration = obj.prePuffLightSecs + obj.isiSecs + 0.5;
-
     obj.LightObj.setSettings(obj.modResult);
     obj.LightObj.setUnimodal();
     obj.LightObj.setWaveformIndex(2); % square-wave
     obj.LightObj.setFrequency(1/1000);
-    obj.LightObj.setDuration(pulseDuration);
+    obj.LightObj.setDuration(obj.lightPulseDuration);
     obj.LightObj.setPhaseOffset(pi);
     obj.LightObj.setRampIndex(1); % half-cosine windowing
     obj.LightObj.setRampDuration(0.5);

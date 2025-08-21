@@ -12,22 +12,21 @@ function generateModResultsForPUFF(subjectID,observerAgeInYears,varargin)
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
+p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','puffLight',@ischar);
-p.addParameter('primaryHeadRoom',0.05,@isnumeric); % Leave some space for nulling
+p.addParameter('experimentName','DSCM',@ischar);
+p.addParameter('primaryHeadRoom',0.05,@isnumeric);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
 primaryHeadRoom = p.Results.primaryHeadRoom;
 
-% Define our DropBox subdirectory and cal file subdirectory
-dropBoxSubDir = 'BLNK_data';
-calSubDir = 'PUFF';
-
 % The diameter of the stimulus field in degrees
 fieldSizeDeg = 30;
 
 % Define the calibration files
-calFileName = 'tempFakeCalFile.mat';
+calSubDir = 'DCPT';
+calFileName = 'CombiLED-C_irFilter-C_cassette-C_ND0_classicEyePiece-C.mat';
 
 % The directions for which we will create modulations
 modulationDirections = {'Mel','LightFlux'};
@@ -55,33 +54,35 @@ for dd = 1:length(modulationDirections)
 
     % Create the modulation
     whichDirection = modulationDirections{dd};
-    if dd == 1
-        modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
-            'primaryHeadRoom',primaryHeadRoom,'searchBackground',true);
-    else
-        modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
-            'primaryHeadRoom',0);
+    switch whichDirection
+        case 'Mel'
+            modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
+                'primaryHeadRoom',primaryHeadRoom,'searchBackground',true);
+        case 'LightFlux'
+            modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
+                'primaryHeadRoom',0);
     end
     figHandle = plotModResult(modResults{dd});
     drawnow
 
     % Define the data directory
-    modDir = fullfile(...
+    dataDir = fullfile(...
         p.Results.dropBoxBaseDir,...
-        dropBoxSubDir,...,
+        p.Results.dropBoxSubDir,...,
         p.Results.projectName,...
-        subjectID,whichDirection);
+        p.Results.experimentName,...
+        subjectID);
 
-    % Create the modDir for the subject
-    if ~isfolder(modDir)
-        mkdir(modDir)
+    % Create the dataDir for the subject
+    if ~isfolder(dataDir)
+        mkdir(dataDir)
     end
 
     % Save the mod result and plot
-    filename = fullfile(modDir,'modResult.mat');
+    filename = fullfile(dataDir,['modResult_' whichDirection '.mat']);
     modResult = modResults{dd};
     save(filename,'modResult');
-    filename = fullfile(modDir,'modResult.pdf');
+    filename = fullfile(dataDir,['modResult_' whichDirection '.pdf']);
     saveas(figHandle,filename,'pdf')
     close(figHandle)
 

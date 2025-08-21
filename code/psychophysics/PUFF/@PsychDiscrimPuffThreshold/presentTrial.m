@@ -20,13 +20,8 @@ puffDurSecs = obj.puffDurSecs;
 itiRangeSecs = obj.itiRangeSecs;
 itiDur = []; % Define this in case we are in simulate mode
 
-% Get the stimParam to use for this trial. Can use either a staircase or
-% QUEST+
-if obj.useStaircase
-    testParam = obj.staircase(currTrialIdx);
-else
-    testParam = qpQuery(questData);
-end
+% Get the stimParam to use for this trial.
+testParam = qpQuery(questData);
 
 % The difference between the reference and test frequency is given by the
 % testParam, which is in units of decibels. The stimParamSide setting tells
@@ -48,6 +43,10 @@ if testPuffPSI > obj.maxAllowedPressurePSI
     testParam = obj.stimParamsDomainList(idx);
     testPuffPSI = refPuffPSI * db2pow(testParam);
     warning('test param reduced to be within allowed safety range');
+end
+
+if testParam == 0
+    foo=1;
 end
 
 % Assemble the param sets
@@ -93,8 +92,8 @@ audioObjs.bad = audioplayer(badSound,Fs);
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Pressure PSI [%2.2f, %2.2f PSI]...', ...
-        currTrialIdx,intervalParams(1,1),intervalParams(2,1));
+    fprintf('Trial %d; Pulse contrast [%2.2f]; Puff duration [%2.2f]; Pressure PSI [%2.2f, %2.2f PSI]...', ...
+        currTrialIdx,obj.lightPulseContrast,obj.puffDurSecs,intervalParams(1,1),intervalParams(2,1));
 end
 
 % Present the stimuli
@@ -103,6 +102,12 @@ if ~simulateStimuli
     % Define when the pre-puff period ends
     stopTimeSeconds = cputime() + obj.prePuffLightSecs;
 
+    % Set the stimulus contrast and duration. These were set when the
+    % object was initialized, but we re-set now just in case a different
+    % object changed them
+    obj.LightObj.setContrast(obj.lightPulseContrast);
+    obj.LightObj.setDuration(obj.lightPulseDuration);
+    
     % Start the light pulse
     obj.LightObj.startModulation;
 

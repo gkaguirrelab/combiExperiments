@@ -23,10 +23,10 @@ classdef PsychDiscrimPuffThreshold < handle
         simulateResponse
         simulateStimuli
         giveFeedback
-        staircaseRule
         stimParamsDomainList
         psiParamsDomainList
         lightPulseContrast
+        lightPulseDuration
         refPuffPSI
         puffDurSecs;
         prePuffLightSecs
@@ -46,10 +46,6 @@ classdef PsychDiscrimPuffThreshold < handle
         % the psychometric object, update this handle, and then continue
         % to collect data 
         LightObj
-
-        % Can switch between using a staircase and QUEST+ to select the
-        % next trial
-        useStaircase
 
         % Assign a filename which is handy for saving and loading
         filename
@@ -72,8 +68,6 @@ classdef PsychDiscrimPuffThreshold < handle
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('useStaircase',false,@islogical);            
-            p.addParameter('staircaseRule',[1,3],@isnumeric);
             p.addParameter('lightPulseContrast',0.5,@isnumeric);
             p.addParameter('puffDurSecs',0.33,@isnumeric);
             p.addParameter('prePuffLightSecs',3,@isnumeric);
@@ -94,8 +88,6 @@ classdef PsychDiscrimPuffThreshold < handle
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;
-            obj.useStaircase = p.Results.useStaircase;
-            obj.staircaseRule = p.Results.staircaseRule;
             obj.lightPulseContrast = p.Results.lightPulseContrast;            
             obj.puffDurSecs = p.Results.puffDurSecs;
             obj.prePuffLightSecs = p.Results.prePuffLightSecs;            
@@ -128,6 +120,9 @@ classdef PsychDiscrimPuffThreshold < handle
             obj.blockStartTimes(1) = datetime();
             obj.blockStartTimes(1) = [];
 
+            % Define the duration of the light pulse
+            obj.lightPulseDuration = obj.prePuffLightSecs + obj.isiSecs + 0.5;
+
             % Initialize Quest+
             obj.initializeQP;
 
@@ -140,7 +135,6 @@ classdef PsychDiscrimPuffThreshold < handle
         initializeQP(obj)
         initializeDisplay(obj)
         presentTrial(obj)
-        stimParam = staircase(obj,currTrialIdx);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         [intervalChoice, responseTimeSecs] = getResponse(obj);
         waitUntil(obj,stopTimeSeconds)
