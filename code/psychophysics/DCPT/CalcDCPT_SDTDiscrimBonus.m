@@ -1,25 +1,24 @@
-function CalcDCPTDiscrimBonus(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
+function CalcDCPT_SDTDiscrimBonus(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
 % % Function to calculate the bonus for the most recent session (200 trials)  
 % % e.g.,
 %{
 
-    subjectID = 'HERO_kik';
-    refFreqSetHz = [3.0000, 4.8206, 7.746, 12.4467, 20.0000];
-    modDirections = {'LminusM_wide' 'LightFlux'};
-    targetPhotoContrast = [0.025, 0.10; 0.075, 0.30];  % [Low contrast levels; high contrast levels] 
-            % L minus M is [0.025, 0.075] and Light Flux is [0.10, 0.30]
+    subjectID = 'FLIC_1010';
+    refFreqSetHz = logspace(log10(3),log10(20),7);
+    modDirections = {'LightFlux'};
+    targetPhotoContrast = [0.10; 0.30];  % [Low contrast levels; high contrast levels] 
     NDLabel = {'0x5'};
-    CalcDCPTDiscrimBonus(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
+    CalcDCPT_SDTDiscrimBonus(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
 %}
 
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir='FLIC_data';
 projectName='combiLED';
-experimentName = 'DCPT';
+experimentName = 'DCPT_SDT';
 
 % Set the labels for the high and low stimulus ranges
 stimParamLabels = {'low', 'hi'};
-modDirectionsLabels = {'LminusM', 'LightFlux'}; % to be used only for the title
+modDirectionsLabels = {'LightFlux'}; % to be used only for the title
 
 % Set number of contrast levels and sides
 nContrasts = 2;
@@ -32,7 +31,7 @@ subjectDir = fullfile(...
     projectName,...
     subjectID);
 
-%% Plot the full psychometric functions
+%% calculate percent correct and bonus in a series of nested loops
 totalCorrect = 0;
 
 for directionIdx = 1:length(modDirections)
@@ -58,9 +57,8 @@ for directionIdx = 1:length(modDirections)
                 nTrials = length(psychObj.questData.trialData);
 
                 % Get the proportion selected "test" the most recent
-                % sessionn (5 trials of each condition per session)
-                %correct = [questData.trialData(end-4:end).correct];
-                correct = [questData.trialData(1:5).correct];
+                % sessionn (20 trials of each condition per session)
+                correct = [questData.trialData(end-19:end).correct];
                 nCorrect = sum(correct);
                 totalCorrect = totalCorrect + nCorrect;
             end

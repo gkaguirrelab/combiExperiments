@@ -71,7 +71,8 @@ p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('stimParams',linspace(0,6.75,51),@isnumeric);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
 p.addParameter('nBlocks',10,@isnumeric);
-p.addParameter('useStaircase',false,@islogical);
+p.addParameter('useStaircase',true,@islogical);
+p.addParameter('stairCaseStartDb',1,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
@@ -103,8 +104,9 @@ stimParamSide = {'hi','low'};
 % Define some basic trial type quantities
 nSides = 2;
 nFreqs = length(refFreqHz);
-nConstrasts = size(targetPhotoContrast,1);
+nContrasts = size(targetPhotoContrast,1);
 nRanges = length(stimParamSide);
+nTrialsPerCondition = nBlocks*nTrialsPerBlock / (length(modDirections)*nFreqs*nRanges*nContrasts);
 
 % Set a random seed
 rng('shuffle');
@@ -214,10 +216,10 @@ for bb=1:nBlocks
     % Assemble the psychObj array, looping over the high and low range of
     % the discrimination function AND the reference frequencies AND the
     % contrast
-    psychObjArray = cell(nRanges,nFreqs,nConstrasts);
+    psychObjArray = cell(nRanges,nFreqs,nContrasts);
     for rangeIdx = 1:nRanges
         for freqIdx = 1:nFreqs
-            for contrastIdx = 1:nConstrasts
+            for contrastIdx = 1:nContrasts
 
                 % Define the filestem for this psychometric object
                 dataDir = fullfile(subjectDir,[modDirections{directionIdx} '_ND' NDlabel, '_shifted'],experimentName);
@@ -231,8 +233,23 @@ for bb=1:nBlocks
                 if isfile(psychObjFilename)
                     % Load the object
                     load(psychObjFilename,'psychObj');
-                    % Update the path to the file in case this has changed
-                    psychObj.filename = psychObjFilename;
+                    % Handle the possibility that the psychObj file has
+                    % been moved
+                    if ~strcmp(psychObj.filename, psychObjFilename) % file name is different from what is in the object
+                        warning('File name stored in psychObj does not match generated filename. Overwriting stored filename to match.')
+                        % Update the path to the file in case this has changed
+                        psychObj.filename = psychObjFilename;
+                    end
+                    % After starting data collection we changed the form
+                    % of the psychometric function. This happened mid-data
+                    % collection for one participant. Here we update the
+                    % function and psiParams domain, and issues a warning.
+                    if ~strcmp(char(psychObj.psychometricFuncHandle),'qpCumulativeNormalShifted')
+                        warning('Updating the psychometric function to qpCumulativeNormalShifted.');
+                        psychObj.psychometricFuncHandle = @qpCumulativeNormalShifted;
+                        psychObj.questData.qpPF = @qpCumulativeNormalShifted;
+                        psychObj.psiParamsDomainList{1} = linspace(0,5,25);
+                    end                   
                     % Put in the fresh CombiLEDObjs
                     psychObj.CombiLEDObjArr = CombiLEDObjArr;
                     % Put in the fresh EOGFlag
@@ -246,12 +263,27 @@ for bb=1:nBlocks
                     % Increment blockIdx
                     psychObj.blockIdx = psychObj.blockIdx+1;
                     psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
-                    % Update the useStaircase flag in case this has changed
-                    psychObj.useStaircase = useStaircase;
                     % Update the simulateMode in case this has changed
                     psychObj.simulateMode = simulateMode;
                     % Update the keyboard flag
                     psychObj.useKeyboardFlag = useKeyboardFlag;
+                    % Decide whether to use staircase or Quest+ based on
+                    % number of sessions completed
+                    % If less than 3 sessions completed, want staircase
+                    % 3 sessions = 15 trials/cond in the current version
+                    sessionsCompleted = length(psychObj.questData.trialData) / nTrialsPerCondition;
+                    if sessionsCompleted < 3
+                        psychObj.useStaircase = true;
+                        if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1  % Print staircase status for 1st psychObj only
+                            fprintf('Using staircase: %d\n', psychObj.useStaircase);
+                        end
+                    else
+                        psychObj.useStaircase = false;
+                        if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1
+                            fprintf('Using staircase: %d\n', psychObj.useStaircase);
+                        end
+                    end
+
                 else
                     % Create the object
                     psychObj = PsychDichopticFlickerDiscrim(...
@@ -266,6 +298,11 @@ for bb=1:nBlocks
                         'useKeyboardFlag',useKeyboardFlag);
                     % Store the filename
                     psychObj.filename = psychObjFilename;
+                    % Double check that the staircase is set to true for 1st psychObj
+                    if rangeIdx == 1 && freqIdx == 1 && contrastIdx == 1
+                        fprintf('Using staircase: %d\n', psychObj.useStaircase);
+                    end
+
                 end
 
                 % Store in the psychObjArray
@@ -298,13 +335,13 @@ for bb=1:nBlocks
 
     % Assert that we have a sufficient number of trials per block to
     % present every stimulus type an equal and integer number of times
-    assert(mod(nTrialsPerBlock,nRanges*nFreqs*nConstrasts)==0);
+    assert(mod(nTrialsPerBlock,nRanges*nFreqs*nContrasts)==0);
 
     % Create a random ordering of the three stimulus crossings (high and
     % low range, frequencies, contrast levels)
-    nReps = nTrialsPerBlock / (nRanges*nFreqs*nConstrasts);
-    triplets = zeros(nRanges*nFreqs*nConstrasts,3);
-    [a,b,c] = ndgrid(1:nRanges,1:nFreqs,1:nConstrasts);
+    nReps = nTrialsPerBlock / (nRanges*nFreqs*nContrasts);
+    triplets = zeros(nRanges*nFreqs*nContrasts,3);
+    [a,b,c] = ndgrid(1:nRanges,1:nFreqs,1:nContrasts);
     triplets(:,1) = a(:); triplets(:,2) = b(:); triplets(:,3) = c(:);
     triplets = repmat(triplets,nReps,1);
     permutedTriplets = triplets(randperm(nTrialsPerBlock),:);
@@ -312,7 +349,7 @@ for bb=1:nBlocks
     % Store the block start time
     for rangeIdx = 1:nRanges
         for freqIdx = 1:nFreqs
-            for contrastIdx = 1:nConstrasts
+            for contrastIdx = 1:nContrasts
                 blockStartTime = datetime();
                 psychObjArray{rangeIdx, freqIdx, contrastIdx}.blockStartTimes(psychObjArray{rangeIdx,freqIdx, contrastIdx}.blockIdx) = blockStartTime;
             end
@@ -334,7 +371,7 @@ for bb=1:nBlocks
     % Store the psychObjArray entries
     for rangeIdx = 1:nRanges
         for freqIdx = 1:nFreqs
-            for contrastIdx = 1:nConstrasts
+            for contrastIdx = 1:nContrasts
                 % Grab the next psychObj
                 psychObj = psychObjArray{rangeIdx, freqIdx, contrastIdx};
                 % empty the CombiLEDObj and EOGControl handles and save the psychObj
@@ -378,6 +415,6 @@ clear EOGControl
 ExperimentDone = load('handel');
 sound(ExperimentDone.y,ExperimentDone.Fs)
 
-CalcDCPTDiscrimBonus(subjectID, refFreqHz, modDirections, targetPhotoContrast, NDLabel);
+CalcDCPTDiscrimBonus(subjectID, refFreqHz, modDirections, targetPhotoContrast, NDlabel);
 
 end % function

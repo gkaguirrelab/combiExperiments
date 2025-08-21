@@ -30,7 +30,8 @@ relativePhotoContrastCorrection = obj.relativePhotoContrastCorrection;
 % Get the testParam to use for this trial. Can use either a staircase or
 % QUEST+
 if obj.useStaircase
-    testParam = obj.staircase(currTrialIdx);
+    stairCaseStartDb = obj.stairCaseStartDb;
+    testParam = obj.staircase(currTrialIdx, stairCaseStartDb);
 else
     testParam = qpQuery(questData);
 end

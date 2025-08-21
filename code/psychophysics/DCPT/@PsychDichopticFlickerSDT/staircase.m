@@ -1,4 +1,4 @@
-function stimParam = staircase(obj,currTrialIdx)
+function stimParam = staircase(obj,currTrialIdx, stairCaseStartDb)
 % Implement a typical staircase procedure for selecting the next stimulus
 % parameter. For example, the stimulus level is increased by one step if
 % the observer makes one mistake (1 up) and is decreased by one step if the
@@ -20,10 +20,20 @@ sortedStimParamsDomainList = stimParamsDomainList(sortOrder);
 % Get the trialData
 trialData = obj.questData.trialData;
 
-% If we are on the first trial, use a starting point that is 1/4 from the
-% most intense option in the sortedStimParamsDomainList
+% % If we are on the first trial, use a starting point that is 1/4 from the
+% % most intense option in the sortedStimParamsDomainList
+% if currTrialIdx==1
+%     stimIdx = round(length(sortedStimParamsDomainList)*0.25);
+%     stimParam = sortedStimParamsDomainList(stimIdx);
+%     return
+% end
+
 if currTrialIdx==1
-    stimIdx = round(length(sortedStimParamsDomainList)*0.25);
+    % find the stimulus value in the domain list that is closest to the
+    % stairCaseStartDb setting and make that the stimParam for the first
+    % trial
+    difs = sortedStimParamsDomainList - stairCaseStartDb;
+    [minVal stimIdx]= min(abs(difs));
     stimParam = sortedStimParamsDomainList(stimIdx);
     return
 end

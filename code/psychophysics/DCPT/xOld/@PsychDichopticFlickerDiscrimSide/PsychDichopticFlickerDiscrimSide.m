@@ -10,7 +10,7 @@
 % corresponds to being 50% accurate when there is no physical difference
 % between the stimuli.
 
-classdef PsychDichopticFlickerDiscrim < handle
+classdef PsychDichopticFlickerDiscrimSide < handle
 
     properties (Constant)
     end
@@ -23,14 +23,11 @@ classdef PsychDichopticFlickerDiscrim < handle
     properties (SetAccess=private)
         modResultArr
         relativePhotoContrastCorrection
-        questData
         simulatePsiParams
         giveFeedback
         staircaseRule % [nUp, nDown]
-        psychometricFuncHandle
         psiParamLabels
         stimParamsDomainList
-        psiParamsDomainList
         refFreqHz
         refPhotoContrast
         refModContrast
@@ -61,6 +58,9 @@ classdef PsychDichopticFlickerDiscrim < handle
         % next trial
         useStaircase
 
+        % To set the staircase start value
+        stairCaseStartDb
+
         % Can switch between simulating and not simulating
         simulateMode
 
@@ -75,12 +75,28 @@ classdef PsychDichopticFlickerDiscrim < handle
         % Choose between keyboard and gamepad
         useKeyboardFlag
 
+        %% The set of parameters below are modifiable as we wished to
+        %% update the properties of a psychometric object for one subject
+        %% after data collection had begun.
+
+        % The range of psychometric function parameter values that QUEST+
+        % will consider
+        psiParamsDomainList
+
+        % The psychometric function used to guide QUEST+
+        psychometricFuncHandle
+
+        % The parameters of the QUEST+ object, and the accumulated trial
+        % data
+        questData
+
+
     end
 
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerDiscrim(CombiLEDObjArr, modResultArr, EOGControl, EOGFlag, refFreqHz,varargin)
+        function obj = PsychDichopticFlickerDiscrimSide(CombiLEDObjArr, modResultArr, EOGControl, EOGFlag, refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -88,18 +104,19 @@ classdef PsychDichopticFlickerDiscrim < handle
             p.addParameter('refPhotoContrast',0.1,@isnumeric);
             p.addParameter('testPhotoContrast',0.1,@isnumeric);
             p.addParameter('stimDurSecs',3,@isnumeric);
-            p.addParameter('isiSecs',0.75,@isnumeric);
+            p.addParameter('isiSecs',0.5,@isnumeric);
             p.addParameter('rampDurSecs', 0.5,@isnumeric);
             p.addParameter('simulateMode',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('useStaircase',true,@islogical);            
+            p.addParameter('useStaircase',true,@islogical);
+            p.addParameter('stairCaseStartDb',1,@isnumeric);
             p.addParameter('staircaseRule',[1,3],@isnumeric);
-            p.addParameter('psychometricFuncHandle',@qpCumulativeNormalLapse,@ishandle);
+            p.addParameter('psychometricFuncHandle',@qpCumulativeNormalShifted,@ishandle);
             p.addParameter('psiParamLabels',{'μ','σ','λ'},@iscell);
             p.addParameter('simulatePsiParams',[0,2,0.00],@isnumeric);
             p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,6.75,51),linspace(0,0,1)},@isnumeric);
+                {linspace(0,5,25),linspace(0,6.75,51),linspace(0,0,1)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.addParameter('useKeyboardFlag',false,@islogical);
             p.parse(varargin{:})
@@ -119,6 +136,7 @@ classdef PsychDichopticFlickerDiscrim < handle
             obj.simulateMode = p.Results.simulateMode;
             obj.giveFeedback = p.Results.giveFeedback;
             obj.useStaircase = p.Results.useStaircase;
+            obj.stairCaseStartDb = p.Results.stairCaseStartDb;
             obj.staircaseRule = p.Results.staircaseRule;
             obj.psychometricFuncHandle = p.Results.psychometricFuncHandle;
             obj.psiParamLabels = p.Results.psiParamLabels;
@@ -180,7 +198,7 @@ classdef PsychDichopticFlickerDiscrim < handle
         initializeQP(obj)
         initializeDisplay(obj)
         presentTrial(obj)
-        stimParam = staircase(obj,currTrialIdx);
+        stimParam = staircase(obj,currTrialIdx, stairCaseStartDb);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)

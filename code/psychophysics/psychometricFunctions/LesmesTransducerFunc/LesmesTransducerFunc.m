@@ -1,0 +1,74 @@
+function responseProbabilities = LesmesTransducerFunc(stimParams,psiParams)
+% An SDT-type model that incorporates sensitivity and criterion dependence
+%
+% Usage:
+%     probYesResponse = LesmesTransducerFunc(stimParams,psiParams)
+%
+% Description:
+%   The underlying model attempts to identify both a false-positive rate
+%   and the stimulus threshold that corresponds to d' = 1 performance.
+%   The model is described in:
+%       
+%       Lesmes LA, Lu ZL, Baek J, Tran N, Dosher BA, Albright TD.
+%       Developing Bayesian adaptive methods for estimating sensitivity
+%       thresholds (d′) in Yes-No and forced-choice tasks. Frontiers in
+%       Psychology. 2015 Aug 4;6:1070.
+%
+%   This function may be used in yes / no detection experiments.
+%
+%  The parameters are:
+%   fpRate                - The proportion of "yes" responses in the
+%                           presence of no stimulus / no stimulus
+%                           difference
+%   tau                   - The signal level at which d' = 1
+%   gamma                 - The slope parameter
+%
+% Inputs:
+%     stimParams          - nx1 matrix. Each row contains the stimulus
+%                           parameter r
+%     psiParams           - nx3 matrix. Each row has the psychometric
+%                           parameters: [fpRate, tau, gamma]
+%
+% Output:
+%     responseProbabilities - nx2 matrix, where each row is a vector of 
+%                           predicted proportions for the response.
+%                           The first column is the probability of a "no" 
+%                           response, and the second a "yes" response.
+%
+% Optional key/value pairs
+%     None
+
+
+%% Double check the inputs
+if (size(psiParams,2) ~= 3)
+    error('Three psi parameters required');
+end
+if (size(psiParams,1) ~= 1)
+    error('Should be a vector');
+end
+if (size(stimParams,2) ~= 1)
+    error('One stim parameter required');
+end
+
+
+%% Set up variables
+r = stimParams(:,1);
+fpRate = psiParams(:,1);
+tau = psiParams(:,2);
+gamma = psiParams(:,3);
+nStim = size(stimParams,1);
+responseProbabilities = zeros(nStim,2);
+
+% The fixed "beta" value is the d' level at which "yes" responses
+% asymptote. We set a value of 10.
+beta = 10;
+
+%% Compute
+dPrime = @(r) (beta * (r./tau).^gamma) ./ sqrt( (beta^2-1) + (r./tau).^(2*gamma));
+probRespondYes = 1 - normcdf( norminv(1-fpRate) - dPrime(r));
+responseProbabilities(:,1) = 1-probRespondYes;
+responseProbabilities(:,2) = probRespondYes;
+
+end
+
+
