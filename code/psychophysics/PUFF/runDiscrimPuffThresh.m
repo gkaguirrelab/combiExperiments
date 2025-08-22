@@ -67,8 +67,13 @@ load(modResultFile,'modResult');
 
 % Set up the devices
 if ~simulateModeFlag
+
     % Set up the AirPuffObj
     AirPuffObj = PuffControl('verbose',verbosePuffObj);
+
+    % Set up the AirPuff IR camera recording
+    rpiDataPath = fullfile(experimentName,subjectID);
+    irCameraObj = PuffCameraControl(rpiDataPath);
 
     % Set up the CombiLED LightObj
     LightObj = CombiLEDcontrol('verbose',verboseLightObj);
