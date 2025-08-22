@@ -30,8 +30,9 @@ classdef PsychDiscrimPuffThreshold < handle
         refPuffPSI
         puffDurSecs;
         prePuffLightSecs
-        itiRangeSecs;
+        itiRangeSecs
         isiSecs = 1.0;
+        trialLabel
     end
 
     % These may be modified after object creation
@@ -41,6 +42,9 @@ classdef PsychDiscrimPuffThreshold < handle
         % the psychometric object, update this handle, and then continue
         % to collect data
         AirPuffObj
+
+        % The object for making infrared recordings of the eyes
+        irCameraObj
 
         % The combiLED object. This is modifiable so that we can re-load
         % the psychometric object, update this handle, and then continue
@@ -60,11 +64,12 @@ classdef PsychDiscrimPuffThreshold < handle
     methods
 
         % Constructor
-        function obj = PsychDiscrimPuffThreshold(AirPuffObj,LightObj,refPuffPSI,modResult,varargin)
+        function obj = PsychDiscrimPuffThreshold(AirPuffObj,irCameraObj,LightObj,refPuffPSI,modResult,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
             p.addParameter('stimParamSide','hi',@ischar); % {'hi','low'}
+            p.addParameter('trialLabel','',@ischar);            
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
@@ -81,10 +86,12 @@ classdef PsychDiscrimPuffThreshold < handle
 
             % Place various inputs and options into object properties
             obj.AirPuffObj = AirPuffObj;
+            obj.irCameraObj = irCameraObj;            
             obj.LightObj = LightObj;
             obj.refPuffPSI = refPuffPSI;
             obj.modResult = modResult;
             obj.stimParamSide = p.Results.stimParamSide;
+            obj.trialLabel = p.Results.trialLabel;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;

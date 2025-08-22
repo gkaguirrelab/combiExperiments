@@ -134,9 +134,9 @@ for nn = 1:nLevels
             if isfile(filename)
                 % Load the object
                 load(filename,'psychObj');
-                % Put in the fresh AirPuffObj
+                % Put in fresh control objects
                 psychObj.AirPuffObj = AirPuffObj;
-                % Put in the fresh CombiLED
+                psychObj.irCameraObj = irCameraObj;
                 psychObj.LightObj = LightObj;
                 % Initiate the CombiAir settings
                 psychObj.initializeDisplay;
@@ -145,7 +145,9 @@ for nn = 1:nLevels
                 psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
             else
                 % Create the object
-                psychObj = PsychDiscrimPuffThreshold(AirPuffObj,LightObj,refPuffPSI,modResult,...
+                psychObj = PsychDiscrimPuffThreshold(...
+                    AirPuffObj,irCameraObj,LightObj,refPuffPSI,modResult,...
+                    'trialLabel',psychFileStem,...
                     'stimParamSide',stimParamSide,...
                     'lightPulseContrast',lightPulseContrast,...
                     'puffDurSecs',puffDurSecs,...
@@ -199,6 +201,7 @@ for bb=1:nBlocks
         psychObj = psychObjArray{ss};
         % empty the AirPuffObj and LightObj handles and save the psychObj
         psychObj.AirPuffObj = [];
+        psychObj.irCameraObj = [];
         psychObj.LightObj = [];
         save(psychObj.filename,'psychObj');
     end
@@ -209,6 +212,8 @@ end % block loop
 if ~simulateModeFlag
     AirPuffObj.serialClose;
     clear AirPuffObj
+
+    clear irCameraObj
 
     LightObj.goDark;
     LightObj.serialClose;

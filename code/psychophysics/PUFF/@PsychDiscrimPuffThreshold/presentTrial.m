@@ -45,10 +45,6 @@ if testPuffPSI > obj.maxAllowedPressurePSI
     warning('test param reduced to be within allowed safety range');
 end
 
-if testParam == 0
-    foo=1;
-end
-
 % Assemble the param sets
 testParams = [testPuffPSI,puffDurSecs];
 refParams = [refPuffPSI,puffDurSecs];
@@ -98,6 +94,12 @@ end
 
 % Present the stimuli
 if ~simulateStimuli
+
+    % Start the ir camera recording
+    obj.irCameraObj.durationSecs = obj.lightPulseDuration + min(itiRangeSecs);
+    irVidTrialLabel = sprintf([obj.trialLabel '_trial-%03d'],currTrialIdx);
+    obj.irCameraObj.prepareToRecord(irVidTrialLabel);
+    obj.irCameraObj.startRecording(irVidTrialLabel);
 
     % Define when the pre-puff period ends
     stopTimeSeconds = cputime() + obj.prePuffLightSecs;
