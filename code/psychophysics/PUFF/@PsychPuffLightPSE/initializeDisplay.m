@@ -16,10 +16,10 @@ if ~obj.simulateStimuli
     end
 
     obj.LightObj.setSettings(obj.modResult);
-    obj.LightObj.setUnimodal();
+    obj.LightObj.setBimodal();
     obj.LightObj.setWaveformIndex(2); % square-wave
-    obj.LightObj.setFrequency(1/1000);
-    obj.LightObj.setDuration(obj.lightPulseDuration);
+    obj.LightObj.setFrequency(1/(2*obj.lightPulseDurSecs));
+    obj.LightObj.setDuration(obj.lightPulseDurSecs);
     obj.LightObj.setPhaseOffset(pi);
     obj.LightObj.setRampIndex(1); % half-cosine windowing
     obj.LightObj.setRampDuration(0.5);

@@ -24,16 +24,8 @@ itiDur = []; % Define this in case we are in simulate mode
 testParam = qpQuery(questData);
 
 % The difference between the reference and test frequency is given by the
-% testParam, which is in units of decibels. The stimParamSide setting tells
-% us if we are setting the test frequency higher or lower than the ref.
-switch obj.stimParamSide
-    case 'hi'
-        testPuffPSI = refPuffPSI * db2pow(testParam);
-    case 'low'
-        testPuffPSI = refPuffPSI / db2pow(testParam);
-    otherwise
-        error('not a valid stimParamSide setting')
-end
+% testParam, which is in units of decibels.
+testPuffPSI = refPuffPSI * db2pow(testParam);
 
 % If the testPuffPSI is great than the maximum allowed PSI value, adjust
 % the stimParam to stay within the max allowed
@@ -63,7 +55,7 @@ switch 1+logical(round(rand()))
         error('Not a valid interval')
 end
 
-% Note which side contains the more intense stimulus, which is used for
+% Note which interval contains the more intense stimulus, which is used for
 % feedback
 [~,moreIntenseInterval] = max(intervalParams(:,1));
 
@@ -89,27 +81,45 @@ audioObjs.bad = audioplayer(badSound,Fs);
 % Handle verbosity
 if obj.verbose
     fprintf('Trial %d; Pulse contrast [%2.2f]; Puff duration [%2.2f]; Pressure PSI [%2.2f, %2.2f PSI]...', ...
-        currTrialIdx,obj.lightPulseContrast,obj.puffDurSecs,intervalParams(1,1),intervalParams(2,1));
+        currTrialIdx,obj.lightPulseModContrast,obj.puffDurSecs,intervalParams(1,1),intervalParams(2,1));
 end
 
 % Present the stimuli
 if ~simulateStimuli
 
+    %% Disabled while we work on the pupil camera
     % Start the ir camera recording
-    obj.irCameraObj.durationSecs = obj.lightPulseDuration + min(itiRangeSecs);
+    %{
+    obj.irCameraObj.durationSecs = 1 + obj.lightPulseDuration + obj.isiSecs + obj.lightPulseDuration + min(itiRangeSecs);
     irVidTrialLabel = sprintf([obj.trialLabel '_trial-%03d'],currTrialIdx);
     obj.irCameraObj.prepareToRecord(irVidTrialLabel);
     obj.irCameraObj.startRecording(irVidTrialLabel);
+    %}
 
-    % Define when the pre-puff period ends
-    stopTimeSeconds = cputime() + obj.prePuffLightSecs;
+    % We let the IR camera start recording for a second before the light
+    % starts. This way we can measure the pupil response to the stimulus,
+    % and give a moment for the updated combiLED settings to be passed.
+    stopTimeSeconds = cputime() + 1;
 
-    % Set the stimulus contrast and duration. These were set when the
-    % object was initialized, but we re-set now just in case a different
-    % object changed them
-    obj.LightObj.setContrast(obj.lightPulseContrast);
-    obj.LightObj.setDuration(obj.lightPulseDuration);
+    % Set the stimulus contrast / phase for the first interval
+    switch obj.lightPulseWaveform
+        case 'background'
+            obj.LightObj.setContrast(0);
+            obj.LightObj.setPhaseOffset(0);
+        case 'high-low'
+            obj.LightObj.setContrast(obj.lightPulseContrast);
+            obj.LightObj.setPhaseOffset(pi);
+        case 'low-high'
+            obj.LightObj.setContrast(obj.lightPulseContrast);
+            obj.LightObj.setPhaseOffset(0);
+    end
     
+    % Wait until the pre-light period has ended
+    obj.waitUntil(stopTimeSeconds);
+
+    % Define when the light pulse period ends
+    stopTimeSeconds = cputime() + obj.lightPulseDurSecs;
+
     % Start the light pulse
     obj.LightObj.startModulation;
 
@@ -121,28 +131,48 @@ if ~simulateStimuli
     obj.AirPuffObj.setPressure('L',intervalParams(1,1));
     obj.AirPuffObj.setPressure('R',intervalParams(1,1));
 
+    % Wait until the light pulse has ended
     obj.waitUntil(stopTimeSeconds);
     
-    % Define the duration of the first interval
-    stopTimeSeconds = cputime() + obj.isiSecs;
-
-    % Play the first interval sound
+    % Play the first puff sound
     audioObjs.low.play;
 
     % Simultaneous, bilateral puff
     obj.AirPuffObj.triggerPuff('ALL');
 
-    % Pause for the duration of the puff
-    pause(obj.puffDurSecs);
+    % Define the duration of an ISI
+    stopTimeSeconds = cputime() + obj.isiSecs;
 
-    % Prepare the stimuli for the second interval
+    % Prepare the light pulse for the second interval
+    switch obj.lightPulseWaveform
+        case 'background'
+            obj.LightObj.setContrast(0);
+            obj.LightObj.setPhaseOffset(0);
+        case 'high-low'
+            obj.LightObj.setContrast(obj.lightPulseContrast);
+            obj.LightObj.setPhaseOffset(0);
+        case 'low-high'
+            obj.LightObj.setContrast(obj.lightPulseContrast);
+            obj.LightObj.setPhaseOffset(pi);
+    end
+
+    % Wait until the ISI has ended
+    obj.waitUntil(stopTimeSeconds);
+
+    % Define when the light pulse period ends
+    stopTimeSeconds = cputime() + obj.lightPulseDurSecs;
+
+    % Start the second light pulse
+    obj.LightObj.startModulation;
+
+    % Prepare the puff stimuli for the second interval
     obj.AirPuffObj.setPressure('L',intervalParams(2,1));
     obj.AirPuffObj.setPressure('R',intervalParams(2,1));
 
-    % Finish waiting out the first interval
+    % Finish waiting out the second light pulse
     obj.waitUntil(stopTimeSeconds);
 
-    % Play the second interval tone tone
+    % Play the second puff tone
     audioObjs.mid.play;
 
     % Simultaneous, bilateral puff
@@ -150,21 +180,27 @@ if ~simulateStimuli
 
 end
 
+% Re-express the testParam as the dB difference between the first and
+% second interval; this is how we will think about the outcome
+testParam = pow2db(intervalParams(1,1)/intervalParams(2,1));
+
 % Start the response interval
 if ~simulateResponse
     FlushEvents
     [intervalChoice, responseTimeSecs] = obj.getResponse();
 else
-    intervalChoice = obj.getSimulatedResponse(testParam,testInterval);
+    intervalChoice = obj.getSimulatedResponse(testParam,2);
     responseTimeSecs = nan;
 end
+
+% The outcome is simply the interval that has been selected
+outcome = intervalChoice;
 
 % Determine if the subject has selected the more intense interval and
 % handle audio feedback
 if intervalChoice==moreIntenseInterval
     % Correct
     correct = true;
-    outcome = 2;
     if obj.verbose
         fprintf('correct');
     end
@@ -178,7 +214,6 @@ if intervalChoice==moreIntenseInterval
 else
     % incorrect
     correct = false;
-    outcome = 1;
     if obj.verbose
         fprintf('incorrect');
     end
@@ -196,6 +231,7 @@ else
     end
 end
 
+% Enforce a variable inter-trial-interval
 if ~simulateStimuli
 
     % Wait a variable amount of time for the inter-trial-interval
@@ -206,6 +242,7 @@ if ~simulateStimuli
     obj.waitUntil(stopTimeSeconds);
 
 end
+
 % Finish the line of text output
 if obj.verbose
     fprintf('\n');
@@ -217,6 +254,7 @@ questData = qpUpdate(questData,testParam,outcome);
 % Add in the stimulus information
 questData.trialData(currTrialIdx).testInterval = testInterval;
 questData.trialData(currTrialIdx).moreIntenseInterval = moreIntenseInterval;
+questData.trialData(currTrialIdx).intervalChoice = intervalChoice;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 questData.trialData(currTrialIdx).itiDur = itiDur;
 questData.trialData(currTrialIdx).correct = correct;

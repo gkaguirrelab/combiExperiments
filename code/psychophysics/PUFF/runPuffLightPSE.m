@@ -1,4 +1,4 @@
-function runDiscrimPuffThresh(subjectID,whichDirection,varargin)
+function runPuffLightPSE(subjectID,whichDirection,varargin)
 % Psychometric measurement of discrmination threshold for simultaneous air
 % puffs of varying intensity.
 %
@@ -7,7 +7,7 @@ function runDiscrimPuffThresh(subjectID,whichDirection,varargin)
     subjectID = 'HERO_gka';
     whichDirection = 'LightFlux';
     refPuffSetPSI = 5;
-    runDiscrimPuffThresh(subjectID,whichDirection,'refPuffSetPSI',refPuffSetPSI);
+    runPuffLightPSE(subjectID,whichDirection,'refPuffSetPSI',refPuffSetPSI,'lightPulseContrastLevels',0);
 %}
 
 % Parse the parameters
@@ -16,10 +16,11 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
 p.addParameter('refPuffSetPSI',logspace(log10(2),log10(20),5),@isnumeric);
-p.addParameter('lightPulseContrastLevels',[0 0.5],@isnumeric);
-p.addParameter('nTrialsPerObj',5,@isnumeric);
+p.addParameter('lightPulseModContrast',0.5,@isnumeric);
+p.addParameter('lightPulseWaveforms',{'high-low'},@iscell); % {'high-low','low-high','background'}
+p.addParameter('nTrialsPerObj',100,@isnumeric);
 p.addParameter('nBlocks',1,@isnumeric);
-p.addParameter('simulateModeFlag',false,@islogical);
+p.addParameter('simulateModeFlag',true,@islogical);
 p.addParameter('verbosePuffObj',false,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
@@ -29,7 +30,8 @@ p.parse(varargin{:})
 nTrialsPerObj = p.Results.nTrialsPerObj;
 nBlocks = p.Results.nBlocks;
 refPuffSetPSI = p.Results.refPuffSetPSI;
-lightPulseContrastLevels = p.Results.lightPulseContrastLevels;
+lightPulseModContrast = p.Results.lightPulseModContrast;
+lightPulseWaveforms = p.Results.lightPulseWaveforms;
 simulateModeFlag = p.Results.simulateModeFlag;
 verbosePuffObj = p.Results.verbosePuffObj;
 verboseLightObj = p.Results.verboseLightObj;
@@ -39,16 +41,13 @@ verbosePsychObj = p.Results.verbosePsychObj;
 nLevels = length(refPuffSetPSI);
 
 % The number of light pulse contrast levels
-nContrasts = lightPulseContrastLevels;
+nWaveforms = length(lightPulseWaveforms);
 
 % Set our experimentName
 experimentName = 'DSCM';
 
-% Set the labels for the high and low stimulus ranges
-stimParamLabels = {'hi','low'};
-
 % Calculate the total number of trials per block
-nTrialsPerBlock = nTrialsPerObj * nLevels * nContrasts * length(stimParamLabels);
+nTrialsPerBlock = nTrialsPerObj * nLevels * nWaveforms;
 
 % Set a random seed
 rng('shuffle');
@@ -82,6 +81,7 @@ if ~simulateModeFlag
     LightObj.setGamma(modResult.meta.cal.processedData.gammaTable);
 else
     AirPuffObj = [];
+    irCameraObj = [];
     LightObj = [];
 end
 
@@ -111,59 +111,52 @@ for nn = 1:nLevels
     % Define the puff duration, which is 1/refPuffPSI in seconds
     puffDurSecs = 1/refPuffPSI;
 
-    % Loop over contrast levels of the light pulse
-    for cc = 1:length(lightPulseContrastLevels)
+    % Loop over light pulse waveforms
+    for ww = 1:length(lightPulseWaveforms)
 
-        % Get this pulse contrast
-        lightPulseContrast = lightPulseContrastLevels(cc);
+        % Get this waveform
+        lightPulseWaveform = lightPulseWaveforms{ww};
 
-        % Loop over high and low sides of the puff reference range
-        for ss = 1:length(stimParamLabels)
+        % Define the filestem for this psychometric object
+        psychFileStem = sprintf( [subjectID '_' experimentName ...
+            'direction-' whichDirection ...
+            '_refPSI-%2.2f_pulseContrast-%2.2f_' lightPulseWaveform ],...
+            refPuffPSI,lightPulseModContrast);
 
-            % Define this stimParamSide
-            stimParamSide = stimParamLabels{ss};
-
-            % Define the filestem for this psychometric object
-            psychFileStem = sprintf( [subjectID '_' experimentName ...
-                'direction-' whichDirection ...
-                '_refPSI-%2.2f_pulseContrast-%2.2f_' stimParamLabels{ss}],...
-                refPuffPSI,lightPulseContrast);
-
-            % Create or load the psychometric object
-            filename = fullfile(dataDir,[psychFileStem '.mat']);
-            if isfile(filename)
-                % Load the object
-                load(filename,'psychObj');
-                % Put in fresh control objects
-                psychObj.AirPuffObj = AirPuffObj;
-                psychObj.irCameraObj = irCameraObj;
-                psychObj.LightObj = LightObj;
-                % Initiate the CombiAir settings
-                psychObj.initializeDisplay;
-                % Increment blockIdx
-                psychObj.blockIdx = psychObj.blockIdx+1;
-                psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
-            else
-                % Create the object
-                psychObj = PsychDiscrimPuffThreshold(...
-                    AirPuffObj,irCameraObj,LightObj,refPuffPSI,modResult,...
-                    'trialLabel',psychFileStem,...
-                    'stimParamSide',stimParamSide,...
-                    'lightPulseContrast',lightPulseContrast,...
-                    'puffDurSecs',puffDurSecs,...
-                    'simulateStimuli',simulateModeFlag,'simulateResponse',simulateModeFlag,...
-                    'verbose',verbosePsychObj);
-                % Store the filename
-                psychObj.filename = filename;
-            end
-
-            % Store in the psychObjArray
-            psychObjArray{end+1} = psychObj;
-
-            % Clear the psychObj
-            clear psychObj
-
+        % Create or load the psychometric object
+        filename = fullfile(dataDir,[psychFileStem '.mat']);
+        if isfile(filename)
+            % Load the object
+            load(filename,'psychObj');
+            % Put in fresh control objects
+            psychObj.AirPuffObj = AirPuffObj;
+            psychObj.irCameraObj = irCameraObj;
+            psychObj.LightObj = LightObj;
+            % Initiate the CombiAir settings
+            psychObj.initializeDisplay;
+            % Increment blockIdx
+            psychObj.blockIdx = psychObj.blockIdx+1;
+            psychObj.blockStartTimes(psychObj.blockIdx) = datetime();
+        else
+            % Create the object
+            psychObj = PsychPuffLightPSE(...
+                AirPuffObj,irCameraObj,LightObj,refPuffPSI,modResult,...
+                'trialLabel',psychFileStem,...
+                'lightPulseWaveform',lightPulseWaveform,...
+                'lightPulseModContrast',lightPulseModContrast,...
+                'puffDurSecs',puffDurSecs,...
+                'simulateStimuli',simulateModeFlag,'simulateResponse',simulateModeFlag,...
+                'verbose',verbosePsychObj);
+            % Store the filename
+            psychObj.filename = filename;
         end
+
+        % Store in the psychObjArray
+        psychObjArray{end+1} = psychObj;
+
+        % Clear the psychObj
+        clear psychObj
+
     end
 end
 

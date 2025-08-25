@@ -3,7 +3,7 @@
 % of a cumulative normal Gaussian. Test stimuli above or below the
 % reference frequency are examined in separate calls to this routine.
 
-classdef PsychDiscrimPuffThreshold < handle
+classdef PsychPuffLightPSE < handle
 
     properties (Constant)
     end
@@ -18,20 +18,20 @@ classdef PsychDiscrimPuffThreshold < handle
         maxAllowedRefPSIPerSec = 1;
         modResult
         questData
-        stimParamSide
         simulatePsiParams
         simulateResponse
         simulateStimuli
         giveFeedback
         stimParamsDomainList
         psiParamsDomainList
-        lightPulseContrast
-        lightPulseDuration
+        lightPulseModContrast
+        lightPulseWaveform
+        lightPulseDurSecs = 4;
         refPuffPSI
         puffDurSecs;
         prePuffLightSecs
         itiRangeSecs
-        isiSecs = 1.0;
+        isiSecs = 1;
         trialLabel
     end
 
@@ -64,23 +64,23 @@ classdef PsychDiscrimPuffThreshold < handle
     methods
 
         % Constructor
-        function obj = PsychDiscrimPuffThreshold(AirPuffObj,irCameraObj,LightObj,refPuffPSI,modResult,varargin)
+        function obj = PsychPuffLightPSE(AirPuffObj,irCameraObj,LightObj,refPuffPSI,modResult,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
-            p.addParameter('stimParamSide','hi',@ischar); % {'hi','low'}
             p.addParameter('trialLabel','',@ischar);            
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('lightPulseContrast',0.5,@isnumeric);
+            p.addParameter('lightPulseModContrast',0.5,@isnumeric);
+            p.addParameter('lightPulseWaveform','background',@ischar);
             p.addParameter('puffDurSecs',0.33,@isnumeric);
             p.addParameter('prePuffLightSecs',3,@isnumeric);
             p.addParameter('itiRangeSecs',[1,1.5],@isnumeric);
-            p.addParameter('simulatePsiParams',[0,0.5],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(0,3,15),@isnumeric);
+            p.addParameter('simulatePsiParams',[.2,0.5],@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(-3,3,25),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,3,15)},@isnumeric);
+                {linspace(-1,1,11),linspace(0,3,15)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -90,12 +90,12 @@ classdef PsychDiscrimPuffThreshold < handle
             obj.LightObj = LightObj;
             obj.refPuffPSI = refPuffPSI;
             obj.modResult = modResult;
-            obj.stimParamSide = p.Results.stimParamSide;
             obj.trialLabel = p.Results.trialLabel;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;
-            obj.lightPulseContrast = p.Results.lightPulseContrast;            
+            obj.lightPulseModContrast = p.Results.lightPulseModContrast;
+            obj.lightPulseWaveform = p.Results.lightPulseWaveform;
             obj.puffDurSecs = p.Results.puffDurSecs;
             obj.prePuffLightSecs = p.Results.prePuffLightSecs;            
             obj.itiRangeSecs = p.Results.itiRangeSecs;
@@ -126,9 +126,6 @@ classdef PsychDiscrimPuffThreshold < handle
             % Initialize the blockStartTimes field
             obj.blockStartTimes(1) = datetime();
             obj.blockStartTimes(1) = [];
-
-            % Define the duration of the light pulse
-            obj.lightPulseDuration = obj.prePuffLightSecs + obj.isiSecs + 0.5;
 
             % Initialize Quest+
             obj.initializeQP;
