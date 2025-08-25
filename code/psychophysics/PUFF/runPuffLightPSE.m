@@ -6,8 +6,8 @@ function runPuffLightPSE(subjectID,whichDirection,varargin)
 %{
     subjectID = 'HERO_gka';
     whichDirection = 'LightFlux';
-    refPuffSetPSI = 5;
-    runPuffLightPSE(subjectID,whichDirection,'refPuffSetPSI',refPuffSetPSI,'lightPulseContrastLevels',0);
+    refPuffSetPSI = 15;
+    runPuffLightPSE(subjectID,whichDirection,'refPuffSetPSI',refPuffSetPSI);
 %}
 
 % Parse the parameters
@@ -16,11 +16,11 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
 p.addParameter('refPuffSetPSI',logspace(log10(2),log10(20),5),@isnumeric);
-p.addParameter('lightPulseModContrast',0.5,@isnumeric);
-p.addParameter('lightPulseWaveforms',{'high-low'},@iscell); % {'high-low','low-high','background'}
-p.addParameter('nTrialsPerObj',100,@isnumeric);
+p.addParameter('lightPulseModContrast',1.0,@isnumeric);
+p.addParameter('lightPulseWaveforms',{'high-low'},@iscell); % ,'low-high','background'
+p.addParameter('nTrialsPerObj',20,@isnumeric);
 p.addParameter('nBlocks',1,@isnumeric);
-p.addParameter('simulateModeFlag',true,@islogical);
+p.addParameter('simulateModeFlag',false,@islogical);
 p.addParameter('verbosePuffObj',false,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
@@ -44,7 +44,7 @@ nLevels = length(refPuffSetPSI);
 nWaveforms = length(lightPulseWaveforms);
 
 % Set our experimentName
-experimentName = 'DSCM';
+experimentName = 'puffPSE';
 
 % Calculate the total number of trials per block
 nTrialsPerBlock = nTrialsPerObj * nLevels * nWaveforms;
@@ -70,9 +70,13 @@ if ~simulateModeFlag
     % Set up the AirPuffObj
     AirPuffObj = PuffControl('verbose',verbosePuffObj);
 
+    %% DISABLED while we work on the IR camera
     % Set up the AirPuff IR camera recording
+    %{
     rpiDataPath = fullfile(experimentName,subjectID);
     irCameraObj = PuffCameraControl(rpiDataPath);
+    %}
+    irCameraObj = [];
 
     % Set up the CombiLED LightObj
     LightObj = CombiLEDcontrol('verbose',verboseLightObj);

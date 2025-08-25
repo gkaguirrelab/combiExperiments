@@ -74,8 +74,8 @@ plot([min(stimParamsDomainList), psiParamsFit(1)],[0.5 0.5],':k')
 
 % Labels and range
 ylim([-0.1 1.1]);
-xlabel('stimulus difference [dB]')
-ylabel('proportion correct')
+xlabel('2nd vs 1st interval difference [dB]')
+ylabel('Proportion pick 2nd interval')
 title('Psychometric function');
 
 % Entropy by trial
@@ -87,7 +87,7 @@ ylabel('entropy');
 title('Entropy by trial number')
 
 % Add a supertitle
-str = sprintf('Ref freq = %d Hz; [μ,σ,λ] = [%2.3f,%2.3f,%2.3f]',...
+str = sprintf('Ref freq = %d Hz; [μ,σ] = [%2.3f,%2.3f]',...
     obj.refPuffPSI,psiParamsFit);
 sgtitle(str);
 

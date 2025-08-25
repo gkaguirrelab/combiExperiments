@@ -105,12 +105,15 @@ if ~simulateStimuli
     switch obj.lightPulseWaveform
         case 'background'
             obj.LightObj.setContrast(0);
+            pause(0.1);
             obj.LightObj.setPhaseOffset(0);
         case 'high-low'
-            obj.LightObj.setContrast(obj.lightPulseContrast);
+            obj.LightObj.setContrast(obj.lightPulseModContrast);
+            pause(0.1);
             obj.LightObj.setPhaseOffset(pi);
         case 'low-high'
-            obj.LightObj.setContrast(obj.lightPulseContrast);
+            obj.LightObj.setContrast(obj.lightPulseModContrast);
+            pause(0.1);
             obj.LightObj.setPhaseOffset(0);
     end
     
@@ -122,6 +125,9 @@ if ~simulateStimuli
 
     % Start the light pulse
     obj.LightObj.startModulation;
+
+    % Pause a moment to clear the serial queue
+    pause(0.1);
 
     % Set the puff durations
     obj.AirPuffObj.setDuration('L',obj.puffDurSecs*1000);
@@ -143,16 +149,23 @@ if ~simulateStimuli
     % Define the duration of an ISI
     stopTimeSeconds = cputime() + obj.isiSecs;
 
+    % Wait for the pulse to be over and serial port control to have
+    % returned
+    pause(obj.puffDurSecs+0.1);
+
     % Prepare the light pulse for the second interval
     switch obj.lightPulseWaveform
         case 'background'
             obj.LightObj.setContrast(0);
+            pause(0.1);
             obj.LightObj.setPhaseOffset(0);
         case 'high-low'
-            obj.LightObj.setContrast(obj.lightPulseContrast);
+            obj.LightObj.setContrast(obj.lightPulseModContrast);
+            pause(0.1);
             obj.LightObj.setPhaseOffset(0);
         case 'low-high'
-            obj.LightObj.setContrast(obj.lightPulseContrast);
+            obj.LightObj.setContrast(obj.lightPulseModContrast);
+            pause(0.1);
             obj.LightObj.setPhaseOffset(pi);
     end
 
@@ -180,16 +193,16 @@ if ~simulateStimuli
 
 end
 
-% Re-express the testParam as the dB difference between the first and
-% second interval; this is how we will think about the outcome
-testParam = pow2db(intervalParams(1,1)/intervalParams(2,1));
+% Re-express the testParam as the dB difference between the second and
+% first interval; this is how we will think about the outcome
+testParam = pow2db(intervalParams(2,1)/intervalParams(1,1));
 
 % Start the response interval
 if ~simulateResponse
     FlushEvents
     [intervalChoice, responseTimeSecs] = obj.getResponse();
 else
-    intervalChoice = obj.getSimulatedResponse(testParam,2);
+    intervalChoice = obj.getSimulatedResponse(testParam);
     responseTimeSecs = nan;
 end
 
@@ -197,8 +210,9 @@ end
 outcome = intervalChoice;
 
 % Determine if the subject has selected the more intense interval and
-% handle audio feedback
-if intervalChoice==moreIntenseInterval
+% handle audio feedback. Make the correct noise regardless of the response
+% when the two stimuli were identical.
+if intervalChoice==moreIntenseInterval || testParam == 0
     % Correct
     correct = true;
     if obj.verbose
@@ -252,6 +266,7 @@ end
 questData = qpUpdate(questData,testParam,outcome);
 
 % Add in the stimulus information
+questData.trialData(currTrialIdx).testParam = testParam;
 questData.trialData(currTrialIdx).testInterval = testInterval;
 questData.trialData(currTrialIdx).moreIntenseInterval = moreIntenseInterval;
 questData.trialData(currTrialIdx).intervalChoice = intervalChoice;

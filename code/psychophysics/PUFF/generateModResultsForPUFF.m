@@ -14,7 +14,7 @@ p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','puffLight',@ischar);
-p.addParameter('experimentName','DSCM',@ischar);
+p.addParameter('experimentName','puffPSE',@ischar);
 p.addParameter('primaryHeadRoom',0.05,@isnumeric);
 p.parse(varargin{:})
 
@@ -60,6 +60,7 @@ for dd = 1:length(modulationDirections)
                 'primaryHeadRoom',primaryHeadRoom,'searchBackground',true);
         case 'LightFlux'
             modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
+                'backgroundPrimary',ones(8,1)*0.33,...
                 'primaryHeadRoom',0);
     end
     figHandle = plotModResult(modResults{dd});

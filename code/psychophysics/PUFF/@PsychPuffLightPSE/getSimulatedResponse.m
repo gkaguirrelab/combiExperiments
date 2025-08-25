@@ -1,12 +1,7 @@
-function intervalChoice = getSimulatedResponse(obj,qpStimParams,testInterval)
+function intervalChoice = getSimulatedResponse(obj,qpStimParams)
 
-% Get the simulated choice of the test or reference
-outcome = obj.questData.qpOutcomeF(qpStimParams);
-
-if outcome==1 % selected ref
-    intervalChoice = mod(testInterval,2)+1;
-else
-    intervalChoice = testInterval;
-end
+% Get the simulated choice of selecting the first or second interval. The
+% stimParam is the dB difference between the first and second interval
+intervalChoice = obj.questData.qpOutcomeF(qpStimParams);
 
 end

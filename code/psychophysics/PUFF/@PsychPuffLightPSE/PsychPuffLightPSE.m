@@ -26,7 +26,7 @@ classdef PsychPuffLightPSE < handle
         psiParamsDomainList
         lightPulseModContrast
         lightPulseWaveform
-        lightPulseDurSecs = 4;
+        lightPulseDurSecs = 3;
         refPuffPSI
         puffDurSecs;
         prePuffLightSecs
