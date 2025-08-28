@@ -1,6 +1,5 @@
 % Present air puffs of varying intensity to measure a parametric
-% blink response function. A single call to "presentTrialBlock" results in
-% a total of 26 air puffs, requiring roughly 90 seconds to collect.
+% blink response function.
 
 classdef ParametricBlinkResponse < handle
 
@@ -13,12 +12,13 @@ classdef ParametricBlinkResponse < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
-        maxAllowedPressurePSI = 45;
-        maxAllowedRefPSIPerSec = 1;
-        currTrialIdx = 1;
+        maxAllowedPressurePSI = 46;
+        maxAllowedRefPSIPerSec = 2.5;
+        cameraCleanupDurSecs = 2.0;
         trialData
-        videoDataPath
         simulateStimuli
+        puffPSISet
+        puffDurSecsSet
         trialDurSecs
         preStimDelayRangeSecs
     end
@@ -34,53 +34,51 @@ classdef ParametricBlinkResponse < handle
         % The object for making infrared recordings of the eyes
         irCameraObj
 
-        % The combiLED object. This is modifiable so that we can re-load
-        % the psychometric object, update this handle, and then continue
-        % to collect data 
-        LightObj
+        % The name that will be used to save ir videos. The trial number
+        % within the sequence will be appended to this.
+        trialLabelStem = '';
 
         % Assign a filename which is handy for saving and loading
         filename
 
         % Verbosity
         verbose = true;
-        blockIdx = 1;
-        blockStartTimes = datetime();
+
+        % Counter for sequences
+        sequenceIdx = 1;
 
     end
 
     methods
 
         % Constructor
-        function obj = ParametricBlinkResponse(videoDataPath,AirPuffObj,irCameraObj,LightObj,varargin)
+        function obj = ParametricBlinkResponse(AirPuffObj,irCameraObj,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
+            p.addParameter('puffPSISet',logspace(log10(2.8125),log10(45),5),@isnumeric);
+            p.addParameter('puffDurSecsSet',ones(1,5)*0.05,@isnumeric);
             p.addParameter('simulateStimuli',false,@islogical);
-            p.addParameter('trialDurSecs',3,@isnumeric);
+            p.addParameter('trialDurSecs',4,@isnumeric);
             p.addParameter('preStimDelayRangeSecs',[0.5,1.5],@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
-            obj.videoDataPath = videoDataPath;
             obj.AirPuffObj = AirPuffObj;
             obj.irCameraObj = irCameraObj;            
-            obj.LightObj = LightObj;
             
+            obj.puffPSISet = p.Results.puffPSISet;
+            obj.puffDurSecsSet = p.Results.puffDurSecsSet;
             obj.trialDurSecs = p.Results.trialDurSecs;
             obj.preStimDelayRangeSecs = p.Results.preStimDelayRangeSecs;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.verbose = p.Results.verbose;
 
-            % Initialize the blockStartTimes field
-            obj.blockStartTimes(1) = datetime();
-            obj.blockStartTimes(1) = [];
-
         end
 
         % Required methds
-        presentTrialSequence(obj,trialLabel,puffPSI,puffDurSecs)
+        presentTrialSequence(obj,sequence)
         waitUntil(obj,stopTimeSeconds)
     end
 end
