@@ -14,7 +14,7 @@ classdef ParametricBlinkResponse < handle
     properties (SetAccess=private)
         maxAllowedPressurePSI = 46;
         maxAllowedRefPSIPerSec = 2.5;
-        cameraCleanupDurSecs = 2.0;
+        cameraCleanupDurSecs = 2.5;
         trialData
         simulateStimuli
         puffPSISet
@@ -60,7 +60,7 @@ classdef ParametricBlinkResponse < handle
             p.addParameter('puffDurSecsSet',ones(1,5)*0.05,@isnumeric);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('trialDurSecs',4,@isnumeric);
-            p.addParameter('preStimDelayRangeSecs',[0.5,1.5],@isnumeric);
+            p.addParameter('preStimDelayRangeSecs',[1.0,1.5],@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 

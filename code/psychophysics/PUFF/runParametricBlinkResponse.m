@@ -13,15 +13,15 @@ p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
-p.addParameter('puffPSISet',logspace(log10(1.875),log10(30),5),@isnumeric);
+p.addParameter('puffPSISet',logspace(log10(5),log10(30),5),@isnumeric);
 p.addParameter('puffDurSecsSet',ones(1,5)*0.05,@isnumeric);
-p.addParameter('modContrastLevels',[0,1],@isnumeric);
+p.addParameter('modContrastLevels',[0,0.33],@isnumeric);
 p.addParameter('adaptDurationMins',5,@isnumeric);
 p.addParameter('nSequences',4,@isnumeric);
 p.addParameter('nAdaptBlocks',2,@isnumeric);
 p.addParameter('simulateModeFlag',false,@islogical);
 p.addParameter('verbosePuffObj',false,@islogical);
-p.addParameter('verboseCameraObj',false,@islogical);
+p.addParameter('verboseCameraObj',true,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.parse(varargin{:})
@@ -94,12 +94,15 @@ if ~simulateModeFlag
     LightObj.setGamma(modResult.meta.cal.processedData.gammaTable);
 
     % Set up the modulation properties
+    LightObj.stopModulation;
     LightObj.setSettings(modResult);
     LightObj.setUnimodal();
     LightObj.setWaveformIndex(2); % square-wave
-    LightObj.setFrequency(1/1e6);
-    LightObj.setDuration(1e6);
+    LightObj.setFrequency(1/4000);
+    LightObj.setDuration(2000);
     LightObj.setPhaseOffset(pi);
+    LightObj.setRampIndex(2);
+    LightObj.setRampDuration((adaptDurationMins-1)*60);
 
 else
     AirPuffObj = [];
@@ -159,12 +162,13 @@ for bb = 1:nAdaptBlocks
         thisContrast = modContrastLevels(cc);
 
         % Set the light contrast level
+        LightObj.stopModulation;
         LightObj.setContrast(thisContrast);
-        LightObj.startModulation;
 
         % Start the Adaptation
         fprintf('Press enter to start adaptation...');
         input('');
+        LightObj.startModulation;
 
         % Count down the minutes
         for mm = adaptDurationMins:-1:1
@@ -179,9 +183,14 @@ for bb = 1:nAdaptBlocks
         % minutes in duration
         for ss = 1:nSequences
 
-            % Put in fresh Air and ir objs
-            psychObj.AirPuffObj = AirPuffObj;
-            psychObj.irCameraObj = irCameraObj;
+            % Refresh the connections on the objects
+            if ~simulateModeFlag
+                AirPuffObj.serialClose;
+                AirPuffObj = PuffControl('verbose',verbosePuffObj);
+                irCameraObj = PuffCameraControl(videoDataPath,'verbose',verboseCameraObj);
+                psychObj.AirPuffObj = AirPuffObj;
+                psychObj.irCameraObj = irCameraObj;
+            end
 
             % Get this sequence
             sequence = sequenceSet{ss};
@@ -198,18 +207,21 @@ for bb = 1:nAdaptBlocks
             Speak('Ready');
             fprintf('Press enter to start the blink sequence %d...',ss);
             input('');
+            pause(3);
 
             % Present the blink sequence puffs
             psychObj.presentTrialSequence(sequence);
 
             % Save the psychObj
-            psychObj.AirPuffObj = [];
-            psychObj.irCameraObj = [];
             save(psychObj.filename,'psychObj');
 
             % Report completion of this sequence
             fprintf('done.\n');
+
         end % loop over sequences
+
+        % Stop the modulation
+        LightObj.stopModulation;
 
     end % loop over contrasts
 

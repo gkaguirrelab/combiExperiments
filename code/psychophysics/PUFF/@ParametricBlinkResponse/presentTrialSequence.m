@@ -19,7 +19,7 @@ trialDurSecs = obj.trialDurSecs;
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
-dur = 0.1; % Duration in seconds
+dur = 0.25; % Duration in seconds
 t  = linspace(0, dur, round(Fs*dur));
 lowTone = sin(2*pi*500*t);
 audioObjs.low = audioplayer(lowTone,Fs);
@@ -62,6 +62,9 @@ for tt = 1:length(sequence)
     % If not simulating
     if ~simulateStimuli
 
+        % Alert the subject
+        audioObjs.low.play;
+
         % Get the ir camera ready to record. We record for a period of time
         % before the stimulus equal to the minimum of the
         % preStimDelayRange, an we stop recording one second before the end
@@ -78,19 +81,17 @@ for tt = 1:length(sequence)
         obj.AirPuffObj.setPressure('L',puffPSI);
         obj.AirPuffObj.setPressure('R',puffPSI);
 
-        % Define a stop time that is at the end of the pre stimulus delay.
-        stopTimeSeconds = cputime() + preStimDelaySecs;
-
-        % Store the start time of the trial
-        dateTimeVector(tt) = datetime('now','Format','yyyy-MM-dd HH:mm:ss.SSSSSS');
-
-        % Alert the subject
-        audioObjs.low.play;
-
         % Pause briefly before we start the video recording. This ensures
         % that the video start time has the same timing across trials with
         % respect to the air puff
-        pause(preStimDelaySecs - min(preStimDelayRangeSecs));
+        stopTimeSeconds = cputime() + preStimDelaySecs - min(preStimDelayRangeSecs);
+        obj.waitUntil(stopTimeSeconds);
+
+        % Define a stop time that is at the end of the pre stimulus delay.
+        stopTimeSeconds = cputime() + min(preStimDelayRangeSecs);
+
+        % Store the start time of the trial
+        dateTimeVector(tt) = datetime('now','Format','yyyy-MM-dd HH:mm:ss.SSSSSS');
 
         % Start the ir camera recording
         obj.irCameraObj.startRecording(trialLabel);
@@ -98,12 +99,14 @@ for tt = 1:length(sequence)
         % Wait until the pre stim delay has ended
         obj.waitUntil(stopTimeSeconds);
 
-        % Define the stop time for the trial. Add a second to allow the
-        % camera to clean up and save
+        % Define the stop time for the trial.
         stopTimeSeconds = cputime() + trialDurSecs;
 
         % Simultaneous, bilateral puff
         obj.AirPuffObj.triggerPuff('ALL');
+
+        % Wait until the video recording file has closed
+        obj.irCameraObj.checkFileClosed;
 
         % Wait until the trial has ended
         obj.waitUntil(stopTimeSeconds);
