@@ -98,8 +98,8 @@ if ~simulateModeFlag
     LightObj.setSettings(modResult);
     LightObj.setUnimodal();
     LightObj.setWaveformIndex(2); % square-wave
-    LightObj.setFrequency(1/4000);
-    LightObj.setDuration(2000);
+    LightObj.setFrequency(1/6000);
+    LightObj.setDuration(3000);
     LightObj.setPhaseOffset(pi);
     LightObj.setRampIndex(2);
     LightObj.setRampDuration((adaptDurationMins-1)*60);
@@ -153,7 +153,7 @@ for cc = 1:nContrasts
 end
 
 % Prepare to loop over blocks
-for bb = 1:nAdaptBlocks
+for bb = 2:nAdaptBlocks
 
     % Prepare to loop over contrasts
     for cc = 1:nContrasts
@@ -166,6 +166,7 @@ for bb = 1:nAdaptBlocks
         LightObj.setContrast(thisContrast);
 
         % Start the Adaptation
+        Speak('adapt');
         fprintf('Press enter to start adaptation...');
         input('');
         LightObj.startModulation;
@@ -173,7 +174,7 @@ for bb = 1:nAdaptBlocks
         % Count down the minutes
         for mm = adaptDurationMins:-1:1
             Speak(sprintf('%d',mm));
-            pause(1)
+            pause(60)
         end
 
         % Get the psychObj for this contrast level
@@ -213,6 +214,8 @@ for bb = 1:nAdaptBlocks
             psychObj.presentTrialSequence(sequence);
 
             % Save the psychObj
+            psychObj.AirPuffObj = [];
+            psychObj.irCameraObj = [];
             save(psychObj.filename,'psychObj');
 
             % Report completion of this sequence
