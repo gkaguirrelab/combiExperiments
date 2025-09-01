@@ -13,9 +13,10 @@ classdef ParametricBlinkResponse < handle
     % Calling function can see, but not modify
     properties (SetAccess=private)
         maxAllowedPressurePSI = 46;
-        maxAllowedRefPSIPerSec = 2.5;
+        maxAllowedRefPSIPerSec = 4;
         cameraCleanupDurSecs = 2.5;
         trialData
+        adaptData
         simulateStimuli
         puffPSISet
         puffDurSecsSet
@@ -46,6 +47,9 @@ classdef ParametricBlinkResponse < handle
 
         % Counter for sequences
         sequenceIdx = 1;
+
+        % Counter for adapt periods
+        adaptIdx = 1;
 
     end
 
@@ -79,6 +83,7 @@ classdef ParametricBlinkResponse < handle
 
         % Required methds
         presentTrialSequence(obj,sequence)
+        recordAdaptPeriod(obj,recordLabel,recordDurSecs)
         waitUntil(obj,stopTimeSeconds)
     end
 end

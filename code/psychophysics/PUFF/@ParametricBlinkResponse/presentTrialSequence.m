@@ -40,17 +40,6 @@ for tt = 1:length(sequence)
     % Store the variable itiVector
     itiVector(tt) = preStimDelaySecs;
 
-    % Check that the max required pressure is within the safety range
-    if puffPSI > obj.maxAllowedPressurePSI
-        error('Requested puff pressure exceeds the safety limit');
-    end
-
-    % Check that the PSI * stimulus duration is not greater than
-    % maxAllowedRefPSIPerSec
-    if puffPSI*puffDurSecs > obj.maxAllowedRefPSIPerSec
-        error('The PSI * duration of the stimulus exceeds the safety limit');
-    end
-
     % Create the trial label
     trialLabel = [obj.trialLabelStem sprintf('_trial-%02d',tt)];
 
@@ -73,13 +62,8 @@ for tt = 1:length(sequence)
         obj.irCameraObj.durationSecs = min(preStimDelayRangeSecs)+trialDurSecs-obj.cameraCleanupDurSecs;
         obj.irCameraObj.prepareToRecord(trialLabel);
 
-        % Set the puff durations
-        obj.AirPuffObj.setDuration('L',puffDurSecs*1000);
-        obj.AirPuffObj.setDuration('R',puffDurSecs*1000);
-
-        % Set the puff pressures
-        obj.AirPuffObj.setPressure('L',puffPSI);
-        obj.AirPuffObj.setPressure('R',puffPSI);
+        % Set the puff properties
+        preparePuff(obj,puffPSI,puffDurSecs)
 
         % Pause briefly before we start the video recording. This ensures
         % that the video start time has the same timing across trials with
@@ -104,6 +88,17 @@ for tt = 1:length(sequence)
 
         % Simultaneous, bilateral puff
         obj.AirPuffObj.triggerPuff('ALL');
+
+        % Set the pressures for the next trial (or the first trial if it is
+        % the last trial in the sequence)
+        if tt<length(sequence)
+            nextPuffPSI = puffPSISet(sequence(tt+1));
+            nextPuffDurSecs = puffDurSecsSet(sequence(tt+1));
+        else
+            nextPuffPSI = puffPSISet(sequence(1));
+            nextPuffDurSecs = puffDurSecsSet(sequence(1));
+        end
+        preparePuff(obj,nextPuffPSI,nextPuffDurSecs)
 
         % Wait until the video recording file has closed
         obj.irCameraObj.checkFileClosed;
@@ -135,5 +130,29 @@ obj.trialData = trialData;
 
 % Increment the trial index
 obj.sequenceIdx = currSequenceIdx+1;
+
+end
+
+%% LOCAL FUNCTION
+function preparePuff(obj,puffPSI,puffDurSecs)
+
+% Check that the max required pressure is within the safety range
+if puffPSI > obj.maxAllowedPressurePSI
+    error('Requested puff pressure exceeds the safety limit');
+end
+
+% Check that the PSI * stimulus duration is not greater than
+% maxAllowedRefPSIPerSec
+if puffPSI*puffDurSecs > obj.maxAllowedRefPSIPerSec
+    error('The PSI * duration of the stimulus exceeds the safety limit');
+end
+
+% Set the duration
+obj.AirPuffObj.setDuration('L',puffDurSecs*1000);
+obj.AirPuffObj.setDuration('R',puffDurSecs*1000);
+
+% Set the pressures
+obj.AirPuffObj.setPressure('L',puffPSI);
+obj.AirPuffObj.setPressure('R',puffPSI);
 
 end

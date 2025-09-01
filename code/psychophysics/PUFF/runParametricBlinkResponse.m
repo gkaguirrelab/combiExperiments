@@ -14,8 +14,8 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
 p.addParameter('puffPSISet',logspace(log10(5),log10(30),5),@isnumeric);
-p.addParameter('puffDurSecsSet',ones(1,5)*0.05,@isnumeric);
-p.addParameter('modContrastLevels',[0,0.33],@isnumeric);
+p.addParameter('puffDurSecsSet',ones(1,5)*0.075,@isnumeric);
+p.addParameter('modContrastLevels',[0,0.25],@isnumeric);
 p.addParameter('adaptDurationMins',5,@isnumeric);
 p.addParameter('nSequences',4,@isnumeric);
 p.addParameter('nAdaptBlocks',2,@isnumeric);
@@ -90,16 +90,25 @@ if ~simulateModeFlag
     % Set up the CombiLED LightObj
     LightObj = CombiLEDcontrol('verbose',verboseLightObj);
 
+    % By default, gamma correction is not performed in directMode. Here we
+    % turn gamma correction on.
+    %% Calling this is causing some kind of serial communication error in
+    %% later CombiLED commands. Turning this off for now as it doesn't
+    %% really matter for the light flux measurements
+    %{
+    LightObj.setDirectModeGamma(true);
+    %}
+
     % Set the gamma table
     LightObj.setGamma(modResult.meta.cal.processedData.gammaTable);
 
-    % Set up the modulation properties
-    LightObj.stopModulation;
+    % Set up the adaptation ramp properties
     LightObj.setSettings(modResult);
     LightObj.setUnimodal();
+    LightObj.goDark;
     LightObj.setWaveformIndex(2); % square-wave
-    LightObj.setFrequency(1/6000);
-    LightObj.setDuration(3000);
+    LightObj.setFrequency(1/3000);
+    LightObj.setDuration(adaptDurationMins*60*2);
     LightObj.setPhaseOffset(pi);
     LightObj.setRampIndex(2);
     LightObj.setRampDuration((adaptDurationMins-1)*60);
@@ -153,7 +162,7 @@ for cc = 1:nContrasts
 end
 
 % Prepare to loop over blocks
-for bb = 2:nAdaptBlocks
+for bb = 1:nAdaptBlocks
 
     % Prepare to loop over contrasts
     for cc = 1:nContrasts
@@ -165,20 +174,38 @@ for bb = 2:nAdaptBlocks
         LightObj.stopModulation;
         LightObj.setContrast(thisContrast);
 
-        % Start the Adaptation
+        % Get the psychObj for this contrast level
+        psychObj = psychObjArray{cc};
+
+        % Refresh the irObj
+        if ~simulateModeFlag
+            irCameraObj = PuffCameraControl(videoDataPath,'verbose',verboseCameraObj);
+            psychObj.irCameraObj = irCameraObj;
+        end
+
+        % Wait for the subject to start adaptation
         Speak('adapt');
         fprintf('Press enter to start adaptation...');
         input('');
+
+        % Start the light ramp
         LightObj.startModulation;
 
-        % Count down the minutes
-        for mm = adaptDurationMins:-1:1
-            Speak(sprintf('%d',mm));
-            pause(60)
+        % Count down the minutes and record a video during each minute
+        for mm = 1:adaptDurationMins
+            % Define the label to be used for the adaptation video recording
+            recordLabel = sprintf( [subjectID '_' experimentName ...
+                '_direction-' whichDirection '_contrast-%2.2f_block-%d_adapt-%d' ],...
+                thisContrast,bb,mm);
+            Speak(sprintf('%d',adaptDurationMins-(mm-1)));
+            psychObj.recordAdaptPeriod(recordLabel,55);
+            pause(5);
         end
 
-        % Get the psychObj for this contrast level
-        psychObj = psychObjArray{cc};
+        % Use direct mode to set the CombiLED to the light level we want
+        % for this sequence
+        settings = thisContrast .* (modResult.settingsHigh - modResult.settingsLow) + modResult.settingsLow;
+        LightObj.setPrimaries(settings);
 
         % Now present a set of sequences, each of which should be about 2
         % minutes in duration
@@ -229,6 +256,9 @@ for bb = 2:nAdaptBlocks
     end % loop over contrasts
 
 end % loop over adaptation blocks
+
+% Report done
+Speak('done');
 
 % Clean up
 if ~simulateModeFlag
