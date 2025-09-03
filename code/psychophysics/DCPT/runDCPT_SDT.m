@@ -41,15 +41,15 @@ function runDCPT_SDT(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'DEMO_2';
-    NDlabel = '0x5';
-    runDCPT_SDT(subjectID,NDlabel,'simulateMode',true);
+    subjectID = 'FLIC_0015';
+    NDlabel = '3x0';
+    runDCPT_SDT(subjectID,NDlabel,'simulateMode',false);
 %}
 
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('modDirections',{'LightFlux'},@iscell);
-p.addParameter('refFreqHz',logspace(log10(3),log10(20),7),@isnumeric);
+p.addParameter('refFreqHz',logspace(log10(10),log10(30),5),@isnumeric);
 p.addParameter('targetPhotoContrast',[0.10; 0.30],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);
@@ -336,6 +336,7 @@ for bb=1:nBlocks
     if demoModeFlag        
         demoTestParams = zeros(1,nTrialsPerBlock);
         demoTestParams(1:floor(nTrialsPerBlock/2)) = 4.3690;
+        % demoTestParams(1:floor(nTrialsPerBlock/2)) = 5;
         demoTestParams = demoTestParams(randperm(nTrialsPerBlock));
     end
 

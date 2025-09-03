@@ -2,7 +2,7 @@ function calibrateEOG_DCPT(subjectID, sessionNumber)
 
 % Examples:
 %{
-    subjectID = 'HERO_rsb';
+    subjectID = 'FLIC_0015';
     sessionNumber = 1;
     calibrateEOG_DCPT(subjectID, sessionNumber)
 %}
