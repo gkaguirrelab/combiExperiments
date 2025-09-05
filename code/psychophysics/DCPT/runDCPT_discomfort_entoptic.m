@@ -53,7 +53,7 @@ function runDCPT_discomfort_entoptic(subjectID,NDlabel,EMGFlag, varargin)
 %
 % Examples:
 %{
-    subjectID = 'FLIC_0015';
+    subjectID = 'FLIC_0018';
     NDlabel = '3x0';
     discomfortFlag = true; 
     EMGFlag = true;

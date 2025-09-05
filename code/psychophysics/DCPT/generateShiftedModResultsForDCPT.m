@@ -41,8 +41,8 @@ function generateShiftedModResultsForDCPT(subjectID,observerAgeInYears,NDlabel,v
 %
 % Examples:
 %{
-    subjectID = 'FLIC_0015';
-    observerAgeInYears = 22;
+    subjectID = 'FLIC_0018';
+    observerAgeInYears = 18;
     NDlabel = '3x0';
     generateShiftedModResultsForDCPT(subjectID,observerAgeInYears,NDlabel);
 %}

@@ -41,7 +41,7 @@ function runDCPT_SDT(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'FLIC_0015';
+    subjectID = 'FLIC_0018';
     NDlabel = '3x0';
     runDCPT_SDT(subjectID,NDlabel,'simulateMode',false);
 %}
@@ -58,7 +58,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
-p.addParameter('nBlocks',28,@isnumeric);
+p.addParameter('nBlocks',20,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
