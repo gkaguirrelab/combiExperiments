@@ -4,8 +4,8 @@ function plotDCPT_SDTData(subjectID, refFreqSetHz, modDirections, targetPhotoCon
 % % e.g.,
 %{
 
-subjectID = 'FLIC_0013';
-refFreqSetHz = logspace(logspace(log10(10),log10(30),5));
+subjectID = 'FLIC_0017';
+refFreqSetHz = logspace(log10(10),log10(30),5);
 modDirections = {'LightFlux'};
 targetPhotoContrast = [0.10; 0.30];  % [Low contrast levels; high contrast levels] 
 % Light Flux is [0.10; 0.30]
