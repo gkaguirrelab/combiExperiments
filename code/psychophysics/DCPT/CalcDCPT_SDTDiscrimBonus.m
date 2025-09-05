@@ -3,8 +3,8 @@ function CalcDCPT_SDTDiscrimBonus(subjectID, refFreqSetHz, modDirections, target
 % % e.g.,
 %{
 
-    subjectID = 'FLIC_0013';
-    refFreqSetHz = logspace(log10(3),log10(20),7);
+    subjectID = 'FLIC_0015';
+    refFreqSetHz = logspace(log10(3),log10(20),5);
     modDirections = {'LightFlux'};
     targetPhotoContrast = [0.10; 0.30];  % [Low contrast levels; high contrast levels] 
     NDLabel = {'3x0'};
@@ -57,7 +57,7 @@ for directionIdx = 1:length(modDirections)
                 nTrials = length(psychObj.questData.trialData);
 
                 % Get the proportion selected "test" the most recent
-                % sessionn (20 trials of each condition per session)
+                % session (20 trials of each condition per session)
                 correct = [questData.trialData(end-19:end).correct];
                 nCorrect = sum(correct);
                 totalCorrect = totalCorrect + nCorrect;
