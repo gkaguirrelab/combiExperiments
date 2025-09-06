@@ -17,8 +17,6 @@ giveFeedback = obj.giveFeedback;
 % the inter-trial interval range
 refPuffPSI = obj.refPuffPSI;
 puffDurSecs = obj.puffDurSecs;
-itiRangeSecs = obj.itiRangeSecs;
-itiDur = []; % Define this in case we are in simulate mode
 
 % Get the stimParam to use for this trial.
 testParam = qpQuery(questData);
@@ -80,21 +78,40 @@ audioObjs.bad = audioplayer(badSound,Fs);
 
 % Handle verbosity
 if obj.verbose
-    fprintf('Trial %d; Pulse contrast [%2.2f]; Puff duration [%2.2f]; Pressure PSI [%2.2f, %2.2f PSI]...', ...
+    fprintf(['Trial %d; Waveform ' obj.lightPulseWaveform ' Pulse contrast [%2.2f]; Puff duration [%2.2f]; Pressure PSI [%2.2f, %2.2f PSI]...'], ...
         currTrialIdx,obj.lightPulseModContrast,obj.puffDurSecs,intervalParams(1,1),intervalParams(2,1));
 end
 
 % Present the stimuli
 if ~simulateStimuli
 
-    %% Disabled while we work on the pupil camera
-    % Start the ir camera recording
-    %{
-    obj.irCameraObj.durationSecs = 1 + obj.lightPulseDuration + obj.isiSecs + obj.lightPulseDuration + min(itiRangeSecs);
+    % Play the ready sound
+    audioObjs.ready.play
+
+    % Set the puff durations for the first interval
+    obj.AirPuffObj.setDuration('L',obj.puffDurSecs*1000);
+    obj.AirPuffObj.setDuration('R',obj.puffDurSecs*1000);
+
+    % Set the puff pressures for the first interval
+    obj.AirPuffObj.setPressure('L',intervalParams(1,1));
+    obj.AirPuffObj.setPressure('R',intervalParams(1,1));
+
+    % Define a camera recording time, which includes:
+    % - 1 second before the light pulse
+    % - light pulse, isi, light pulse
+    % - 1 second after the second light pulse and air puff
+    camRecordTimeSecs = 1 + obj.lightPulseDurSecs + obj.isiSecs + obj.lightPulseDurSecs + 1;
+
+    % Define an overall minimum end time for the trial, which is the camera
+    % record time plus the camera clean up time
+    totalTrialTime = camRecordTimeSecs + obj.cameraCleanupDurSecs;
+    overallStopTimeSecs = cputime() + totalTrialTime;
+
+    % Start the camera recording
+    obj.irCameraObj.durationSecs = camRecordTimeSecs;
     irVidTrialLabel = sprintf([obj.trialLabel '_trial-%03d'],currTrialIdx);
     obj.irCameraObj.prepareToRecord(irVidTrialLabel);
     obj.irCameraObj.startRecording(irVidTrialLabel);
-    %}
 
     % We let the IR camera start recording for a second before the light
     % starts. This way we can measure the pupil response to the stimulus,
@@ -116,7 +133,7 @@ if ~simulateStimuli
             pause(0.1);
             obj.LightObj.setPhaseOffset(0);
     end
-    
+
     % Wait until the pre-light period has ended
     obj.waitUntil(stopTimeSeconds);
 
@@ -126,22 +143,12 @@ if ~simulateStimuli
     % Start the light pulse
     obj.LightObj.startModulation;
 
-    % Pause a moment to clear the serial queue
-    pause(0.1);
-
-    % Set the puff durations
-    obj.AirPuffObj.setDuration('L',obj.puffDurSecs*1000);
-    obj.AirPuffObj.setDuration('R',obj.puffDurSecs*1000);
-
-    % Prepare the stimuli for the first interval
-    obj.AirPuffObj.setPressure('L',intervalParams(1,1));
-    obj.AirPuffObj.setPressure('R',intervalParams(1,1));
-
     % Wait until the light pulse has ended
     obj.waitUntil(stopTimeSeconds);
-    
-    % Play the first puff sound
+
+    % Play the first puff sound, and pause briefly to let it get started
     audioObjs.low.play;
+    pause(0.1);
 
     % Simultaneous, bilateral puff
     obj.AirPuffObj.triggerPuff('ALL');
@@ -152,6 +159,14 @@ if ~simulateStimuli
     % Wait for the pulse to be over and serial port control to have
     % returned
     pause(obj.puffDurSecs+0.1);
+
+    % Set the puff durations for the second interval
+    obj.AirPuffObj.setDuration('L',obj.puffDurSecs*1000);
+    obj.AirPuffObj.setDuration('R',obj.puffDurSecs*1000);
+
+    % Set the puff pressures for the second interval
+    obj.AirPuffObj.setPressure('L',intervalParams(2,1));
+    obj.AirPuffObj.setPressure('R',intervalParams(2,1));
 
     % Prepare the light pulse for the second interval
     switch obj.lightPulseWaveform
@@ -178,15 +193,12 @@ if ~simulateStimuli
     % Start the second light pulse
     obj.LightObj.startModulation;
 
-    % Prepare the puff stimuli for the second interval
-    obj.AirPuffObj.setPressure('L',intervalParams(2,1));
-    obj.AirPuffObj.setPressure('R',intervalParams(2,1));
-
     % Finish waiting out the second light pulse
     obj.waitUntil(stopTimeSeconds);
 
-    % Play the second puff tone
+    % Play the second puff tone, and pause briefly to let it get started
     audioObjs.mid.play;
+    pause(0.1);
 
     % Simultaneous, bilateral puff
     obj.AirPuffObj.triggerPuff('ALL');
@@ -245,14 +257,20 @@ else
     end
 end
 
-% Enforce a variable inter-trial-interval
+% Wait until the total trial time has elapsed, or we have finished the
+% minimum iti, whichever comes later. Also make sure that the recording has
+% finished
 if ~simulateStimuli
 
-    % Wait a variable amount of time for the inter-trial-interval
-    itiDur = min(itiRangeSecs)+range(itiRangeSecs)*rand();
-    stopTimeSeconds = cputime() + obj.isiSecs;
+    % Define the stop time
+    stopTimeSeconds = max([...
+        overallStopTimeSecs, ...
+        cputime() + obj.minItiSecs]);
 
-    % Finish waiting out the ITI
+    % Wait until the video recording file has closed
+    obj.irCameraObj.checkFileClosed;
+
+    % Keep waiting until we are done
     obj.waitUntil(stopTimeSeconds);
 
 end
@@ -271,10 +289,10 @@ questData.trialData(currTrialIdx).testInterval = testInterval;
 questData.trialData(currTrialIdx).moreIntenseInterval = moreIntenseInterval;
 questData.trialData(currTrialIdx).intervalChoice = intervalChoice;
 questData.trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
-questData.trialData(currTrialIdx).itiDur = itiDur;
 questData.trialData(currTrialIdx).correct = correct;
+questData.trialData(currTrialIdx).irVidTrialLabel = irVidTrialLabel;
 
-% Put staircaseData back into the obj
+% Put questData back into the obj
 obj.questData = questData;
 
 end

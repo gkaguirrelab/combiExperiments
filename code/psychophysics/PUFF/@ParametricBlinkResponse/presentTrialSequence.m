@@ -56,9 +56,9 @@ for tt = 1:length(sequence)
 
         % Get the ir camera ready to record. We record for a period of time
         % before the stimulus equal to the minimum of the
-        % preStimDelayRange, an we stop recording one second before the end
-        % of the trial to allow time for the camera operations to complete
-        % before the next trial.
+        % preStimDelayRange, and we stop recording one second before the
+        % end of the trial to allow time for the camera operations to
+        % complete before the next trial.
         obj.irCameraObj.durationSecs = min(preStimDelayRangeSecs)+trialDurSecs-obj.cameraCleanupDurSecs;
         obj.irCameraObj.prepareToRecord(trialLabel);
 

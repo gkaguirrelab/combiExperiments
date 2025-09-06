@@ -15,7 +15,8 @@ classdef PsychPuffLightPSE < handle
     % Calling function can see, but not modify
     properties (SetAccess=private)
         maxAllowedPressurePSI = 45;
-        maxAllowedRefPSIPerSec = 1;
+        maxAllowedRefPSIPerSec = 2;
+        cameraCleanupDurSecs = 5.0;
         modResult
         questData
         simulatePsiParams
@@ -32,6 +33,7 @@ classdef PsychPuffLightPSE < handle
         prePuffLightSecs
         itiRangeSecs
         isiSecs = 1;
+        minItiSecs = 1;
         trialLabel
     end
 
@@ -138,6 +140,7 @@ classdef PsychPuffLightPSE < handle
         % Required methds
         initializeQP(obj)
         initializeDisplay(obj)
+        recordAdaptPeriod(obj,recordLabel,recordDurSecs)
         presentTrial(obj)
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
         [intervalChoice, responseTimeSecs] = getResponse(obj);
