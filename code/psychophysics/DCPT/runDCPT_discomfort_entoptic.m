@@ -53,17 +53,17 @@ function runDCPT_discomfort_entoptic(subjectID,NDlabel,EMGFlag, varargin)
 %
 % Examples:
 %{
-    subjectID = 'DEMO_3';
-    NDlabel = '0x5';
+    subjectID = 'FLIC_0018';
+    NDlabel = '3x0';
     discomfortFlag = true; 
-    EMGFlag = false;
+    EMGFlag = true;
     runDCPT_discomfort_entoptic(subjectID,NDlabel, EMGFlag, 'discomfortFlag', discomfortFlag);
 %}
 
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('modDirections',{'LightFlux'},@iscell);
-p.addParameter('refFreqHz',logspace(log10(3),log10(20),7),@isnumeric);
+p.addParameter('refFreqHz',logspace(log10(10),log10(30),5),@isnumeric);
 p.addParameter('targetPhotoContrast',[0.10; 0.30],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);

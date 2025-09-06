@@ -41,15 +41,15 @@ function runDCPT_SDT(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'DEMO_2';
-    NDlabel = '0x5';
-    runDCPT_SDT(subjectID,NDlabel,'simulateMode',true);
+    subjectID = 'FLIC_0018';
+    NDlabel = '3x0';
+    runDCPT_SDT(subjectID,NDlabel,'simulateMode',false);
 %}
 
 % Parse the parameters
 p = inputParser; p.KeepUnmatched = false;
 p.addParameter('modDirections',{'LightFlux'},@iscell);
-p.addParameter('refFreqHz',logspace(log10(3),log10(20),7),@isnumeric);
+p.addParameter('refFreqHz',logspace(log10(10),log10(30),5),@isnumeric);
 p.addParameter('targetPhotoContrast',[0.10; 0.30],@isnumeric);
 p.addParameter('combiLEDLabels',{'C','D'},@iscell);
 p.addParameter('combiLEDIDs',{"A10L31XJ","A10L31XZ"},@iscell);
@@ -58,7 +58,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
-p.addParameter('nBlocks',28,@isnumeric);
+p.addParameter('nBlocks',20,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
@@ -336,6 +336,7 @@ for bb=1:nBlocks
     if demoModeFlag        
         demoTestParams = zeros(1,nTrialsPerBlock);
         demoTestParams(1:floor(nTrialsPerBlock/2)) = 4.3690;
+        % demoTestParams(1:floor(nTrialsPerBlock/2)) = 5;
         demoTestParams = demoTestParams(randperm(nTrialsPerBlock));
     end
 
