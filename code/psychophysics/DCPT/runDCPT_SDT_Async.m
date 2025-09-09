@@ -41,7 +41,7 @@ function runDCPT_SDT_Async(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'HERO_rsb';
+    subjectID = 'HERO_sam';
     NDlabel = '0x5';
     runDCPT_SDT_Async(subjectID,NDlabel,'simulateMode',false);
 %}

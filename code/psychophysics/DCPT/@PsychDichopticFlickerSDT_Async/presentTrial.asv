@@ -164,13 +164,15 @@ else
 
     % Add the start delay to either the right or left side combiLED
     % Randomly choose the side
+    % Clear start delay for both c
+
+   
     if round((rand(1))) == 1
-        obj.CombiLEDObjArr{1}.setStartDelay(obj.stimDurSecs);
-        obj.CombiLEDObjArr{2}.setStartDelay(0);
+        obj.CombiLEDObjArr{1}.setStartDelay(obj.stimDurSecs + 0.25);
+        obj.CombiLEDObjArr{1}.setStartDelay(0);
     else
         obj.CombiLEDObjArr{2}.setStartDelay(obj.stimDurSecs + 0.25);
-        obj.CombiLEDObjArr{1}.setStartDelay(0.25)
-        % Extra 0.25s because combiLED 2 is slower than combiLED 1
+        obj.CombiLEDObjArr{2}.setStartDelay(obj.stimDurSecs + 0.25)
     end
 
     toc;
