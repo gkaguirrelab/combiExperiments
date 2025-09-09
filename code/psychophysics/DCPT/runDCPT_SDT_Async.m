@@ -2,7 +2,7 @@ function runDCPT_SDT_Async(subjectID,NDlabel,varargin)
 % Collect a session of dichoptic flicker discrimination data
 %
 % Syntax:
-%   runDCPT_SDT(subjectID,NDlabel)
+%   runDCPT_SDT_Async(subjectID,NDlabel)
 %
 % Description:
 %   This function organizes the collection of data using the
@@ -41,9 +41,9 @@ function runDCPT_SDT_Async(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'FLIC_0015';
-    NDlabel = '3x0';
-    runDCPT_SDT(subjectID,NDlabel,'simulateMode',false);
+    subjectID = 'HERO_rsb';
+    NDlabel = '0x5';
+    runDCPT_SDT_Async(subjectID,NDlabel,'simulateMode',false);
 %}
 
 % Parse the parameters
@@ -58,7 +58,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','FLIC_data',@ischar);
 p.addParameter('projectName','combiLED',@ischar);
 p.addParameter('nTrialsPerBlock',20,@isnumeric);
-p.addParameter('nBlocks',28,@isnumeric);
+p.addParameter('nBlocks',20,@isnumeric);
 p.addParameter('verboseCombiLED',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
 p.addParameter('simulateMode',false,@islogical);
@@ -84,7 +84,7 @@ useKeyboardFlag = p.Results.useKeyboardFlag;
 combiClockAdjust = p.Results.combiClockAdjust;
 
 % Set our experimentName
-experimentName = 'DCPT_SDT';
+experimentName = 'DCPT_SDT_Async';
 
 % Set the labels for the high and low stimulus ranges
 stimParamSide = {'hi','low'};
@@ -242,7 +242,7 @@ for directionIdx = 1:nDirections
                     psychObj.useKeyboardFlag = useKeyboardFlag;
                 else
                     % Create the object
-                    psychObj = PsychDichopticFlickerSDT(...
+                    psychObj = PsychDichopticFlickerSDT_Async(...
                         CombiLEDObjArr, modResultArr, EOGControl, refFreqHz(freqIdx),...
                         'refPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...
                         'testPhotoContrast',targetPhotoContrast(contrastIdx,directionIdx),...

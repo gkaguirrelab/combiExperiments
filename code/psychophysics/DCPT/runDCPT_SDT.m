@@ -41,8 +41,8 @@ function runDCPT_SDT(subjectID,NDlabel,varargin)
 %
 % Examples:
 %{
-    subjectID = 'FLIC_0018';
-    NDlabel = '3x0';
+    subjectID = 'FLIC_0019';
+    NDlabel = '0x5';
     runDCPT_SDT(subjectID,NDlabel,'simulateMode',false);
 %}
 

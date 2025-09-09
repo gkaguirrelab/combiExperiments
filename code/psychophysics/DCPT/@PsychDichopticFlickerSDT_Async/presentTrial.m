@@ -162,8 +162,8 @@ else
         obj.CombiLEDObjArr{side}.setPhaseOffset(stimParams(side,3));
     end
 
-    % Add the start delay to the right side combiLED
-    obj.CombiLEDObjArr{2}.setStartDelay(obj.stimDurSecs);
+    % Add the start delay to the right side combiLED 
+    obj.CombiLEDObjArr{1}.setStartDelay(obj.stimDurSecs + 0.25);
 
     toc;
 
@@ -173,8 +173,8 @@ else
     obj.waitUntil(stopTime);
 
     % Start the left stimulus and sound a tone. The right stimulus will
-    % start after a delay time of stimDurSecs.
-    for side = [1 2]
+    % start after a delay time of stimDurSecs + 0.25.
+    for side = [2 1]
         obj.CombiLEDObjArr{side}.startModulation;
     end
     audioObjs.low.play;
