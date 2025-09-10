@@ -136,6 +136,19 @@ end
 %% LOCAL FUNCTION
 function preparePuff(obj,puffPSI,puffDurSecs)
 
+% Store the last stimulus so we don't need to change it
+persistent lastPuffPSI
+persistent lastPuffDurSecs
+
+if isempty(lastPuffPSI) % Check if it's the first call
+    lastPuffPSI = -1;
+    lastPuffDurSecs = -1;
+end
+
+% Store the warning state; turn off an occasional serial port warning
+warnState = warning();
+warning('off', 'serialport:serialport:ReadlineWarning');
+
 % Check that the max required pressure is within the safety range
 if puffPSI > obj.maxAllowedPressurePSI
     error('Requested puff pressure exceeds the safety limit');
@@ -148,11 +161,22 @@ if puffPSI*puffDurSecs > obj.maxAllowedRefPSIPerSec
 end
 
 % Set the duration
-obj.AirPuffObj.setDuration('L',puffDurSecs*1000);
-obj.AirPuffObj.setDuration('R',puffDurSecs*1000);
+if puffDurSecs ~=lastPuffDurSecs
+    obj.AirPuffObj.setDuration('L',puffDurSecs*1000);
+    obj.AirPuffObj.setDuration('R',puffDurSecs*1000);
+end
 
 % Set the pressures
-obj.AirPuffObj.setPressure('L',puffPSI);
-obj.AirPuffObj.setPressure('R',puffPSI);
+if puffPSI ~=lastPuffPSI
+    obj.AirPuffObj.setPressure('L',puffPSI);
+    obj.AirPuffObj.setPressure('R',puffPSI);
+end
+
+% Store these stimuli
+lastPuffDurSecs = puffDurSecs;
+lastPuffPSI = puffPSI;
+
+% Restore the warning state
+warning(warnState);
 
 end

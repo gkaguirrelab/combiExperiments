@@ -1,9 +1,8 @@
 % Object to support conducting a 2AFC air puff discrimination task,
 % using QUEST+ to select stimuli in an effort to estimate the sigma (slope)
-% of a cumulative normal Gaussian. Test stimuli above or below the
-% reference frequency are examined in separate calls to this routine.
+% of a cumulative normal Gaussian.
 
-classdef PsychPuffLightPSE < handle
+classdef PsychPuffLightDiscrim < handle
 
     properties (Constant)
     end
@@ -16,8 +15,7 @@ classdef PsychPuffLightPSE < handle
     properties (SetAccess=private)
         maxAllowedPressurePSI = 45;
         maxAllowedRefPSIPerSec = 2;
-        cameraCleanupDurSecs = 5.0;
-        modResult
+        cameraCleanupDurSecs = 3.5;
         questData
         simulatePsiParams
         simulateResponse
@@ -25,13 +23,10 @@ classdef PsychPuffLightPSE < handle
         giveFeedback
         stimParamsDomainList
         psiParamsDomainList
-        lightPulseModContrast
-        lightPulseWaveform
-        lightPulseDurSecs = 3;
         refPuffPSI
         puffDurSecs;
         itiRangeSecs
-        isiSecs = 1;
+        isiSecs = 2;
         minItiSecs = 1;
         trialLabel
     end
@@ -47,11 +42,6 @@ classdef PsychPuffLightPSE < handle
         % The object for making infrared recordings of the eyes
         irCameraObj
 
-        % The combiLED object. This is modifiable so that we can re-load
-        % the psychometric object, update this handle, and then continue
-        % to collect data 
-        LightObj
-
         % Assign a filename which is handy for saving and loading
         filename
 
@@ -65,7 +55,7 @@ classdef PsychPuffLightPSE < handle
     methods
 
         % Constructor
-        function obj = PsychPuffLightPSE(AirPuffObj,irCameraObj,LightObj,refPuffPSI,modResult,varargin)
+        function obj = PsychPuffLightDiscrim(AirPuffObj,irCameraObj,refPuffPSI,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -73,8 +63,6 @@ classdef PsychPuffLightPSE < handle
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('lightPulseModContrast',0.5,@isnumeric);
-            p.addParameter('lightPulseWaveform','background',@ischar);
             p.addParameter('puffDurSecs',0.33,@isnumeric);
             p.addParameter('itiRangeSecs',[1,1.5],@isnumeric);
             p.addParameter('simulatePsiParams',[.2,0.5],@isnumeric);
@@ -87,15 +75,11 @@ classdef PsychPuffLightPSE < handle
             % Place various inputs and options into object properties
             obj.AirPuffObj = AirPuffObj;
             obj.irCameraObj = irCameraObj;            
-            obj.LightObj = LightObj;
             obj.refPuffPSI = refPuffPSI;
-            obj.modResult = modResult;
             obj.trialLabel = p.Results.trialLabel;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;
-            obj.lightPulseModContrast = p.Results.lightPulseModContrast;
-            obj.lightPulseWaveform = p.Results.lightPulseWaveform;
             obj.puffDurSecs = p.Results.puffDurSecs;
             obj.itiRangeSecs = p.Results.itiRangeSecs;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
@@ -129,14 +113,10 @@ classdef PsychPuffLightPSE < handle
             % Initialize Quest+
             obj.initializeQP;
 
-            % Initialize the CombiLED
-            obj.initializeDisplay;
-
         end
 
         % Required methds
         initializeQP(obj)
-        initializeDisplay(obj)
         recordAdaptPeriod(obj,recordLabel,recordDurSecs)
         presentTrial(obj)
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)

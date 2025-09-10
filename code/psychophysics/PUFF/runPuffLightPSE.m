@@ -8,7 +8,8 @@ function runPuffLightPSE(subjectID,whichDirection,varargin)
 %{
     subjectID = 'HERO_gka';
     whichDirection = 'LightFlux';
-    runPuffLightPSE(subjectID,whichDirection);
+    refPuffPSI = 21;
+    runPuffLightPSE(subjectID,whichDirection,'refPuffPSI',refPuffPSI);
 %}
 
 % Parse the parameters

@@ -14,8 +14,8 @@ p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','puffLight',@ischar);
-p.addParameter('experimentName','puffPSE',@ischar);
-p.addParameter('primaryHeadRoom',0.05,@isnumeric);
+p.addParameter('experimentName','puffDiscrim',@ischar);
+p.addParameter('primaryHeadRoom',0,@isnumeric);
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
@@ -25,11 +25,11 @@ primaryHeadRoom = p.Results.primaryHeadRoom;
 fieldSizeDeg = 30;
 
 % Define the calibration files
-calSubDir = 'DCPT';
-calFileName = 'CombiLED-C_irFilter-C_cassette-C_ND0_classicEyePiece-C.mat';
+calSubDir = 'PUFF';
+calFileName = 'CombiLED-B_split3mm_lightPuff_ND0.mat';
 
 % The directions for which we will create modulations
-modulationDirections = {'Mel','LightFlux'};
+modulationDirections = {'Mel','LightFlux','S_peripheral'};
 
 % Load the cal file
 cal = loadCalByName(calFileName, calSubDir);
@@ -60,8 +60,10 @@ for dd = 1:length(modulationDirections)
                 'primaryHeadRoom',primaryHeadRoom,'searchBackground',true);
         case 'LightFlux'
             modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
-                'backgroundPrimary',ones(8,1)*0.33,...
                 'primaryHeadRoom',0);
+        case 'S_peripheral'
+            modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
+                'primaryHeadRoom',primaryHeadRoom,'searchBackground',true);
     end
     figHandle = plotModResult(modResults{dd});
     drawnow
