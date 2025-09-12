@@ -13,14 +13,14 @@ p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
-p.addParameter('puffPSISet',[8 12 20],@isnumeric);
-p.addParameter('puffDurSecs',0.075,@isnumeric);
+p.addParameter('puffPSISet',[15 30],@isnumeric);
+p.addParameter('puffDurSetSecs',[0.05 ,0.05],@isnumeric);
 p.addParameter('modContrastLevels',[0,0.1],@isnumeric);
 p.addParameter('adaptDurationMins',5,@isnumeric);
 p.addParameter('nRunsPerBlock',4,@isnumeric);
-p.addParameter('nTrialsPerRun',24,@isnumeric);
+p.addParameter('nTrialsPerRun',20,@isnumeric);
 p.addParameter('nAdaptBlocks',2,@isnumeric);
-p.addParameter('simulateModeFlag',true,@islogical);
+p.addParameter('simulateModeFlag',false,@islogical);
 p.addParameter('verbosePuffObj',false,@islogical);
 p.addParameter('verboseCameraObj',false,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
@@ -29,7 +29,7 @@ p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
 puffPSISet = p.Results.puffPSISet;
-puffDurSecs = p.Results.puffDurSecs;
+puffDurSetSecs = p.Results.puffDurSetSecs;
 modContrastLevels = p.Results.modContrastLevels;
 adaptDurationMins = p.Results.adaptDurationMins;
 nTrialsPerRun = p.Results.nTrialsPerRun;
@@ -121,8 +121,8 @@ for cc = 1:nContrasts
         % Define the filestem for this psychometric object
         psychFileStem = sprintf( [subjectID '_' experimentName ...
             '_direction-' whichDirection '_contrast-%2.2f' ...
-            '_refPSI-%2.2f' ],...
-            modContrastLevels(cc),puffPSISet(nn));
+            '_refPSI-%2.2f_durSecs-%2.3f' ],...
+            modContrastLevels(cc),puffPSISet(nn),puffDurSetSecs(nn));
 
         % Create or load the psychometric object
         filename = fullfile(dataDir,[psychFileStem '.mat']);
@@ -134,7 +134,7 @@ for cc = 1:nContrasts
             psychObj = PsychPuffLightDiscrim(...
                 AirPuffObj,irCameraObj,puffPSISet(nn),...
                 'trialLabel',psychFileStem,...
-                'puffDurSecs',puffDurSecs,...
+                'puffDurSecs',puffDurSetSecs(nn),...
                 'simulateStimuli',simulateModeFlag,...
                 'verbose',verbosePsychObj);
             % Store the filename

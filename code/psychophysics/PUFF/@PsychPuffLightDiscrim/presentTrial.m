@@ -92,7 +92,7 @@ if ~simulateStimuli
     audioObjs.ready.play
 
     % Prepare the puff for the first interval
-    preparePuff(obj,intervalParams(1,1),obj.puffDurSecs*1000)
+    preparePuff(obj,intervalParams(1,1),obj.puffDurSecs)
 
     % Define a camera recording time, which includes:
     % - 2 second before the first puff (this gives time for the puff
@@ -124,7 +124,7 @@ if ~simulateStimuli
     obj.AirPuffObj.triggerPuff('ALL');
 
     % Prepare the puff for the second interval
-    preparePuff(obj,intervalParams(2,1),obj.puffDurSecs*1000)
+    preparePuff(obj,intervalParams(2,1),obj.puffDurSecs)
 
     % Wait for the ISI
     stopTimeSeconds = cputime() + obj.isiSecs;

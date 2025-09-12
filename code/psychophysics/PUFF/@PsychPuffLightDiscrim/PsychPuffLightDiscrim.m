@@ -13,10 +13,11 @@ classdef PsychPuffLightDiscrim < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
-        maxAllowedPressurePSI = 45;
+        maxAllowedPressurePSI = 48;
         maxAllowedRefPSIPerSec = 2;
         cameraCleanupDurSecs = 3.5;
         questData
+        adaptData
         simulatePsiParams
         simulateResponse
         simulateStimuli
@@ -50,6 +51,9 @@ classdef PsychPuffLightDiscrim < handle
         blockIdx = 1;
         blockStartTimes = datetime();
 
+        % Counter for adapt periods
+        adaptIdx = 1;
+
     end
 
     methods
@@ -66,7 +70,7 @@ classdef PsychPuffLightDiscrim < handle
             p.addParameter('puffDurSecs',0.33,@isnumeric);
             p.addParameter('itiRangeSecs',[1,1.5],@isnumeric);
             p.addParameter('simulatePsiParams',[.2,0.5],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(-3,3,25),@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(-2,2,25),@isnumeric);
             p.addParameter('psiParamsDomainList',...
                 {linspace(-1,1,11),linspace(0,3,15)},@isnumeric);
             p.addParameter('verbose',true,@islogical);

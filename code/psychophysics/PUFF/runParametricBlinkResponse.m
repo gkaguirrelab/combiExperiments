@@ -15,7 +15,7 @@ p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
 p.addParameter('puffPSISet',logspace(log10(5),log10(30),5),@isnumeric);
 p.addParameter('puffDurSecsSet',ones(1,5)*0.075,@isnumeric);
-p.addParameter('modContrastLevels',[0,0.25],@isnumeric);
+p.addParameter('modContrastLevels',[0,0.1],@isnumeric);
 p.addParameter('adaptDurationMins',5,@isnumeric);
 p.addParameter('nSequences',4,@isnumeric);
 p.addParameter('nAdaptBlocks',2,@isnumeric);
