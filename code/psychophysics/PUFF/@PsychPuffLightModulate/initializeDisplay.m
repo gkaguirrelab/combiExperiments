@@ -16,8 +16,8 @@ if ~obj.simulateStimuli
     end
 
     obj.LightObj.setSettings(obj.modResult);
-    obj.LightObj.setBimodal();
-    obj.LightObj.setWaveformIndex(1); % sinusoid
+%    obj.LightObj.setBimodal();
+%    obj.LightObj.setWaveformIndex(1); % sinusoid
     obj.LightObj.setContrast(obj.lightModContrast);
     obj.LightObj.setFrequency(obj.lightModFreqHz);
     obj.LightObj.setDuration(obj.lightModDurSecs);

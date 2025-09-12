@@ -1,7 +1,7 @@
 function presentTrial(obj)
 
 % Get the current trial index
-currTrialIdx = size(obj.trialData,1)+1;
+currTrialIdx = size(obj.trialData,2)+1;
 
 % Determine if we are simulating the stimuli
 simulateStimuli = obj.simulateStimuli;
@@ -39,11 +39,13 @@ irVidTrialLabel = [];
 % Present the stimuli
 if ~simulateStimuli
 
-    % Set the phase for this modulation
-    obj.LightObj.phaseOffset(obj.lightModPhase);
-
     % Play the ready sound
-    audioObjs.mid.play
+    audioObjs.low.play
+
+    % Update the combiLED modulation direction and phase offset, in case
+    % these have changed from the last call
+    obj.LightObj.setSettings(obj.modResult);
+    obj.LightObj.setPhaseOffset(obj.lightModPhase);
 
     % Define a camera recording time, which includes:
     % - 1 second before the light modulation starts
@@ -79,7 +81,7 @@ if ~simulateStimuli
     obj.LightObj.stopModulation;
     
     % Play the end tone
-    audioObjs.low.play;
+    audioObjs.mid.play;
 
     % Wait until the camera has cleaned up and closed
     obj.irCameraObj.checkFileClosed;
