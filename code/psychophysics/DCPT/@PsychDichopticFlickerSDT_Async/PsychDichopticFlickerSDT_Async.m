@@ -12,7 +12,7 @@
 % "correct" feedback for hits and correct rejections. The adaptive
 % procedure results in about an 80% correct rate overall.
 
-classdef PsychDichopticFlickerSDT < handle
+classdef PsychDichopticFlickerSDT_Async < handle
 
     properties (Constant)
     end
@@ -82,7 +82,7 @@ classdef PsychDichopticFlickerSDT < handle
     methods
 
         % Constructor
-        function obj = PsychDichopticFlickerSDT(CombiLEDObjArr,modResultArr,EOGControl,refFreqHz,varargin)
+        function obj = PsychDichopticFlickerSDT_Async(CombiLEDObjArr,modResultArr,EOGControl,refFreqHz,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;           
@@ -180,7 +180,6 @@ classdef PsychDichopticFlickerSDT < handle
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportCombinedParams(obj1, obj2, options)
         figHandle = plotOutcome(obj,visible)
-        figHandle = plotOutcomeCombined(obj,objFileCellArray,visible)
         resetSearch(obj)
     end
 end
