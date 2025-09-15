@@ -7,10 +7,15 @@ arguments
     options.confInterval (1,1) = 0.8
     options.lb = []
     options.ub = []
+    options.questData = [];
 end
 
 % Grab some variables
-questData = obj.questData;
+if ~isempty(options.questData)
+    questData = options.questData;
+else
+    questData = obj.questData;
+end
 psiParamsDomainList = obj.psiParamsDomainList;
 verbose = obj.verbose;
 

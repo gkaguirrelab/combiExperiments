@@ -180,6 +180,7 @@ classdef PsychDichopticFlickerSDT < handle
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportCombinedParams(obj1, obj2, options)
         figHandle = plotOutcome(obj,visible)
+        figHandle = plotOutcomeCombined(obj,objFileCellArray,visible)
         resetSearch(obj)
     end
 end
