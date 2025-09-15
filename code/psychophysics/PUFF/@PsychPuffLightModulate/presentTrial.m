@@ -39,9 +39,6 @@ irVidTrialLabel = [];
 % Present the stimuli
 if ~simulateStimuli
 
-    % Play the ready sound
-    audioObjs.low.play
-
     % Update the combiLED modulation direction and phase offset, in case
     % these have changed from the last call
     obj.LightObj.setSettings(obj.modResult);
@@ -69,6 +66,9 @@ if ~simulateStimuli
     % and give a moment for the updated combiLED settings to be passed.
     stopTimeSeconds = cputime() + 1;
     obj.waitUntil(stopTimeSeconds);
+
+    % Play the ready sound
+    Speak('go');
 
     % Start the light modulation
     obj.LightObj.startModulation;
