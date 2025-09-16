@@ -59,7 +59,7 @@ end
 
 % Prepare the sounds
 Fs = 8192; % Sampling Frequency
-dur = 0.1; % Duration in seconds
+dur = 0.25; % Duration in seconds
 t  = linspace(0, dur, round(Fs*dur));
 lowTone = sin(2*pi*500*t);
 midTone = sin(2*pi*750*t);
