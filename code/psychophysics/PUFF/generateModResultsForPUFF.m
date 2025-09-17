@@ -6,7 +6,8 @@ function generateModResultsForPUFF(subjectID,observerAgeInYears,varargin)
 %{
     subjectID = 'HERO_gka';
     observerAgeInYears = 55;
-    generateModResultsForPUFF(subjectID,observerAgeInYears);
+    experimentName = 'lightLevel';
+    generateModResultsForPUFF(subjectID,observerAgeInYears,'experimentName',experimentName);
 %}
 
 % Parse the parameters
@@ -58,6 +59,9 @@ for dd = 1:length(modulationDirections)
         case 'Mel'
             modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
                 'primaryHeadRoom',primaryHeadRoom,'searchBackground',true);
+        case 'LightFlux'
+            modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
+                'primaryHeadRoom',0,'searchBackground',false);
         otherwise
             modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
                 'primaryHeadRoom',primaryHeadRoom,'backgroundPrimary',modResults{1}.settingsBackground);
