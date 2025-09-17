@@ -8,7 +8,7 @@ function runPuffLightLevel(subjectID,varargin)
 %{
     subjectID = 'HERO_gka';
     whichSequence = 1;
-    runPuffLightModulate(subjectID,'simulateModeFlag',false);
+    runPuffLightLevel(subjectID,'whichSequence',whichSequence);
 %}
 
 % Parse the parameters
@@ -17,7 +17,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
 p.addParameter('direction','LightFlux',@iscell);
-p.addParameter('contrastLevels',[0.0625,0.1250,0.25,0.5,1.0],@isnumeric);
+p.addParameter('contrastLevels',[0.0375,0.075,0.15,0.30,0.6],@isnumeric);
 p.addParameter('whichSequence',1,@isnumeric);
 p.addParameter('simulateModeFlag',false,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
@@ -43,9 +43,6 @@ sequenceSet{2} = [3,3,2,5,3,5,2,4,3,4,1,1,5,1,3,1,2,2,1,4,4,5,5,4,2,3];
 sequenceSet{3} = [3,3,4,2,5,3,2,4,5,1,4,1,1,5,4,4,3,5,5,2,1,2,2,3,1,3];
 sequenceSet{4} = [3,3,1,4,5,1,2,2,3,2,1,3,4,2,4,4,3,5,2,5,5,4,1,1,5,3];
 
-% The number of of contrast levels
-nLevels = length(contrastLevels);
-
 % Set our experimentName
 experimentName = 'lightLevel';
 
@@ -69,7 +66,7 @@ if ~simulateModeFlag
 
     % Set up the AirPuff IR camera recording
     videoDataPath = fullfile(experimentName,subjectID);
-    irCameraObj = PuffCameraControl(videoDataPath);
+    irCameraObj = PuffCameraControl(videoDataPath,'verbose',verboseCameraObj);
 
     % Set up the CombiLED LightObj
     LightObj = CombiLEDcontrol('verbose',verboseLightObj);
@@ -135,17 +132,16 @@ end
 
 % Loop over trials
 thisSequence = sequenceSet{whichSequence};
-for ss=1:length(thisSequence)
+for tt=1:length(thisSequence)
 
     % Alert the subject
-    Speak('Ready');
+    Speak(sprintf('Ready %d',tt));
     input('');
 
     % Present the next trial
-    psychObj.presentTrial;
+    psychObj.presentTrial(contrastLevels(thisSequence(tt)));
 
 end
-
 
 % Report completion of this sequence
 Speak('Done');

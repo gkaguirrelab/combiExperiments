@@ -1,16 +1,16 @@
 function [detected, responseTimeSecs] = blinkEvent(obj)
 
 % Set the response interval
-responseDurMicroSecs = obj.blinkResponseIntervalSecs * 1e6;
+responseDurSecs = obj.blinkResponseIntervalSecs;
 
 % Determine the identities of the responses
-keyPress = KbName({'spacebar','return'});
+keyPress = KbName({'space','return'});
 KbResponse = [];
 
 % Enter a while loop
 waitingForKey = true;
-intervalStart = tic();
-while waitingForKey
+tic();
+ while waitingForKey
 
     % Check keyboard:
     [isdown, ~, keycode]=KbCheck(-1);
@@ -18,12 +18,12 @@ while waitingForKey
         KbResponse = find(keycode);
         if any(keyPress==KbResponse)
             waitingForKey = false;
-            responseTimeSecs = double(tic()-intervalStart)/1e9;
+            responseTimeSecs = toc();
         end
     end
 
     % Check if we have run out of time
-    if (tic()-intervalStart) > responseDurMicroSecs
+    if toc() > responseDurSecs
         waitingForKey = false;
         responseTimeSecs = nan;
     end

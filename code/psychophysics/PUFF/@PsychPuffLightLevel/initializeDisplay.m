@@ -22,7 +22,7 @@ if ~obj.simulateStimuli
     obj.LightObj.setDuration(obj.lightPulseDurSecs);
     obj.LightObj.setPhaseOffset(pi);
     obj.LightObj.setRampIndex(1); % half-cosine windowing
-    obj.LightObj.setRampDuration(2);
+    obj.LightObj.setRampDuration(0.5);
     obj.LightObj.setContrast(1);
 
 end

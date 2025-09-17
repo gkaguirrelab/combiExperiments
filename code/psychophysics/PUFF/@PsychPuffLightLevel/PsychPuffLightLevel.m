@@ -16,12 +16,14 @@ classdef PsychPuffLightLevel < handle
         cameraCleanupDurSecs = 5.0;
         modResult
         lightPulseDurSecs = 30;
-        blinkEventIntervalSecs = 5;
+        blinkEventIntervalSecs = 4;
+        blinkEventProbability = 0.333;
         blinkResponseIntervalSecs = 1.5;
         trialLabel
         simulateResponse
         simulateStimuli
         trialData
+        currTrialIdx = 0;
     end
 
     % These may be modified after object creation

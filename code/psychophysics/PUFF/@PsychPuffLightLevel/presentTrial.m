@@ -1,7 +1,7 @@
 function presentTrial(obj,contrast)
 
 % Get the current trial index
-currTrialIdx = size(obj.trialData,1)+1;
+currTrialIdx = obj.currTrialIdx+1;
 
 % Get and store the trial start time
 trialStartTime = datetime();
@@ -31,15 +31,11 @@ audioObjs.bad = audioplayer(badSound,Fs);
 
 % Handle verbosity
 if obj.verbose
-    fprintf(['Trial %d; Waveform ' obj.lightPulseWaveform ' Pulse contrast [%2.2f]; Puff duration [%2.2f]; Pressure PSI [%2.2f, %2.2f PSI]...'], ...
-        currTrialIdx,obj.lightPulseModContrast,obj.puffDurSecs,intervalParams(1,1),intervalParams(2,1));
+    fprintf('Trial %d; contrast %2.2f', currTrialIdx,contrast);
 end
 
 % Present the stimuli
 if ~simulateStimuli
-
-    % Play the ready sound
-    audioObjs.midTone.play
 
     % Define a camera recording time, which includes:
     % - 1 second before the light pulse
@@ -77,7 +73,7 @@ if ~simulateStimuli
 
     % Define the stop time for the end of the blink detection period.
     stopTimeSeconds = startTimeSecs + obj.lightPulseDurSecs ...
-        - obj.blinkEventIntervalSecs - obj.blinkResponseIntervalSecs - 1;
+        - obj.blinkEventIntervalSecs - obj.blinkResponseIntervalSecs - 4;
 
     % Pause two seconds so that there is no blink event at the immediate
     % start of the light pulse
@@ -86,34 +82,46 @@ if ~simulateStimuli
     % Enter a while loop that presents occasional blink events for the
     % subject to detect. This continues until we reach the end of the light
     % pulse
+    blinkTimeSecs = []; detected = []; responseTimeSecs = [];
     blinkCounter = 1;
     while cputime() < stopTimeSeconds
-        % Every blinkEventIntervalSecs has a blink event, with the timing
-        % of that event uniformly distributed within the interval
-        pauseDurSecs = obj.blinkEventIntervalSecs * rand();
-        pause(pauseDurSecs);
 
-        % Store the blink time relative to the start of the light pulse
-        blinkTimeSecs(blinkCounter) = cputime() - startTimeSecs;
+        % Define when this interval is over
+        thisInteralStopTimeSecs = cputime()+ obj.blinkEventIntervalSecs;
 
-        % Present the blink event
-        obj.LightObj.blink;
+        % probability of having a blink event in this interval
+        if rand() < obj.blinkEventProbability
 
-        % See if the observer responds
-        if ~simulateResponse
-            [detected(blinkCounter), responseTimeSecs(blinkCounter)] = obj.blinkEvent;
-            if detected(blinkCounter)
-                audioObjs.correct.play
+            % The timing of the event is uniformly distributed within the
+            % interval
+            pauseDurSecs = obj.blinkEventIntervalSecs * rand();
+            pause(pauseDurSecs);
+
+            % Store the blink time relative to the start of the light pulse
+            blinkTimeSecs(blinkCounter) = cputime() - startTimeSecs;
+
+            % Present the blink event
+            obj.LightObj.blink;
+
+            % See if the observer responds
+            if ~simulateResponse
+                [detected(blinkCounter), responseTimeSecs(blinkCounter)] = obj.blinkEvent;
+                if detected(blinkCounter)
+                    audioObjs.correct.play
+                else
+                    audioObjs.incorrect.play
+                end
             else
-                audioObjs.incorrect.play
+                detected(blinkCounter) = nan;
+                responseTimeSecs(blinkCounter) = nan;
             end
-        else
-            detected(blinkCounter) = nan;
-            responseTimeSecs(blinkCounter) = nan;
+
+            % Increment the blink counter
+            blinkCounter = blinkCounter +1;
         end
 
-        % Increment the blink counter
-        blinkCounter = blinkCounter +1;
+        % Wait for this interval
+        obj.waitUntil(thisInteralStopTimeSecs);
 
     end
 
@@ -146,5 +154,8 @@ trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 
 % Put trialData back into the obj
 obj.trialData = trialData;
+
+% Increment the trial idx
+obj.currTrialIdx = currTrialIdx;
 
 end
