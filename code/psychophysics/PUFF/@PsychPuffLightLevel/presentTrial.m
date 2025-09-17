@@ -95,20 +95,25 @@ if ~simulateStimuli
 
         % Store the blink time relative to the start of the light pulse
         blinkTimeSecs(blinkCounter) = cputime() - startTimeSecs;
-       
+
         % Present the blink event
         obj.LightObj.blink;
 
         % See if the observer responds
         if ~simulateResponse
-        [detected(blinkCounter), responseTimeSecs(blinkCounter)] = obj.blinkEvent;
+            [detected(blinkCounter), responseTimeSecs(blinkCounter)] = obj.blinkEvent;
+            if detected(blinkCounter)
+                audioObjs.correct.play
+            else
+                audioObjs.incorrect.play
+            end
         else
-          detected(blinkCounter) = nan;
-          responseTimeSecs(blinkCounter) = nan;
+            detected(blinkCounter) = nan;
+            responseTimeSecs(blinkCounter) = nan;
         end
 
         % Increment the blink counter
-blinkCounter = blinkCounter +1;
+        blinkCounter = blinkCounter +1;
 
     end
 
@@ -117,6 +122,9 @@ blinkCounter = blinkCounter +1;
 
     % Keep waiting until we are done
     obj.waitUntil(overallStopTimeSecs);
+
+    % Make sure that the modulation has stopped
+    obj.LightObj.stopModulation;
 
 end
 
