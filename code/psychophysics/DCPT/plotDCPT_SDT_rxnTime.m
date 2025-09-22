@@ -1,4 +1,4 @@
-function plotDCPT_SDT_rxnTime(subjectList, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel)
+function plotDCPT_SDT_rxnTime(subjectList, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel, plotCorrectOnly)
 % % Function to plot the high and low ends of a psychometric funciton on the
 % % same graph.
 % % e.g.,
@@ -9,8 +9,13 @@ modDirections = {'LightFlux'};
 targetPhotoContrast = [0.10; 0.30];  % [Low contrast levels; high contrast levels]
 % Light Flux is [0.10; 0.30]
 NDLabel = {'3x0', '0x5'};
-plotDCPT_SDT_rxnTime(subjectList, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
+plotDCPT_SDT_rxnTime(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
 %}
+
+if nargin < 6
+    plotCorrectOnly = true;
+end
+
 dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir='FLIC_data';
 projectName='combiLED';
@@ -119,37 +124,69 @@ for ss = 1:length(subjectList)
     nexttile;
     hold on;
 
-    correctIdx = find(correct);
-    wrongIdx = find(~correct);
+    if plotCorrectOnly
+        correctIdx = find(correct);
 
-    % Plot the correct trials with a transparent blue fill.
-    scatter(stimdB(correctIdx), rxnTimes(correctIdx), 40, 'o', ...
-        'MarkerFaceColor', 'b', ...
-        'MarkerFaceAlpha', 0.15, ...
-        'MarkerEdgeColor', 'b', ...
-        'MarkerEdgeAlpha', 0.3);
+        % Plot only the correct trials with a transparent blue fill.
+        scatter(stimdB(correctIdx), rxnTimes(correctIdx), 40, 'o', ...
+            'MarkerFaceColor', 'b', ...
+            'MarkerFaceAlpha', 0.1, ...
+            'MarkerEdgeColor', 'b', ...
+            'MarkerEdgeAlpha', 0.2);
 
-    % Plot the incorrect trials with a transparent red fill.
-    scatter(stimdB(wrongIdx), rxnTimes(wrongIdx), 40, 'o', ...
-        'MarkerFaceColor', 'r', ...
-        'MarkerFaceAlpha', 0.15, ...
-        'MarkerEdgeColor', 'r', ...
-        'MarkerEdgeAlpha', 0.3);
+        % Find trials with correct responses and stimulus > 0dB
+        fitIdx = correct & (stimdB > 0);
+        
+        % Fit a linear line to the filtered data
+        p = polyfit(stimdB(fitIdx), rxnTimes(fitIdx), 1);
+        xFit = linspace(min(stimdB(fitIdx)), max(stimdB(fitIdx)), 100);
+        yFit = polyval(p, xFit);
+        
+        % Plot the fitted line
+        plot(xFit, yFit, 'k:', 'LineWidth', 2);
+        
+        % Calculate and add the correlation coefficient text
+        if sum(fitIdx) > 1
+            R = corrcoef(stimdB(fitIdx), rxnTimes(fitIdx));
+            text(min_stimdB + x_buffer, max_rxnTime - y_buffer, ...
+                 sprintf('$R$ = %.2f', R(1,2)), ...
+                 'FontSize', 12, 'FontWeight', 'bold', 'Interpreter', 'latex');
+        end
+        legend('correct', 'Linear Fit', 'Location', 'best');
+    else
+        correctIdx = find(correct);
+        wrongIdx = find(~correct);
 
-    % Fit a linear line to the data
-    p = polyfit(stimdB, rxnTimes, 1);
-    xFit = linspace(min(stimdB), max(stimdB), 100);
-    yFit = polyval(p, xFit);
+        % Plot the correct trials with a transparent blue fill.
+        scatter(stimdB(correctIdx), rxnTimes(correctIdx), 40, 'o', ...
+            'MarkerFaceColor', 'b', ...
+            'MarkerFaceAlpha', 0.1, ...
+            'MarkerEdgeColor', 'b', ...
+            'MarkerEdgeAlpha', 0.2);
 
-    % Plot the fitted line
-    plot(xFit, yFit, 'k:', 'LineWidth', 2);
-    
-    % Calculate and add the correlation coefficient text
-    if length(stimdB) > 1 && length(rxnTimes) > 1
-        R = corrcoef(stimdB, rxnTimes);
-        text(min_stimdB + x_buffer, max_rxnTime - y_buffer, ...
-             sprintf('$R$ = %.2f', R(1,2)), ...
-             'FontSize', 12, 'FontWeight', 'bold', 'Interpreter', 'latex');
+        % Plot the incorrect trials with a transparent red fill.
+        scatter(stimdB(wrongIdx), rxnTimes(wrongIdx), 40, 'o', ...
+            'MarkerFaceColor', 'r', ...
+            'MarkerFaceAlpha', 0.1, ...
+            'MarkerEdgeColor', 'r', ...
+            'MarkerEdgeAlpha', 0.2);
+
+        % Fit a linear line to all the data
+        p = polyfit(stimdB, rxnTimes, 1);
+        xFit = linspace(min(stimdB), max(stimdB), 100);
+        yFit = polyval(p, xFit);
+
+        % Plot the fitted line
+        plot(xFit, yFit, 'k:', 'LineWidth', 2);
+        
+        % Calculate and add the correlation coefficient text
+        if length(stimdB) > 1 && length(rxnTimes) > 1
+            R = corrcoef(stimdB, rxnTimes);
+            text(min_stimdB + x_buffer, max_rxnTime - y_buffer, ...
+                 sprintf('$R$ = %.2f', R(1,2)), ...
+                 'FontSize', 12, 'FontWeight', 'bold', 'Interpreter', 'latex');
+        end
+        legend('correct', 'incorrect', 'Linear Fit', 'Location', 'best');
     end
     
     % Apply global axis limits with a buffer for scatter plots
@@ -157,7 +194,6 @@ for ss = 1:length(subjectList)
     ylim([min_rxnTime - y_buffer, max_rxnTime + y_buffer]);
     
     title(sprintf('Stim Domain vs. Reaction Time for Subject: %s', subjectID));
-    legend('correct', 'incorrect', 'Linear Fit', 'Location', 'best');
     ylabel('Reaction Time (sec)');
     xlabel('Stim Params (dB)');
     hold off;
