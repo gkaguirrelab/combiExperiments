@@ -9,7 +9,7 @@ refFreqSetHz = logspace(log10(10),log10(30),5);
 modDirections = {'LightFlux'};
 targetPhotoContrast = [0.10; 0.30];  % [Low contrast levels; high contrast levels] 
 % Light Flux is [0.10; 0.30]
-NDLabel = {'3x0'};
+NDLabel = {'3x0', '0x5'};
 plotDCPT_SDTData(subjectID, refFreqSetHz, modDirections, targetPhotoContrast, NDLabel);
 %}
 
