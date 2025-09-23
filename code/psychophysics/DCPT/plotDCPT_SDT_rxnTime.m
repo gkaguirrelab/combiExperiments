@@ -147,8 +147,13 @@ for ss = 1:length(subjectList)
             'MarkerEdgeColor', 'b', ...
             'MarkerEdgeAlpha', 0.2);
 
-        % Find trials with correct responses and stimulus > 0dB
-        fitIdx = correct & (stimdB > 0);
+        % Find trials with correct responses and stimulus > 0dB and remove
+        % outliers for reaction rates (rxnTimeVariable > 15)
+        if rxnTimeRecip % reaction rates rather than times
+            fitIdx = correct & (stimdB > 0) & (rxnTimeVariable <= 15);
+        else
+            fitIdx = correct & (stimdB > 0);
+        end
 
         % Fit a linear line to the filtered data
         p = polyfit(stimdB(fitIdx), rxnTimeVariable(fitIdx), 1);
@@ -162,7 +167,7 @@ for ss = 1:length(subjectList)
         if rxnTimeRecip
             if sum(fitIdx) > 1
                 R = corrcoef(stimdB(fitIdx), rxnTimeVariable(fitIdx));
-                text(min_stimdB + x_buffer, max_recipRxnTime - y_buffer, ...
+                text(min_stimdB + 0.1, 10 - y_buffer, ...
                     sprintf('$R$ = %.2f', R(1,2)), ...
                     'FontSize', 12, 'FontWeight', 'bold', 'Interpreter', 'latex');
             end
@@ -218,8 +223,8 @@ for ss = 1:length(subjectList)
         % Apply global axis limits with a buffer for scatter plots
         xlim([min_stimdB - x_buffer, max_stimdB + x_buffer]);
         if rxnTimeRecip
-           ylim([min_recipRxnTime - y_buffer, max_recipRxnTime + y_buffer]);
-           % ylim([min_recipRxnTime - y_buffer, 10]);
+           % ylim([min_recipRxnTime - y_buffer, max_recipRxnTime + y_buffer]);
+            ylim([min_recipRxnTime - y_buffer, 10]);
             title(sprintf('Stim Domain vs. Reaction Time for Subject: %s', subjectID));
             ylabel('1 / Reaction Time (sec)');
             xlabel('Stim Params (dB)');
