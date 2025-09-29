@@ -2,8 +2,8 @@
 close all
 clear
 
-dataDir =  '/Users/samanthamontoya/Aguirre-Brainard Lab Dropbox/Sam Montoya/FLIC_data/combiLED';
-subjectList = {'FLIC_0015','FLIC_0017','FLIC_0018','FLIC_0021'};
+dataDir =  '/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED';
+subjectList = {'FLIC_0013','FLIC_0015','FLIC_0017','FLIC_0018'};
 contrastLabels = {'cont-0x1','cont-0x3'};
 backgroundLabels = {'LightFlux_ND0x5_shifted','LightFlux_ND3x0_shifted'};
 
