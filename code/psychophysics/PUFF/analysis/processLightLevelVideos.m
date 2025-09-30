@@ -2,7 +2,10 @@
 clear
 close all
 
-subjectIDs = {'HERO_gka','BLNK_1001','BLNK_1002'};
+subjectIDs = {'HERO_gka',...
+    'BLNK_1001','BLNK_1002','BLNK_1003',...
+    'BLNK_1004','BLNK_1005','BLNK_1006',...
+    'BLNK_1007','BLNK_1008'};
 experimentName = 'lightLevel';
 direction = 'LightFlux';
 whichSequence = 1;
@@ -10,6 +13,9 @@ whichSequence = 1;
 % Define some properties of the analysis
 fps = 180;
 contrastLevels = [0.0375,0.075,0.15,0.30,0.6];
+
+% Derive lux from the contrast levels
+illuminanceLevels = contrastLevels * (4273*2) * pi;
 
 % Hard-code a couple of deBruijn sequences we will use to define the
 % stimulus order across blocks. In all cases, the sequence begins with the
@@ -40,8 +46,8 @@ for ss = 1:length(subjectIDs)
     % Loop over
     for tt = 1:25
 
-        % We discard the first of the 26 trials. Also, the trial counter was
-        % off by one for subject gka. Handle all this here.
+        % We discard the first of the 26 trials. Also, the trial counter
+        % was off by one for subject gka. Handle all this here.
         switch subjectID
             case 'HERO_gka'
                 trialIdx = tt+2;
@@ -71,8 +77,8 @@ for ss = 1:length(subjectIDs)
             eye_features = eye_features.eye_features;
         end
 
-        % Extract the upper and lower lid to calculate the height of the palpebral
-        % fissure over time, and the pupil diameter
+        % Extract the upper and lower lid to calculate the height of the
+        % palpebral fissure over time, and the pupil diameter
         nTimePoints = length(eye_features);
         palpFissureHeight = nan(1,nTimePoints);
         pupilDiameter = nan(1,nTimePoints);
@@ -95,7 +101,47 @@ for ss = 1:length(subjectIDs)
 
     end
 
+    figure
+    for kk = 1:5; subplot(2,3,kk); for ii = 1:5; plot(squeeze(dataVecsPalp(ss,kk,ii,:))); hold on; end; end
+
+    % Obtain the median palpebral fissure width during the first 200 frames
+    % for this subject
+    vals = dataVecsPalp(ss,:,:,1:200);
+    openVal = max(vals(:),[],'omitmissing');
+    vals = dataVecsPalp(ss,:,:,201:end);
+    closedVal = max(vals(:),[],'omitmissing');
+
+    % For each trial, convert the data vector to proportion closure, and
+    % then obtain the mean closure during the light pulse period
+    for ll = 1:length(contrastLevels)
+        tmpCloseVals = [];
+        for rr = 1:contrastCounter(ll)
+            vec = squeeze(dataVecsPalp(ss,ll,rr,:));
+            goodIdx = ~isnan(vec);
+            dataVecsPalp(ss,ll,rr,goodIdx) = 1 - vec(goodIdx) / (openVal);
+            tmpCloseVals(rr) = mean(squeeze(dataVecsPalp(ss,ll,rr,201:end)),'omitmissing');
+        end
+
+        % Obtain the mean and SEM of closure for each light level for this
+        % subject
+        palpCloseMean(ss,ll) = mean(tmpCloseVals,2);
+        palpCloseSEM(ss,ll) = std(tmpCloseVals,[],2)/sqrt(contrastCounter(ll));   
+    end
+
 end
+
+figure
+plot(log10(illuminanceLevels),palpCloseMean')
+ylim([0 1]);
+
+
+% If you have the psychObj in memory, these commands will give you the
+% proportion correct on the detection task, and identify the trials in
+% which any missed events occured
+%{
+    sum([psychObj.trialData.detected])/length([psychObj.trialData.detected])
+    find(arrayfun(@(x) any(x.detected==0),psychObj.trialData))
+%}
 
 
 %
