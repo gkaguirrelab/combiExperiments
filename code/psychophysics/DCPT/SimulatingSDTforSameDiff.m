@@ -40,7 +40,7 @@ set(h, 'FaceAlpha', 0.3);
 close all; clear all
 
 nTrials = 5000;              
-dB_values = [0 linspace(0.1,5,30)]; 
+dB_values = [linspace(-5,-0.1,30) 0 linspace(0.1,5,30)]; 
 sigma = 1;                  
 criterion = 2; % a higher criterion is more conservative in saying different         
 
@@ -49,17 +49,36 @@ pDifferent = zeros(size(dB_values));
 for i = 1:length(dB_values)
     delta = dB_values(i);  % Signal difference (dB)
 
+    % Determining criterion values under the hypothesis that is
+    % shrinks for dB values closer to 0
+    if abs(delta) <= 1
+        m = 0.40;
+        b = 2 - m;
+        criterion = sign(delta)*m*delta + b;
+    end
+
+    if delta > 1
+        criterion = 2;
+    end
+
+    criterion_List(i) = criterion;
+    if i == length(dB_values)
+        figure(3)
+        plot(dB_values, criterion_List,'o')
+        ylim([0,3]);
+    end
+
     % Create noise and signal+noise distributions
     noiseDist = makedist('Normal', 'mu', 0, 'sigma', sigma);
     signalDist = makedist('Normal', 'mu', delta, 'sigma', sigma);
 
     % Visualize the distributions for the nth dB value
     if i == 1
-        x = linspace(-5, 15, 500); % Internal measurement values (Hz)
-        figure(3);
+        x = linspace(-15, 15, 500); % Internal measurement values (Hz)
+        figure(4);
         plot(x, pdf(noiseDist, x), 'b-', 'LineWidth', 2); hold on;
         plot(x, pdf(signalDist, x), 'r-', 'LineWidth', 2);
-        legend('Noise', 'Signal+Noise');
+        legend('Reference', 'Test');
         xlabel('Internal Measurement Value');
         ylabel('Probability Density');
     end
@@ -86,8 +105,59 @@ for i = 1:length(dB_values)
     pDifferent(i) = sum(total_decisions)/length(total_decisions);
 end
 
-figure(4);
+figure(5);
 plot(dB_values, pDifferent, 'o-', 'LineWidth', 2);
+xlabel('dB Difference');
+ylabel('P(Different Response)');
+title('Psychometric Curve for Same/Different Task');
+grid on;
+
+%% %% SIMULATING PSYCHOMETRIC CURVE W/ INTEGRATING JOINT PROBABILITY DENSITY
+
+nTrials = 5000;              
+dB_values = [linspace(-5,-0.1,30) 0 linspace(0.1,5,30)]; 
+sigma = 0.5;                  
+c = 2; % a higher criterion is more conservative in saying different         
+
+for i = 1:length(dB_values)
+
+    % Parameters
+    mu_R = 0;     % mean of reference
+    mu_T = dB_values(i);     % mean of test
+
+    if abs(mu_T) <= 1
+        m = 0.40;
+        b = 2 - m;
+        c = sign(mu_T)*m*mu_T + b;
+    end
+
+    if mu_T > 1
+        c = 2;
+    end
+    
+    % Function for the joint PDF f(mR, mT)
+    f = @(mR, mT) normpdf(mR, mu_R, sigma) .* normpdf(mT, mu_T, sigma);
+
+    % The integral limits are defined by the criterion: mR - c <= mT <= mR + c
+    
+    mR_min = -inf;
+    mR_max = inf;
+    
+    % Lower limit for mT: g(mR) = mR - c
+    g = @(mR) mR - c; 
+    
+    % Upper limit for mT: h(mR) = mR + c
+    h = @(mR) mR + c;
+    
+    P_same_integral2 = integral2(f, mR_min, mR_max, g, h);
+    
+    P_same(i) = P_same_integral2;
+    P_different(i) = 1 - P_same(i); 
+
+end
+
+hold on
+plot(dB_values, P_different, 'go-', 'LineWidth', 2);
 xlabel('dB Difference');
 ylabel('P(Different Response)');
 title('Psychometric Curve for Same/Different Task');
