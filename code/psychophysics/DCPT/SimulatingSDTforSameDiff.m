@@ -37,28 +37,30 @@ h = surf(mL, mR, double(same_region) .* max(jointProb(:)), 'EdgeColor', 'none');
 set(h, 'FaceAlpha', 0.3);
 
 %% SIMULATING THE SAME-DIFFERENT TASK
-close all; clear all
 
 nTrials = 5000;              
 dB_values = [linspace(-5,-0.1,30) 0 linspace(0.1,5,30)]; 
 sigma = 1;                  
 criterion = 2; % a higher criterion is more conservative in saying different         
+dipCriterion = true;
 
 pDifferent = zeros(size(dB_values));  
 
 for i = 1:length(dB_values)
     delta = dB_values(i);  % Signal difference (dB)
 
-    % Determining criterion values under the hypothesis that is
-    % shrinks for dB values closer to 0
-    if abs(delta) <= 1
-        m = 0.40;
-        b = 2 - m;
-        criterion = sign(delta)*m*delta + b;
-    end
+    if dipCriterion
+        % Determining criterion values under the hypothesis that is
+        % shrinks for dB values closer to 0
+        if abs(delta) <= 1
+            m = 0.40;
+            b = 2 - m;
+            criterion = sign(delta)*m*delta + b;
+        end
 
-    if delta > 1
-        criterion = 2;
+        if delta > 1
+            criterion = 2;
+        end
     end
 
     criterion_List(i) = criterion;
@@ -116,8 +118,10 @@ grid on;
 
 nTrials = 5000;              
 dB_values = [linspace(-5,-0.1,30) 0 linspace(0.1,5,30)]; 
-sigma = 0.5;                  
-c = 2; % a higher criterion is more conservative in saying different         
+sigma = 1;                  
+c = 2; % a higher criterion is more conservative in saying different   
+dipCriterion = true;
+
 
 for i = 1:length(dB_values)
 
@@ -125,16 +129,18 @@ for i = 1:length(dB_values)
     mu_R = 0;     % mean of reference
     mu_T = dB_values(i);     % mean of test
 
-    if abs(mu_T) <= 1
-        m = 0.40;
-        b = 2 - m;
-        c = sign(mu_T)*m*mu_T + b;
+    if dipCriterion
+        if abs(mu_T) <= 1
+            m = 0.40;
+            b = 2 - m;
+            c = sign(mu_T)*m*mu_T + b;
+        end
+
+        if mu_T > 1
+            c = 2;
+        end
     end
 
-    if mu_T > 1
-        c = 2;
-    end
-    
     % Function for the joint PDF f(mR, mT)
     f = @(mR, mT) normpdf(mR, mu_R, sigma) .* normpdf(mT, mu_T, sigma);
 
@@ -155,7 +161,7 @@ for i = 1:length(dB_values)
     P_different(i) = 1 - P_same(i); 
 
 end
-
+figure(6);
 hold on
 plot(dB_values, P_different, 'go-', 'LineWidth', 2);
 xlabel('dB Difference');
