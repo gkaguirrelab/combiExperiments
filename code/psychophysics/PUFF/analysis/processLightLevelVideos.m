@@ -5,7 +5,8 @@ close all
 subjectIDs = {'HERO_gka',...
     'BLNK_1001','BLNK_1002','BLNK_1003',...
     'BLNK_1004','BLNK_1005','BLNK_1006',...
-    'BLNK_1007','BLNK_1008'};
+    'BLNK_1007','BLNK_1008','BLNK_1009',...
+    'BLNK_1010'};
 experimentName = 'lightLevel';
 direction = 'LightFlux';
 whichSequence = 1;
@@ -33,8 +34,13 @@ thisSequence = sequenceSet{1};
 dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/BLNK_analysis/PuffLight/lightLevel';
 
 dataVecsPalp = nan(length(subjectIDs),5,5,5800);
+dataVecsAdj = nan(length(subjectIDs),5,5,5800);
 dataVecsPupil = nan(length(subjectIDs),5,5,5800);
-t = 0:1/fps:(10800-1)/fps;
+t = 0:1/fps:(5800-1)/fps;
+
+allFramRange = 1:fps*30-1;
+startFrameRange = 1:200;
+dataFrameRange = 201:fps*30-1;
 
 % Loop over the data files
 for ss = 1:length(subjectIDs)
@@ -101,15 +107,12 @@ for ss = 1:length(subjectIDs)
 
     end
 
-    figure
-    for kk = 1:5; subplot(2,3,kk); for ii = 1:5; plot(squeeze(dataVecsPalp(ss,kk,ii,:))); hold on; end; end
-
     % Obtain the median palpebral fissure width during the first 200 frames
     % for this subject
-    vals = dataVecsPalp(ss,:,:,1:200);
-    openVal = max(vals(:),[],'omitmissing');
-    vals = dataVecsPalp(ss,:,:,201:end);
-    closedVal = max(vals(:),[],'omitmissing');
+    vals = squeeze(dataVecsPalp(ss,1,:,allFramRange));
+    openVal = median(max(vals,[],2,'omitmissing'));
+    closedVal = min(vals(:),[],'omitmissing');
+    widthVal = openVal - closedVal;
 
     % For each trial, convert the data vector to proportion closure, and
     % then obtain the mean closure during the light pulse period
@@ -118,15 +121,30 @@ for ss = 1:length(subjectIDs)
         for rr = 1:contrastCounter(ll)
             vec = squeeze(dataVecsPalp(ss,ll,rr,:));
             goodIdx = ~isnan(vec);
-            dataVecsPalp(ss,ll,rr,goodIdx) = 1 - vec(goodIdx) / (openVal);
-            tmpCloseVals(rr) = mean(squeeze(dataVecsPalp(ss,ll,rr,201:end)),'omitmissing');
+            dataVecsAdj(ss,ll,rr,goodIdx) = 1 - (vec(goodIdx)-closedVal) / widthVal;
+            tmpCloseVals(rr) = mean(squeeze(dataVecsAdj(ss,ll,rr,dataFrameRange)),'omitmissing');
         end
-
+        
         % Obtain the mean and SEM of closure for each light level for this
-        % subject
+        % subject. Also identify the trial with the closest to mean eye
+        % closure
         palpCloseMean(ss,ll) = mean(tmpCloseVals,2);
+        [~,exampleTrialIdx(ss,ll)] = min(abs(tmpCloseVals - mean(tmpCloseVals)));
         palpCloseSEM(ss,ll) = std(tmpCloseVals,[],2)/sqrt(contrastCounter(ll));   
     end
+
+    figure
+    for ll = 1:5
+        subplot(2,3,ll)
+        % Plot the trial with the closest to the mean eye closure
+            plot(t(allFramRange),1-squeeze(dataVecsAdj(ss,ll,exampleTrialIdx(ss,ll),allFramRange)),'-','Color',[0.5 0.5 0.5])
+            hold on
+        ylim([0,1]);
+        ylabel('Proportion open');
+        xlabel('time [secs]');
+    end
+
+    drawnow
 
 end
 

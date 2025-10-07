@@ -117,3 +117,7 @@ end
 
 ylabel('Proportion change in blink rate');
 xlabel('Time [secs]');
+box off
+a=gca();
+a.TickDir = 'out';
+
