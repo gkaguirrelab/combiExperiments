@@ -1,6 +1,6 @@
 %% To extract audio track and puff auditory signature
 clear
-rng
+rng;
 
 subjectID = 'HERO_gka';
 experimentName = 'blinkResponse';
@@ -170,51 +170,43 @@ for sess = 1:length(sessions)
 
     figure
     cs = {[0.2,0,0],[0.4,0,0],[0.6,0,0],[0.8,0,0],[1.0,0,0]};
+    titleText = {'dark','light'};
     for ii = 1:5
-        subplot(2,3,ii)
-        blinkMatrixA = dataStruct(sess,1,ii).blinkMatrix;
-        yValsA = mean(blinkMatrixA,'omitmissing');
-        plot(t,yValsA,'-','Color',cs{ii});
-        hold on
-        blinkMatrixB = dataStruct(sess,2,ii).blinkMatrix;
-        yValsB = mean(blinkMatrixB,'omitmissing');
-        plot(t,yValsB,':','Color',cs{ii});
-        plot([t(closeRange(1)) t(closeRange(1))],[-0.1 1],'-k');
-        plot([t(closeRange(2)) t(closeRange(2))],[-0.1 1],'-k');
-        plot([t(squintRange(1)) t(squintRange(1))],[-0.1 1],'-r');
-        plot([t(squintRange(2)) t(squintRange(2))],[-0.1 1],'-r');
+        for lightLevel = 1:2
+            subplot(1,2,lightLevel)
+            blinkMatrix = dataStruct(sess,lightLevel,ii).blinkMatrix;
+            yVals = mean(blinkMatrix,'omitmissing');
+            yValsSmooth = smoothdata(yVals,"gaussian",7);
+            plot(t,yValsSmooth,'-','Color',cs{ii},'LineWidth',1.5);
+            hold on
+            plot([t(closeRange(1)) t(closeRange(1))],[-0.1 1],'-k');
+            plot([t(closeRange(2)) t(closeRange(2))],[-0.1 1],'-k');
+            plot([t(squintRange(1)) t(squintRange(1))],[-0.1 1],'-r');
+            plot([t(squintRange(2)) t(squintRange(2))],[-0.1 1],'-r');
 
-        % Clean up the plot
-        ylim([-0.1 1]);
-        xlim([0.5 2.5]);
-        xlabel('time [s]');
-        ylabel('proportion close');
+            % Clean up the plot
+            ylim([-0.1 1]);
+            xlim([0.5 2.5]);
+            xlabel('time [s]');
+            ylabel('proportion close');
+            title(titleText{lightLevel});
 
-        % Calcuate the max lid closure for each of the set of trails
-        maxCloseVecA = max(blinkMatrixA(:,closeRange(1):closeRange(2)),[],2,'omitmissing');
-        maxCloseVecB = max(blinkMatrixB(:,closeRange(1):closeRange(2)),[],2,'omitmissing');
+            % Calcuate the max lid closure for each of the set of trails
+            maxCloseVec = max(blinkMatrix(:,closeRange(1):closeRange(2)),[],2,'omitmissing');
 
-        % Calculate the max close values for the A and B data sets
-        maxCloseMean(1,ii) = mean(maxCloseVecA,'omitmissing');
-        maxCloseSEM(1,ii) = std(maxCloseVecA,'omitmissing')/sqrt(sum(~isnan(maxCloseVecA)));
-        maxCloseMean(2,ii) = mean(maxCloseVecB,'omitmissing');
-        maxCloseSEM(2,ii) = std(maxCloseVecB,'omitmissing')/sqrt(sum(~isnan(maxCloseVecA)));
+            % Calculate the max close values for the A and B data sets
+            maxCloseMean(lightLevel,ii) = mean(maxCloseVec,'omitmissing');
+            maxCloseSEM(lightLevel,ii) = std(maxCloseVec,'omitmissing')/sqrt(sum(~isnan(maxCloseVec)));
 
-        % Calculate the mean closure during the squint period
-        squintMeanVecA = sum(blinkMatrixA(:,squintRange(1):squintRange(2)),2,'omitmissing');
-        nTimePointsA = sum(~isnan(blinkMatrixA(:,squintRange(1):squintRange(2))),2);
-        nTimePointsA(nTimePointsA<range(squintRange)/2)=nan;
-        squintMeanVecA = squintMeanVecA ./ nTimePointsA;
+            % Calculate the mean closure during the squint period
+            squintMeanVec = sum(blinkMatrix(:,squintRange(1):squintRange(2)),2,'omitmissing');
+            nTimePoints = sum(~isnan(blinkMatrix(:,squintRange(1):squintRange(2))),2);
+            nTimePoints(nTimePoints<range(squintRange)/2)=nan;
+            squintMeanVec = squintMeanVec ./ nTimePoints;
 
-        squintMeanVecB = sum(blinkMatrixB(:,squintRange(1):squintRange(2)),2,'omitmissing');
-        nTimePointsB = sum(~isnan(blinkMatrixB(:,squintRange(1):squintRange(2))),2);
-        nTimePointsB(nTimePointsB<range(squintRange)/2)=nan;
-        squintMeanVecB = squintMeanVecB ./ nTimePointsB;
-
-        aucSquintMean(1,ii) = mean(squintMeanVecA,'omitmissing');
-        aucSquintMean(2,ii) = mean(squintMeanVecB,'omitmissing');
-        aucSquintSEM(1,ii) = std(squintMeanVecA,'omitmissing')/sqrt(sum(~isnan(nTimePointsA)));
-        aucSquintSEM(2,ii) = std(squintMeanVecB,'omitmissing')/sqrt(sum(~isnan(nTimePointsB)));;
+            aucSquintMean(lightLevel,ii) = mean(squintMeanVec,'omitmissing');
+            aucSquintSEM(lightLevel,ii) = std(squintMeanVec,'omitmissing')/sqrt(sum(~isnan(nTimePoints)));
+        end
     end
 
     figure(figHangle)
@@ -222,7 +214,7 @@ for sess = 1:length(sessions)
     myWeibullFit = @(x,p) p(3).* p(3).*(1 - exp(-(x./p(1)).^p(2)));
     myLogisticFit = @(x,p) p(3).* (1 ./ (1 + exp(-p(2).*(x-p(1)))));
     ylabels = {'Proportion max closure','Proportion closure per second'};
-            xFit = 0:0.1:3;
+    xFit = 0:0.1:3;
 
     for mm = 1:2
         for lightLevel = 1:2
@@ -235,7 +227,7 @@ for sess = 1:length(sessions)
                     semVec = maxCloseSEM(lightLevel,:);
                     ub = [1.5 6 1];
                     lb = [0.5 2.5 1];
-                    x0 = [1 4 1];                    
+                    x0 = [1 4 1];
                     myObj = @(p) norm((dataVec - myWeibullFit(psiLevelsLog,p)).*(1./semVec));
                     myObj = @(p) norm(dataVec - myWeibullFit(psiLevelsLog,p));
                     myFit = @(p) myWeibullFit(xFit,p);
