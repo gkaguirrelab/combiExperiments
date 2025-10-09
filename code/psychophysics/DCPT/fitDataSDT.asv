@@ -9,7 +9,7 @@ subjectDir = fullfile(...
     projectName,...
     'FLIC_0015');
 
-file = [subjectDir, '/LightFlux_ND0x5_shifted/DCPT_SDT/FLIC_0015_LightFlux_DCPT_SDT_cont-0x3_refFreq-17.3205Hz_hi.mat'];
+file = [subjectDir, '/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_0015/LightFlux_ND0x5_shifted/DCPT_SDT/FLIC_0015_LightFlux_DCPT_SDT_cont-0x3_refFreq-17.3205Hz_hi.mat';
 load(file,'psychObj');
 obj = psychObj; 
 
@@ -66,7 +66,7 @@ sigma = 1;
 
 % Initial guess for parameters [m, b]
 initial_params = [0.4, 1.6, sigma];  % e.g., b = 2 - m
-dB_range = [0 logspace(log10(0.1),log10(5),30)];
+
 % Run MLE to minimize negative log likelihood
 best_params = fminsearch(@(p) neg_log_likelihood(p, dB_data, response_data), ...
                          initial_params);
@@ -76,8 +76,8 @@ disp(['Best fit: m = ', num2str(best_params(1)), ', b = ', num2str(best_params(2
 % Compute predicted probabilities using fitted parameters
 for i = 1:length(dB_range)
     dB_val = dB_range(i);
-    c_val = criterion(dB_val, initial_params(1), initial_params(2));
-    predicted_P_diff(i) = compute_P_different(dB_val, sigma, c_val);
+    c_val = criterion(dB_val, m_fit, b_fit);
+    predicted_P_diff(i) = compute_P_different(dB_val, sigma_fit, c_val);
 end
 
 % Plot the fitted curve
