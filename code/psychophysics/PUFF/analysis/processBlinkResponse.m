@@ -1,5 +1,6 @@
 %% To extract audio track and puff auditory signature
 clear
+close all
 rng;
 
 subjectID = 'HERO_gka';
@@ -30,6 +31,7 @@ squintRange = [220 280];
 
 % Define the time domain
 t = (0:450-1) / 180;
+t = t-160/180;
 
 % Define the sequences
 sequenceSet{1} = [3,3,1,4,5,5,4,1,2,3,2,2,1,5,3,4,4,3,5,2,4,2,5,1,1,3];
@@ -174,11 +176,15 @@ for sess = 1:length(sessions)
     for ii = 1:5
         for lightLevel = 1:2
             subplot(1,2,lightLevel)
+
+            % Put down a reference line
+            plot([0 1.5],[0 0],':k');
+            hold on
+
             blinkMatrix = dataStruct(sess,lightLevel,ii).blinkMatrix;
             yVals = mean(blinkMatrix,'omitmissing');
             yValsSmooth = smoothdata(yVals,"gaussian",7);
             plot(t,yValsSmooth,'-','Color',cs{ii},'LineWidth',1.5);
-            hold on
             plot([t(closeRange(1)) t(closeRange(1))],[-0.1 1],'-k');
             plot([t(closeRange(2)) t(closeRange(2))],[-0.1 1],'-k');
             plot([t(squintRange(1)) t(squintRange(1))],[-0.1 1],'-r');
@@ -186,10 +192,13 @@ for sess = 1:length(sessions)
 
             % Clean up the plot
             ylim([-0.1 1]);
-            xlim([0.5 2.5]);
+            xlim([0 1.5]);
             xlabel('time [s]');
             ylabel('proportion close');
             title(titleText{lightLevel});
+            box off
+            set(gca,'TickDir','out');
+            set(gca,'YTick',[0 0.5 1]);
 
             % Calcuate the max lid closure for each of the set of trails
             maxCloseVec = max(blinkMatrix(:,closeRange(1):closeRange(2)),[],2,'omitmissing');
