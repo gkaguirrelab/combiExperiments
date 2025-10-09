@@ -43,9 +43,9 @@ startFrameRange = 1:200;
 dataFrameRange = 201:fps*30-1;
 
 % Loop over the data files
-for ss = 1:length(subjectIDs)
+for subIdx = 1:length(subjectIDs)
 
-    subjectID = subjectIDs{ss};
+    subjectID = subjectIDs{subIdx};
 
     contrastCounter = zeros(size(contrastLevels));
 
@@ -102,15 +102,16 @@ for ss = 1:length(subjectIDs)
         end
 
         % Store the vecs
-        dataVecsPalp(ss,contrastIdx,contrastCounter(contrastIdx),1:nTimePoints) = palpFissureHeight;
-        dataVecsPupil(ss,contrastIdx,contrastCounter(contrastIdx),1:nTimePoints) = pupilDiameter;
+        dataVecsPalp(subIdx,contrastIdx,contrastCounter(contrastIdx),1:nTimePoints) = palpFissureHeight;
+        dataVecsPupil(subIdx,contrastIdx,contrastCounter(contrastIdx),1:nTimePoints) = pupilDiameter;
 
     end
 
     % Obtain the median palpebral fissure width during the first 200 frames
     % for this subject
-    vals = squeeze(dataVecsPalp(ss,1,:,allFramRange));
+    vals = squeeze(dataVecsPalp(subIdx,1,:,allFramRange));
     openVal = median(max(vals,[],2,'omitmissing'));
+
     closedVal = min(vals(:),[],'omitmissing');
     widthVal = openVal - closedVal;
 
@@ -119,26 +120,26 @@ for ss = 1:length(subjectIDs)
     for ll = 1:length(contrastLevels)
         tmpCloseVals = [];
         for rr = 1:contrastCounter(ll)
-            vec = squeeze(dataVecsPalp(ss,ll,rr,:));
+            vec = squeeze(dataVecsPalp(subIdx,ll,rr,:));
             goodIdx = ~isnan(vec);
-            dataVecsAdj(ss,ll,rr,goodIdx) = 1 - (vec(goodIdx)-closedVal) / widthVal;
-            tmpCloseVals(rr) = mean(squeeze(dataVecsAdj(ss,ll,rr,dataFrameRange)),'omitmissing');
+            dataVecsAdj(subIdx,ll,rr,goodIdx) = 1 - (vec(goodIdx)-closedVal) / widthVal;
+            tmpCloseVals(rr) = mean(squeeze(dataVecsAdj(subIdx,ll,rr,dataFrameRange)),'omitmissing');
         end
-        
+
         % Obtain the mean and SEM of closure for each light level for this
         % subject. Also identify the trial with the closest to mean eye
         % closure
-        palpCloseMean(ss,ll) = mean(tmpCloseVals,2);
-        [~,exampleTrialIdx(ss,ll)] = min(abs(tmpCloseVals - mean(tmpCloseVals)));
-        palpCloseSEM(ss,ll) = std(tmpCloseVals,[],2)/sqrt(contrastCounter(ll));   
+        palpCloseMean(subIdx,ll) = mean(tmpCloseVals,2);
+        [~,exampleTrialIdx(subIdx,ll)] = min(abs(tmpCloseVals - mean(tmpCloseVals)));
+        palpCloseSEM(subIdx,ll) = std(tmpCloseVals,[],2)/sqrt(contrastCounter(ll));
     end
 
     figure
     for ll = 1:5
         subplot(2,3,ll)
         % Plot the trial with the closest to the mean eye closure
-            plot(t(allFramRange),1-squeeze(dataVecsAdj(ss,ll,exampleTrialIdx(ss,ll),allFramRange)),'-','Color',[0.5 0.5 0.5])
-            hold on
+        plot(t(allFramRange),1-squeeze(dataVecsAdj(subIdx,ll,exampleTrialIdx(subIdx,ll),allFramRange)),'-','Color',[0.5 0.5 0.5])
+        hold on
         ylim([0,1]);
         ylabel('Proportion open');
         xlabel('time [secs]');
@@ -149,8 +150,69 @@ for ss = 1:length(subjectIDs)
 end
 
 figure
-plot(log10(illuminanceLevels),palpCloseMean')
-ylim([0 1]);
+% Define a sigmoid fitting function
+mySigFit = @(x,p) 1 ./ (1 + exp(-p(2).*(x-p(1))));
+
+subjectPlotOrder = [11     3    10     7     4     9     1     5     6     8     2];
+
+for ss = 1:length(subjectPlotOrder)
+
+    subIdx = subjectPlotOrder(ss);
+    subplot(4,3,ss);
+
+    myObj = @(p) norm(palpCloseMean(subIdx,:) - mySigFit(log10(illuminanceLevels),p));
+    p(subIdx,:) = fmincon(myObj,[1 3]);
+
+    % plot
+    for ii = 1:length(illuminanceLevels)
+        plot([log10(illuminanceLevels(ii)), log10(illuminanceLevels(ii))],...
+            [palpCloseMean(subIdx,ii)-2*palpCloseSEM(subIdx,ii), palpCloseMean(subIdx,ii)+2*palpCloseSEM(subIdx,ii)],...
+            '-','Color',[0.5 0.5 0.5],'LineWidth',1.5);
+        hold on
+    end
+    xFit = 0:0.1:6;
+    yFit = mySigFit(xFit,p(subIdx,:));
+    plot(xFit,yFit,'-r');
+    plot(log10(illuminanceLevels),palpCloseMean(subIdx,:),'.k','MarkerSize',10);
+    ylim([0 1]);
+    box off
+    set(gca, 'TickDir', 'out')
+    if ss == 1
+        xlabel('log_1_0 lux');
+        ylabel('Proportion closed');
+        set(gca, 'XTick', [0 2 4 6])
+        set(gca, 'YTick', [0 0.5 1])
+    else
+        set(gca, 'XTickLabel', [])
+        set(gca, 'YTickLabel', [])
+        set(gca,'xtick',[])
+        set(gca,'ytick',[])
+    end
+    text(1,0.85,sprintf('S%d',ss));
+end
+
+subplot(4,3,12);
+yFit = mySigFit(xFit,p(6,:));
+plot(xFit,yFit,'-r');
+hold on
+plot([0 p(6,1)],[0.5 0.5],':k');
+plot([p(6,1) p(6,1)],[0 0.5],':k');
+box off
+set(gca, 'TickDir', 'out')
+set(gca, 'XTickLabel', [])
+set(gca, 'YTickLabel', [])
+set(gca,'xtick',[])
+set(gca,'ytick',[])
+
+figure
+plot(p(:,1),p(:,2),'.r','MarkerSize',20);
+ylim([0 3]);
+xlim([2.5 4.5]);
+set(gca, 'TickDir', 'out')
+ylabel('slope [Δclose / log_1_0 lux]');
+xlabel('50% closure threshold [log_1_0 lux]');
+axis square
+box off
 
 
 % If you have the psychObj in memory, these commands will give you the

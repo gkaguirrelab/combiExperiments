@@ -45,9 +45,6 @@ for ii = 1:length(mList)
         pupilDiameter(tt) = eye_features{tt}.pupil.diameter;
     end
 
-    % subplot(2,1,1);
-    % plot(palpFissureHeight);
-
     % This is a vector of blink events
     blinkVec = diff(palpFissureHeight < median(palpFissureHeight,'omitmissing')/2)>0;
 
@@ -108,6 +105,14 @@ for ii = 1:3
     tD = t(1):deltaTD:deltaTD*(length(yD)-1);
     fitObj = fit(tD',yD','smoothingspline');
     plot(tD,fitObj(tD),'-','Color',colorSet{ii},'LineWidth',2);
+    x=linspace(0,2*pi,length(yMean));
+    X = [];
+    X(:,1)=cos(x);
+    X(:,2)=sin(x);
+    offset = mean(yMean);
+    b=X\(yMean-offset)';
+    plot(t(idx),X*b+offset,'-','Color',colorSet{ii});
+    fprintf('amplitude: %2.3f\n',norm(b));
 end
 
 for ii = 1:length(tD)-1

@@ -1,24 +1,32 @@
 %% To extract audio track and puff auditory signature
 clear
+rng
 
 subjectID = 'HERO_gka';
 experimentName = 'blinkResponse';
 whichDirection = 'LightFlux';
 
+psiLevels = logspace(log10(5),log10(30),5);
+psiLevelsLog = log10(psiLevels);
+
 sessions = {'2025-09-11 AM','2025-09-11 PM','2025-09-01','2025-09-10'};
+sessions = {'2025-09-11 PM','2025-09-01','2025-09-10'};
 
 % Define the contrasts for each session
 modContrastLevels = {[0,0.05],[0,0.10],[0,0.25],[0,0.25]};
+modContrastLevels = {[0,0.10],[0,0.25],[0,0.25]};
 
 achievedLux = [1342,2684,4429,6712];
+achievedLux = [2684,4429,6712];
 
+figHangle = figure();
 
 dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/BLNK_analysis/PuffLight/blinkResponse/HERO_gka';
 
 % Define the intervals for averaging / finding auc or max
 baseRange = [100 160];
-maxRange = [160 220];
-aucRange = [220 280];
+closeRange = [160 220];
+squintRange = [220 280];
 
 % Define the time domain
 t = (0:450-1) / 180;
@@ -171,64 +179,105 @@ for sess = 1:length(sessions)
         blinkMatrixB = dataStruct(sess,2,ii).blinkMatrix;
         yValsB = mean(blinkMatrixB,'omitmissing');
         plot(t,yValsB,':','Color',cs{ii});
-        plot([t(maxRange(1)) t(maxRange(1))],[-0.1 1],'-k');
-        plot([t(maxRange(2)) t(maxRange(2))],[-0.1 1],'-k');
-        plot([t(aucRange(1)) t(aucRange(1))],[-0.1 1],'-r');
-        plot([t(aucRange(2)) t(aucRange(2))],[-0.1 1],'-r');
-        max30Mean(1,ii) = mean(max(blinkMatrixA(:,maxRange(1):maxRange(2)),[],2,'omitmissing'),'omitmissing');
-        max30SEM(1,ii) = std(max(blinkMatrixA(:,maxRange(1):maxRange(2)),[],2,'omitmissing'))/sqrt(40);
-        max30Mean(2,ii) = mean(max(blinkMatrixB(:,maxRange(1):maxRange(2)),[],2,'omitmissing'),'omitmissing');
-        max30SEM(2,ii) = std(max(blinkMatrixB(:,maxRange(1):maxRange(2)),[],2,'omitmissing'))/sqrt(40);
-        auc30Mean(1,ii) = mean(sum(blinkMatrixA(:,maxRange(1):maxRange(2)),2,'omitmissing'))/30;
-        auc30Mean(2,ii) = mean(sum(blinkMatrixB(:,maxRange(1):maxRange(2)),2,'omitmissing'))/30;
-        auc30SEM(1,ii) = std(sum(blinkMatrixA(:,maxRange(1):maxRange(2)),2,'omitmissing'))/30/sqrt(40);
-        auc30SEM(2,ii) = std(sum(blinkMatrixB(:,maxRange(1):maxRange(2)),2,'omitmissing'))/30/sqrt(40);
-        auc120Mean(1,ii) = mean(sum(blinkMatrixA(:,aucRange(1):aucRange(2)),2,'omitmissing'))/120;
-        auc120Mean(2,ii) = mean(sum(blinkMatrixB(:,aucRange(1):aucRange(2)),2,'omitmissing'))/120;
-        auc120SEM(1,ii) = std(sum(blinkMatrixA(:,aucRange(1):aucRange(2)),2,'omitmissing'))/120/sqrt(40);
-        auc120SEM(2,ii) = std(sum(blinkMatrixB(:,aucRange(1):aucRange(2)),2,'omitmissing'))/120/sqrt(40);
+        plot([t(closeRange(1)) t(closeRange(1))],[-0.1 1],'-k');
+        plot([t(closeRange(2)) t(closeRange(2))],[-0.1 1],'-k');
+        plot([t(squintRange(1)) t(squintRange(1))],[-0.1 1],'-r');
+        plot([t(squintRange(2)) t(squintRange(2))],[-0.1 1],'-r');
+
+        % Clean up the plot
         ylim([-0.1 1]);
         xlim([0.5 2.5]);
         xlabel('time [s]');
         ylabel('proportion close');
+
+        % Calcuate the max lid closure for each of the set of trails
+        maxCloseVecA = max(blinkMatrixA(:,closeRange(1):closeRange(2)),[],2,'omitmissing');
+        maxCloseVecB = max(blinkMatrixB(:,closeRange(1):closeRange(2)),[],2,'omitmissing');
+
+        % Calculate the max close values for the A and B data sets
+        maxCloseMean(1,ii) = mean(maxCloseVecA,'omitmissing');
+        maxCloseSEM(1,ii) = std(maxCloseVecA,'omitmissing')/sqrt(sum(~isnan(maxCloseVecA)));
+        maxCloseMean(2,ii) = mean(maxCloseVecB,'omitmissing');
+        maxCloseSEM(2,ii) = std(maxCloseVecB,'omitmissing')/sqrt(sum(~isnan(maxCloseVecA)));
+
+        % Calculate the mean closure during the squint period
+        squintMeanVecA = sum(blinkMatrixA(:,squintRange(1):squintRange(2)),2,'omitmissing');
+        nTimePointsA = sum(~isnan(blinkMatrixA(:,squintRange(1):squintRange(2))),2);
+        nTimePointsA(nTimePointsA<range(squintRange)/2)=nan;
+        squintMeanVecA = squintMeanVecA ./ nTimePointsA;
+
+        squintMeanVecB = sum(blinkMatrixB(:,squintRange(1):squintRange(2)),2,'omitmissing');
+        nTimePointsB = sum(~isnan(blinkMatrixB(:,squintRange(1):squintRange(2))),2);
+        nTimePointsB(nTimePointsB<range(squintRange)/2)=nan;
+        squintMeanVecB = squintMeanVecB ./ nTimePointsB;
+
+        aucSquintMean(1,ii) = mean(squintMeanVecA,'omitmissing');
+        aucSquintMean(2,ii) = mean(squintMeanVecB,'omitmissing');
+        aucSquintSEM(1,ii) = std(squintMeanVecA,'omitmissing')/sqrt(sum(~isnan(nTimePointsA)));
+        aucSquintSEM(2,ii) = std(squintMeanVecB,'omitmissing')/sqrt(sum(~isnan(nTimePointsB)));;
     end
 
+    figure(figHangle)
+    plotColors = {'k','y'};
+    myWeibullFit = @(x,p) p(3).* p(3).*(1 - exp(-(x./p(1)).^p(2)));
+    myLogisticFit = @(x,p) p(3).* (1 ./ (1 + exp(-p(2).*(x-p(1)))));
+    ylabels = {'Proportion max closure','Proportion closure per second'};
+            xFit = 0:0.1:3;
 
-    figure
-    subplot(1,3,1);
-    plot(max30Mean','o-');
-    %plot(auc30Mean','o-');
-    hold on
-    for ii = 1:5
-        plot([ii,ii],[max30Mean(1,ii)+1.5*max30SEM(1,ii),max30Mean(1,ii)-1.5*max30SEM(1,ii)],'-k');
-        plot([ii,ii],[max30Mean(2,ii)+1.5*max30SEM(2,ii),max30Mean(2,ii)-1.5*max30SEM(2,ii)],'-k');
-        %    plot([ii,ii],[auc30Mean(1,ii)+auc30SEM(1,ii),auc30Mean(1,ii)-auc30SEM(1,ii)],'-k');
-        %    plot([ii,ii],[auc30Mean(2,ii)+auc30SEM(2,ii),auc30Mean(2,ii)-auc30SEM(2,ii)],'-k');
+    for mm = 1:2
+        for lightLevel = 1:2
+
+            subplot(2,length(sessions),sess+(mm-1)*length(sessions));
+
+            switch mm
+                case 1
+                    dataVec = maxCloseMean(lightLevel,:);
+                    semVec = maxCloseSEM(lightLevel,:);
+                    ub = [1.5 6 1];
+                    lb = [0.5 2.5 1];
+                    x0 = [1 4 1];                    
+                    myObj = @(p) norm((dataVec - myWeibullFit(psiLevelsLog,p)).*(1./semVec));
+                    myObj = @(p) norm(dataVec - myWeibullFit(psiLevelsLog,p));
+                    myFit = @(p) myWeibullFit(xFit,p);
+                case 2
+                    dataVec = aucSquintMean(lightLevel,:);
+                    semVec = aucSquintSEM(lightLevel,:);
+                    ub = [20 20 0.57];
+                    lb = [0 2 0.57];
+                    x0 = [1 3 0.57];
+                    myObj = @(p) norm((dataVec - myLogisticFit(psiLevelsLog,p)).*(1./semVec));
+                    myFit = @(p) myLogisticFit(xFit,p);
+            end
+
+            % Plot a sigmoidal fit to the data
+            p = fmincon(myObj,x0,[],[],[],[],lb,ub);
+            pStore(sess,mm,lightLevel,:) = p;
+            yFit = myFit(p);
+            plot(xFit,yFit,'-','Color','r');
+            hold on
+
+            % Add the SEM error bars
+            for ii = 1:5
+                plot([psiLevelsLog(ii),psiLevelsLog(ii)],[dataVec(ii)+aucSquintSEM(ii),dataVec(ii)-aucSquintSEM(ii)],...
+                    '-','Color',[0.5 0.5 0.5],'LineWidth',1.5);
+            end
+
+            % Plot the data points
+            plot(psiLevelsLog,dataVec,'.','Color',plotColors{lightLevel},'MarkerSize',20);
+
+        end
+        if sess == 1
+            ylabel(ylabels{mm});
+            xlabel('puff pressure [log_1_0 PSI]');
+        else
+            set(gca,'YTick',[]);
+        end
+        if mm == 1
+            title(sprintf('%d lux',achievedLux(sess)));
+        end
+        xlim([0 2]);
+        box off
+        set(gca,'TickDir','out');
+
     end
-    ylabel('Proportion closure per second');
-    xlim([0.75 5.25])
-    ylim([0 1]);
-
-    subplot(1,3,2);
-    plot(auc120Mean','o-');
-    hold on
-    for ii = 1:5
-        plot([ii,ii],[auc120Mean(1,ii)+1.5*auc30SEM(1,ii),auc120Mean(1,ii)-1.5*auc30SEM(1,ii)],'-k');
-        plot([ii,ii],[auc120Mean(2,ii)+1.5*auc30SEM(2,ii),auc120Mean(2,ii)-1.5*auc30SEM(2,ii)],'-k');
-    end
-    ylabel('Proportion closure per second');
-    xlim([0.75 5.25])
-    ylim([0 1]);
-
-    subplot(1,3,3);
-    for ii = 1:5
-        plot(ii,mean(dataStruct(sess,1,ii).palpHeight),'ok');
-        hold on
-        plot(ii,mean(dataStruct(sess,2,ii).palpHeight),'or');
-    end
-    ylabel('palp fissure pixels');
-
 end
-
-%save('/Users/aguirre/Desktop/puffBlinkData.mat','audioX','imageX','mList','dataStruct');
-
