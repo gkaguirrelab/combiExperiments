@@ -61,38 +61,44 @@ title('Psychometric function');
 dB_data = questData.trialData.stim;          % vector of dB differences
 response_data = [questData.trialData.respondYes]; % 0 = "Same", 1 = "Different"
 
-% Set initial sigma
+% Set initial sigma and criterion baseline (the flat part of the criterion
+% function)
 sigma = 1;
+crit_baseline = 2; 
+m = 0.4;
 
 % Initial guess for parameters [m, b]
-initial_params = [0.4, 1.6, sigma];  % e.g., b = 2 - m
-dB_range = [0 logspace(log10(0.1),log10(5),30)];
+initial_params = [m, sigma, crit_baseline];  % e.g., b = 2 - m
+dB_range = [0 linspace(0.1,5,30)];
 % Run MLE to minimize negative log likelihood
 best_params = fminsearch(@(p) neg_log_likelihood(p, dB_data, response_data), ...
                          initial_params);
 
-disp(['Best fit: m = ', num2str(best_params(1)), ', b = ', num2str(best_params(2))]);
+disp(['Best fit: m = ', num2str(best_params(1)), ', critBaseline = ', num2str(best_params(2))]);
 
 % Compute predicted probabilities using fitted parameters
 for i = 1:length(dB_range)
     dB_val = dB_range(i);
-    c_val = criterion(dB_val, initial_params(1), initial_params(2));
-    predicted_P_diff(i) = compute_P_different(dB_val, sigma, c_val);
+    c_val(i) = criterion(dB_val, best_params(1), best_params(2));
+    predicted_P_diff(i) = compute_P_different(dB_val, sigma, c_val(i));
 end
 
 % Plot the fitted curve
 plot(dB_range, predicted_P_diff, 'k-', 'LineWidth', 2);
 legend({'Observed data', 'Fitted psychometric function'}, 'Location', 'Best');
 
-function c = criterion(dB_value, m, b)
+figure;
+plot(dB_range, c_val, 'ko', 'LineWidth', 2);
+
+function c = criterion(dB_value, m, crit_baseline)
     % Determining criterion values under the hypothesis that is
     % shrinks for dB values closer to 0
-    if abs(dB_value) <= 1
-        c = sign(dB_value)*m*dB_value + b;
-    end
+    x_limit = 2.5; % TO DO make this a free parameter as well
     
-    if dB_value > 1
-        c = 2;
+    if abs(dB_value) <= x_limit
+        c = crit_baseline - m * (x_limit - abs(dB_value));
+    else
+        c = crit_baseline;
     end
 end
 
@@ -128,8 +134,8 @@ end
 
 function nll = neg_log_likelihood(params, dB_data, response_data)
     m = params(1);
-    b = params(2);
     sigma = params(3);
+    crit_baseline = params(2);
     nll = 0;
 
      if sigma <= 0
@@ -141,7 +147,7 @@ function nll = neg_log_likelihood(params, dB_data, response_data)
         dB_value = dB_data(i);
         response = response_data(i);  % 1 = "Different", 0 = "Same"
     
-        c = criterion(dB_value, m, b);
+        c = criterion(dB_value, m, crit_baseline);
         P_diff = compute_P_different(dB_value, sigma, c);
     
         % Clamp probabilities to avoid log(0)
