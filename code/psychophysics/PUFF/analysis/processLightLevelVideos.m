@@ -149,6 +149,45 @@ for subIdx = 1:length(subjectIDs)
 
 end
 
+
+% Create a figure that shows the average, smoothed time-course of eye
+% closure across subjects for a given light level
+
+myExpFit = @(x,p) p(1) - p(2).*exp(-p(3).*x);
+
+figure
+for ll = 1:5
+    for ss = 1:length(subjectIDs)
+        dataMatrix = squeeze(dataVecsAdj(ss,ll,:,:));
+        for rr = 1:size(dataMatrix,1)
+            dataMatrix(rr,:) = smoothdata(dataMatrix(rr,:),'movmedian',10);
+        end
+        dataSub(ss,:) = smoothdata(mean(dataMatrix,'omitmissing'),'movmedian',1);
+    end
+    yVec = 1-smoothdata(mean(dataSub,'omitmissing'),'movmedian',1);
+    yVec = yVec(260:5500);
+    xVec = t(260:5500)-t(260);
+    t5idx = find(xVec>5,1);
+    plot(xVec,yVec,'.','Color',[0.5 0.5 0.5]);
+    hold on
+    myObj = @(p) norm(yVec(1:t5idx)-myExpFit(xVec(1:t5idx),p));
+    p = fmincon(myObj,[1 1 1]);
+    xFit = xVec(1):diff(xVec(1:2)):xVec(t5idx);
+    yExpFit = myExpFit(xFit,p);
+    plot(xFit,yExpFit,'-r','LineWidth',1.5);
+    coef(ll,:) = polyfit(xVec(t5idx:end),yVec(t5idx:end),1);
+    yFit = polyval(coef(ll,:),xVec(t5idx:end));
+    yFit = yFit - yFit(1) + yExpFit(end);
+    plot(xVec(t5idx:end),yFit,'-r','LineWidth',1.5);
+end
+ylim([0 1]);
+box off
+xlabel('Time [s]');
+ylabel('Proportion eye open');
+set(gca,'TickDir','out');
+set(gca,'YTick',[0 0.5 1]);
+p=[];
+
 figure
 % Define a sigmoid fitting function
 mySigFit = @(x,p) 1 ./ (1 + exp(-p(2).*(x-p(1))));
