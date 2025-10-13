@@ -1,30 +1,63 @@
-dropBoxBaseDir=getpref('combiExperiments','dropboxBaseDir');
-dropBoxSubDir='FLIC_data';
-projectName='combiLED';
+% Defining the directory
+dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+dropBoxSubDir = 'FLIC_data';
+projectName = 'combiLED';
 experimentName = 'DCPT_SDT';
-% % Define the modulation and data directories
-subjectDir = fullfile(...
-    dropBoxBaseDir,...
-    dropBoxSubDir,...
-    projectName,...
-    'FLIC_0015');
 
-file = [subjectDir, '/LightFlux_ND0x5_shifted/DCPT_SDT/FLIC_0015_LightFlux_DCPT_SDT_cont-0x3_refFreq-17.3205Hz_hi.mat'];
-load(file,'psychObj');
-obj = psychObj; 
+% Define subjects + parameters
+subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', 'FLIC_0018', 'FLIC_0020', ...
+            'FLIC_0021', 'FLIC_0022'};  
+modDirection = 'LightFlux'; 
+NDLabel = '0x5';   % Options are {'3x0', '0x5'} 
+stimParamLabels = 'hi'; % {'low', 'hi'}
+refFreqHz = 17.3205;  % logspace(log10(10),log10(30),5)
+targetPhotoContrast = '0x3';  % {'0x1','0x3'}
 
-% Grab some variables
-questData = obj.questData;
-stimParamsDomainList = obj.stimParamsDomainList;
-nTrials = length(obj.questData.trialData);
+% Initialize combined trial data
+comboTrialData = [];
+
+for subjIdx = 1:length(subjectID)
+    subj = subjectID{subjIdx};
+    
+    % Build path to the data file
+    subjectDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, subj);
+    dataDir = fullfile(subjectDir, [modDirection '_ND' NDLabel '_shifted'], experimentName);
+    
+    fileName = fullfile(dataDir, ...
+        [subj '_' modDirection '_' experimentName ...
+        '_cont-' targetPhotoContrast '_refFreq-' num2str(refFreqHz) 'Hz_' stimParamLabels '.mat']);
+    
+    if exist(fileName, 'file')
+        load(fileName, 'psychObj');
+        thisTrialData = psychObj.questData.trialData;
+        
+        % Append to combined trial data
+        comboTrialData = [comboTrialData; thisTrialData];
+        
+        % Optional: store one psychObj as template if needed
+        if subjIdx == 1
+            templatePsychObj = psychObj;
+        end
+    else
+        warning('File not found: %s', fileName);
+    end
+end
+
+% Assign template object to be the combinedPsychObj
+combinedPsychObj = templatePsychObj;
+
+% Grab variables
+stimParamsDomainList = combinedPsychObj.stimParamsDomainList; 
+nTrials = length(comboTrialData);
 
 % Set up a figure
 figHandle = figure('visible',true);
 figuresize(750,250,'units','pt');
 
+% PLOTTING GROUP LEVEL DATA POINTS
 % Get the proportion respond "different" for each stimulus
-stimCounts = qpCounts(qpData(questData.trialData),questData.nOutcomes);
-stim = zeros(length(stimCounts),questData.nStimParams);
+stimCounts = qpCounts(qpData(comboTrialData),combinedPsychObj.questData.nOutcomes);
+stim = zeros(length(stimCounts),combinedPsychObj.questData.nStimParams);
 for cc = 1:length(stimCounts)
     stim(cc) = stimCounts(cc).stim;
     nTrials(cc) = sum(stimCounts(cc).outcomeCounts);
@@ -58,8 +91,8 @@ title('Psychometric function');
 
 % "FINAL WORKING CODE STRUCTURE"
 % Load real data
-dB_data = questData.trialData.stim;          % vector of dB differences
-response_data = [questData.trialData.respondYes]; % 0 = "Same", 1 = "Different"
+dB_data = comboTrialData.stim;          % vector of dB differences
+response_data = [comboTrialData.respondYes]; % 0 = "Same", 1 = "Different"
 
 % Set initial sigma and criterion baseline (the flat part of the criterion
 % function)
@@ -68,6 +101,8 @@ crit_baseline = 2;
 m = 0.4;
 x_limit = 2.5; % db value where the v starts dipping down
 
+initial_params = [m, crit_baseline, x_limit, sigma]; % Initial params
+dB_range = [0 logspace(log10(0.1),log10(5),30)]; 
 
 lb = [0, 0, 0.1, 0.01]; % lower bounds for m, crit_baseline, x_limit, sigma
 ub = [Inf, Inf, 4, 10]; % upper bounds
@@ -138,8 +173,7 @@ function nll = neg_log_likelihood(params, dB_data, response_data)
     crit_baseline = params(2);
     x_limit = params(3);
     sigma = params(4);
-
-
+ 
     nll = 0;
 
      if sigma <= 0
