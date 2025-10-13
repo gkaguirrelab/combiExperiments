@@ -118,8 +118,10 @@ grid on;
 
 nTrials = 5000;              
 dB_values = [linspace(-5,-0.1,30) 0 linspace(0.1,5,30)]; 
-sigma = 1;                  
-c = 2; % a higher criterion is more conservative in saying different   
+sigma = .5;                  
+crit_baseline = 2.5; % a higher criterion is more conservative in saying different
+m = 1.4; %slope of the dip
+x_limit = 1; % x value where criterion ends dip.
 dipCriterion = true;
 
 
@@ -130,14 +132,10 @@ for i = 1:length(dB_values)
     mu_T = dB_values(i);     % mean of test
 
     if dipCriterion
-        if abs(mu_T) <= 1
-            m = 0.40;
-            b = 2 - m;
-            c = sign(mu_T)*m*mu_T + b;
-        end
-
-        if mu_T > 1
-            c = 2;
+        if abs(mu_T) <= x_limit
+            c = crit_baseline - m * (x_limit - abs(mu_T));
+        else
+            c = crit_baseline;
         end
     end
 
@@ -163,7 +161,7 @@ for i = 1:length(dB_values)
 end
 figure(6);
 hold on
-plot(dB_values, P_different, 'go-', 'LineWidth', 2);
+plot(dB_values, P_different, 'o-', 'LineWidth', 2);
 xlabel('dB Difference');
 ylabel('P(Different Response)');
 title('Psychometric Curve for Same/Different Task');
