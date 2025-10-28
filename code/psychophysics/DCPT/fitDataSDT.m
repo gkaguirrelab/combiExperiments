@@ -8,8 +8,8 @@ experimentName = 'DCPT_SDT';
 subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', 'FLIC_0018', 'FLIC_0020', ...
     'FLIC_0021', 'FLIC_0022'};
 modDirection = 'LightFlux';
-NDLabel = '0x5';   % Options are {'3x0', '0x5'}
-stimParamLabels = 'hi'; % {'low', 'hi'}
+NDLabel = {'3x0', '0x5'};   % Options are {'3x0', '0x5'}
+stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
 refFreqHz = 17.3205;  % logspace(log10(10),log10(30),5)
 targetPhotoContrast = '0x3';  % {'0x1','0x3'}
 
@@ -19,17 +19,26 @@ comboTrialData = [];
 for subjIdx = 1:length(subjectID)
     subj = subjectID{subjIdx};
 
+    for sideIdx = 1:length(stimParamLabels)
+
     % Build path to the data file
     subjectDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, subj);
-    dataDir = fullfile(subjectDir, [modDirection '_ND' NDLabel '_shifted'], experimentName);
+    dataDir = fullfile(subjectDir, [modDirection '_ND' NDLabel{1} '_shifted'], experimentName);
 
     fileName = fullfile(dataDir, ...
         [subj '_' modDirection '_' experimentName ...
-        '_cont-' targetPhotoContrast '_refFreq-' num2str(refFreqHz) 'Hz_' stimParamLabels '.mat']);
+        '_cont-' targetPhotoContrast '_refFreq-' num2str(refFreqHz) 'Hz_' stimParamLabels{sideIdx} '.mat']);
 
     if exist(fileName, 'file')
         load(fileName, 'psychObj');
+
         thisTrialData = psychObj.questData.trialData;
+
+        if contains(fileName, 'lo')
+            for trial = 1:numel(thisTrialData)
+                thisTrialData(trial).stim = -thisTrialData(trial).stim;
+            end
+        end
 
         % Append to combined trial data
         comboTrialData = [comboTrialData; thisTrialData];
@@ -41,6 +50,9 @@ for subjIdx = 1:length(subjectID)
     else
         warning('File not found: %s', fileName);
     end
+
+    end
+
 end
 
 % Assign template object to be the combinedPsychObj
@@ -94,16 +106,6 @@ title('Psychometric function');
 dB_data = [comboTrialData.stim];          % vector of dB differences
 response_data = [comboTrialData.respondYes]; % 0 = "Same", 1 = "Different"
 
-% Group data by stimulus level for least squares regression
-stimLevels = unique(dB_data); % unique stimulus levels
-obsPropDiff = zeros(size(stimLevels)); % to store observed proportion "different"
-nTrialsPerLevel = zeros(size(stimLevels)); % to store number of trials per stim level
-for i = 1:length(stimLevels)
-    idx = dB_data == stimLevels(i); % indices of trials at this stimulus level
-    nTrialsPerLevel(i) = sum(idx);  % number of trials at this stim level
-    obsPropDiff(i) = mean(response_data(idx)); % observed proportion "different"
-end
-
 % Set initial sigma and criterion baseline (the flat part of the criterion
 % function)
 % Best initial params for MLE
@@ -117,7 +119,7 @@ m = 1.4;
 x_limit = 1; % db value where the v starts dipping down
 
 initial_params = [m, crit_baseline, sigma, x_limit]; % Initial params
-dB_range = [0 linspace(0.1,5,30)];
+dB_range = [sort(-linspace(0.1,5,30)) 0 linspace(0.1,5,30)];
 
 lb = [0, 0, 0.3]; % lower bounds for m, crit_baseline, x_limit, sigma
 ub = [Inf, Inf, 10]; % upper bounds
@@ -128,23 +130,18 @@ opts = optimoptions('fmincon','Display','iter','Algorithm','sqp');
 best_MLE_params = fmincon(@(p) neg_log_likelihood(p, dB_data, response_data, x_limit), ...
     initial_params, [], [], [], [], lb, ub, [], opts);
 
-% Alternatively, use least squares fit
-% best_lsq_params = fmincon(@(p) lsq_objective(p, stimLevels, obsPropDiff, x_limit), ...
-%    initial_params, [], [], [], [], lb, ub, [], opts);
-
 % Choose the fitting method
 fit = best_MLE_params;
 
-% disp(['Best fit: m = ', num2str(best_MLE_params(1)), ', critBaseline = ', num2str(best_MLE_params(2))]);
 disp(['Best fit: m = ', num2str(fit(1)), ', critBaseline = ', num2str(fit(2))]);
 
 % Compute predicted probabilities using fitted parameters
 for i = 1:length(dB_range)
     dB_val = dB_range(i);
-    %c_val(i) = criterion(dB_val, best_params(1), best_params(2), x_limit);
+   % c_val(i) = criterion(dB_val, m, crit_baseline, x_limit);
+   % predicted_P_diff(i) = compute_P_different(dB_val, sigma, c_val(i));
     c_val(i) = criterion(dB_val, fit(1), fit(2), x_limit);
     predicted_P_diff(i) = compute_P_different(dB_val, fit(3), c_val(i));
-    %predicted_P_diff(i) = compute_P_different(dB_val, best_params(3), c_val(i));
 end
 
 % Plot the fitted curve
@@ -201,8 +198,8 @@ end
 function nll = neg_log_likelihood(params, dB_data, response_data, x_limit)
 m = params(1);
 crit_baseline = params(2);
-x_limit = params(3);
 sigma = params(3);
+x_limit = params(4);
 
 nll = 0;
 
@@ -231,16 +228,30 @@ for i = 1:length(dB_data)
 end
 end
 
-function sse = lsq_objective(params, stimLevels, obsPropDiff, x_limit)
-    m = params(1);
-    crit_baseline = params(2);
-    sigma = params(3);
-    
-    predicted = zeros(size(stimLevels));
-    for i = 1:length(stimLevels)
-        c = criterion(stimLevels(i), m, crit_baseline, x_limit);
-        predicted(i) = compute_P_different(stimLevels(i), sigma, c);
-    end
-    
-    sse = sum((obsPropDiff - predicted).^2);
-end
+% LEAST SQUARES - decided not to do this
+% best_lsq_params = fmincon(@(p) lsq_objective(p, stimLevels, obsPropDiff, x_limit), ...
+%    initial_params, [], [], [], [], lb, ub, [], opts);
+
+% function sse = lsq_objective(params, stimLevels, obsPropDiff, x_limit)
+%     m = params(1);
+%     crit_baseline = params(2);
+%     sigma = params(3);
+% 
+%     predicted = zeros(size(stimLevels));
+%     for i = 1:length(stimLevels)
+%         c = criterion(stimLevels(i), m, crit_baseline, x_limit);
+%         predicted(i) = compute_P_different(stimLevels(i), sigma, c);
+%     end
+% 
+%     sse = sum((obsPropDiff - predicted).^2);
+% end
+
+% Group data by stimulus level for least squares regression
+% stimLevels = unique(dB_data); % unique stimulus levels
+% obsPropDiff = zeros(size(stimLevels)); % to store observed proportion "different"
+% nTrialsPerLevel = zeros(size(stimLevels)); % to store number of trials per stim level
+% for i = 1:length(stimLevels)
+%     idx = dB_data == stimLevels(i); % indices of trials at this stimulus level
+%     nTrialsPerLevel(i) = sum(idx);  % number of trials at this stim level
+%     obsPropDiff(i) = mean(response_data(idx)); % observed proportion "different"
+% end
