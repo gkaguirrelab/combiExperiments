@@ -121,17 +121,22 @@ x_limit = 1; % db value where the v starts dipping down
 initial_params = [m, crit_baseline, sigma, x_limit]; % Initial params
 dB_range = [sort(-linspace(0.1,5,30)) 0 linspace(0.1,5,30)];
 
-lb = [0, 0, 0.3]; % lower bounds for m, crit_baseline, x_limit, sigma
-ub = [Inf, Inf, 10]; % upper bounds
+lb = [0, 0, 0.3, 0]; % lower bounds for m, crit_baseline, x_limit, sigma
+ub = [100, 100, 10, 2]; % upper bounds
 
 opts = optimoptions('fmincon','Display','iter','Algorithm','sqp');
 
 % Run MLE to minimize negative log likelihood
-best_MLE_params = fmincon(@(p) neg_log_likelihood(p, dB_data, response_data, x_limit), ...
-    initial_params, [], [], [], [], lb, ub, [], opts);
+% best_MLE_params = fmincon(@(p) neg_log_likelihood(p, dB_data, response_data, x_limit), ...
+ %   initial_params, [], [], [], [], lb, ub, [], opts);
+
+% Run BADS 
+addpath(genpath('/Users/rubybouh/Documents/MATLAB/projects/bads'));
+best_BADS_params = bads(@(p) neg_log_likelihood(p, dB_data, response_data, x_limit), ...
+    initial_params, lb, ub, lb, ub);
 
 % Choose the fitting method
-fit = best_MLE_params;
+fit = best_BADS_params;
 
 disp(['Best fit: m = ', num2str(fit(1)), ', critBaseline = ', num2str(fit(2))]);
 
