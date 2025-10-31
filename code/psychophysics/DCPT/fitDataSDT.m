@@ -101,21 +101,17 @@ xlabel('stimulus difference [dB]')
 ylabel('proportion respond different')
 title('Psychometric function');
 
-% "FINAL WORKING CODE STRUCTURE"
 % Load real data
 dB_data = [comboTrialData.stim];          % vector of dB differences
 response_data = [comboTrialData.respondYes]; % 0 = "Same", 1 = "Different"
 
 % Set initial sigma and criterion baseline (the flat part of the criterion
 % function)
-% Best initial params for MLE
-% sigma = .5;                  
-% crit_baseline = 2.5; 
-% m = 1.4; 
-% x_limit = 1; 
-sigma = .5;
-crit_baseline = 2.5;
+% Best initial params for MLE are: sigma = .5, crit_baseline = 2.5, m =
+% 1.4, and x_limit = 1
 m = 1.4;
+crit_baseline = 2.5;
+sigma = .5;
 x_limit = 1; % db value where the v starts dipping down
 
 initial_params = [m, crit_baseline, sigma, x_limit]; % Initial params
@@ -124,37 +120,76 @@ dB_range = [sort(-linspace(0.1,5,30)) 0 linspace(0.1,5,30)];
 lb = [0, 0, 0.3, 0]; % lower bounds for m, crit_baseline, x_limit, sigma
 ub = [100, 100, 10, 2]; % upper bounds
 
-opts = optimoptions('fmincon','Display','iter','Algorithm','sqp');
+% Options for fmincon
+opts = optimoptions('fmincon','Display','iter','Algorithm','sqp', 'MaxIterations', 100);
+
+% Options for bads
+% Start with defaults
+options = bads('defaults');
+addpath(genpath('/Users/rubybouh/Documents/MATLAB/projects/bads'));
+% Set max iterations and function evaluations
+options.MaxIter = 50;     
+options.MaxFunEvals = 500;  
+
+% Run the fitting 100 times to see if it converges to the same solution
+nRuns = 100; 
+param_store = zeros(nRuns, 4);  % 4 parameters: [m, critBaseline, sigma, x_limit]
+
+for runIdx = 1:nRuns
+    % Fit
+    best_BADS_params = bads(@(p) neg_log_likelihood(p, dB_data, response_data, x_limit), ...
+        initial_params, lb, ub, lb, ub, [], options);
+
+    % Store results
+    param_store(runIdx, :) = best_BADS_params;
+end
+
+param_mean = mean(param_store, 1); % Takes the mean of each column
+param_se = std(param_store) / sqrt(nRuns);  % standard error
+
+param_names = {'m', 'critBaseline', 'sigma', 'x\_limit'};
+figure;
+hold on;
+
+% Horizontal positions
+x = 1:4;
+errorbar(x, param_mean, param_se, 'o', 'LineWidth', 2, 'MarkerSize', 8);
+set(gca, 'XTick', x, 'XTickLabel', param_names);
+ylabel('Parameter value');
+title('Mean ± SEM of fitted parameters over 100 runs');
+grid on;
+hold off;
+
+% TEMPORARILY TAKING THIS OUT TO DO 100 RUNS
 
 % Run MLE to minimize negative log likelihood
 % best_MLE_params = fmincon(@(p) neg_log_likelihood(p, dB_data, response_data, x_limit), ...
- %   initial_params, [], [], [], [], lb, ub, [], opts);
+%   initial_params, [], [], [], [], lb, ub, [], opts);
 
 % Run BADS 
-addpath(genpath('/Users/rubybouh/Documents/MATLAB/projects/bads'));
-best_BADS_params = bads(@(p) neg_log_likelihood(p, dB_data, response_data, x_limit), ...
-    initial_params, lb, ub, lb, ub);
-
-% Choose the fitting method
-fit = best_BADS_params;
-
-disp(['Best fit: m = ', num2str(fit(1)), ', critBaseline = ', num2str(fit(2))]);
-
-% Compute predicted probabilities using fitted parameters
-for i = 1:length(dB_range)
-    dB_val = dB_range(i);
-   % c_val(i) = criterion(dB_val, m, crit_baseline, x_limit);
-   % predicted_P_diff(i) = compute_P_different(dB_val, sigma, c_val(i));
-    c_val(i) = criterion(dB_val, fit(1), fit(2), x_limit);
-    predicted_P_diff(i) = compute_P_different(dB_val, fit(3), c_val(i));
-end
-
-% Plot the fitted curve
-plot(dB_range, predicted_P_diff, 'k-', 'LineWidth', 2);
-legend({'Observed data', 'Fitted psychometric function'}, 'Location', 'Best');
-
-figure;
-plot(dB_range, c_val, 'ko', 'LineWidth', 2);
+% addpath(genpath('/Users/rubybouh/Documents/MATLAB/projects/bads'));
+% best_BADS_params = bads(@(p) neg_log_likelihood(p, dB_data, response_data, x_limit), ...
+%     initial_params, lb, ub, lb, ub, options);
+% 
+% % Choose the fitting method
+% fit = best_BADS_params;
+% 
+% disp(['Best fit: m = ', num2str(fit(1)), ', critBaseline = ', num2str(fit(2)), ...
+%         ', sigma  = ', num2str(fit(3)), ', x limit = ', num2str(fit(4))]);
+% 
+% % Compute predicted probabilities using fitted parameters
+% for i = 1:length(dB_range)
+%     dB_val = dB_range(i);
+%     c_val(i) = criterion(dB_val, fit(1), fit(2), fit(4));
+%     predicted_P_diff(i) = compute_P_different(dB_val, fit(3), c_val(i));
+% end
+% 
+% % Plot the fitted curve
+% plot(dB_range, predicted_P_diff, 'k-', 'LineWidth', 2);
+% legend({'Observed data', 'Fitted psychometric function'}, 'Location', 'Best');
+% 
+% % figure;
+% plot(dB_range, c_val, 'ko', 'LineWidth', 2);
 
 %--------------------------------------------------------------------------
 % Local Functions
@@ -180,7 +215,6 @@ mu_T = dB_value;     % mean of test
 f = @(mR, mT) normpdf(mR, mu_R, sigma) .* normpdf(mT, mu_T, sigma);
 
 % The integral limits are defined by the criterion: mR - c <= mT <= mR + c
-
 mR_min = -inf;
 mR_max = inf;
 
@@ -219,6 +253,7 @@ for i = 1:length(dB_data)
 
     c = criterion(dB_value, m, crit_baseline, x_limit);
     P_diff = compute_P_different(dB_value, sigma, c);
+    % Computes probability given parameter values
 
     % Clamp probabilities to avoid log(0)
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9);
@@ -232,6 +267,8 @@ for i = 1:length(dB_data)
     end
 end
 end
+
+
 
 % LEAST SQUARES - decided not to do this
 % best_lsq_params = fmincon(@(p) lsq_objective(p, stimLevels, obsPropDiff, x_limit), ...
