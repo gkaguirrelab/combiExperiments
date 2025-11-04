@@ -1,12 +1,9 @@
 % Object to support conducting a 2AFC air puff discrimination task,
 % using QUEST+ to select stimuli in an effort to estimate the sigma (slope)
-% of a cumulative normal Gaussian. The search is also asked to estimate the
-% mu (mean) of the cumulative normal, which prompts QUEST+ to explore both
-% above and below the reference stimulus. In fitting and reporting the
-% results we lock the mu to 0, which corresponds to being 50% accurate when
-% there is no physical difference between the stimuli.
+% of a cumulative normal Gaussian. Test stimuli above or below the
+% reference frequency are examined in separate calls to this routine.
 
-classdef PsychDiscrimPuffThreshold < handle
+classdef PsychPuffLightPSE < handle
 
     properties (Constant)
     end
@@ -17,30 +14,43 @@ classdef PsychDiscrimPuffThreshold < handle
 
     % Calling function can see, but not modify
     properties (SetAccess=private)
+        maxAllowedPressurePSI = 45;
+        maxAllowedRefPSIPerSec = 2;
+        cameraCleanupDurSecs = 5.0;
+        modResult
         questData
         simulatePsiParams
         simulateResponse
         simulateStimuli
         giveFeedback
-        staircaseRule
         stimParamsDomainList
         psiParamsDomainList
+        lightPulseModContrast
+        lightPulseWaveform
+        lightPulseDurSecs = 3;
         refPuffPSI
-        stimulusDurationSecs = 0.5;
-        interStimulusIntervalSecs = 2;
+        puffDurSecs;
+        itiRangeSecs
+        isiSecs = 1;
+        minItiSecs = 1;
+        trialLabel
     end
 
     % These may be modified after object creation
     properties (SetAccess=public)
 
-        % The display object. This is modifiable so that we can re-load
+        % The air puff object. This is modifiable so that we can re-load
         % the psychometric object, update this handle, and then continue
         % to collect data
-        CombiAirObj
+        AirPuffObj
 
-        % Can switch between using a staircase and QUEST+ to select the
-        % next trial
-        useStaircase
+        % The object for making infrared recordings of the eyes
+        irCameraObj
+
+        % The combiLED object. This is modifiable so that we can re-load
+        % the psychometric object, update this handle, and then continue
+        % to collect data 
+        LightObj
 
         % Assign a filename which is handy for saving and loading
         filename
@@ -55,30 +65,39 @@ classdef PsychDiscrimPuffThreshold < handle
     methods
 
         % Constructor
-        function obj = PsychDiscrimPuffThreshold(CombiAirObj,refPuffPSI,varargin)
+        function obj = PsychPuffLightPSE(AirPuffObj,irCameraObj,LightObj,refPuffPSI,modResult,varargin)
 
             % input parser
             p = inputParser; p.KeepUnmatched = false;
+            p.addParameter('trialLabel','',@ischar);            
             p.addParameter('simulateResponse',false,@islogical);
             p.addParameter('simulateStimuli',false,@islogical);
             p.addParameter('giveFeedback',true,@islogical);
-            p.addParameter('useStaircase',true,@islogical);            
-            p.addParameter('staircaseRule',[1,3],@isnumeric);
-            p.addParameter('simulatePsiParams',[0,0.3],@isnumeric);
-            p.addParameter('stimParamsDomainList',linspace(0,1,51),@isnumeric);
+            p.addParameter('lightPulseModContrast',0.5,@isnumeric);
+            p.addParameter('lightPulseWaveform','background',@ischar);
+            p.addParameter('puffDurSecs',0.33,@isnumeric);
+            p.addParameter('itiRangeSecs',[1,1.5],@isnumeric);
+            p.addParameter('simulatePsiParams',[.2,0.5],@isnumeric);
+            p.addParameter('stimParamsDomainList',linspace(-3,3,25),@isnumeric);
             p.addParameter('psiParamsDomainList',...
-                {linspace(0,0,1),linspace(0,2,51)},@isnumeric);
+                {linspace(-1,1,11),linspace(0,3,15)},@isnumeric);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
             % Place various inputs and options into object properties
-            obj.CombiAirObj = CombiAirObj;
+            obj.AirPuffObj = AirPuffObj;
+            obj.irCameraObj = irCameraObj;            
+            obj.LightObj = LightObj;
             obj.refPuffPSI = refPuffPSI;
+            obj.modResult = modResult;
+            obj.trialLabel = p.Results.trialLabel;
             obj.simulateResponse = p.Results.simulateResponse;
             obj.simulateStimuli = p.Results.simulateStimuli;
             obj.giveFeedback = p.Results.giveFeedback;
-            obj.useStaircase = p.Results.useStaircase;
-            obj.staircaseRule = p.Results.staircaseRule;
+            obj.lightPulseModContrast = p.Results.lightPulseModContrast;
+            obj.lightPulseWaveform = p.Results.lightPulseWaveform;
+            obj.puffDurSecs = p.Results.puffDurSecs;
+            obj.itiRangeSecs = p.Results.itiRangeSecs;
             obj.simulatePsiParams = p.Results.simulatePsiParams;
             obj.stimParamsDomainList = p.Results.stimParamsDomainList;
             obj.psiParamsDomainList = p.Results.psiParamsDomainList;
@@ -92,9 +111,15 @@ classdef PsychDiscrimPuffThreshold < handle
 
             % Check that the max required pressure is within the safety
             % range
-            maxPressurePSI = refPuffPSI * db2pow(max(obj.stimParamsDomainList));
-            if maxPressurePSI > 40
-                error('Max called-for stimulus exceeds allowable limits');
+            maxPressurePSI = obj.refPuffPSI * db2pow(max(obj.stimParamsDomainList));
+            if maxPressurePSI > obj.maxAllowedPressurePSI
+                warning('Measurements will be limited by max allowed pressure');
+            end
+
+            % Check that the PSI * stimulus duration is not greater than
+            % maxAllowedRefPSIPerSec
+            if obj.refPuffPSI*obj.puffDurSecs > obj.maxAllowedRefPSIPerSec
+                error('The PSI * duration of the reference stimulus exceeds the safety limit');
             end
 
             % Initialize the blockStartTimes field
@@ -104,7 +129,7 @@ classdef PsychDiscrimPuffThreshold < handle
             % Initialize Quest+
             obj.initializeQP;
 
-            % Initialize the CombiAir
+            % Initialize the CombiLED
             obj.initializeDisplay;
 
         end
@@ -112,9 +137,10 @@ classdef PsychDiscrimPuffThreshold < handle
         % Required methds
         initializeQP(obj)
         initializeDisplay(obj)
+        recordAdaptPeriod(obj,recordLabel,recordDurSecs)
         presentTrial(obj)
-        stimParam = staircase(obj,currTrialIdx);
         [intervalChoice, responseTimeSecs] = getSimulatedResponse(obj,qpStimParams,testInterval)
+        [intervalChoice, responseTimeSecs] = getResponse(obj);
         waitUntil(obj,stopTimeSeconds)
         [psiParamsQuest, psiParamsFit, psiParamsCI, fVal] = reportParams(obj,options)
         figHandle = plotOutcome(obj,visible)
