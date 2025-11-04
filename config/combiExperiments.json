@@ -40,6 +40,19 @@
         "url": "https:\/\/github.com\/gkaguirrelab\/combiAirToolbox.git"
     },
     {
+	"flavor": "",
+	"hook": "",
+	"importance": "",
+	"localHookTemplate": "",
+	"name": "ssh2_v2_m1_r7",
+	"pathPlacement": "append",
+	"subfolder": "",
+	"toolboxRoot": "",
+	"type": "webget",
+	"update": "",
+	"url": "https:\/\/www.mathworks.com\/matlabcentral\/mlc-downloads\/downloads\/e5881c25-4a80-11e4-9553-005056977bd0\/e41839fb-9b33-47f4-9d94-60fce8395aa1\/packages\/zip"
+    },
+    {
         "flavor": "",
         "hook": "",
         "importance": "",

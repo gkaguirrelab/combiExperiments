@@ -29,7 +29,7 @@ end
 % 36 trials per acquition. Start with "on" (flicker) trial, then alternate
 stimDirs = {'LightFlux','MLplusS','MLminusS'};
 blockDirections = [2 3 1]; % Collect the acquisitions in the order L+S, L-S, LF
-desiredContrastLevelsByDir = [0.95,0.3,0.25]; % The photoreceptor contrast levels we had in the original Mt Sinai data
+desiredContrastLevelsByDir = [0.949,0.35,0.25]; % The photoreceptor contrast levels we had in the original Mt Sinai data
 freqHzByDir = [16,32,4];
 trialDurSecs = 12;
 trialDurShrink = 0.95; % Set the actual stimulus profile be slightly less than 12 seconds to allow time for updating settings in between blocks
@@ -54,11 +54,18 @@ photoreceptors = photoreceptorDictionaryCanine();
 % modulation search
 matchConstraintSet = [3, 2.15, 2];
 
+% Define some default background settings that produce good modulations for
+% these directions and this calibration file
+backgroundVecs{1} = [0.5000    0.5000    0.5000    0.5000    0.5000    0.5000    0.5000    0.5000]';
+backgroundVecs{2} = [0.2048    0.4345    0.2000    0.2000    0.2000    0.5000    0.5000    0.4999]';
+backgroundVecs{3} = [0.3990    0.2886    0.2012    0.2044    0.2004    0.5074    0.3501    0.4451]';
+
 % Loop over the stimulus directions and create, store, and plot the
 % resulting modulations
 for ss = 1:3
     modResult{ss} = designModulation(stimDirs{ss},photoreceptors,cal,...
-        'searchBackground',true,...
+        'searchBackground',false,...
+        'backgroundPrimary',backgroundVecs{ss},...
         'primaryHeadRoom',0.025,...
         'contrastMatchConstraint',matchConstraintSet(ss));
     plotModResult(modResult{ss});
@@ -79,12 +86,11 @@ modContrastByDir = desiredContrastLevelsByDir./maxContrastByDir;
 modContrastByFreq = 1./contrastAttenuationByFreq(freqHzByDir);
 
 % Check if we are going to clip the contrast levels
-contrastCheck = abs(modContrastByDir.*desiredContrastLevelsByDir);
-clipStimIdx = find(contrastCheck>1);
+clipStimIdx = find(modContrastByDir>1);
 if ~isempty(clipStimIdx)
     for ii = 1:length(clipStimIdx)
         rr = clipStimIdx(ii);
-        str = ['WARNING: Contrast clipping for ' stimDirs{rr} ', ' num2str(freqHzByDir(rr)) ' Hz. Called for contrast = ' num2str(contrastCheck(rr)) '\n'];
+        str = ['WARNING: Contrast clipping for ' stimDirs{rr} ', ' num2str(freqHzByDir(rr)) ' Hz. Called for contrast = ' num2str(modContrastByDir(rr)) '\n'];
         fprintf(str);
     end
 end
