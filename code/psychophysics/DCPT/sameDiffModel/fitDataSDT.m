@@ -108,6 +108,7 @@ uniqueDbValues = unique(dB_data);
 % Calculate observed proportion “different” per stim level
 for ii = 1:length(uniqueDbValues)
     probData(ii) = mean(response_data(dB_data==uniqueDbValues(ii)));
+    nTrials(ii) = sum(dB_data == uniqueDbValues(ii)); % nTrials at each dB
 end
 
 % Set initial sigma and criterion baseline (the flat part of the criterion
@@ -133,7 +134,7 @@ lb = [0, 0, 0.3, 0]; % lower bounds for m, crit_baseline, x_limit, sigma
 ub = [100, 100, 10, 2]; % upper bounds
 
 % Fit
-best_BADS_params = bads(@(p) euclideanError(p, uniqueDbValues, probData), ...
+best_BADS_params = bads(@(p) euclideanError(p, uniqueDbValues, probData, nTrials), ...
     initial_params, lb, ub, lb, ub, [], options);
 fit = best_BADS_params;
 
@@ -149,15 +150,22 @@ legend({'Observed data', 'Fitted psychometric function'}, 'Location', 'Best');
 
 %%% Objective functions %%%
 
-function error = euclideanError(params, uniqueDbValues, probData)
+function error = euclideanError(params, uniqueDbValues, probData, nTrials)
     
     % Predict probability of "different" at each unique dB level
     P_diff = modifiedSameDiffModel(uniqueDbValues, params);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
+
+    % Scaling the nTrials vector
+    w = nTrials/sum(nTrials);
     
     % Compute error as the norm of the vector of the differences between the observed and
     % modeled proportion "different" responses
-    error = norm(probData - P_diff);  
+    diffVec = probData - P_diff;  
+    weightedDiffVec = w .* diffVec;  % Weighted diffs
+
+    error = norm(weightedDiffVec); 
+
 end
 
 function nll = negLogLikelihood(params, uniqueDbValues, probData)
