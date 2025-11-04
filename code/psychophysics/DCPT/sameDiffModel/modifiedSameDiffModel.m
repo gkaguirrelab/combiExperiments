@@ -40,7 +40,7 @@ x_limit = p(4);
 % First calculate the "c" value, which is the criterion that the observer
 % uses to determine if same or different given the internal measurement.
 c = crit_baseline - m * max(0, (x_limit - abs(stimDiffDb)));
-% If abs(stimDiffDb) <= x_limit, we will have c = crit_baseline;
+% If abs(stimDiffDb) > x_limit, we will have c = crit_baseline;
 
 % Integral limits
 mR_min = -inf;
