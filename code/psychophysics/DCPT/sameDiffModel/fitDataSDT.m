@@ -115,10 +115,18 @@ end
 % function)
 % Best initial params for MLE are: sigma = .5, crit_baseline = 2.5, m =
 % 1.4, and x_limit = 1
-m = 1.4;
-crit_baseline = 2.5;
-sigma = .5;
-x_limit = 1; % db value where the v starts dipping down
+% Best initial params for Euclidean error are: sigma = .3, crit_baseline = 2, m =
+% 1.45, and x_limit = 1
+m = 1.45;
+crit_baseline = 2;
+sigma = .3;
+x_limit = 1; % db value whehre the v starts dipping down
+
+% Params for flat-bottom solution
+% m = 2.5;
+% crit_baseline = 2.5;
+% sigma = .5;
+% x_limit = 1;
 
 initial_params = [m, crit_baseline, sigma, x_limit]; % Initial params
 
@@ -131,12 +139,13 @@ options.MaxIter = 50;
 options.MaxFunEvals = 500;
 % Bounds
 lb = [0, 0, 0.3, 0]; % lower bounds for m, crit_baseline, x_limit, sigma
-ub = [100, 100, 10, 2]; % upper bounds
+ub = [100, 100, 10, 3]; % upper bounds
 
 % Fit
 best_BADS_params = bads(@(p) euclideanError(p, uniqueDbValues, probData, nTrials), ...
-    initial_params, lb, ub, lb, ub, [], options);
+   initial_params, lb, ub, lb, ub, [], options);
 fit = best_BADS_params;
+% fit = initial_params; 
 
 disp(['Best fit: m = ', num2str(fit(1)), ', critBaseline = ', num2str(fit(2)), ...
     ', sigma  = ', num2str(fit(3)), ', x limit = ', num2str(fit(4))]);
@@ -156,9 +165,11 @@ function error = euclideanError(params, uniqueDbValues, probData, nTrials)
     P_diff = modifiedSameDiffModel(uniqueDbValues, params);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
-    % Scaling the nTrials vector
-    w = nTrials/sum(nTrials);
-    
+    % Create weights and artifically boost weights close to 0 dB
+    boostIdx = abs(uniqueDbValues) > 0 & abs(uniqueDbValues) < 1;
+    nTrials(boostIdx) = 1 * nTrials(boostIdx);
+    w = nTrials / sum(nTrials); % Normalization
+
     % Compute error as the norm of the vector of the differences between the observed and
     % modeled proportion "different" responses
     diffVec = probData - P_diff;  
