@@ -10,7 +10,7 @@ subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', 'FLIC_0018', 'FLIC_0020', ..
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % Options are {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
-refFreqHz = 17.3205;  % logspace(log10(10),log10(30),5)
+refFreqHz = 22.7951;  % logspace(log10(10),log10(30),5)
 targetPhotoContrast = '0x3';  % {'0x1','0x3'}
 
 % Initialize combined trial data
@@ -105,10 +105,22 @@ title('Psychometric function');
 dB_data = [comboTrialData.stim];          % vector of dB differences
 response_data = [comboTrialData.respondYes]; % 0 = "Same", 1 = "Different"
 uniqueDbValues = unique(dB_data);
+posIdx = find(uniqueDbValues >= 0);
+negIdx = find(uniqueDbValues <= 0);
+posDbValues = uniqueDbValues(posIdx);
+negDbValues = uniqueDbValues(negIdx);
 % Calculate observed proportion “different” per stim level
 for ii = 1:length(uniqueDbValues)
     probData(ii) = mean(response_data(dB_data==uniqueDbValues(ii)));
     nTrials(ii) = sum(dB_data == uniqueDbValues(ii)); % nTrials at each dB
+end
+for ii = 1:length(posDbValues)
+    probDataPos(ii) = mean(response_data(dB_data==posDbValues(ii)));
+    nTrialsPos(ii) = sum(dB_data == posDbValues(ii)); % nTrials at each pos dB
+end
+for ii = 1:length(negDbValues)
+    probDataNeg(ii) = mean(response_data(dB_data==negDbValues(ii)));
+    nTrialsNeg(ii) = sum(dB_data == negDbValues(ii)); % nTrials at each neg dB
 end
 
 % Set initial sigma and criterion baseline (the flat part of the criterion
@@ -117,10 +129,15 @@ end
 % 1.4, and x_limit = 1
 % Best initial params for Euclidean error are: sigma = .3, crit_baseline = 2, m =
 % 1.45, and x_limit = 1
-m = 1.45;
-crit_baseline = 2;
-sigma = .3;
-x_limit = 1; % db value whehre the v starts dipping down
+% m = 1.45;
+% crit_baseline = 2;
+% sigma = .3;
+% x_limit = 1; % db value whehre the v starts dipping down
+
+m = 1.2831;   % 1.2831
+crit_baseline = 1.8013;  % 1.8013
+sigma = 0.30885;   %  0.30885
+x_limit = 0.96206;
 
 % Params for flat-bottom solution
 % m = 2.5;
@@ -128,7 +145,9 @@ x_limit = 1; % db value whehre the v starts dipping down
 % sigma = .5;
 % x_limit = 1;
 
-initial_params = [m, crit_baseline, sigma, x_limit]; % Initial params
+% initial_params = [m, crit_baseline, sigma, x_limit]; % Initial params
+neg_initial_params = [1.3319,1.8372,0.3191,0.9317];
+pos_initial_params = [0.9548,1.4233,0.3191,0.8688]; 
 
 % Options for bads
 % Start with defaults
@@ -138,23 +157,31 @@ addpath(genpath('/Users/rubybouh/Documents/MATLAB/projects/bads'));
 options.MaxIter = 50;
 options.MaxFunEvals = 500;
 % Bounds
-lb = [0, 0, 0.3, 0]; % lower bounds for m, crit_baseline, x_limit, sigma
-ub = [100, 100, 10, 3]; % upper bounds
+lb = [0, 0, 0.1, 0]; % lower bounds for m, crit_baseline, sigma, x_limit
+ub = [100, 5, 10, 3]; % upper bounds
 
 % Fit
-best_BADS_params = bads(@(p) euclideanError(p, uniqueDbValues, probData, nTrials), ...
-   initial_params, lb, ub, lb, ub, [], options);
-fit = best_BADS_params;
-% fit = initial_params; 
+pos_BADS_params = bads(@(p) euclideanError(p, posDbValues, probDataPos, nTrialsPos), ...
+  pos_initial_params, lb, ub, lb, ub, [], options);
+neg_BADS_params = bads(@(p) euclideanError(p, negDbValues, probDataNeg, nTrialsNeg), ...
+  neg_initial_params, lb, ub, lb, ub, [], options);
+% fit = best_BADS_params;
+posFit = pos_BADS_params;
+negFit = neg_BADS_params; 
 
-disp(['Best fit: m = ', num2str(fit(1)), ', critBaseline = ', num2str(fit(2)), ...
-    ', sigma  = ', num2str(fit(3)), ', x limit = ', num2str(fit(4))]);
+% disp(['Best fit: m = ', num2str(fit(1)), ', critBaseline = ', num2str(fit(2)), ...
+%    ', sigma  = ', num2str(fit(3)), ', x limit = ', num2str(fit(4))]);
 
 % Compute predicted probabilities using fitted parameters
-pDifferent = modifiedSameDiffModel( uniqueDbValues, fit );
+% pDifferent = modifiedSameDiffModel( uniqueDbValues, fit );
+pDifferentPos = modifiedSameDiffModel( posDbValues, posFit );
+pDifferentNeg = modifiedSameDiffModel( negDbValues, negFit );
 
 % Plot the fitted curve (on top of group level data points)
-plot(uniqueDbValues, pDifferent, 'k-', 'LineWidth', 2);
+hold on
+% plot(uniqueDbValues, pDifferent, ':', 'LineWidth', 2);  % 'k-'
+plot(posDbValues, pDifferentPos, 'k-', 'LineWidth', 2); 
+plot(negDbValues, pDifferentNeg, 'k-', 'LineWidth', 2); 
 legend({'Observed data', 'Fitted psychometric function'}, 'Location', 'Best');
 
 %%% Objective functions %%%
@@ -166,8 +193,8 @@ function error = euclideanError(params, uniqueDbValues, probData, nTrials)
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
     % Create weights and artifically boost weights close to 0 dB
-    boostIdx = abs(uniqueDbValues) > 0 & abs(uniqueDbValues) < 1;
-    nTrials(boostIdx) = 1 * nTrials(boostIdx);
+    boostIdx = abs(uniqueDbValues) > 0 & abs(uniqueDbValues) < 0.9;
+    nTrials(boostIdx) = 10 * nTrials(boostIdx);
     w = nTrials / sum(nTrials); % Normalization
 
     % Compute error as the norm of the vector of the differences between the observed and
