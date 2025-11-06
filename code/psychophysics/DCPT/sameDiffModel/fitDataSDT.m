@@ -125,29 +125,22 @@ end
 
 % Set initial sigma and criterion baseline (the flat part of the criterion
 % function)
-% Best initial params for MLE are: sigma = .5, crit_baseline = 2.5, m =
-% 1.4, and x_limit = 1
 % Best initial params for Euclidean error are: sigma = .3, crit_baseline = 2, m =
 % 1.45, and x_limit = 1
-% m = 1.45;
-% crit_baseline = 2;
-% sigma = .3;
-% x_limit = 1; % db value whehre the v starts dipping down
 
 m = 1.2831;   % 1.2831
 crit_baseline = 1.8013;  % 1.8013
 sigma = 0.30885;   %  0.30885
 x_limit = 0.96206;
 
-% Params for flat-bottom solution
-% m = 2.5;
-% crit_baseline = 2.5;
-% sigma = .5;
-% x_limit = 1;
-
 % initial_params = [m, crit_baseline, sigma, x_limit]; % Initial params
-pos_initial_params = [0.9548,1.4233,0.3191,0.8688]; 
-neg_initial_params = [1.3319,1.8372,0.3191,0.9317];
+% OLD ONES
+% pos_initial_params = [1.6002,1.4479,0.3513,0.4966]; 
+% neg_initial_params = [1.2940,1.7696,0.7671,0.2655];
+% pos_initial_params = [1.6002,1.4479,0.25,0.6]; 
+% neg_initial_params = [1.2940,1.7696,0.5,0.7];
+pos_initial_params = [1.6002,1.4479,0.25,0.6]; 
+neg_initial_params = [1.2940,1.5,0.33,0.7];
 
 % Options for bads
 % Start with defaults
@@ -171,6 +164,10 @@ negFit = neg_BADS_params;
 
 % disp(['Best fit: m = ', num2str(fit(1)), ', critBaseline = ', num2str(fit(2)), ...
 %    ', sigma  = ', num2str(fit(3)), ', x limit = ', num2str(fit(4))]);
+disp(['Best positive fit: m = ', num2str(posFit(1)), ', critBaseline = ', num2str(posFit(2)), ...
+   ', sigma  = ', num2str(posFit(3)), ', x limit = ', num2str(posFit(4))]);
+disp(['Best negative fit: m = ', num2str(negFit(1)), ', critBaseline = ', num2str(negFit(2)), ...
+   ', sigma  = ', num2str(negFit(3)), ', x limit = ', num2str(negFit(4))]);
 
 % Compute predicted probabilities using fitted parameters
 % pDifferent = modifiedSameDiffModel( uniqueDbValues, fit );
@@ -192,7 +189,7 @@ function error = euclideanError(params, uniqueDbValues, probData, nTrials)
     P_diff = modifiedSameDiffModel(uniqueDbValues, params);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
-    % Create weights and artifically boost weights close to 0 dB
+    % Create weights and artifically boost trials close to 0 dB
     boostIdx = abs(uniqueDbValues) > 0 & abs(uniqueDbValues) < 0.9;
     nTrials(boostIdx) = 10 * nTrials(boostIdx);
     w = nTrials / sum(nTrials); % Normalization
@@ -211,15 +208,16 @@ function nll = negLogLikelihood(params, uniqueDbValues, probData, nTrials)
     % Predict probability of "different" at each unique dB level
     P_diff = modifiedSameDiffModel(uniqueDbValues, params);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
-    P_same = 1 - P_diff;
 
     % Finding the count of different responses (aka the number of
     % "successes")
-    k = probData .* nTrials;
+    k = probData .* nTrials; % prop observed diff multiplied by total number of trials at that dB
+
+    % Create weights and artifically boost trials close to 0 dB
+    weights = ones(size(uniqueDbValues));
+    weights(abs(uniqueDbValues) > 0 & abs(uniqueDbValues) < 0.9) = 10;
     
-    nll = 0;
-    for ii = 1:length(uniqueDbValues)
-        nll = -sum(k .* log(P_diff) + (nTrials - k) .* log(P_same));
-    end
+    % Finding the binomial negative log-likelihood
+    nll = -sum(weights .* (k .* log(P_diff) + (nTrials - k) .* log(1 - P_diff)));
 
 end
