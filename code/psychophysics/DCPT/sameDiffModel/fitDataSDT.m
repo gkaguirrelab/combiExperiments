@@ -10,7 +10,7 @@ subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', 'FLIC_0018', 'FLIC_0020', ..
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % Options are {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
-refFreqHz = 22.7951;  % logspace(log10(10),log10(30),5)
+refFreqHz = 17.3205;  % logspace(log10(10),log10(30),5)
 targetPhotoContrast = '0x3';  % {'0x1','0x3'}
 
 % Initialize combined trial data
@@ -146,8 +146,8 @@ x_limit = 0.96206;
 % x_limit = 1;
 
 % initial_params = [m, crit_baseline, sigma, x_limit]; % Initial params
-neg_initial_params = [1.3319,1.8372,0.3191,0.9317];
 pos_initial_params = [0.9548,1.4233,0.3191,0.8688]; 
+neg_initial_params = [1.3319,1.8372,0.3191,0.9317];
 
 % Options for bads
 % Start with defaults
@@ -161,9 +161,9 @@ lb = [0, 0, 0.1, 0]; % lower bounds for m, crit_baseline, sigma, x_limit
 ub = [100, 5, 10, 3]; % upper bounds
 
 % Fit
-pos_BADS_params = bads(@(p) euclideanError(p, posDbValues, probDataPos, nTrialsPos), ...
+pos_BADS_params = bads(@(p) negLogLikelihood(p, posDbValues, probDataPos, nTrialsPos), ...
   pos_initial_params, lb, ub, lb, ub, [], options);
-neg_BADS_params = bads(@(p) euclideanError(p, negDbValues, probDataNeg, nTrialsNeg), ...
+neg_BADS_params = bads(@(p) negLogLikelihood(p, negDbValues, probDataNeg, nTrialsNeg), ...
   neg_initial_params, lb, ub, lb, ub, [], options);
 % fit = best_BADS_params;
 posFit = pos_BADS_params;
@@ -206,17 +206,20 @@ function error = euclideanError(params, uniqueDbValues, probData, nTrials)
 
 end
 
-function nll = negLogLikelihood(params, uniqueDbValues, probData)
+function nll = negLogLikelihood(params, uniqueDbValues, probData, nTrials)
 
     % Predict probability of "different" at each unique dB level
     P_diff = modifiedSameDiffModel(uniqueDbValues, params);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
     P_same = 1 - P_diff;
+
+    % Finding the count of different responses (aka the number of
+    % "successes")
+    k = probData .* nTrials;
     
     nll = 0;
     for ii = 1:length(uniqueDbValues)
-        probData(ii) = mean(response_data(dB_data==uniqueDbValues(ii))); 
-        nll = -sum(probData .* log(P_diff) + (1 - probData) .* log(P_same));
+        nll = -sum(k .* log(P_diff) + (nTrials - k) .* log(P_same));
     end
 
 end
