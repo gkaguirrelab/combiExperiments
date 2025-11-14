@@ -5,10 +5,11 @@ projectName = 'combiLED';
 experimentName = 'DCPT_SDT';
 
 % Define subjects + parameters
-subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', 'FLIC_0018', 'FLIC_0020', ...
-    'FLIC_0021', 'FLIC_0022'};
+% List of possible subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
+% 'FLIC_0018', 'FLIC_0020', 'FLIC_0021', 'FLIC_0022'};
+subjectID = {'FLIC_0013'};
 modDirection = 'LightFlux';
-NDLabel = {'3x0', '0x5'};   % Options are {'3x0', '0x5'}
+NDLabel = {'0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
 refFreqHz = logspace(log10(10),log10(30),5);  % logspace(log10(10),log10(30),5)
 targetPhotoContrast = '0x3';  % {'0x1','0x3'}
@@ -18,56 +19,57 @@ figHandle = figure('Visible', true);
 nFreqs = length(refFreqHz);
 t = tiledlayout(figHandle, 1, nFreqs, 'TileSpacing', 'compact', 'Padding', 'compact');
 figuresize(1000, 300, 'units', 'pt');  
-title(t, 'Psychometric functions, combined across subjects', 'FontWeight', 'bold');
+title(t, ['Psychometric functions for ' subjectID{1}], 'FontWeight', 'bold');
+
+% Initialize cell arrays
+uniqueDbValues = cell(1,nFreqs);
+probData = cell(1,nFreqs);
+nTrials = cell(1,nFreqs);
+
+% Combined trial data for one subj across all reference freqs
+comboTrialData = [];
 
 for refFreqIdx = 1:nFreqs
     nexttile(refFreqIdx);
     hold on;
     currentRefFreq = refFreqHz(refFreqIdx);
 
-    % Initialize combined trial data for this ref frequency
-    comboTrialData = [];
+    for sideIdx = 1:length(stimParamLabels)
 
-    for subjIdx = 1:length(subjectID)   % Loop over subjs and combine their trial data
-        subj = subjectID{subjIdx};
+        % Build path to the data file
+        subjectDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, subj);
+        dataDir = fullfile(subjectDir, [modDirection '_ND' NDLabel{1} '_shifted'], experimentName);
 
-        for sideIdx = 1:length(stimParamLabels)
+        fileName = fullfile(dataDir, ...
+            [subj '_' modDirection '_' experimentName ...
+            '_cont-' targetPhotoContrast '_refFreq-' num2str(currentRefFreq) 'Hz_' stimParamLabels{sideIdx} '.mat']);
 
-            % Build path to the data file
-            subjectDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, subj);
-            dataDir = fullfile(subjectDir, [modDirection '_ND' NDLabel{2} '_shifted'], experimentName);
+        if exist(fileName, 'file')
+            load(fileName, 'psychObj');
 
-            fileName = fullfile(dataDir, ...
-                [subj '_' modDirection '_' experimentName ...
-                '_cont-' targetPhotoContrast '_refFreq-' num2str(currentRefFreq) 'Hz_' stimParamLabels{sideIdx} '.mat']);
+            thisTrialData = psychObj.questData.trialData;
 
-            if exist(fileName, 'file')
-                load(fileName, 'psychObj');
-
-                thisTrialData = psychObj.questData.trialData;
-
-                if contains(fileName, 'lo')
-                    for trial = 1:numel(thisTrialData)
-                        thisTrialData(trial).stim = -thisTrialData(trial).stim;
-                    end
+            % Flip the sign for the low side values
+            if contains(fileName, 'lo')
+                for trial = 1:numel(thisTrialData)
+                    thisTrialData(trial).stim = -thisTrialData(trial).stim;
                 end
-
-                % Append to combined trial data
-                comboTrialData = [comboTrialData; thisTrialData];
-
-                % Store one psychObj as template if needed
-                if subjIdx == 1 && sideIdx == 1
-                    templatePsychObj = psychObj;
-                end
-            else
-                warning('File not found: %s', fileName);
             end
 
-        end
-    end % subjIdx
+            % Append to combined trial data
+            comboTrialData = [comboTrialData; thisTrialData];
 
-    % FIRST, plot group-level data
-    % Compute group-level counts
+            % Store one psychObj as template if needed
+            if refFreqIdx == 1 && sideIdx == 1
+                templatePsychObj = psychObj;
+            end
+        else
+            warning('File not found: %s', fileName);
+        end
+
+    end % sideIdx
+
+    % FIRST, plot the data for this ref freq
     stimCounts = qpCounts(qpData(comboTrialData), templatePsychObj.questData.nOutcomes);
     stim = zeros(length(stimCounts), templatePsychObj.questData.nStimParams);
     pRespondDifferent = zeros(1,length(stimCounts));
@@ -100,54 +102,42 @@ for refFreqIdx = 1:nFreqs
         hold on;
     end
 
-    % SECOND, load data for fitting
+    % SECOND, load data. Compute unique dB values and prob data for this ref freq
     dB_data = [comboTrialData.stim];
     response_data = [comboTrialData.respondYes];
-    uniqueDbValues = unique(dB_data);
-
-    % split positive and negative values
-    posDbValues = uniqueDbValues(uniqueDbValues >= 0);
-    negDbValues = uniqueDbValues(uniqueDbValues <= 0);
-
-    % Initialize variables for current ref freq
-    nTrialsPos = zeros(size(posDbValues));
-    probDataPos = zeros(size(posDbValues));
-    nTrialsNeg = zeros(size(negDbValues));
-    probDataNeg = zeros(size(negDbValues));
+    currentUniqueDbValues = unique(dB_data);
 
     % Calculate observed proportion “different” per stim level
-    for ii = 1:length(uniqueDbValues)
-        probData(ii) = mean(response_data(dB_data==uniqueDbValues(ii)));
-        nTrials(ii) = sum(dB_data == uniqueDbValues(ii)); % nTrials at each dB
-    end
-    for ii = 1:length(posDbValues)
-        probDataPos(ii) = mean(response_data(dB_data==posDbValues(ii)));
-        nTrialsPos(ii) = sum(dB_data == posDbValues(ii)); % nTrials at each pos dB
-    end
-    for ii = 1:length(negDbValues)
-        probDataNeg(ii) = mean(response_data(dB_data==negDbValues(ii)));
-        nTrialsNeg(ii) = sum(dB_data == negDbValues(ii)); % nTrials at each neg dB
+    for ii = 1:length(currentUniqueDbValues)
+        thisProbData(ii) = mean(response_data(dB_data==currentUniqueDbValues(ii)));
+        thisNTrials(ii) = sum(dB_data == currentUniqueDbValues(ii)); % nTrials at each dB
     end
 
-    % Fit the group-level psychometric function
-    % Best initial params for Euclidean error (not split by side) are: sigma = .3, 
-    % crit_baseline = 2, m = 1.45, and x_limit = 1
-    pos_initial_params = [1.6002,1.4479,0.25,0.6];
-    neg_initial_params = [1.2940,1.5,0.33,0.7];
-    options = bads('defaults');
-    options.MaxIter = 500;
-    options.MaxFunEvals = 5000;
-    lb = [0,0,0.1,0]; ub = [100,5,10,3];
+    % Store in cell arrays
+    uniqueDbValues{refFreqIdx} = currentUniqueDbValues;
+    probData{refFreqIdx} = thisProbData;
+    nTrials{refFreqIdx} = thisNTrials;
 
-    posFit = bads(@(p) negLogLikelihood(p,posDbValues,probDataPos,nTrialsPos), ...
-        pos_initial_params, lb, ub, lb, ub, [], options);
-    negFit = bads(@(p) negLogLikelihood(p,negDbValues,probDataNeg,nTrialsNeg), ...
-        neg_initial_params, lb, ub, lb, ub, [], options);
+end % refFreqIdx
 
-    % Plot fitted curve (predicted probabilities using fitted parameters) 
-    hold on;
-    plot(posDbValues, modifiedSameDiffModel(posDbValues,posFit), 'k-', 'LineWidth',2);
-    plot(negDbValues, modifiedSameDiffModel(negDbValues,negFit), 'k-', 'LineWidth',2);
+% Fit the psychometric function
+% initial_params = [m, x_limit, crit_baseline1, sigma1, ...,
+% crit_baseline5, sigma5]
+initial_params = [1.6002,1.4479,0.25,0.6,1.6002,1.4479,0.25,0.6, ...
+                  1.6002,1.4479,0.25,0.6];
+options = bads('defaults');
+options.MaxIter = 500;
+options.MaxFunEvals = 5000;
+lb = [0,0,0.1,0]; ub = [100,5,10,3];
+
+fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
+    initial_params, lb, ub, lb, ub, [], options);
+    
+% Plot fitted curve 
+hold on;
+for refFreqIdx = 1:nFreqs
+   
+  %  plot(uniqueDbValues, modifiedSameDiffModel(uniqueDbValues,fit), 'k-', 'LineWidth',2);
 
     xlabel('stimulus difference [dB]');
     ylabel('proportion respond different');
@@ -158,46 +148,36 @@ for refFreqIdx = 1:nFreqs
 end % refFreqIdx
 
 
-%%% Objective functions %%%
-
-function error = euclideanError(params, uniqueDbValues, probData, nTrials)
-    
-    % Predict probability of "different" at each unique dB level
-    P_diff = modifiedSameDiffModel(uniqueDbValues, params);
-    P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
-
-    % Create weights and artifically boost trials close to 0 dB
-    boostIdx = abs(uniqueDbValues) > 0 & abs(uniqueDbValues) < 0.9;
-    nTrials(boostIdx) = 10 * nTrials(boostIdx);
-    w = nTrials / sum(nTrials); % Normalization
-
-    % Compute error as the norm of the vector of the differences between the observed and
-    % modeled proportion "different" responses
-    diffVec = probData - P_diff;  
-    weightedDiffVec = w .* diffVec;  % Weighted diffs
-
-    error = norm(weightedDiffVec); 
-
-end
+%%% Objective function %%%
 
 function nll = negLogLikelihood(params, uniqueDbValues, probData, nTrials)
-
-    % Predict probability of "different" at each unique dB level
-    P_diff = modifiedSameDiffModel(uniqueDbValues, params);
-    P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
-
-    % Finding the count of different responses (aka the number of
-    % "successes")
-    k = probData .* nTrials; % prop observed diff multiplied by total number of trials at that dB
-
-    % Create weights and artifically boost trials close to 0 dB
-    weights = ones(size(uniqueDbValues));
-    mask = (abs(uniqueDbValues) > 0) & (abs(uniqueDbValues) < 0.9) & (probData < 0.1);
-    weights(mask) = 20;
     
-    % Finding the binomial negative log-likelihood
-    nll = -sum(weights .* (k .* log(P_diff) + (nTrials - k) .* log(1 - P_diff)));
-    % Try out version with all 4 possibilities
+    nFreqs = length(uniqueDbValues);
+    each_nll = zeros(1, nFreqs);
+    
+    for refFreqIdx = 1:nFreqs  % Looping through each ref freq
+
+        crit_baseline_idx = refFreqIdx*2+1; 
+        sigma_idx = refFreqIdx*2+2; 
+        theseParams = params(1, 2, crit_baseline_idx, sigma_idx);
+        % Predict probability diff at each unique dB level, for this freq
+        P_diff = modifiedSameDiffModel(uniqueDbValues{refFreqIdx}, theseParams);
+        P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
+    
+        % Trial counts for this frequency
+        k = probData{refFreqIdx} .* nTrials{refFreqIdx}; % count of diff responses
+        N = nTrials{refFreqIdx};
+        
+        % Binomial log likelihood for this frequency
+        thisNLL = -sum(k .* log(P_diff) + (N - k) .* log(1 - P_diff));
+
+        % Store in list
+        each_nll(refFreqIdx) = thisNLL; 
+
+    end
+    
+    % Total nll across all frequencies
+    nll = sum(each_nll);
 
 end
 

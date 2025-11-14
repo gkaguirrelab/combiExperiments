@@ -33,9 +33,9 @@ function pDifferent = modifiedSameDiffModel( stimDiffDb, p )
 
 % Unpack the parameters
 m = p(1);
-crit_baseline = p(2);
-sigma = p(3);
-x_limit = p(4);
+x_limit = p(2);
+crit_baseline = p(3);
+sigma = p(4);
 
 % First calculate the "c" value, which is the criterion that the observer
 % uses to determine if same or different given the internal measurement.
