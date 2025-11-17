@@ -147,7 +147,7 @@ for lightIdx = 1:nLightLevels
                 nTrials(ii) = sum(dB_data == uniqueDbValues(ii)); % nTrials at each dB
             end
 
-            epsilon = 0.01; % Define the constant lapse rate value
+            epsilon = 0.0; % Define the constant lapse rate value
 
             % Fit the psychometric function
             % initial_params = [m, x_limit, crit_baseline, sigma]
@@ -157,7 +157,7 @@ for lightIdx = 1:nLightLevels
             options.MaxIter = 50;
             options.MaxFunEvals = 500;
             lb = [0,1,0,0]; ub = [0,1,5,3];
-            fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials,epsilon), ...
+            fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
                 initial_params, lb, ub, lb, ub, [], options);
 
             % Add the crit_baseline and sigma values to the matrix
@@ -227,8 +227,8 @@ legend({'Low contrast, low light','High contrast, low light',...
 function nll = negLogLikelihood(params, uniqueDbValues, probData, nTrials)
 
     % Predict probability of "different" at each unique dB level
-    P_diff = modifiedSameDiffModel(uniqueDbValues, params, epsilon);
-    % P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
+    P_diff = modifiedSameDiffModel(uniqueDbValues, params);
+    P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
     % Finding the count of different responses (aka the number of
     % "successes")
