@@ -7,7 +7,7 @@ experimentName = 'DCPT_SDT';
 % Define subjects + parameters
 % List of possible subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 % 'FLIC_0018', 'FLIC_0020', 'FLIC_0021', 'FLIC_0022'};
-subjectID = {'FLIC_0015'};
+subjectID = {'FLIC_1030'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; {'low', 'hi'}
@@ -51,15 +51,6 @@ for lightIdx = 1:nLightLevels
                 nexttile(tHighContrast);
             end
             hold on;
-
-            % Add a ylabel only for the first column
-            if refFreqIdx == 1
-                if lightIdx == 1
-                    ylabel('Low light', 'FontWeight','bold');
-                elseif lightIdx == 2
-                    ylabel('High light', 'FontWeight','bold');
-                end
-            end
 
             % Combined trial data for one subj over high and low sides
             comboTrialData = [];
@@ -165,10 +156,16 @@ for lightIdx = 1:nLightLevels
             % Plot the fit for this ref frequency
             hold on;
 
-            plot(uniqueDbValues, modifiedSameDiffModel(uniqueDbValues,fit), 'k-', 'LineWidth',2);
+            x = -5:0.1:5;  % evaluate the model at more dB values
+            plot(x, modifiedSameDiffModel(x,fit), 'k-', 'LineWidth',2);
 
             xlabel('stimulus difference [dB]');
-            ylabel('proportion respond different');
+            if lightIdx == 1 && refFreqIdx == 1
+                ylabel({'LOW', 'proportion respond different'});
+            end
+            if lightIdx == 2 && refFreqIdx == 1
+                ylabel({'HIGH', 'proportion respond different'});
+            end
             title(sprintf('Ref freq = %.1f Hz', currentRefFreq));
             ylim([-0.1 1.1]);
             xlim([-6.0 6.0]);
