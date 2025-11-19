@@ -7,10 +7,10 @@ experimentName = 'DCPT_SDT';
 % Define subjects + parameters
 % List of possible subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 % 'FLIC_0018', 'FLIC_0020', 'FLIC_0021', 'FLIC_0022'};
-subjectID = {'FLIC_1030'};
+subjectID = {'FLIC_1030','FLIC_1016'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
-stimParamLabels = {'low', 'hi'}; {'low', 'hi'}
+stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
 refFreqHz = logspace(log10(10),log10(30),5);  % logspace(log10(10),log10(30),5)
 targetPhotoContrast = {'0x1','0x3'};  % {'0x1','0x3'}
 
@@ -22,14 +22,12 @@ nSubj = length(subjectID);
 
 % Initialize matrices of params
 % nSubj x 2 x 2 x 5, subj x nContrasts x nLightLevels x nFreqs
-sigmaMatrix = zeros(nSubj, nContrasts,nLightLevels,nFreqs);
-critBaselineMatrix = zeros(nSubj, nContrasts,nLightLevels,nFreqs);
+sigmaMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 
 for ii = 1:nSubj
 
     thisSubj = subjectID{ii};
-
-    
 
     % Create layouts, one per contrast
     figLow = figure;
@@ -151,12 +149,13 @@ for ii = 1:nSubj
                 % initial_params = [m, x_limit, crit_baseline, sigma]
                 initial_params = [0,1,2,0.5];
 
-                options = bads('defaults');
-                options.MaxIter = 50;
-                options.MaxFunEvals = 500;
-                lb = [0,1,0,0]; ub = [0,1,5,3];
-                fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials,epsilon), ...
-                    initial_params, lb, ub, lb, ub, [], options);
+                % options = bads('defaults');
+                % options.MaxIter = 50;
+                % options.MaxFunEvals = 500;
+                % lb = [0,1,0,0.001]; ub = [0,1,5,3];
+                % fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials,epsilon), ...
+                %     initial_params, lb, ub, lb, ub, [], options);
+                fit = initial_params; 
 
                 % Add the crit_baseline and sigma values to the matrix
                 sigmaMatrix(thisSubj, contrastIdx,lightIdx,refFreqIdx) = fit(4);
@@ -166,7 +165,7 @@ for ii = 1:nSubj
                 hold on;
 
                 x = -5:0.1:5;  % evaluate the model at more dB values
-                plot(x, modifiedSameDiffModel(x,fit), 'k-', 'LineWidth',2);
+                plot(x, modifiedSameDiffModel(x,fit,epsilon), 'k-', 'LineWidth',2);
 
                 xlabel('stimulus difference [dB]');
                 if lightIdx == 1 && refFreqIdx == 1
@@ -226,9 +225,8 @@ hold on;
 %         'Low contrast, high light','High contrast, high light'}, ...
 %         'Location','best');
 
-
 % Average across Contrast (Dimension 2)
-meanContrastSigma = mean(fullSigmaMatrix, 2);
+meanContrastSigma = mean(sigmaMatrix, 2);
 
 % Average across Light (Dimension 3 of the new matrix)
 % The result will be [Subj, 1, 1, Freq]
@@ -248,15 +246,14 @@ for k = 1:nFreqs
     subjData{k} = plotData(:, k); 
 end
 
-% --- Call plotSpread ---
+% Call plotSpread
 xPositions = 1:nFreqs; 
 
 figure;
 H = plotSpread(subjData, ...
-    'xValues', xPositions, ...           % X-axis positions (1, 2, 3, ...)
-    'binWidth', 0.2, ...                 % Adjust spread density
-    'distributionColors', 'b', ...       % Choose a single color (e.g., blue)
-    'MarkerSize', 8);
+    'xValues', xPositions, ...         
+    'binWidth', 0.2, ...                 
+    'distributionColors', 'b');
 
 % Customizing the marker and adding a mean line
 set(H{1}, 'Marker', 'o', 'MarkerFaceColor', 'b', 'MarkerEdgeColor', 'k');
@@ -271,7 +268,7 @@ hold off;
 
 %%% Objective function %%%
 
-function nll = negLogLikelihood(params, uniqueDbValues, probData, nTrials)
+function nll = negLogLikelihood(params, uniqueDbValues, probData, nTrials, epsilon)
 
     % Predict probability of "different" at each unique dB level
     P_diff = modifiedSameDiffModel(uniqueDbValues, params, epsilon);
