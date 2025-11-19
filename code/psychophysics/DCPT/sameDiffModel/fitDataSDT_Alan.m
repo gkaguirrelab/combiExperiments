@@ -248,20 +248,16 @@ for k = 1:nFreqs
     subjData{k} = plotData(:, k);
 end
 
-% Pre-allocate a cell array for plotSpread
-% subjData = cell(1, nFreqs);
+%% 
+nSubj = 11;
+nFreqs = 5;
+
+% Create colors and categoryIdxs for plotSpread
 % bg = {'w', 'k'}; % colors to avoid
 % colors = distinguishable_colors(nSubj, bg); % setting a color for each subj
-% colorsCellArray = num2cell(colors, 2);
+colors = lines(nSubj); % replace this with distinguishable colors ^^
+catIdxFlat = repmat((1:nSubj)', nFreqs, 1); % identifies 1 to nSubj
 
-% Vector of subject categories
-% subjs = [1:nSubj]';
-% catData = cell(1, nFreqs);
-% for k = 1:nFreqs
-%     catData{k} = subjs;
-% end
-
-% Call plotSpread
 xPositions = 1:nFreqs;
 
 fig = figure;
@@ -270,19 +266,26 @@ hold(ax, 'on');
 H = plotSpread(subjData, ...
     'xValues', xPositions, ...
     'binWidth', 0.2, ...
-    'categoryIdx', catData, ...
+    'categoryIdx', catIdxFlat, ...
     'categoryColors', colors); 
 
 % Customizing the marker 
-set(H{1}, 'Marker', 'o', 'MarkerFaceColor', 'b', 'MarkerEdgeColor', 'k','MarkerSize', 8);
+for h = 1:numel(H{1})
+    c = get(H{1}(h), 'Color');  % get the current line color
+    set(H{1}(h), 'Marker', 'o', ...
+                 'MarkerSize', 8, ...
+                 'MarkerFaceColor', c)   % fill with its own color
+end
 
 % Add mean of the points at each frequency
-meanValues = mean(plotData, 1); % Mean across participants (Dimension 1)
+for k = 1:nFreqs
+    meanValues(k) = mean(subjData{k});  % mean across subjects for this frequency
+end
 plot(xPositions, meanValues, 'kd', 'LineStyle', 'none','LineWidth', 2, 'MarkerFaceColor', 'k', 'MarkerSize', 10);
 
 % Add title and axis labels
 title('Sigma parameter across reference frequencies', 'FontWeight', 'bold');
-xlabel('Reference frequency [Hz]', 'Position',[mean(xlim), -0.6, 0]);
+xlabel('Reference frequency [Hz]', 'Position',[mean(xlim), 0.3, 0]);
 ylabel('Sigma parameter', 'Position',[-0.25, mean(ylim), 0]);
 xticks(xPositions);
 xticklabels(refFreqHz);
