@@ -5,9 +5,10 @@ projectName = 'combiLED';
 experimentName = 'DCPT_SDT';
 
 % Define subjects + parameters
-% List of possible subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
-% 'FLIC_0018', 'FLIC_0020', 'FLIC_0021', 'FLIC_0022'};
-subjectID = {'FLIC_1030','FLIC_1016'};
+% List of possible control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
+% 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 'FLIC_0039', 'FLIC_0042'};
+subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017','FLIC_0018', ...
+    'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 'FLIC_0039', 'FLIC_0042'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -25,9 +26,9 @@ nSubj = length(subjectID);
 sigmaMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 
-for ii = 1:nSubj
+for subjIdx = 1:nSubj
 
-    thisSubj = subjectID{ii};
+    thisSubj = subjectID{subjIdx};
 
     % Create layouts, one per contrast
     figLow = figure;
@@ -149,17 +150,16 @@ for ii = 1:nSubj
                 % initial_params = [m, x_limit, crit_baseline, sigma]
                 initial_params = [0,1,2,0.5];
 
-                % options = bads('defaults');
-                % options.MaxIter = 50;
-                % options.MaxFunEvals = 500;
-                % lb = [0,1,0,0.001]; ub = [0,1,5,3];
-                % fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials,epsilon), ...
-                %     initial_params, lb, ub, lb, ub, [], options);
-                fit = initial_params; 
+                options = bads('defaults');
+                options.MaxIter = 50;
+                options.MaxFunEvals = 500;
+                lb = [0,1,0,0.001]; ub = [0,1,5,3];
+                fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials,epsilon), ...
+                    initial_params, lb, ub, lb, ub, [], options);
 
                 % Add the crit_baseline and sigma values to the matrix
-                sigmaMatrix(thisSubj, contrastIdx,lightIdx,refFreqIdx) = fit(4);
-                critBaselineMatrix(thisSubj, contrastIdx,lightIdx,refFreqIdx) = fit(3);
+                sigmaMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(4);
+                critBaselineMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(3);
 
                 % Plot the fit for this ref frequency
                 hold on;
@@ -186,11 +186,13 @@ for ii = 1:nSubj
 
 end
 
+%%
+
 % Code to plot sigma and criterion across 20 conditions
-sigmaHandle = figure;
-hold on;
-critHandle = figure;
-hold on;
+% sigmaHandle = figure;
+% hold on;
+% critHandle = figure;
+% hold on;
 
 % lightLevelPts = {'ob','sr',};
 % contrastPts = {'b', 'r'; 'w', 'w'};
@@ -228,43 +230,63 @@ hold on;
 % Average across Contrast (Dimension 2)
 meanContrastSigma = mean(sigmaMatrix, 2);
 
-% Average across Light (Dimension 3 of the new matrix)
+% Average across light level (Dimension 3 of the matrix)
 % The result will be [Subj, 1, 1, Freq]
 avgSigmaParticipant = mean(meanContrastSigma, 3);
 
-% remove the singleton dimensions 
+% Remove the singleton dimensions 
 % The final matrix 'plotData' will have dimensions: [Subj, Freq]
 plotData = squeeze(avgSigmaParticipant);
 
-% Pre-allocate a cell array for plotSpread
+% Pre-allocate a cell array for plotSpread 
 subjData = cell(1, nFreqs);
 
 % Loop through each frequency point
 for k = 1:nFreqs
     % Extract all participant data for the current frequency.
     % This is a vector of size [nSubj x 1]
-    subjData{k} = plotData(:, k); 
+    subjData{k} = plotData(:, k);
 end
 
+% Pre-allocate a cell array for plotSpread
+% subjData = cell(1, nFreqs);
+% bg = {'w', 'k'}; % colors to avoid
+% colors = distinguishable_colors(nSubj, bg); % setting a color for each subj
+% colorsCellArray = num2cell(colors, 2);
+
+% Vector of subject categories
+% subjs = [1:nSubj]';
+% catData = cell(1, nFreqs);
+% for k = 1:nFreqs
+%     catData{k} = subjs;
+% end
+
 % Call plotSpread
-xPositions = 1:nFreqs; 
+xPositions = 1:nFreqs;
 
-figure;
+fig = figure;
+ax = axes(fig);
+hold(ax, 'on');
 H = plotSpread(subjData, ...
-    'xValues', xPositions, ...         
-    'binWidth', 0.2, ...                 
-    'distributionColors', 'b');
+    'xValues', xPositions, ...
+    'binWidth', 0.2, ...
+    'categoryIdx', catData, ...
+    'categoryColors', colors); 
 
-% Customizing the marker and adding a mean line
-set(H{1}, 'Marker', 'o', 'MarkerFaceColor', 'b', 'MarkerEdgeColor', 'k');
+% Customizing the marker 
+set(H{1}, 'Marker', 'o', 'MarkerFaceColor', 'b', 'MarkerEdgeColor', 'k','MarkerSize', 8);
 
 % Add mean of the points at each frequency
-hold on;
 meanValues = mean(plotData, 1); % Mean across participants (Dimension 1)
-plot(xPositions, meanValues, 'k', 2, 'Marker', 'd', 'MarkerFaceColor', 'r', 'MarkerSize', 10);
-hold off;
+plot(xPositions, meanValues, 'kd', 'LineStyle', 'none','LineWidth', 2, 'MarkerFaceColor', 'k', 'MarkerSize', 10);
 
-
+% Add title and axis labels
+title('Sigma parameter across reference frequencies', 'FontWeight', 'bold');
+xlabel('Reference frequency [Hz]', 'Position',[mean(xlim), -0.6, 0]);
+ylabel('Sigma parameter', 'Position',[-0.25, mean(ylim), 0]);
+xticks(xPositions);
+xticklabels(refFreqHz);
+hold(ax, 'off');
 
 %%% Objective function %%%
 
