@@ -9,7 +9,8 @@ experimentName = 'DCPT_SDT';
 % List of possible control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 'FLIC_0039', 'FLIC_0042'};
 subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017','FLIC_0018', ...
-    'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 'FLIC_0039', 'FLIC_0042'};
+    'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 'FLIC_0028', ...
+    'FLIC_0039', 'FLIC_0042'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -313,7 +314,7 @@ for k = 1:nFreqs
     semValues(k)  = std(thisFreq) / sqrt(nSubj);  % SEM
 end
 hMean = errorbar(xPositions, meanValues, semValues, ...
-    '-kd', ...                 
+    '-ko', ...                 
     'MarkerFaceColor', 'k', ...
     'MarkerSize', 10, ...
     'LineWidth', 1.5);
@@ -328,6 +329,9 @@ hold(ax, 'off');
 
 %% Plotting the false alarm rate at each ref freq for each subj
 % also collapsed across light level and contrast level
+
+% Pre-allocate falseAlarmsMatrix
+falseAlarmsMatrix = zeros(nSubj, nContrasts, nLightLevels, nFreqs);
 
 % Loading files and extracting the data 
 for subjIdx = 1:nSubj
@@ -367,16 +371,108 @@ for subjIdx = 1:nSubj
                     end
                 end % sideIdx
 
-                % Extract response at 0 dB
-                stim0Idx = [comboTrialData.stim] == 0;
-                responses0 = [comboTrialData(stim0Idx).respondYes];
+                if ~isempty(comboTrialData)  % Have trial data combined across sides
 
-                falseAlarms(subjIdx, contrastIdx, lightIdx, refFreqIdx) = mean(responses0);
+                    % Load stim and response data
+                    dB_data = [comboTrialData.stim];
+                    response_data = [comboTrialData.respondYes];
+                    uniqueDbValues = unique(dB_data);
+
+                    % Compute proportion "respond different" per stim level
+                    for ii = 1:length(uniqueDbValues)
+                        probData(ii) = mean(response_data(dB_data==uniqueDbValues(ii)));
+                    end
+
+                    % Extract false alarm rate (proportion "respond diff" at 0 dB)
+                    zeroIdx = find(uniqueDbValues == 0);
+                    falseAlarmsMatrix(subjIdx, contrastIdx, lightIdx, refFreqIdx) = probData(zeroIdx);
+                end
+
             end
         end
     end
-end 
+end
 
+% Collapsing across dims
+meanContrastFA = mean(falseAlarmsMatrix, 2);  % average over contrast (dim 2)
+avgFAParticipant = mean(meanContrastFA, 3); % average over light (dim 3)
+plotData = squeeze(avgFAParticipant);    % remove singleton dims
+
+subjData = cell(1, nFreqs);
+for k = 1:nFreqs
+    subjData{k} = plotData(:, k);
+end
+
+% Create colors and categoryIdxs for plotSpread
+% bg = {'w', 'k'}; % colors to avoid
+% colors = distinguishable_colors(nSubj, bg); % setting a color for each subj
+colors = lines(nSubj); % replace this with distinguishable colors ^^
+catIdxFlat = repmat((1:nSubj)', nFreqs, 1); % identifies 1 to nSubj
+
+xPositions = 1:nFreqs;
+
+fig = figure;
+ax = axes(fig);
+hold(ax, 'on');
+H = plotSpread(subjData, ...
+    'xValues', xPositions, ...
+    'binWidth', 0.2, ...
+    'categoryIdx', catIdxFlat, ...
+    'categoryColors', colors);
+
+% Customizing the marker
+for h = 1:numel(H{1})
+    c = get(H{1}(h), 'Color');  % get the current line color
+    cFaint = c + (1 - c)*0.5;   % blend 70% with white
+    set(H{1}(h), 'Marker', 's', ...
+        'MarkerSize', 8, ...
+        'MarkerFaceColor', cFaint, ...
+        'MarkerEdgeColor', cFaint);
+end
+
+% Connecting the points for each subject
+% Extract the XY positions from plotSpread output
+xy = get(H{1}, 'XData');  
+yy = get(H{1}, 'YData');
+
+allX = cell2mat(xy(:)');
+allY = cell2mat(yy(:)');
+% plotSpread reorders by categoryIdx. so now indices 1-5 are subj1, 
+% indices 6-10 are subj2, and so on. 
+
+for s = 1:nSubj
+    idx = (s-1)*nFreqs + (1:nFreqs);
+
+    % draw line
+    h = plot(allX(idx), allY(idx), '-', ...
+        'Color', colors(s,:), ...
+        'LineWidth', 1, ...
+        'MarkerSize', 6, ...
+        'MarkerFaceColor', colors(s,:));
+
+    h.Color(4) = 0.2; % make the lines more transparent
+end
+
+% Compute mean and standard error across subjects for each frequency
+for k = 1:nFreqs
+    thisFreq = subjData{k};
+    meanValues(k) = mean(thisFreq);  % mean across subjects for this frequency
+    semValues(k)  = std(thisFreq) / sqrt(nSubj);  % SEM
+end
+hMean = errorbar(xPositions, meanValues, semValues, ...
+    '-ks', ...                 
+    'MarkerFaceColor', 'k', ...
+    'MarkerSize', 10, ...
+    'LineWidth', 1.5);
+
+% Title and labels
+title('False alarm rates across reference frequencies', 'FontWeight', 'bold');
+xlabel('Reference frequency [Hz]');
+ylabel('False alarm rate');
+xticks(xPositions);
+xticklabels(refFreqHz);
+
+hold(ax, 'off');
 
 %% Objective function %%%
 
