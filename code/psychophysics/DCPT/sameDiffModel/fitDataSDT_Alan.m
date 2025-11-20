@@ -1,3 +1,4 @@
+% SETUP
 % Defining the directory
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir = 'FLIC_data';
@@ -25,6 +26,8 @@ nSubj = length(subjectID);
 % nSubj x 2 x 2 x 5, subj x nContrasts x nLightLevels x nFreqs
 sigmaMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+
+%% FITTING CODE %%
 
 for subjIdx = 1:nSubj
 
@@ -186,46 +189,48 @@ for subjIdx = 1:nSubj
 
 end
 
-%%
+%% Code to plot sigma and criterion across 20 conditions
 
-% Code to plot sigma and criterion across 20 conditions
-% sigmaHandle = figure;
-% hold on;
-% critHandle = figure;
-% hold on;
+sigmaHandle = figure;
+hold on;
+critHandle = figure;
+hold on;
 
-% lightLevelPts = {'ob','sr',};
-% contrastPts = {'b', 'r'; 'w', 'w'};
-% 
-% for lightIdx = 1:nLightLevels
-%     for contrastIdx = 1:nContrasts
-% 
-%         figure(sigmaHandle);
-%         plot(refFreqHz, squeeze(sigmaMatrix(contrastIdx,lightIdx,:)), lightLevelPts{lightIdx}, ...
-%             'MarkerFaceColor', contrastPts{contrastIdx, lightIdx}, 'MarkerSize', 12);
-%         title(['Sigma Values for ' thisSubj]);
-%         xlim([8 35]); xscale log
-%         ylim([0 3.5]);
-% 
-%         % figure(critHandle);
-%         % plot(refFreqHz, squeeze(critBaselineMatrix(contrastIdx,lightIdx,:)), lightLevelPts{lightIdx}, ...
-%         %     'MarkerFaceColor', contrastPts{contrastIdx, lightIdx}, 'MarkerSize', 12);
-%         % title(['Criterion Values for ' thisSubj]);
-%         % xlim([8 35]); xscale log
-%         % ylim([0 3.5]);
-% 
-%     end
-% end
-% % Add legend
-% figure(sigmaHandle); 
-% legend({'Low contrast, low light','High contrast, low light',...
-%         'Low contrast, high light','High contrast, high light'}, ...
-%         'Location','best');
-% 
-% figure(critHandle);
-% legend({'Low contrast, low light','High contrast, low light',...
-%         'Low contrast, high light','High contrast, high light'}, ...
-%         'Location','best');
+lightLevelPts = {'ob','sr',};
+contrastPts = {'b', 'r'; 'w', 'w'};
+
+for lightIdx = 1:nLightLevels
+    for contrastIdx = 1:nContrasts
+
+        figure(sigmaHandle);
+        plot(refFreqHz, squeeze(sigmaMatrix(contrastIdx,lightIdx,:)), lightLevelPts{lightIdx}, ...
+            'MarkerFaceColor', contrastPts{contrastIdx, lightIdx}, 'MarkerSize', 12);
+        title(['Sigma Values for ' thisSubj]);
+        xlim([8 35]); xscale log
+        ylim([0 3.5]);
+
+        figure(critHandle);
+        plot(refFreqHz, squeeze(critBaselineMatrix(contrastIdx,lightIdx,:)), lightLevelPts{lightIdx}, ...
+            'MarkerFaceColor', contrastPts{contrastIdx, lightIdx}, 'MarkerSize', 12);
+        title(['Criterion Values for ' thisSubj]);
+        xlim([8 35]); xscale log
+        ylim([0 3.5]);
+
+    end
+end
+% Add legend
+figure(sigmaHandle); 
+legend({'Low contrast, low light','High contrast, low light',...
+        'Low contrast, high light','High contrast, high light'}, ...
+        'Location','best');
+
+figure(critHandle);
+legend({'Low contrast, low light','High contrast, low light',...
+        'Low contrast, high light','High contrast, high light'}, ...
+        'Location','best');
+
+%% Set up for plotting sigma values at each ref freq
+% collapsed across light level and contrast level
 
 % Average across Contrast (Dimension 2)
 meanContrastSigma = mean(sigmaMatrix, 2);
@@ -248,9 +253,8 @@ for k = 1:nFreqs
     subjData{k} = plotData(:, k);
 end
 
-%% 
-nSubj = 11;
-nFreqs = 5;
+%% Plotting sigma values at each ref freq for each subj
+% collapsed across light level and contrast level
 
 % Create colors and categoryIdxs for plotSpread
 % bg = {'w', 'k'}; % colors to avoid
@@ -267,21 +271,52 @@ H = plotSpread(subjData, ...
     'xValues', xPositions, ...
     'binWidth', 0.2, ...
     'categoryIdx', catIdxFlat, ...
-    'categoryColors', colors); 
+    'categoryColors', colors);
 
-% Customizing the marker 
+% Customizing the marker
 for h = 1:numel(H{1})
     c = get(H{1}(h), 'Color');  % get the current line color
+    cFaint = c + (1 - c)*0.5;   % blend 70% with white
     set(H{1}(h), 'Marker', 'o', ...
-                 'MarkerSize', 8, ...
-                 'MarkerFaceColor', c)   % fill with its own color
+        'MarkerSize', 8, ...
+        'MarkerFaceColor', cFaint, ...
+        'MarkerEdgeColor', cFaint);
 end
 
-% Add mean of the points at each frequency
-for k = 1:nFreqs
-    meanValues(k) = mean(subjData{k});  % mean across subjects for this frequency
+% Connecting the points for each subject
+% Extract the XY positions from plotSpread output
+xy = get(H{1}, 'XData');  
+yy = get(H{1}, 'YData');
+
+allX = cell2mat(xy(:)');
+allY = cell2mat(yy(:)');
+% plotSpread reorders by categoryIdx. so now indices 1-5 are subj1, 
+% indices 6-10 are subj2, and so on. 
+
+for s = 1:nSubj
+    idx = (s-1)*nFreqs + (1:nFreqs);
+
+    % draw line
+    h = plot(allX(idx), allY(idx), '-', ...
+        'Color', colors(s,:), ...
+        'LineWidth', 1, ...
+        'MarkerSize', 6, ...
+        'MarkerFaceColor', colors(s,:));
+
+    h.Color(4) = 0.2; % make the lines more transparent
 end
-plot(xPositions, meanValues, 'kd', 'LineStyle', 'none','LineWidth', 2, 'MarkerFaceColor', 'k', 'MarkerSize', 10);
+
+% Compute mean and standard error across subjects for each frequency
+for k = 1:nFreqs
+    thisFreq = subjData{k};
+    meanValues(k) = mean(thisFreq);  % mean across subjects for this frequency
+    semValues(k)  = std(thisFreq) / sqrt(nSubj);  % SEM
+end
+hMean = errorbar(xPositions, meanValues, semValues, ...
+    '-kd', ...                 
+    'MarkerFaceColor', 'k', ...
+    'MarkerSize', 10, ...
+    'LineWidth', 1.5);
 
 % Add title and axis labels
 title('Sigma parameter across reference frequencies', 'FontWeight', 'bold');
@@ -291,7 +326,59 @@ xticks(xPositions);
 xticklabels(refFreqHz);
 hold(ax, 'off');
 
-%%% Objective function %%%
+%% Plotting the false alarm rate at each ref freq for each subj
+% also collapsed across light level and contrast level
+
+% Loading files and extracting the data 
+for subjIdx = 1:nSubj
+    thisSubj = subjectID{subjIdx};
+
+    for lightIdx = 1:nLightLevels
+        for refFreqIdx = 1:nFreqs
+            currentRefFreq = refFreqHz(refFreqIdx);
+
+            for contrastIdx = 1:nContrasts
+
+                comboTrialData = [];
+
+                for sideIdx = 1:length(stimParamLabels)
+                    % Build path to the data file
+                    subjectDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, thisSubj);
+                    dataDir = fullfile(subjectDir, [modDirection '_ND' NDLabel{lightIdx} '_shifted'], experimentName);
+
+                    fileName = fullfile(dataDir, ...
+                        [thisSubj '_' modDirection '_' experimentName ...
+                        '_cont-' targetPhotoContrast{contrastIdx} '_refFreq-' num2str(currentRefFreq) 'Hz_' stimParamLabels{sideIdx} '.mat']);
+
+                    if exist(fileName, 'file')
+                        load(fileName, 'psychObj');
+                        thisTrialData = psychObj.questData.trialData;
+
+                        % Flip sign for low side if needed
+                        if contains(fileName, 'lo')
+                            for trial = 1:numel(thisTrialData)
+                                thisTrialData(trial).stim = -thisTrialData(trial).stim;
+                            end
+                        end
+
+                        comboTrialData = [comboTrialData; thisTrialData];
+                    else
+                        warning('File not found: %s', fileName);
+                    end
+                end % sideIdx
+
+                % Extract response at 0 dB
+                stim0Idx = [comboTrialData.stim] == 0;
+                responses0 = [comboTrialData(stim0Idx).respondYes];
+
+                falseAlarms(subjIdx, contrastIdx, lightIdx, refFreqIdx) = mean(responses0);
+            end
+        end
+    end
+end 
+
+
+%% Objective function %%%
 
 function nll = negLogLikelihood(params, uniqueDbValues, probData, nTrials, epsilon)
 
