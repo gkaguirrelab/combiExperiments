@@ -6,11 +6,14 @@ projectName = 'combiLED';
 experimentName = 'DCPT_SDT';
 
 % Define subjects + parameters
-% List of possible control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
-% 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 'FLIC_0039', 'FLIC_0042'};
-subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017','FLIC_0018', ...
-    'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 'FLIC_0028', ...
-    'FLIC_0039', 'FLIC_0042'};
+% Control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
+% 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 
+% 'FLIC_0028','FLIC_0039', 'FLIC_0042'};
+% Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031',
+%                         'FLIC_1034','FLIC_1038'}; 
+% Had to take out 'FLIC_0028' for controls bc haven't done the fitting with her
+subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031', ...
+            'FLIC_1034','FLIC_1038'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
