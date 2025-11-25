@@ -427,11 +427,8 @@ for contrastIdx = 1:length(contrastNames)
 end
 %% Plotting sigma value mean line for migraines and controls
 
-controls = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
-'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', ...
-'FLIC_0028','FLIC_0039', 'FLIC_0042'};
-migrainers = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031', ...
-                        'FLIC_1034','FLIC_1038', 'FLIC_1041'}; 
+% First, need to load sigma matrices from control and migraine .mat files
+% Rename them to migraineSigmaMatrix and controlSigmaMatrix
 
 % Average across light level (Dimension 3 of the matrix) for migrainers +
 % controls
@@ -439,96 +436,137 @@ migrainers = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031', ...
 % Then squeeze to remove the singleton dimension
 avgMigraineSigma = squeeze(mean(migraineSigmaMatrix, 3));
 avgControlSigma = squeeze(mean(controlSigmaMatrix, 3));
+nMigSubj = size(avgMigraineSigma,1);
+nControlSubj = size(avgControlSigma,1);
 
 % Prepare plot parameters
-colors = lines(nSubj); % one color per subject
-catIdxFlat = repmat((1:nSubj)', nFreqs, 1); % identifies 1 to nSubj
-xPositions = 1:nFreqs;
-
-% Loop over contrast conditions (1 = low, 2 = high)
 contrastNames = {'Low contrast', 'High contrast'};
+xPositions = 1:nFreqs;
+controlColor  = [0 0.447 0.741];   % blue
+migraineColor = [0.85 0.325 0.098]; % orange
+
+figure; hold on;
 
 for contrastIdx = 1:length(contrastNames)
 
-    % Extract the slice for this contrast for migrainers + controls
+    % Extract the slice for this contrast, for migrainers + controls
     migraineData2D = squeeze(avgMigraineSigma(:,contrastIdx,:)); % [nSubj × nFreqs]
     controlData2D = squeeze(avgControlSigma(:,contrastIdx,:));
 
-    % Pre-allocate a 1 × nFreqs cell array
-    migraineSubjData = cell(1, nFreqs);
-    controlSubjData = cell(1, nFreqs);
-
-    % Each cell should contain a 5×1 vector (all subjects at this frequency)
-    for k = 1:nFreqs
-        migraineSubjData{k} = migraineData2D(:, k);   % 5×1
-        controlSubjData{k} = controlData2D(:, k);
-    end
-
-    % PLOT
-    fig = figure;
-    ax = axes(fig);
-    hold(ax, 'on');
-    H = plotSpread(subjData, ...
-        'xValues', xPositions, ...
-        'binWidth', 0.2, ...
-        'categoryIdx', catIdxFlat, ...
-        'categoryColors', colors);
-
-    % Customizing the marker
-    for h = 1:numel(H{1})
-        c = get(H{1}(h), 'Color');  % get the current line color
-        cFaint = c + (1 - c)*0.5;   % blend 70% with white
-        set(H{1}(h), 'Marker', 'o', ...
-            'MarkerSize', 8, ...
-            'MarkerFaceColor', cFaint, ...
-            'MarkerEdgeColor', cFaint);
-    end
-
-    % Connecting the points for each subject
-    % Extract the XY positions from plotSpread output
-    xy = get(H{1}, 'XData');
-    yy = get(H{1}, 'YData');
-
-    allX = cell2mat(xy(:)');
-    allY = cell2mat(yy(:)');
-    % plotSpread reorders by categoryIdx. so now indices 1-5 are subj1,
-    % indices 6-10 are subj2, and so on.
-
-    for s = 1:nSubj
-        idx = (s-1)*nFreqs + (1:nFreqs);
-
-        % draw line
-        h = plot(allX(idx), allY(idx), '-', ...
-            'Color', colors(s,:), ...
-            'LineWidth', 1, ...
-            'MarkerSize', 6, ...
-            'MarkerFaceColor', colors(s,:));
-
-        h.Color(4) = 0.2; % make the lines more transparent
-    end
+    thisMigraineFreq = cell(1, nFreqs);
+    thisControlFreq = cell(1, nFreqs);
+    meanValuesMig = zeros(1, nFreqs);
+    semValuesMig  = zeros(1, nFreqs);
+    meanValuesControl = zeros(1, nFreqs);
+    semValuesControl  = zeros(1, nFreqs);
 
     % Compute mean and standard error across subjects for each frequency
     for k = 1:nFreqs
-        thisFreq = subjData{k};
-        meanValues(k) = mean(thisFreq);  % mean across subjects for this frequency
-        semValues(k)  = std(thisFreq) / sqrt(nSubj);  % SEM
+        thisMigraineFreq = migraineData2D(:, k);
+        thisControlFreq = controlData2D(:, k);
+        % Migrainers
+        meanValuesMig(k) = mean(thisMigraineFreq); % mean across subjects for this frequency
+        semValuesMig(k)  = std(thisMigraineFreq) / sqrt(nMigSubj);  % SEM
+        % Controls
+        meanValuesControl(k) = mean(thisControlFreq);
+        semValuesControl(k)  = std(thisControlFreq) / sqrt(nControlSubj);
     end
-    hMean = errorbar(xPositions, meanValues, semValues, ...
-        '-ko', ...
-        'MarkerFaceColor', 'k', ...
-        'MarkerSize', 10, ...
-        'LineWidth', 1.5);
 
-    % Add title and axis labels
-    title(['CONTROLS: ' contrastNames{contrastIdx} ' sigma parameter across frequency' ], 'FontWeight', 'bold');
-    xlabel('Reference frequency [Hz]');
-    ylabel('Sigma parameter', 'Position',[-0.25, mean(ylim), 0]);
-    xticks(xPositions);
-    xticklabels(refFreqHz);
-    ylim([0 3])
-    hold(ax, 'off');
+    % Line style for this contrast
+    if contrastIdx == 1
+        ls = '-';   % low contrast
+    else
+        ls = '--';  % high contrast
+    end
 
+    % Plot migrainers
+    errorbar(xPositions, meanValuesMig, semValuesMig, ...
+        'Color', migraineColor, ...
+        'LineWidth', 2, ...
+        'LineStyle', ls, ...
+        'Marker', 'o', ...
+        'MarkerFaceColor', migraineColor, ...
+        'MarkerSize', 10);
+
+    % Plot controls
+    errorbar(xPositions, meanValuesControl, semValuesControl, ...
+        'Color', controlColor, ...
+        'LineWidth', 2, ...
+        'LineStyle', ls, ...
+        'Marker', 's', ...
+        'MarkerFaceColor', controlColor, ...
+        'MarkerSize', 10);
 end
+
+% Formatting
+xticks(xPositions);
+xticklabels(refFreqHz);
+xlabel('Reference frequency (Hz)');
+ylabel('Sigma parameter');
+xlim([0.5, nFreqs + 0.5]);
+ylim([0 3]);
+
+legend({ ...
+    'Migrainers – Low Contrast', 'Control – Low Contrast', ...
+    'Migrainers – High Contrast','Control – High Contrast'}, ...
+    'Location', 'northwest');
+
+title('Sigma parameter across frequency: Controls vs. Migrainers');
+
+% Want to run a 4-way mixed ANOVA
+sigmaAll = cat(1, controlSigmaMatrix, migraineSigmaMatrix);
+nSubjAll = nMigSubj + nControlSubj;
+
+Group = [repmat({'Control'}, nControlSubj, 1);      % 12 controls
+         repmat({'Migraine'}, nMigSubj, 1)];     % 7 migraine
+
+nCond = nContrasts * nLightLevels * nFreqs;
+Ywide = zeros(nSubjAll, nCond);
+
+% Each column of Ywide will be one of the 20 combos of 
+% contrast, light level, frequency
+% Rows are subjects, first controls and then migrainers
+condIdx = 1;
+for c = 1:nContrasts
+    for l = 1:nLightLevels
+        for f = 1:nFreqs
+            Ywide(:, condIdx) = sigmaAll(:, c, l, f);
+            condIdx = condIdx + 1;
+        end
+    end
+end
+
+% Adding group labels (migrainers vs controls) as columns in the table
+T = array2table(Ywide);
+T.Subject = (1:nSubjAll)'; 
+T.Group = Group;
+T = movevars(T, {'Subject','Group'}, 'Before', 1);
+
+
+% Make table of the ordering of within subject effects
+Contrast = [];
+Light = [];
+Freq = [];
+
+for c = 1:2
+    for l = 1:2
+        for f = 1:5
+            Contrast(end+1,1) = c;
+            Light(end+1,1) = l;
+            Freq(end+1,1) = f;
+        end
+    end
+end
+
+Within = table(Contrast, Light, Freq);
+
+% Explain how this is accounting for repeated measures/nesting
+
+% rm = fitrm(T, 'Ywide1-Ywide20 ~ Group', ...
+%            'WithinDesign', Within);
+% 
+% ranova(rm, 'WithinModel', 'Contrast*Light*Freq');
+
 
 %% Plotting the false alarm rate at each ref freq for each subj
 % also collapsed across light level and contrast level
