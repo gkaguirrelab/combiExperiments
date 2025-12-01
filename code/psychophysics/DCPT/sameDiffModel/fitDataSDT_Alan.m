@@ -542,7 +542,6 @@ T.Subject = (1:nSubjAll)';
 T.Group = Group;
 T = movevars(T, {'Subject','Group'}, 'Before', 1);
 
-
 % Make table of the ordering of within subject effects
 Contrast = [];
 Light = [];
@@ -560,12 +559,47 @@ end
 
 Within = table(Contrast, Light, Freq);
 
-% Explain how this is accounting for repeated measures/nesting
+% Group = between-subjects factor
+% Contrast, Light, Frequency = within-subjects repeated measures
+% Each subject has all 20 condition columns, which MATLAB treats as 
+% measurements nested within that subject
 
-% rm = fitrm(T, 'Ywide1-Ywide20 ~ Group', ...
-%            'WithinDesign', Within);
-% 
-% ranova(rm, 'WithinModel', 'Contrast*Light*Freq');
+rm = fitrm(T, 'Ywide1-Ywide20 ~ Group', ...     % repeated measures model
+           'WithinDesign', Within);
+% Group predicts the set of repeated measure responses
+
+ranovatbl = ranova(rm, 'WithinModel', 'Contrast*Light*Freq');
+% testing all main effects and all interactions of the three repeated
+% measures factors
+% also allow the effects to interact with the between-subjects factor Group
+
+% Group:Contrast tests if the effect of Contrast differs between Groups
+% p value is 0.208545482872258
+
+% Simpler within-subject design with just contrast
+% Average sigma across Light and Freq for each Contrast
+Ycontrast = zeros(nSubjAll, 2);
+for c = 1:2
+    Ycontrast(:, c) = mean(mean(sigmaAll(:, c, :, :), 4), 3);
+end
+
+% Within-subject factor table
+WithinSimple = table([1; 2], 'VariableNames', {'Contrast'});
+
+% Create table for fitrm
+Tsimple = array2table(Ycontrast);
+Tsimple.Subject = (1:nSubjAll)';
+Tsimple.Group = Group;
+Tsimple = movevars(Tsimple, {'Subject','Group'}, 'Before', 1);
+
+% Fit repeated measures model
+rmSimple = fitrm(Tsimple, 'Ycontrast1-Ycontrast2 ~ Group', 'WithinDesign', WithinSimple);
+
+% Run ANOVA
+ranovaSimple = ranova(rmSimple, 'WithinModel', 'Contrast');
+
+% Display results
+disp(ranovaSimple)
 
 
 %% Plotting the false alarm rate at each ref freq for each subj
