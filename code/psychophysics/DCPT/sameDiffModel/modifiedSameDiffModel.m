@@ -5,8 +5,18 @@ function pDifferent = modifiedSameDiffModel( stimDiffDb, p, epsilon)
 %   pDifferent = modifiedSameDiffModel( stimDiffDb, p )
 %
 % Description:
-%   Describe this here, including the special v state at 0 dB. Define the
-%   parameters in this description
+%   This function implements a descriptive same–different
+%   discrimination model. The model converts each physical stimulus
+%   difference Δ (in dB) into an internal decision variable, compares it
+%   against a flexible criterion, and returns the probability that the
+%   observer reports "different."
+%
+% Special case at Δ = 0 (the “v-state”):
+%   When the physical stimulus difference is exactly 0 dB, the model
+%   treats this as a special state in which prediction must reflect the
+%   listener's tendency to occasionally respond “different” even when
+%   the stimuli are physically identical. This behavior results from
+%   internal noise (sigma) and the baseline criterion.
 %
 % Inputs:
 %   stimDiffDb            - Vector of numeric values. The difference
@@ -27,8 +37,9 @@ function pDifferent = modifiedSameDiffModel( stimDiffDb, p, epsilon)
 %{
     % Define some params
     p = [1.4, 2.5, 0.5, 1];
-    stimDiffDb = -5:0.5:5;    
-    pDifferent = modifiedSameDiffModel(stimDiffDb, p );
+    stimDiffDb = -10:0.5:10;   
+    epsilon = 0.0001;
+    pDifferent = modifiedSameDiffModel(stimDiffDb, p, epsilon );
     plot(stimDiffDb, pDifferent,'*-r');
 %}
 
