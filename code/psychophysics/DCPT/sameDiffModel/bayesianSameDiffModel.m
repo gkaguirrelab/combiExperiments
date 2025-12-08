@@ -10,28 +10,6 @@ function pDifferent = bayesianSameDiffModel( stimDiffDb, sigma )
 %   Computes the observer's probability of reporting "different" for each
 %   physical stimulus difference Δ in the vector stimDiffDb.
 %
-%   Internal noisy measurements are assumed to follow:
-%       m1 ~ N(0, sigma)
-%       m2 ~ N(Δ, sigma)
-%
-%   Under the SAME hypothesis (D = 0):
-%       Δ = 0   (both stimuli generate the same internal mean)
-%
-%   Under the DIFFERENT hypothesis (D = 1):
-%       Δ = stimDiffDb(ii)
-%
-%   Importantly, only m2 provides discriminative information, because
-%   m1 has the same distribution under SAME and DIFFERENT and therefore
-%   cancels out in the likelihood ratio.
-%
-%   The optimal Bayesian decision rule results in a simple linear
-%   criterion:
-%       Respond "different" when m2 > Δ/2
-%
-%   This function computes the probability that a noisy sample m2 exceeds
-%   that decision boundary under both hypotheses, and then combines these
-%   probabilities using the prior probabilities P(SAME) = P(DIFFERENT) = 0.5.
-%
 % Inputs:
 %   stimDiffDb  - Vector of numeric values. The difference
 %                 between the stimuli in units of decibels.
@@ -52,25 +30,34 @@ function pDifferent = bayesianSameDiffModel( stimDiffDb, sigma )
     plot(stimDiffDb, pDifferent,'*-r');
 %}
 
-% Priors on the two hypotheses
+% Priors
 pSame = 0.5;
 pDiff = 0.5;
 
-% Preallocate output vector
-pDifferent = zeros(size(stimDiffDb));
+% Possible theta values for different trials
+thetaRange = linspace(min(stimDiffDb), max(stimDiffDb), 100); % smoother than stimDiffDb
 
-% Loop over each stimulus difference
-for ii = 1:numel(stimDiffDb)
+% Measurement grid for numerical integration
+mGrid = linspace(min(stimDiffDb), max(stimDiffDb), 1000)';  % column vector
+dm = mGrid(2) - mGrid(1);
 
-    Delta = stimDiffDb(ii);
+% Likelihood for same trials (D = 0)
+P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigma); % std dev is sqrt(2)*sigma
 
-    % Bayesian decision boundary: Respond DIFFERENT if  m2 > Delta/2
-    boundary = Delta / 2;
+% Likelihood for different trials (D = 1) as mixture/average of Gaussians (box shape)
+P_m_given_D1 = mean(normpdf(mGrid, thetaRange, sqrt(2)*sigma), 2);
 
-    % Probability of responding "different" 
-    % Delta defines the trial type
-    pDifferent(ii) = 1 - normcdf(boundary, Delta, sigma);
+% Precompute posterior P(D = 1 | m) (same for all stimDiffDb)
+P_D1_given_m = (P_m_given_D1 * pDiff) ./ (P_m_given_D0 * pSame + P_m_given_D1 * pDiff);
 
-end
+% Likelihood of m given each stimulus difference (Delta)
+% Make mGrid a column vector, stimDiffDb a row vector
+mMat = repmat(mGrid, 1, numel(stimDiffDb));
+DeltaMat = repmat(stimDiffDb, length(mGrid), 1);
+
+P_m_given_trial = normpdf(mMat, DeltaMat, sqrt(2)*sigma);
+
+% Compute probability of responding "different" for each Delta
+pDifferent = sum(P_D1_given_m .* P_m_given_trial, 1) * dm;
 
 end
