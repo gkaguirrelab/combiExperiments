@@ -60,4 +60,3 @@ P_m_given_trial = normpdf(mMat, DeltaMat, sqrt(2)*sigma);
 % Compute probability of responding "different" for each Delta
 pDifferent = sum(P_D1_given_m .* P_m_given_trial, 1) * dm;
 
-end
