@@ -36,6 +36,7 @@ pDiff = 0.5;
 
 % Possible theta values for different trials
 thetaRange = linspace(min(stimDiffDb), max(stimDiffDb), 100); % smoother than stimDiffDb
+thetaRange = thetaRange(find(thetaRange ~= 0));
 
 % Measurement grid for numerical integration
 mGrid = linspace(min(stimDiffDb), max(stimDiffDb), 1000)';  % column vector
@@ -44,19 +45,33 @@ dm = mGrid(2) - mGrid(1);
 % Likelihood for same trials (D = 0)
 P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigma); % std dev is sqrt(2)*sigma
 
-% Likelihood for different trials (D = 1) as mixture/average of Gaussians (box shape)
+% Likelihood for different trials (D = 1) as integral of Gaussians (box shape)
 P_m_given_D1 = mean(normpdf(mGrid, thetaRange, sqrt(2)*sigma), 2);
 
 % Precompute posterior P(D = 1 | m) (same for all stimDiffDb)
+% Provides the decision rule
 P_D1_given_m = (P_m_given_D1 * pDiff) ./ (P_m_given_D0 * pSame + P_m_given_D1 * pDiff);
 
-% Likelihood of m given each stimulus difference (Delta)
-% Make mGrid a column vector, stimDiffDb a row vector
-mMat = repmat(mGrid, 1, numel(stimDiffDb));
-DeltaMat = repmat(stimDiffDb, length(mGrid), 1);
+% Decision rule
+decisionDifferent = (P_D1_given_m > 0.5);
 
-P_m_given_trial = normpdf(mMat, DeltaMat, sqrt(2)*sigma);
+dm = mGrid(2) - mGrid(1);
 
-% Compute probability of responding "different" for each Delta
-pDifferent = sum(P_D1_given_m .* P_m_given_trial, 1) * dm;
+% Now compute P("different"|stimDiffDb) numerically
+pDifferent = zeros(size(stimDiffDb));
+
+for i = 1:length(stimDiffDb)
+    delta = stimDiffDb(i);
+
+    % likelihood of measurement given this stimulus difference
+    P_m_given_delta = normpdf(mGrid, delta, sqrt(2)*sigma);
+
+    % Normalize
+    P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm);
+
+    % Probability of decision = integration over measurements
+    pDifferent(i) = sum(P_m_given_delta .* decisionDifferent * dm);
+end
+
+end
 
