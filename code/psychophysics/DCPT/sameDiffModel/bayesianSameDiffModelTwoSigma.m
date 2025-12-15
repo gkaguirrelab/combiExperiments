@@ -1,4 +1,4 @@
-function pDifferent = bayesianSameDiffModel( stimDiffDb, sigma )
+function pDifferent = bayesianSameDiffModelTwoSigma( stimDiffDb, sigma )
 % Probability of reporting "different" in a same different judgement
 %
 % Syntax:
@@ -43,7 +43,7 @@ mGrid = linspace(min(stimDiffDb), max(stimDiffDb), 1000)';  % column vector
 dm = mGrid(2) - mGrid(1);
 
 % Likelihood for same trials (D = 0)
-P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigma); % std dev is sqrt(2)*sigma
+P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigmaZero); % std dev is sqrt(2)*sigma
 % sqrt(2)*sigma_0
 % less noise, should be lower
 
@@ -67,7 +67,11 @@ for i = 1:length(stimDiffDb)
     delta = stimDiffDb(i);
 
     % likelihood of measurement given this stimulus difference
-    P_m_given_delta = normpdf(mGrid, delta, sqrt(2)*sigma);
+    if delta == 0
+        P_m_given_delta = normpdf(mGrid, delta, sqrt(2)*sigmaZero);
+    else
+        P_m_given_delta = normpdf(mGrid, delta, sqrt(2)*sigma);
+    end
 
     % Normalize
     P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm);

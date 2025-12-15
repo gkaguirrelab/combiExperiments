@@ -12,7 +12,8 @@ experimentName = 'DCPT_SDT';
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031',
 %                         'FLIC_1034','FLIC_1038', 'FLIC_1041'}; 
 % Had to take out 'FLIC_0028' for controls bc haven't done the fitting with her
-subjectID = {'FLIC_0013'};
+subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031',...
+                      'FLIC_1034','FLIC_1038', 'FLIC_1041'}; 
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
