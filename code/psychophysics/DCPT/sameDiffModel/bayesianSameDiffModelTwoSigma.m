@@ -1,4 +1,4 @@
-function pDifferent = bayesianSameDiffModelTwoSigma( stimDiffDb, sigma )
+function pDifferent = bayesianSameDiffModelTwoSigma( stimDiffDb, sigmaParams )
 % Probability of reporting "different" in a same different judgement
 %
 % Syntax:
@@ -26,9 +26,13 @@ function pDifferent = bayesianSameDiffModelTwoSigma( stimDiffDb, sigma )
 %{
     sigma = 0.3
     stimDiffDb = -10:0.5:10;    
-    pDifferent = bayesianSameDiffModel(stimDiffDb, sigma );
+    pDifferent = bayesianSameDiffModelTwoSigma(stimDiffDb, sigma );
     plot(stimDiffDb, pDifferent,'*-r');
 %}
+
+% Unpack two sigma values
+sigma = sigmaParams(1);
+sigmaZero = sigmaParams(2);
 
 % Priors
 pSame = 0.5;
@@ -43,13 +47,10 @@ mGrid = linspace(min(stimDiffDb), max(stimDiffDb), 1000)';  % column vector
 dm = mGrid(2) - mGrid(1);
 
 % Likelihood for same trials (D = 0)
-P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigmaZero); % std dev is sqrt(2)*sigma
-% sqrt(2)*sigma_0
-% less noise, should be lower
+P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigmaZero); % std dev is sqrt(2)*sigmaZero
 
 % Likelihood for different trials (D = 1) as integral of Gaussians (box shape)
 P_m_given_D1 = mean(normpdf(mGrid, thetaRange, sqrt(2)*sigma), 2);
-% sqrt(2)*sigma_0 + sqrt(2)*sigma
 
 % Precompute posterior P(D = 1 | m) (same for all stimDiffDb)
 % Provides the decision rule
@@ -67,11 +68,8 @@ for i = 1:length(stimDiffDb)
     delta = stimDiffDb(i);
 
     % likelihood of measurement given this stimulus difference
-    if delta == 0
-        P_m_given_delta = normpdf(mGrid, delta, sqrt(2)*sigmaZero);
-    else
-        P_m_given_delta = normpdf(mGrid, delta, sqrt(2)*sigma);
-    end
+    % sigma represents sensory encoding noise here
+    P_m_given_delta = normpdf(mGrid, delta, sqrt(2)*sigma);
 
     % Normalize
     P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm);
