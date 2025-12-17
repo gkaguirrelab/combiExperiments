@@ -9,11 +9,11 @@ experimentName = 'DCPT_SDT';
 % Control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 
 % 'FLIC_0028','FLIC_0039', 'FLIC_0042'};
-% Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-%         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};  
-subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
- 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', ...
- 'FLIC_0028','FLIC_0039', 'FLIC_0042'};
+% Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031',
+%                         'FLIC_1034','FLIC_1038', 'FLIC_1041'}; 
+% Had to take out 'FLIC_0028' for controls bc haven't done the fitting with her
+subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
+         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'}; 
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}

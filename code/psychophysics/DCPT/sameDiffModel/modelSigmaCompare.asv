@@ -17,36 +17,6 @@ bayesianSigmaMigraine = ['/Users/rubybouh/Documents/MATLAB/projects/' ...
 
 % Collapsing matrices into vectors
 SDTSigmaControl = SDTSigmaControl(:);
-SDTSigmaMigraine = SDTSigmaMigraine(:);
-bayesianSigmaControl = bayesianSigmaControl(:);
-bayesianSigmaMigraine = bayesianSigmaMigraine(:); 
-
-figure; hold on;
-
-% Plotting control data
-scatter(SDTSigmaControl, bayesianSigmaControl, 20, ...
-    'b', 'filled', 'MarkerFaceAlpha', 0.4);
-
-% Plotting migraine data
-scatter(SDTSigmaMigraine, bayesianSigmaMigraine, 20, ...
-    'r', 'filled', 'MarkerFaceAlpha', 0.4);
-
-% Labeling axes
-xlabel('Old SDT \sigma');
-ylabel('New Bayesian \sigma');
-legend({'Controls', 'Migraines'}, 'Location', 'best');
-
-title('SDT vs Bayesian Sigma Across All Conditions');
-
-
-
-
-
-
-
-
-
-
 
 
 
