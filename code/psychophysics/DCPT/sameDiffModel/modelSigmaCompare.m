@@ -2,17 +2,17 @@
 % framework and the model with the Bayesian framework (one sigma version)
 
 % Load SDT sigma data for controls
-SDTSigmaControl = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlSDTSigmaData.mat', ...
+SDTSigmaControl = load('/Users/melanopsin/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlSDTSigmaData.mat', ...
     'sigmaMatrix');
 % Load SDT sigma data for migrainers
-SDTSigmaMigraine = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineSDTSigmaData.mat', ...
+SDTSigmaMigraine = load('/Users/melanopsin/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineSDTSigmaData.mat', ...
     'sigmaMatrix');
 
 % Load Bayesian sigma data for controls
-bayesianSigmaControl = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlBayesianSigmaData.mat', ...
+bayesianSigmaControl = load('/Users/melanopsin/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlBayesianSigmaData.mat', ...
     'sigmaMatrix');
 % Load Bayesian sigma data for migrainers
-bayesianSigmaMigraine = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineBayesianSigmaData', ...
+bayesianSigmaMigraine = load('/Users/melanopsin/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineBayesianSigmaData', ...
     'sigmaMatrix');
 
 % Collapsing matrices into vectors
@@ -31,11 +31,16 @@ scatter(SDTSigmaControl, bayesianSigmaControl, 20, ...
 scatter(SDTSigmaMigraine, bayesianSigmaMigraine, 20, ...
     'r', 'filled', 'MarkerFaceAlpha', 0.4);
 
+% Adding reference line with slope 1
+h = refline(1, 0);   % slope = 1, intercept = 0
+h.Color = [0 0 0];   
+h.LineWidth = 1.5;
+
 % Labeling axes
 xlabel('Old SDT \sigma');
 ylabel('New Bayesian \sigma');
-xlim([0 3]);
-ylim([0 3]);
+xlim([0 3.05]);
+ylim([0 3.05]);
 legend({'Controls', 'Migraines'}, 'Location', 'best');
 
 title('SDT vs Bayesian Sigma Across All Conditions');

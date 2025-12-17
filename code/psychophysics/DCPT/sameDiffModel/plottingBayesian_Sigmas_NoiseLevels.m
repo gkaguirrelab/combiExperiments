@@ -152,16 +152,16 @@ for subjIdx = 1:nSubj
                 % Plot the fit for this ref frequency
                 hold on;
 
-                % sigmas = linspace(0.01, 1, 5);
-                sigma = 0.5;
+                % sigmas = [linspace(0.01, 1, 5), 2];
+                sigma = 2;
                 priorSames = [0.3 0.4 0.5 0.6 0.7 0.8];
                 x = -5:0.1:5;
 
-                %  lightBlue = [0.7 0.8 1.0];
-                %  darkBlue  = [0.0 0.0 0.6];
+              %  lightBlue = [0.7 0.8 1.0];
+               % darkBlue  = [0.0 0.0 0.6];
 
-                lightGreen = [0.7 1.0 0.7];  
-                darkGreen  = [0.0 0.5 0.0];   
+               lightGreen = [0.7 1.0 0.7];
+               darkGreen  = [0.0 0.5 0.0];
 
                 % Currently holding sigma fixed and varying prior prob of
                 % same

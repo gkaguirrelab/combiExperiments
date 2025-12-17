@@ -11,8 +11,9 @@ experimentName = 'DCPT_SDT';
 % 'FLIC_0028','FLIC_0039', 'FLIC_0042'};
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 %         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};  
-subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-      'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};  
+subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
+'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', ...
+'FLIC_0028','FLIC_0039', 'FLIC_0042'}; 
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -29,9 +30,9 @@ nSubj = length(subjectID);
 
 % Initialize matrices of params
 % nSubj x 2 x 2 x 5, subj x nContrasts x nLightLevels x nFreqs
-sigmaMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
-% sigmaMatrix1 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
-% sigmaMatrix2 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+% sigmaMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+sigmaMatrix1 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+sigmaMatrix2 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 % critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 
 for subjIdx = 1:nSubj
@@ -157,28 +158,28 @@ for subjIdx = 1:nSubj
                 % Fit the psychometric function
                 % initial_params = [m, x_limit, crit_baseline, sigma]
                 initial_params = [0,1,2,0.5];
-                sigma = 0.5; % for single sigma model
-                % sigma = [0.5, 0.5]; 
+                % sigma = 0.5; % for single sigma model
+                sigma = [0.5, 0.5]; 
 
                 options = bads('defaults');
                 options.MaxIter = 50;
                 options.MaxFunEvals = 500;
-                % lb = [0,1,0,0.001]; ub = [0,1,5,3];
-                lb = 0.001; ub = 3;
+                lb  = [0.001, 0.001];
+                ub  = [3, 3];
                 fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
                     sigma, lb, ub, lb, ub, [], options);
 
                 % Add the crit_baseline and sigma values to the matrix
-              %  sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit;
-              %  sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit;
-                 sigmaMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit;
-              %  critBaselineMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(3);
+                sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(1);
+                sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(2);
+                %   sigmaMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit;
+                %  critBaselineMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(3);
 
                 % Plot the fit for this ref frequency
                 hold on;
 
                 x = -5:0.1:5;  % evaluate the model at more dB values
-                plot(x, bayesianSameDiffModel(x,fit), 'k-', 'LineWidth',2);
+                plot(x, bayesianSameDiffModelTwoSigma(x,fit), 'k-', 'LineWidth',2);
 
                 xlabel('stimulus difference [dB]');
                 if lightIdx == 1 && refFreqIdx == 1
@@ -204,8 +205,8 @@ end
 function nll = negLogLikelihood(sigma, uniqueDbValues, probData, nTrials)
 
     % Predict probability of "different" at each unique dB level
-    P_diff = bayesianSameDiffModel(uniqueDbValues, sigma);
-   %  P_diff = bayesianSameDiffModelTwoSigma(uniqueDbValues, sigma);
+    % P_diff = bayesianSameDiffModel(uniqueDbValues, sigma);
+    P_diff = bayesianSameDiffModelTwoSigma(uniqueDbValues, sigma);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
     % Finding the count of different responses (aka the number of
