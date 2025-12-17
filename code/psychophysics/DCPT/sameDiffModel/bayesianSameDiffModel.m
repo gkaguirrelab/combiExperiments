@@ -1,4 +1,4 @@
-function pDifferent = bayesianSameDiffModel( stimDiffDb, sigma )
+function pDifferent = bayesianSameDiffModel( stimDiffDb, sigma, priorSame )
 % Probability of reporting "different" in a same different judgement
 %
 % Syntax:
@@ -31,8 +31,9 @@ function pDifferent = bayesianSameDiffModel( stimDiffDb, sigma )
 %}
 
 % Priors
-pSame = 0.5;
-pDiff = 0.5;
+pSame = priorSame;
+pDiff = 1 - priorSame;
+% pDiff = 0.5;
 
 % Possible theta values for different trials
 thetaRange = linspace(min(stimDiffDb), max(stimDiffDb), 100); % smoother than stimDiffDb

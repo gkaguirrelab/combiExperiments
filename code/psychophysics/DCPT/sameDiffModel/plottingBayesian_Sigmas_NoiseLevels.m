@@ -16,7 +16,7 @@ experimentName = 'DCPT_SDT';
 % Had to take out 'FLIC_0028' for controls bc haven't done the fitting with her
 % subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031',...
   %           'FLIC_1034','FLIC_1038', 'FLIC_1041'}; 
-subjectID = {'FLIC_1016'}; 
+subjectID = {'FLIC_1030'}; 
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -152,15 +152,26 @@ for subjIdx = 1:nSubj
                 % Plot the fit for this ref frequency
                 hold on;
 
-                sigmas = linspace(0, 1, 5);
+                % sigmas = linspace(0.01, 1, 5);
+                sigma = 0.5;
+                priorSames = [0.3 0.4 0.5 0.6 0.7 0.8];
                 x = -5:0.1:5;
 
-                grays = linspace(0.2, 0.9, numel(sigmas)); 
+                %  lightBlue = [0.7 0.8 1.0];
+                %  darkBlue  = [0.0 0.0 0.6];
 
-                for ii = 1:numel(sigmas)
-                    plot(x, bayesianSameDiffModel(x, sigmas(ii)), ...
+                lightGreen = [0.7 1.0 0.7];  
+                darkGreen  = [0.0 0.5 0.0];   
+
+                % Currently holding sigma fixed and varying prior prob of
+                % same
+                for ii = 1:numel(priorSames)
+                    t = (ii-1) / (numel(priorSames)-1);
+                    color = (1-t)*lightGreen + t*darkGreen; % setting the color
+
+                    plot(x, bayesianSameDiffModel(x, sigma, priorSames(ii)), ...
                         'LineWidth', 2, ...
-                        'Color', [grays(ii) grays(ii) grays(ii)]);
+                        'Color', color);
                 end
 
                 xlabel('stimulus difference [dB]');

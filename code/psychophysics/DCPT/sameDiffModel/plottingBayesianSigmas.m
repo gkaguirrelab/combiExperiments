@@ -88,9 +88,10 @@ hMean = errorbar(xPositions, meanValues, semValues, ...
     'LineWidth', 1.5);
 
 % Add title and axis labels
-title('Bayesian sigma parameter across reference frequencies', 'FontWeight', 'bold');
-xlabel('Reference frequency [Hz]', 'Position',[mean(xlim), 0.3, 0]);
-ylabel('Sigma parameter', 'Position',[-0.25, mean(ylim), 0]);
+title('CONTROLS: Bayesian sigma parameter across reference frequencies', 'FontWeight', 'bold');
+xlabel('Reference frequency [Hz]'); % 'Position',[mean(xlim), 0.3, 0]);
+ylabel('Sigma parameter'); % 'Position',[-0.25, mean(ylim), 0]);
 xticks(xPositions);
 xticklabels(refFreqHz);
+ylim([0 3]);
 hold(ax, 'off');
