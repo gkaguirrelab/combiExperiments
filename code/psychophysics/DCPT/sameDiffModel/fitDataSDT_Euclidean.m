@@ -5,8 +5,9 @@ projectName = 'combiLED';
 experimentName = 'DCPT_SDT';
 
 % Define subjects + parameters
-subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', 'FLIC_0018', 'FLIC_0020', ...
-    'FLIC_0021', 'FLIC_0022'};
+%subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', 'FLIC_0018', 'FLIC_0020', ...
+ %   'FLIC_0021', 'FLIC_0022'};
+subjectID = {'FLIC_0013'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % Options are {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}

@@ -1,18 +1,29 @@
-function pDifferent = modifiedSameDiffModel( stimDiffDb, p )
+function pDifferent = modifiedSameDiffModel( stimDiffDb, p, epsilon)
 % Probability of reporting "different" in a same different judgement
 %
 % Syntax:
 %   pDifferent = modifiedSameDiffModel( stimDiffDb, p )
 %
 % Description:
-%   Describe this here, including the special v state at 0 dB. Define the
-%   parameters in this description
+%   This function implements a descriptive same–different
+%   discrimination model. The model converts each physical stimulus
+%   difference Δ (in dB) into an internal decision variable, compares it
+%   against a flexible criterion, and returns the probability that the
+%   observer reports "different."
+%
+% Special case at Δ = 0 (the “v-state”):
+%   When the physical stimulus difference is exactly 0 dB, the model
+%   treats this as a special state in which prediction must reflect the
+%   listener's tendency to occasionally respond “different” even when
+%   the stimuli are physically identical. This behavior results from
+%   internal noise (sigma) and the baseline criterion.
 %
 % Inputs:
 %   stimDiffDb            - Vector of numeric values. The difference
 %                           between the stimuli in units of decibels.
 %   p                     - 1x4 vector of parameter values that controls
 %                           the output of the model.
+%   epsilon               - Scalar numeric value. The constant lapse rate.
 %
 % Optional key/value pairs:
 %   none
@@ -26,16 +37,17 @@ function pDifferent = modifiedSameDiffModel( stimDiffDb, p )
 %{
     % Define some params
     p = [1.4, 2.5, 0.5, 1];
-    stimDiffDb = -5:0.5:5;    
-    pDifferent = modifiedSameDiffModel(stimDiffDb, p );
+    stimDiffDb = -10:0.5:10;   
+    epsilon = 0.0001;
+    pDifferent = modifiedSameDiffModel(stimDiffDb, p, epsilon );
     plot(stimDiffDb, pDifferent,'*-r');
 %}
 
 % Unpack the parameters
 m = p(1);
-crit_baseline = p(2);
-sigma = p(3);
-x_limit = p(4);
+x_limit = p(2);
+crit_baseline = p(3);
+sigma = p(4);
 
 % First calculate the "c" value, which is the criterion that the observer
 % uses to determine if same or different given the internal measurement.
@@ -66,8 +78,11 @@ for ii = 1:numel(stimDiffDb)
     % Compute probability of "same"
     P_same = integral2(f, mR_min, mR_max, g, h);
 
-    % Probability of "different"
-    pDifferent(ii) = 1 - P_same;
+    % Probability of "different" (Lapse-Free)
+    P_diff_lapse_free = 1 - P_same;
+    % Apply lapse rate correction
+    % divide epsilon by 2 because equal chance same or different
+    pDifferent(ii) = (1 - epsilon) * P_diff_lapse_free + epsilon/2;
 end
 
 end
