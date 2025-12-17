@@ -2,24 +2,24 @@
 % framework and the model with the Bayesian framework (one sigma version)
 
 % Load SDT sigma data for controls
-SDTSigmaControl = ['/Users/rubybouh/Documents/MATLAB/projects/' ...
-    'combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlSDTSigmaData'];
+SDTSigmaControl = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlSDTSigmaData.mat', ...
+    'sigmaMatrix');
 % Load SDT sigma data for migrainers
-SDTSigmaMigraine = ['/Users/rubybouh/Documents/MATLAB/projects/' ...
-    'combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineSDTSigmaData'];
+SDTSigmaMigraine = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineSDTSigmaData.mat', ...
+    'sigmaMatrix');
 
 % Load Bayesian sigma data for controls
-bayesianSigmaControl = ['/Users/rubybouh/Documents/MATLAB/projects/' ...
-    'combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlBayesianSigmaData'];
+bayesianSigmaControl = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlBayesianSigmaData.mat', ...
+    'sigmaMatrix');
 % Load Bayesian sigma data for migrainers
-bayesianSigmaMigraine = ['/Users/rubybouh/Documents/MATLAB/projects/' ...
-    'combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineBayesianSigmaData'];
+bayesianSigmaMigraine = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineBayesianSigmaData', ...
+    'sigmaMatrix');
 
 % Collapsing matrices into vectors
-SDTSigmaControl = SDTSigmaControl(:);
-SDTSigmaMigraine = SDTSigmaMigraine(:);
-bayesianSigmaControl = bayesianSigmaControl(:);
-bayesianSigmaMigraine = bayesianSigmaMigraine(:); 
+SDTSigmaControl = SDTSigmaControl.sigmaMatrix(:);
+SDTSigmaMigraine = SDTSigmaMigraine.sigmaMatrix(:);
+bayesianSigmaControl = bayesianSigmaControl.sigmaMatrix(:);
+bayesianSigmaMigraine = bayesianSigmaMigraine.sigmaMatrix(:); 
 
 figure; hold on;
 
@@ -34,6 +34,8 @@ scatter(SDTSigmaMigraine, bayesianSigmaMigraine, 20, ...
 % Labeling axes
 xlabel('Old SDT \sigma');
 ylabel('New Bayesian \sigma');
+xlim([0 3]);
+ylim([0 3]);
 legend({'Controls', 'Migraines'}, 'Location', 'best');
 
 title('SDT vs Bayesian Sigma Across All Conditions');
