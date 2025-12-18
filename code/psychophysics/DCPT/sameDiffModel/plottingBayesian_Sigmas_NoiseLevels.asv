@@ -152,14 +152,14 @@ for subjIdx = 1:nSubj
                 % Plot the fit for this ref frequency
                 hold on;
 
-                sigmaZeros = [linspace(0.01, 1, 5), 2];
-                sigmas = arrayfun(@(v) [0.5, v], sigmaZeros, 'UniformOutput', false);
+                x = [linspace(0.01, 1, 5), 2];
+                sigmas = arrayfun(@(v) [0.5, v], x, 'UniformOutput', false);
                % sigma = 2;
-                priorSames = [0.3 0.4 0.5 0.6 0.7 0.8];
+               % priorSames = [0.3 0.4 0.5 0.6 0.7 0.8];
                 x = -5:0.1:5;
 
-              % lightBlue = [0.7 0.8 1.0];
-              % darkBlue  = [0.0 0.0 0.6];
+              %  lightBlue = [0.7 0.8 1.0];
+               % darkBlue  = [0.0 0.0 0.6];
 
                lightGreen = [0.7 1.0 0.7];
                darkGreen  = [0.0 0.5 0.0];
@@ -170,7 +170,7 @@ for subjIdx = 1:nSubj
                     t = (ii-1) / (numel(priorSames)-1);
                     color = (1-t)*lightGreen + t*darkGreen; % setting the color
 
-                    plot(x, bayesianSameDiffModelTwoSigma(x, [0.5 0.3], priorSames(ii)), ...
+                    plot(x, bayesianSameDiffModelTwoSigma(x, sigma), ...
                         'LineWidth', 2, ...
                         'Color', color);
                 end
