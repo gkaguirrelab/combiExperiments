@@ -2,24 +2,31 @@
 % framework and the model with the Bayesian framework (one sigma version)
 
 % Load SDT sigma data for controls
-SDTSigmaControl = load('/Users/melanopsin/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlSDTSigmaData.mat', ...
+SDTSigmaControl = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/sigma data for different models/12ControlSDTSigmaData.mat', ...
     'sigmaMatrix');
 % Load SDT sigma data for migrainers
-SDTSigmaMigraine = load('/Users/melanopsin/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineSDTSigmaData.mat', ...
+SDTSigmaMigraine = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/sigma data for different models/11MigraineSDTSigmaData.mat', ...
     'sigmaMatrix');
 
 % Load Bayesian sigma data for controls
-bayesianSigmaControl = load('/Users/melanopsin/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/12ControlBayesianSigmaData.mat', ...
-    'sigmaMatrix');
+% bayesianSigmaControl = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/sigma data for different models/12ControlBayesianSigmaData.mat', ...
+%    'sigmaMatrix');
 % Load Bayesian sigma data for migrainers
-bayesianSigmaMigraine = load('/Users/melanopsin/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/modelSigmaCompare Data/11MigraineBayesianSigmaData', ...
-    'sigmaMatrix');
+%bayesianSigmaMigraine = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/sigma data for different models/11MigraineBayesianSigmaData', ...
+%    'sigmaMatrix');
+
+% Load Bayesian TWO sigma data for controls
+bayesianSigmaControl = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/sigma data for different models/12ControlBayesianTwoSigmaData.mat', ...
+    'sigmaMatrix2');
+% Load Bayesian TWO sigma data for migrainers
+bayesianSigmaMigraine = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/sigma data for different models/11MigraineBayesianTwoSigmaData.mat', ...
+    'sigmaMatrix2');
 
 % Collapsing matrices into vectors
 SDTSigmaControl = SDTSigmaControl.sigmaMatrix(:);
 SDTSigmaMigraine = SDTSigmaMigraine.sigmaMatrix(:);
-bayesianSigmaControl = bayesianSigmaControl.sigmaMatrix(:);
-bayesianSigmaMigraine = bayesianSigmaMigraine.sigmaMatrix(:); 
+bayesianSigmaControl = bayesianSigmaControl.sigmaMatrix2(:); % currently the TWO sigma version
+bayesianSigmaMigraine = bayesianSigmaMigraine.sigmaMatrix2(:); 
 
 figure; hold on;
 
@@ -38,12 +45,12 @@ h.LineWidth = 1.5;
 
 % Labeling axes
 xlabel('Old SDT \sigma');
-ylabel('New Bayesian \sigma');
+ylabel('New Bayesian \sigma zero for two sigma model');
 xlim([0 3.05]);
 ylim([0 3.05]);
 legend({'Controls', 'Migraines'}, 'Location', 'best');
 
-title('SDT vs Bayesian Sigma Across All Conditions');
+title('SDT vs Bayesian Sigma Zero Across All Conditions');
 
 
 
