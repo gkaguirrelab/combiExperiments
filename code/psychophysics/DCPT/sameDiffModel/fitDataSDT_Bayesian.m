@@ -165,16 +165,16 @@ for subjIdx = 1:nSubj
                 options.MaxFunEvals = 500;
                 lb  = [0.001, 0.001];
                 ub  = [3, 3];
-               % fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
-                %    sigma, lb, ub, lb, ub, [], options);
+                fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
+                    sigma, lb, ub, lb, ub, [], options);
 
                 % Add the crit_baseline and sigma values to the matrix
-               % sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(1);
-                % sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(2);
+                sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(1);
+                sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(2);
                 %   sigmaMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit;
                 %  critBaselineMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(3);
-                fit(1) = sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx);
-                fit(2) = sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx);
+                % fit(1) = sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx);
+                % fit(2) = sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx);
 
                 % Plot the fit for this ref frequency
                 hold on;

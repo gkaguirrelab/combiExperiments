@@ -35,10 +35,10 @@ sigma = sigmaParams(1);
 sigmaZero = sigmaParams(2);
 
 % Priors
-% pSame = 0.5;
-% pDiff = 0.5;
-pSame = priorSame; 
-pDiff = 1 - priorSame; 
+pSame = 0.5;
+pDiff = 0.5;
+% pSame = priorSame; 
+% pDiff = 1 - priorSame; 
 
 % Possible theta values for different trials
 thetaRange = linspace(min(stimDiffDb), max(stimDiffDb), 100); % smoother than stimDiffDb
@@ -52,7 +52,7 @@ dm = mGrid(2) - mGrid(1);
 P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigmaZero); % std dev is sqrt(2)*sigmaZero
 
 % Likelihood for different trials (D = 1) as integral of Gaussians (box shape)
-P_m_given_D1 = mean(normpdf(mGrid, thetaRange, sqrt(2)*sigma), 2);
+P_m_given_D1 = mean(normpdf(mGrid, thetaRange, sqrt(sigma^2 + sigmaZero^2)), 2);
 
 % Precompute posterior P(D = 1 | m) (same for all stimDiffDb)
 % Provides the decision rule
@@ -71,7 +71,7 @@ for i = 1:length(stimDiffDb)
 
     % likelihood of measurement given this stimulus difference
     % sigma represents sensory encoding noise here
-    P_m_given_delta = normpdf(mGrid, delta, sqrt(2)*sigma);
+    P_m_given_delta = normpdf(mGrid, delta, sqrt(sigma^2 + sigmaZero^2));
 
     % Normalize
     P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm);
