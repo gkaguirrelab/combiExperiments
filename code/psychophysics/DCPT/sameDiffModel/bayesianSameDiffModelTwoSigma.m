@@ -68,7 +68,9 @@ for i = 1:length(stimDiffDb)
     delta = stimDiffDb(i);
 
     % likelihood of measurement given this stimulus difference
-    % sigma represents sensory encoding noise here
+    % Why are we integrating under this distribution only?
+    % I thought it was because we were only considering different
+    % trials in this but idk if that is the case
     P_m_given_delta = normpdf(mGrid, delta, sqrt(sigma^2 + sigmaZero^2));
 
     % Normalize
