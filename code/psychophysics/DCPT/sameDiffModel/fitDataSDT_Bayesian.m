@@ -10,9 +10,10 @@ experimentName = 'DCPT_SDT';
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 
 % 'FLIC_0028','FLIC_0039', 'FLIC_0042'};
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-%         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
-subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-    'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
+%         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};  
+subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
+'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', ...
+'FLIC_0028','FLIC_0039', 'FLIC_0042'}; 
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -30,8 +31,8 @@ nSubj = length(subjectID);
 % Initialize matrices of params
 % nSubj x 2 x 2 x 5, subj x nContrasts x nLightLevels x nFreqs
 % sigmaMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
-%sigmaMatrix1 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
-%sigmaMatrix2 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+sigmaMatrix1 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+sigmaMatrix2 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 % critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 
 for subjIdx = 1:nSubj
@@ -173,8 +174,6 @@ for subjIdx = 1:nSubj
                 sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(2);
                 %   sigmaMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit;
                 %  critBaselineMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(3);
-                % fit(1) = sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx);
-                % fit(2) = sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx);
 
                 % Plot the fit for this ref frequency
                 hold on;
@@ -207,7 +206,8 @@ function nll = negLogLikelihood(sigma, uniqueDbValues, probData, nTrials)
 
     % Predict probability of "different" at each unique dB level
     % P_diff = bayesianSameDiffModel(uniqueDbValues, sigma);
-    P_diff = bayesianSameDiffModelTwoSigma(uniqueDbValues, sigma);
+    priorSame = 0.5;
+    P_diff = bayesianSameDiffModelTwoSigma(uniqueDbValues, sigma, priorSame);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
     % Finding the count of different responses (aka the number of

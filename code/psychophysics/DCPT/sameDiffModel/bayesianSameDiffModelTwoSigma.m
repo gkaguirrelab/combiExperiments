@@ -35,10 +35,8 @@ sigma = sigmaParams(1);
 sigmaZero = sigmaParams(2);
 
 % Priors
-pSame = 0.5;
-pDiff = 0.5;
-% pSame = priorSame; 
-% pDiff = 1 - priorSame; 
+pSame = priorSame;
+pDiff = 1 - priorSame;
 
 % Possible theta values for different trials
 thetaRange = linspace(min(stimDiffDb), max(stimDiffDb), 100); % smoother than stimDiffDb
