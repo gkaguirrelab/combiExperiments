@@ -1,6 +1,7 @@
-% Going to use FLIC_0018 Session 2 as our EOG calibration example
+% Going to use FLIC_0018 Session 1 as our EOG calibration example
 
-EOGCal = load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_0018/EOGCalibration/EOGSession2Cal.mat', ...
+% It does not matter which EOG file is used here
+EOGCal = load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_0018/EOGCalibration/EOGSession1Cal.mat', ...
     'sessionData');
 
 % Parameters & timing
