@@ -1,10 +1,12 @@
 function generateModResultsForPUFF(subjectID,observerAgeInYears,varargin)
-% We pre-generate the modResult files that define the L–M and LightFlux
-% modulations for each subject for the dichoptic rig exoeriments
+% Generate modResult files for the light-puff rig. We wish to have a common
+% background for LF, Mel, LMS, and S-directed modulations. The
+% backgroundPrimaryHeadroomUb is set so that all modulations (including LF)
+% will be able to achieve at least 40% contrast on targeted photoreceptors.
 %
 % Examples:
 %{
-    subjectID = 'HERO_gka';
+    subjectID = 'TEST_001';
     observerAgeInYears = 55;
     experimentName = 'lightLevel';
     generateModResultsForPUFF(subjectID,observerAgeInYears,'experimentName',experimentName);
@@ -17,10 +19,16 @@ p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','puffLight',@ischar);
 p.addParameter('experimentName','modulate',@ischar);
 p.addParameter('primaryHeadRoom',0,@isnumeric);
+p.addParameter('backgroundPrimaryHeadroomUb',0.2875,@isnumeric);
+p.addParameter('backgroundPrimaryX0',...
+    [0.2000    0.2838    0.2000    0.5000    0.2000    0.5003    0.5373    0.4971]',@isnumeric);
+
 p.parse(varargin{:})
 
 %  Pull out of the p.Results structure
 primaryHeadRoom = p.Results.primaryHeadRoom;
+backgroundPrimaryHeadroomUb = p.Results.backgroundPrimaryHeadroomUb;
+backgroundPrimaryX0 = p.Results.backgroundPrimaryX0;
 
 % The diameter of the stimulus field in degrees
 fieldSizeDeg = 180;
@@ -30,7 +38,7 @@ calSubDir = 'PUFF';
 calFileName = 'CombiLED-B_split3mm_lightPuff_ND0.mat';
 
 % The directions for which we will create modulations
-modulationDirections = {'Mel','LMS','S_peripheral','LightFlux'};
+modulationDirections = {'Mel','LMS','S_peripheral','LightFlux','LightFlux_neutralBG'};
 
 % Load the cal file
 cal = loadCalByName(calFileName, calSubDir);
@@ -58,9 +66,11 @@ for dd = 1:length(modulationDirections)
     switch whichDirection
         case 'Mel'
             modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
+                'backgroundPrimary',backgroundPrimaryX0,...
+                'backgroundPrimaryHeadroomUb',backgroundPrimaryHeadroomUb,...
                 'primaryHeadRoom',primaryHeadRoom,'searchBackground',true);
-        case 'LightFlux'
-            modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...
+        case 'LightFlux_neutralBG'
+            modResults{dd} = designModulation('LightFlux',photoreceptors,cal,...
                 'primaryHeadRoom',0,'searchBackground',false);
         otherwise
             modResults{dd} = designModulation(whichDirection,photoreceptors,cal,...

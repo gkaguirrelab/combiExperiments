@@ -1,8 +1,17 @@
 function runPuffLightModulate(subjectID,varargin)
-% Psychometric measurement of discrmination threshold for simultaneous air
-% puffs of varying intensity. It takes about 14 seconds per trial. With 3
-% waveforms to test, and 10 trials per object, a single block takes 7
-% minutes. Four blocks can be completed in half an hour.
+% An experiment in which the right eye of the participant is recorded while
+% they view a stimulus that provides a sinusoidal modulation of
+% photoreceptor contrast. During the measurement the participant performs a
+% cover task in which they respond to a brief dimming of the stimulus
+% field.
+%
+% The session begins with a 5 minute period of adaptation to the
+% background. This is followed by 24 stimulation periods, each 60
+% seconds in duration. There are 24 different stimulus conditions,
+% consisting of a LightFLux, Mel, LMS, and S-directed modulation, crossed
+% with 0.1, 0.2, and 0.4 photoreceptor contrast levels, crossed with
+% forward and reversed phases. These are presented in a random order. There
+% is a break after 15 minutes.
 %
 % Examples:
 %{
@@ -15,7 +24,8 @@ p = inputParser; p.KeepUnmatched = false;
 p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@ischar);
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
-p.addParameter('directions',{'Mel','LMS','S_peripheral'},@iscell);
+p.addParameter('directions',{'Mel','LMS','S_peripheral','LightFlux'},@iscell);
+p.addParameter('photoreceptorContrasts',[0.1,0.2,0.4],@isnumeric);
 p.addParameter('phases',[0,pi],@isnumeric);
 p.addParameter('nTrialsPerObj',1,@isnumeric);
 p.addParameter('nBlocks',4,@isnumeric);
@@ -30,6 +40,7 @@ p.parse(varargin{:})
 nTrialsPerObj = p.Results.nTrialsPerObj;
 nBlocks = p.Results.nBlocks;
 directions = p.Results.directions;
+contrasts = p.Results.photoreceptorContrasts;
 phases = p.Results.phases;
 adaptDurationMins = p.Results.adaptDurationMins;
 simulateModeFlag = p.Results.simulateModeFlag;
@@ -39,6 +50,7 @@ verbosePsychObj = p.Results.verbosePsychObj;
 
 % The number of modulation directions and phases we will study
 nDirections = length(directions);
+nContrasts = length(contrasts);
 nPhases = length(phases);
 
 % Set our experimentName
@@ -96,44 +108,57 @@ for dd = 1:nDirections
     % Get this direction
     whichDirection = directions{dd};
 
-    % Loop over the phases
-    for pp = 1:nPhases
+    % Loop over photoreceptor contrast levels
+    for cc = 1:nContrasts
 
-        % Define the filestem for this psychometric object
-        psychFileStem = sprintf( [subjectID '_' experimentName ...
-            'direction-' whichDirection '_phase-%2.2f'], phases(pp) );
+        % Get this photoreceptor contrast
+        thisPhotoContrast = contrasts(cc);
 
-        % Create or load the psychometric object
-        filename = fullfile(dataDir,[psychFileStem '.mat']);
-        if isfile(filename)
-            % Load the object
-            load(filename,'psychObj');
-            % Put in fresh control objects
-            psychObj.irCameraObj = irCameraObj;
-            psychObj.LightObj = LightObj;
-        else
-            % Load this modResult
-            modResultFile = fullfile(dataDir,['modResult_' whichDirection '.mat']);
-            load(modResultFile,'modResult');
-            % Create the object
-            psychObj = PsychPuffLightModulate(irCameraObj,LightObj,modResult,...
-                'trialLabel',psychFileStem,...
-                'lightModPhase',phases(pp),...
-                'simulateStimuli',simulateModeFlag,'simulateResponse',simulateModeFlag,...
-                'verbose',verbosePsychObj);
-            % Store the filename
-            psychObj.filename = filename;
-        end
+        % Loop over the phases
+        for pp = 1:nPhases
 
-        % Store in the psychObjArray
-        psychObjArray{end+1} = psychObj;
+            % Define the filestem for this psychometric object
+            psychFileStem = sprintf( [subjectID '_' experimentName ...
+                'direction-' whichDirection '_contrast-%2.2f_phase-%2.2f'], thisPhotoContrast, phases(pp) );
 
-        % Clear the psychObj
-        clear psychObj
+            % Create or load the psychometric object
+            filename = fullfile(dataDir,[psychFileStem '.mat']);
+            if isfile(filename)
+                % Load the object
+                load(filename,'psychObj');
+                % Put in fresh control objects
+                psychObj.irCameraObj = irCameraObj;
+                psychObj.LightObj = LightObj;
+            else
+                % Load this modResult
+                modResultFile = fullfile(dataDir,['modResult_' whichDirection '.mat']);
+                load(modResultFile,'modResult');
+                % Calculate the modulation contrast needed to produce the
+                % desired photoreceptor contrast
+                maxPhotoContrast = mean(abs(modResult.contrastReceptorsBipolar(modResult.meta.whichReceptorsToTarget)));
+                modContrast = thisPhotoContrast / maxPhotoContrast;
+                % Create the object
+                psychObj = PsychPuffLightModulate(irCameraObj,LightObj,modResult,...
+                    'trialLabel',psychFileStem,...
+                    'lightModContrast',modContrast,...
+                    'lightModPhase',phases(pp),...
+                    'simulateStimuli',simulateModeFlag,'simulateResponse',simulateModeFlag,...
+                    'verbose',verbosePsychObj);
+                % Store the filename
+                psychObj.filename = filename;
+            end
 
-    end
+            % Store in the psychObjArray
+            psychObjArray{end+1} = psychObj;
 
-end
+            % Clear the psychObj
+            clear psychObj
+
+        end % phases
+
+    end % contrasts
+
+end % directions
 
 % How many psychObjs do we have
 nPsychObjs = length(psychObjArray);
