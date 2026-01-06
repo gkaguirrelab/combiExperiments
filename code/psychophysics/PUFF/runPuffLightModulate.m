@@ -15,8 +15,8 @@ function runPuffLightModulate(subjectID,varargin)
 %
 % Examples:
 %{
-    subjectID = 'HERO_gka';
-    runPuffLightModulate(subjectID,'simulateModeFlag',false);
+    subjectID = 'TEST_001';
+    runPuffLightModulate(subjectID,'simulateModeFlag',true);
 %}
 
 % Parse the parameters
@@ -28,9 +28,9 @@ p.addParameter('directions',{'Mel','LMS','S_peripheral','LightFlux'},@iscell);
 p.addParameter('photoreceptorContrasts',[0.1,0.2,0.4],@isnumeric);
 p.addParameter('phases',[0,pi],@isnumeric);
 p.addParameter('nTrialsPerObj',1,@isnumeric);
-p.addParameter('nBlocks',4,@isnumeric);
+p.addParameter('nBlocks',1,@isnumeric);
 p.addParameter('adaptDurationMins',5,@isnumeric);
-p.addParameter('simulateModeFlag',true,@islogical);
+p.addParameter('simulateModeFlag',false,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
 p.addParameter('verboseCameraObj',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
