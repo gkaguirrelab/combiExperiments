@@ -8,7 +8,7 @@ function generateModResultsForPUFF(subjectID,observerAgeInYears,varargin)
 %{
     subjectID = 'TEST_001';
     observerAgeInYears = 55;
-    experimentName = 'lightLevel';
+    experimentName = 'modulate';
     generateModResultsForPUFF(subjectID,observerAgeInYears,'experimentName',experimentName);
 %}
 
@@ -22,6 +22,7 @@ p.addParameter('primaryHeadRoom',0,@isnumeric);
 p.addParameter('backgroundPrimaryHeadroomUb',0.2875,@isnumeric);
 p.addParameter('backgroundPrimaryX0',...
     [0.2000    0.2838    0.2000    0.5000    0.2000    0.5003    0.5373    0.4971]',@isnumeric);
+p.addParameter('minPhotoreceptorContrast',0.4,@isnumeric);
 
 p.parse(varargin{:})
 
@@ -78,6 +79,11 @@ for dd = 1:length(modulationDirections)
     end
     figHandle = plotModResult(modResults{dd});
     drawnow
+
+    % Check that the contrast on the targeted photoreceptors is at least
+    % the required minimum
+    achievedContrast = mean(abs(modResults{dd}.contrastReceptorsBipolar(modResults{dd}.meta.whichReceptorsToTarget)));
+    assert(achievedContrast >= p.Results.minPhotoreceptorContrast);
 
     % Define the data directory
     dataDir = fullfile(...

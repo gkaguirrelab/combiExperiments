@@ -30,7 +30,7 @@ p.addParameter('phases',[0,pi],@isnumeric);
 p.addParameter('nTrialsPerObj',1,@isnumeric);
 p.addParameter('nBlocks',4,@isnumeric);
 p.addParameter('adaptDurationMins',5,@isnumeric);
-p.addParameter('simulateModeFlag',false,@islogical);
+p.addParameter('simulateModeFlag',true,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
 p.addParameter('verboseCameraObj',false,@islogical);
 p.addParameter('verbosePsychObj',true,@islogical);
