@@ -9,7 +9,7 @@ sessionData = EOGCal.sessionData;
 
 % Parameters & timing
 fs = sessionData.Fs; % sampling rate is 48000 Hz
-fc = 2.5;                  % Filter cut-off frequency (Hz)
+fc = 0.05;                  % Filter cut-off frequency (Hz)
 timebase = sessionData.EOGData.timebase;
 Neog = length(timebase);
 preSilence = 2.0;    % seconds before first spoken command
