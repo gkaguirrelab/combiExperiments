@@ -5,13 +5,14 @@ function runPuffLightModulate(subjectID,varargin)
 % cover task in which they respond to a brief dimming of the stimulus
 % field.
 %
-% The session begins with a 5 minute period of adaptation to the
-% background. This is followed by 24 stimulation periods, each 60
-% seconds in duration. There are 24 different stimulus conditions,
+% The session begins with a 2 minute period of adaptation to the
+% background. This is followed by 24 stimulation periods, each 45
+% seconds in duration (plus 5 seconds of an inter-trial-interval for camera
+% recording clean up). There are 24 different stimulus conditions,
 % consisting of a LightFLux, Mel, LMS, and S-directed modulation, crossed
 % with 0.1, 0.2, and 0.4 photoreceptor contrast levels, crossed with
-% forward and reversed phases. These are presented in a random order. There
-% is a break after 15 minutes.
+% forward and reversed phases. Presentation order of these 24 trials is
+% randomized. Total data collection is about 22 minutes. 
 %
 % Examples:
 %{
@@ -29,7 +30,7 @@ p.addParameter('photoreceptorContrasts',[0.1,0.2,0.4],@isnumeric);
 p.addParameter('phases',[0,pi],@isnumeric);
 p.addParameter('nTrialsPerObj',1,@isnumeric);
 p.addParameter('nBlocks',1,@isnumeric);
-p.addParameter('adaptDurationMins',5,@isnumeric);
+p.addParameter('adaptDurationMins',2,@isnumeric);
 p.addParameter('simulateModeFlag',false,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
 p.addParameter('verboseCameraObj',false,@islogical);
@@ -88,10 +89,6 @@ else
     irCameraObj = [];
     LightObj = [];
 end
-
-% Provide instructions
-fprintf('**********************************\n');
-fprintf('**********************************\n\n');
 
 % Create a directory for the subject
 if ~isfolder(dataDir)
@@ -177,9 +174,22 @@ if ~simulateModeFlag
     psychObj.irCameraObj = irCameraObj;
 end
 
+% Provide instructions
+fprintf('**********************************\n');
+fprintf('After a 2 minutes of adaptation to the light field, you will\n');
+fprintf('perform 24 tests, each 45 seconds in duration. During the test\n');
+fprintf('your job is to monitor for a sudden, brief dimming of the light.\n');
+fprintf('If you see this dimming, press the button on the game pad.\n');
+fprintf('You may be aware of the light slowly changing in other ways, such\n');
+fprintf('as overall brightness or color. Do your best to ignore these\n');
+fprintf('changes. Instead, keep your eyes open and watch closely for the\n');
+fprintf('brief dimming events.\n');
+fprintf('**********************************\n\n');
+
+
 % Wait for the subject to start adaptation
 Speak('adapt');
-fprintf('Press enter to start adaptation...');
+fprintf('Press enter to start adaptation for %d minutes...',adaptDurationMins);
 input('');
 
 % Start the light ramp
@@ -202,7 +212,7 @@ for bb=1:nBlocks
 
     % Start the block
     Speak('Ready');
-    fprintf('Press enter to start block %d...',bb);
+    fprintf('Press enter to start %d trials...',length(objIdxList));
     input('');
 
     % Define a random ordering of the psychObjs
@@ -224,7 +234,7 @@ for bb=1:nBlocks
             psychObjArray{objIdxList(tt)}.LightObj = LightObj;
         end
 
-        Speak(sprintf('%d',tt));
+        Speak(sprintf('trial %d of %d',tt,length(objIdxList)));
 
         % Present the next trial
         psychObjArray{objIdxList(tt)}.presentTrial;

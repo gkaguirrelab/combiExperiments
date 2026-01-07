@@ -16,13 +16,17 @@ classdef PsychPuffLightModulate < handle
         modResult
         simulateStimuli
         simulateResponse
-        lightModContrast = 1
-        lightModFreqHz = 1/60;
-        lightModDurSecs = 60;
-        lightModPhase = 0;
+        lightModContrast
+        lightModFreqHz
+        lightModDurSecs
+        lightModPhase
+        blinkEventIntervalSecs = 5;
+        blinkEventProbability = 0.333;
+        blinkResponseIntervalSecs = 1.5;
         trialLabel
         trialData
         adaptData
+        useKeyboardFlag
     end
 
     % These may be modified after object creation
@@ -61,6 +65,7 @@ classdef PsychPuffLightModulate < handle
             p.addParameter('lightModFreqHz',1/60,@isnumeric);
             p.addParameter('lightModDurSecs',60,@isnumeric);
             p.addParameter('lightModPhase',0,@isnumeric);
+            p.addParameter('useKeyboardFlag',false,@islogical);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -90,6 +95,7 @@ classdef PsychPuffLightModulate < handle
         recordAdaptPeriod(obj,recordLabel,recordDurSecs)
         presentTrial(obj)
         [intervalChoice, responseTimeSecs] = getResponse(obj);
+        [detected, responseTimeSecs] = blinkEvent(obj)
         waitUntil(obj,stopTimeSeconds)
     end
 end
