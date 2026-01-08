@@ -41,8 +41,14 @@ reactionTime = 0.5; % reaction time in seconds
 % Generate the model
 [x, y] = generateEOGModel(timebase, onsets, cmdValues, reactionTime, fc);
 
-% Use linear regression to find the scale factor beta
-beta = (y' * y) \ (y' * EOGSignal);
+% Force column vectors
+y = y(:);
+EOGSignal = EOGSignal(:);
+
+% Least-squares estimate of scale factor
+beta = y \ EOGSignal;
+
+% Scaled model
 y_scaled = beta * y;
 
 % Visualization of model
@@ -56,13 +62,13 @@ legend('Input Square Wave', 'Filtered Output');
 xlim([0 25]);
 ylim([-1.5 1.5]);
 
-% Visualization of scaled signal
+% Visualization of scaled model that fits the data
 figure(2);
-plot(timebase, EOGSignal, 'b', 'LineWidth', 1.5); hold on;
-plot(timebase, y_scaled, 'r--', 'LineWidth', 1.5);
+plot(timebase, EOGSignal, 'b--', 'LineWidth', 1.5); hold on;
+plot(timebase, y_scaled, 'r', 'LineWidth', 1.5);
 xlabel('Time (s)');
 ylabel('Amplitude');
-title('EOG Signal vs Scaled Model Output');
+title('EOG Signal vs Scaled Model');
 legend('EOG Data', 'Scaled Model');
 xlim([0 25]);
 

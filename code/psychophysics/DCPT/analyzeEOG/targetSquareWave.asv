@@ -24,10 +24,10 @@ d = diff([0; speech; 0]);
 onsets = find(d == 1) / fs;
 
 %%
-
-% Select EOG file
+% Select EOG file and extract the data
 load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_0018/EOGCalibration/EOGSession1Cal.mat', ...
     'sessionData');
+EOGSignal = sessionData.EOGData.response(1,:); 
 
 % Parameters & timing
 fs = sessionData.Fs; % sampling rate is 48000 Hz
@@ -36,32 +36,23 @@ timebase = sessionData.EOGData.timebase;
 Neog = length(timebase);
 cmdValues  = repmat([0 -1 0 1], 1, 3);  % 12 commands (center, left, center, right repeated 3x)
 nCmd = length(cmdValues);  
+reactionTime = 0.5; % reaction time in seconds
 
-% Initialize target square wave vector
-x = zeros(Neog,1);  
-reactionTime = 0.2; % reaction time in seconds
+% Generate the model
+[x, y] = generateEOGModel(timebase, onsets, cmdValues, reactionTime, fc);
 
-% Fill in commands using time comparisons
-for k = 1:nCmd
-    if k < nCmd
-        idx = timebase >= onsets(k) & timebase < onsets(k+1);
-    else
-        idx = timebase >= onsets(k);  % last command holds till end
-    end
-    x(idx) = cmdValues(k);
-end
+% Force column vectors
+y = y(:);
+EOGSignal = EOGSignal(:);
 
-% Define the High-Pass Filter Transfer Function
-% H(s) = s / (s + omega_c) where omega_c = 2 * pi * fc
-s = tf('s');
-omega_c = 2 * pi * fc;
-H = s / (s + omega_c);
+% Least-squares estimate of scale factor
+beta = y \ EOGSignal;
 
-% Simulate the System Response
-y = lsim(H, x, timebase);
+% Scaled model
+y_scaled = beta * y;
 
-% Visualization
-figure;
+% Visualization of model
+figure(1);
 plot(timebase, x, 'k--', 'LineWidth', 1.5); hold on;
 plot(timebase, y, 'r', 'LineWidth', 1.5);
 xlabel('Time (s)');
@@ -71,3 +62,37 @@ legend('Input Square Wave', 'Filtered Output');
 xlim([0 25]);
 ylim([-1.5 1.5]);
 
+% Visualization of scaled signal
+figure(2);
+plot(timebase, EOGSignal, 'b', 'LineWidth', 1.5); hold on;
+plot(timebase, y_scaled, 'r--', 'LineWidth', 1.5);
+xlabel('Time (s)');
+ylabel('Amplitude');
+title('EOG Signal vs Scaled Model Output');
+legend('EOG Data', 'Scaled Model');
+xlim([0 25]);
+
+
+%%
+function [x, y] = generateEOGModel(timebase, onsets, cmdValues, reactionTime, fc)
+    % Initialize target square wave vector
+    Neog = length(timebase);
+    nCmd = length(cmdValues);
+    x = zeros(Neog,1);
+    for k = 1:nCmd
+        if k < nCmd
+            idx = timebase >= (onsets(k) + reactionTime) & timebase < (onsets(k+1) + reactionTime);
+        else
+            idx = timebase >= (onsets(k) + reactionTime);
+        end
+        x(idx) = cmdValues(k);
+    end
+    
+    % High-pass filter
+    s = tf('s');
+    omega_c = 2 * pi * fc;
+    H = s / (s + omega_c);
+    
+    % Simulate system response
+    y = lsim(H, x, timebase);
+end
