@@ -6,13 +6,13 @@ function runPuffLightModulate(subjectID,varargin)
 % field.
 %
 % The session begins with a 2 minute period of adaptation to the
-% background. This is followed by 24 stimulation periods, each 45
-% seconds in duration (plus 5 seconds of an inter-trial-interval for camera
-% recording clean up). There are 24 different stimulus conditions,
+% background. This is followed by 24 stimulation periods, each 60 seconds
+% in duration (plus 5 seconds of an inter-trial-interval for camera
+% recording clean up). There are 16 different stimulus conditions,
 % consisting of a LightFLux, Mel, LMS, and S-directed modulation, crossed
-% with 0.1, 0.2, and 0.4 photoreceptor contrast levels, crossed with
-% forward and reversed phases. Presentation order of these 24 trials is
-% randomized. Total data collection is about 22 minutes. 
+% with 0.2 and 0.4 photoreceptor contrast levels, crossed with forward and
+% reversed phases. Presentation order of these 16 trials is randomized.
+% Total data collection is about 18 minutes.
 %
 % Examples:
 %{
@@ -26,7 +26,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
 p.addParameter('directions',{'Mel','LMS','S_peripheral','LightFlux'},@iscell);
-p.addParameter('photoreceptorContrasts',[0.1,0.2,0.4],@isnumeric);
+p.addParameter('photoreceptorContrasts',[0.2,0.4],@isnumeric);
 p.addParameter('phases',[0,pi],@isnumeric);
 p.addParameter('nTrialsPerObj',1,@isnumeric);
 p.addParameter('nBlocks',1,@isnumeric);
@@ -115,7 +115,7 @@ for dd = 1:nDirections
 
             % Define the filestem for this psychometric object
             psychFileStem = sprintf( [subjectID '_' experimentName ...
-                'direction-' whichDirection '_contrast-%2.2f_phase-%2.2f'], thisPhotoContrast, phases(pp) );
+                '_direction-' whichDirection '_contrast-%2.2f_phase-%2.2f'], thisPhotoContrast, phases(pp) );
 
             % Create or load the psychometric object
             filename = fullfile(dataDir,[psychFileStem '.mat']);
@@ -169,7 +169,7 @@ psychObj.initializeDisplay;
 
 % refresh the irObj
 if ~simulateModeFlag
-    irCameraObj = PuffCameraControl(videoDataPath,'verbose',verboseCameraObj);
+    irCameraObj = PuffCameraControl(experimentName,subjectID,'verbose',verboseCameraObj);
     psychObj.irCameraObj = irCameraObj;
 end
 
@@ -192,18 +192,18 @@ fprintf('Press enter to start adaptation for %d minutes...',adaptDurationMins);
 input('');
 
 % Start the light ramp
-% if ~simulateModeFlag
-% 
-%     % Count down the minutes and record a video during each minute
-%     for mm = 1:adaptDurationMins
-%         % Define the label to be used for the adaptation video recording
-%         recordLabel = sprintf( [subjectID '_' experimentName ...
-%             '_direction-' whichDirection '_adapt-%d' ],mm);
-%         Speak(sprintf('%d',adaptDurationMins-(mm-1)));
-%         psychObj.recordAdaptPeriod(recordLabel,55);
-%         pause(5);
-%     end
-% end
+if ~simulateModeFlag
+
+    % Count down the minutes and record a video during each minute
+    for mm = 1:adaptDurationMins
+        % Define the label to be used for the adaptation video recording
+        recordLabel = sprintf( [subjectID '_' experimentName ...
+            '_direction-' whichDirection '_adapt-%d' ],mm);
+        Speak(sprintf('%d',adaptDurationMins-(mm-1)));
+        psychObj.recordAdaptPeriod(recordLabel,55);
+        pause(5);
+    end
+end
 
 
 %% Loop over blocks
@@ -214,14 +214,9 @@ for bb=1:nBlocks
     [~,tmp]=sort(rand(1,length(objIdxList)));
     objIdxList = objIdxList(tmp);
 
-    % Start the block
-    Speak('Ready');
-    fprintf('Press enter to start %d trials...',length(objIdxList));
-    input('');
-
     % Get an updated irCameraObj
     if ~simulateModeFlag
-        irCameraObj = PuffCameraControl(videoDataPath,'verbose',verboseCameraObj);
+        irCameraObj = PuffCameraControl(experimentName,subjectID,'verbose',verboseCameraObj);
     end
 
     % Loop over trials in this run
@@ -233,7 +228,10 @@ for bb=1:nBlocks
             psychObjArray{objIdxList(tt)}.LightObj = LightObj;
         end
 
+        % Alert the subject
         Speak(sprintf('trial %d of %d',tt,length(objIdxList)));
+        fprintf('Press enter to start...');
+        input('');
 
         % Present the next trial
         psychObjArray{objIdxList(tt)}.presentTrial;

@@ -78,19 +78,19 @@ if ~simulateStimuli
     % Store the start time
     startTimeSecs = cputime();
 
-    % Define the stop time for the end of the blink detection period.
-    stopTimeSeconds = startTimeSecs + obj.lightModDurSecs ...
-        - obj.blinkEventIntervalSecs - obj.blinkResponseIntervalSecs - 4;
+    % Calculate when the modulation should end
+    stopTimeModSeconds = startTimeSecs + obj.lightModDurSecs;
 
-    % Pause two seconds so that there is no blink event at the immediate
-    % start of the light pulse
-    pause(2);
+    % Calculate when the blink detection period should end
+    % Define the stop time for the end of the blink detection period.
+    stopTimeBlinkSeconds = stopTimeModSeconds ...
+        - obj.blinkEventIntervalSecs - obj.blinkResponseIntervalSecs;
 
     % Enter a while loop that presents occasional blink events for the
     % subject to detect. This continues until we reach the end of the light
     % pulse
     blinkCounter = 1;
-    while cputime() < stopTimeSeconds
+    while cputime() < stopTimeBlinkSeconds
 
         % Define when this interval is over
         thisInteralStopTimeSecs = cputime()+ obj.blinkEventIntervalSecs;
@@ -100,7 +100,7 @@ if ~simulateStimuli
 
             % The timing of the event is uniformly distributed within the
             % interval
-            pauseDurSecs = obj.blinkEventIntervalSecs * rand();
+            pauseDurSecs = (obj.blinkEventIntervalSecs-obj.blinkResponseIntervalSecs) * rand();
             pause(pauseDurSecs);
 
             % Store the blink time relative to the start of the light pulse
@@ -131,13 +131,14 @@ if ~simulateStimuli
 
     end
 
+    % Wait until the modulation has finished, and make sure it has stopped
+    obj.waitUntil(stopTimeModSeconds);
+    obj.LightObj.stopModulation;
+    
     % Wait until the camera has cleaned up and closed
     obj.irCameraObj.checkFileClosed;
     obj.waitUntil(overallStopTimeSecs);
 
-    % Make sure the modulation has stopped
-    obj.LightObj.stopModulation;
-    
     % Play the end tone
     audioObjs.mid.play;
 

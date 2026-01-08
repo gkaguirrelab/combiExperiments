@@ -21,7 +21,7 @@ classdef PsychPuffLightModulate < handle
         lightModDurSecs
         lightModPhase
         blinkEventIntervalSecs = 5;
-        blinkEventProbability = 0.333;
+        blinkEventProbability = 0.2;
         blinkResponseIntervalSecs = 1.5;
         trialLabel
         trialData
@@ -65,7 +65,7 @@ classdef PsychPuffLightModulate < handle
             p.addParameter('lightModFreqHz',1/60,@isnumeric);
             p.addParameter('lightModDurSecs',60,@isnumeric);
             p.addParameter('lightModPhase',0,@isnumeric);
-            p.addParameter('useKeyboardFlag',false,@islogical);
+            p.addParameter('useKeyboardFlag',true,@islogical);
             p.addParameter('verbose',true,@islogical);
             p.parse(varargin{:})
 
@@ -80,6 +80,7 @@ classdef PsychPuffLightModulate < handle
             obj.lightModFreqHz = p.Results.lightModFreqHz;
             obj.lightModDurSecs = p.Results.lightModDurSecs;
             obj.lightModPhase = p.Results.lightModPhase;
+            obj.useKeyboardFlag = p.Results.useKeyboardFlag;
             obj.verbose = p.Results.verbose;
 
             % Detect incompatible simulate settings
