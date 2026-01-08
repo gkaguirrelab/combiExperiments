@@ -1,5 +1,3 @@
-% Going to use FLIC_0018 Session 1 as our EOG calibration example
-
 %% Extract timing of "left" "right" "center" commands from audio file
 
 [y, fs] = audioread('EOGCalInstructions.mp3');
