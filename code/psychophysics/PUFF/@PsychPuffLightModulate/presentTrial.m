@@ -39,9 +39,10 @@ irVidTrialLabel = [];
 % Present the stimuli
 if ~simulateStimuli
 
-    % Update the combiLED modulation direction and phase offset, in case
-    % these have changed from the last call
+    % Update the combiLED modulation direction, contrast, and phase offset,
+    % in case these have changed from the last call
     obj.LightObj.setSettings(obj.modResult);
+    obj.LightObj.setContrast(obj.lightModContrast);    
     obj.LightObj.setPhaseOffset(obj.lightModPhase);
 
     % Define a camera recording time, which includes:
@@ -73,19 +74,72 @@ if ~simulateStimuli
     % Start the light modulation
     obj.LightObj.startModulation;
 
-    % Wait until the light modulation has ended
-    stopTimeSeconds = cputime() + obj.lightModDurSecs;
-    obj.waitUntil(stopTimeSeconds);
+    % Store the start time
+    startTimeSecs = cputime();
+
+    % Define the stop time for the end of the blink detection period.
+    stopTimeSeconds = startTimeSecs + obj.lightModDurSecs ...
+        - obj.blinkEventIntervalSecs - obj.blinkResponseIntervalSecs - 4;
+
+    % Pause two seconds so that there is no blink event at the immediate
+    % start of the light pulse
+    pause(2);
+
+    % Enter a while loop that presents occasional blink events for the
+    % subject to detect. This continues until we reach the end of the light
+    % pulse
+    blinkTimeSecs = []; detected = []; responseTimeSecs = [];
+    blinkCounter = 1;
+    while cputime() < stopTimeSeconds
+
+        % Define when this interval is over
+        thisInteralStopTimeSecs = cputime()+ obj.blinkEventIntervalSecs;
+
+        % probability of having a blink event in this interval
+        if rand() < obj.blinkEventProbability
+
+            % The timing of the event is uniformly distributed within the
+            % interval
+            pauseDurSecs = obj.blinkEventIntervalSecs * rand();
+            pause(pauseDurSecs);
+
+            % Store the blink time relative to the start of the light pulse
+            blinkTimeSecs(blinkCounter) = cputime() - startTimeSecs;
+
+            % Present the blink event
+            obj.LightObj.blink;
+
+            % See if the observer responds
+            if ~simulateResponse
+                [detected(blinkCounter), responseTimeSecs(blinkCounter)] = obj.blinkEvent;
+                if detected(blinkCounter)
+                    audioObjs.correct.play
+                else
+                    audioObjs.incorrect.play
+                end
+            else
+                detected(blinkCounter) = nan;
+                responseTimeSecs(blinkCounter) = nan;
+            end
+
+            % Increment the blink counter
+            blinkCounter = blinkCounter +1;
+        end
+
+        % Wait for this interval
+        obj.waitUntil(thisInteralStopTimeSecs);
+
+    end
+
+    % Wait until the camera has cleaned up and closed
+    obj.irCameraObj.checkFileClosed;
+    obj.waitUntil(overallStopTimeSecs);
 
     % Make sure the modulation has stopped
     obj.LightObj.stopModulation;
     
     % Play the end tone
     audioObjs.mid.play;
-
-    % Wait until the camera has cleaned up and closed
-    obj.irCameraObj.checkFileClosed;
-    obj.waitUntil(overallStopTimeSecs);
 
 end
 
@@ -94,11 +148,16 @@ if obj.verbose
     fprintf('done\n');
 end
 
-% Add in the stimulus information
+% Update the trial data
 trialData = obj.trialData;
+
+% Add in the trial information
 trialData(currTrialIdx).trialStartTime = trialStartTime;
-trialData(currTrialIdx).irVidTrialLabel = irVidTrialLabel;
 trialData(currTrialIdx).lightModPhase = obj.lightModPhase;
+trialData(currTrialIdx).irVidTrialLabel = irVidTrialLabel;
+trialData(currTrialIdx).blinkTimeSecs = blinkTimeSecs;
+trialData(currTrialIdx).detected = detected;
+trialData(currTrialIdx).responseTimeSecs = responseTimeSecs;
 
 % Put questData back into the obj
 obj.trialData = trialData;
