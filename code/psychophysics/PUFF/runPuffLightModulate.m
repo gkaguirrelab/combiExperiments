@@ -17,7 +17,7 @@ function runPuffLightModulate(subjectID,varargin)
 % Examples:
 %{
     subjectID = 'TEST_001';
-    runPuffLightModulate(subjectID,'simulateModeFlag',true);
+    runPuffLightModulate(subjectID,'simulateModeFlag',false);
 %}
 
 % Parse the parameters
@@ -192,32 +192,32 @@ fprintf('Press enter to start adaptation for %d minutes...',adaptDurationMins);
 input('');
 
 % Start the light ramp
-if ~simulateModeFlag
-
-    % Count down the minutes and record a video during each minute
-    for mm = 1:adaptDurationMins
-        % Define the label to be used for the adaptation video recording
-        recordLabel = sprintf( [subjectID '_' experimentName ...
-            '_direction-' whichDirection '_adapt-%d' ],mm);
-        Speak(sprintf('%d',adaptDurationMins-(mm-1)));
-        psychObj.recordAdaptPeriod(recordLabel,55);
-        pause(5);
-    end
-end
+% if ~simulateModeFlag
+% 
+%     % Count down the minutes and record a video during each minute
+%     for mm = 1:adaptDurationMins
+%         % Define the label to be used for the adaptation video recording
+%         recordLabel = sprintf( [subjectID '_' experimentName ...
+%             '_direction-' whichDirection '_adapt-%d' ],mm);
+%         Speak(sprintf('%d',adaptDurationMins-(mm-1)));
+%         psychObj.recordAdaptPeriod(recordLabel,55);
+%         pause(5);
+%     end
+% end
 
 
 %% Loop over blocks
 for bb=1:nBlocks
 
-    % Start the block
-    Speak('Ready');
-    fprintf('Press enter to start %d trials...',length(objIdxList));
-    input('');
-
     % Define a random ordering of the psychObjs
     objIdxList = repmat(1:nPsychObjs,1,nTrialsPerObj);
     [~,tmp]=sort(rand(1,length(objIdxList)));
     objIdxList = objIdxList(tmp);
+
+    % Start the block
+    Speak('Ready');
+    fprintf('Press enter to start %d trials...',length(objIdxList));
+    input('');
 
     % Get an updated irCameraObj
     if ~simulateModeFlag

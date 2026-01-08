@@ -35,6 +35,7 @@ end
 % Prepare some items for the trialData recod
 trialStartTime = datetime();
 irVidTrialLabel = [];
+blinkTimeSecs = []; detected = []; responseTimeSecs = [];
 
 % Present the stimuli
 if ~simulateStimuli
@@ -88,7 +89,6 @@ if ~simulateStimuli
     % Enter a while loop that presents occasional blink events for the
     % subject to detect. This continues until we reach the end of the light
     % pulse
-    blinkTimeSecs = []; detected = []; responseTimeSecs = [];
     blinkCounter = 1;
     while cputime() < stopTimeSeconds
 
