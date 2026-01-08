@@ -20,11 +20,10 @@ speech = imclose(speech, ones(round(minGap*fs),1));
 d = diff([0; speech; 0]);
 
 onsets = find(d == 1) / fs;
-offsets = find(d == -1) / fs;
 
 %%
 % Select EOG file and extract the data
-load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_1041/EOGCalibration/EOGSession2Cal.mat', ...
+load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_0019/EOGCalibration/EOGSession3Cal.mat', ...
     'sessionData');
 EOGSignal = sessionData.EOGData.response(1,:); 
 
@@ -42,19 +41,17 @@ reactionTime = 0.5; % reaction time in seconds
 
 % Define censoring window for eye movements at the start and end of the recording
 tStart = onsets(1) + reactionTime;
-tEnd   = offsets(end) + reactionTime;
+tEnd   = onsets(end) + reactionTime;
 validIdx = timebase >= tStart & timebase <= tEnd;
-EOGSignalValid = EOGSignal(validIdx); % censored EOG signal
-yValid = y(validIdx); % censored model
+EOGSignalCensored = EOGSignal(validIdx); % censored EOG signal
+yCensored = y(validIdx); % censored model
 
 % Force column vectors
-yValid = yValid(:);
-EOGSignalValid = EOGSignalValid(:);
-y = y(:);
-EOGSignal = EOGSignal(:);
+yCensored = yCensored(:);
+EOGSignalCensored = EOGSignalCensored(:);
 
 % Least-squares estimate of scale factor
-beta = yValid \ EOGSignalValid;
+beta = yCensored \ EOGSignalCensored;
 
 % Scaled model
 y_scaled = beta * y;
@@ -72,12 +69,12 @@ ylim([-1.5 1.5]);
 
 % Visualization of scaled model that fits the data
 figure(2);
-% Plot in gray first, indicating data that has been censored out 
+% Plot in gray first (censored background)
 plot(timebase, EOGSignal, 'Color', [0.7 0.7 0.7], 'LineWidth', 1.5); hold on;
-plot(timebase, y_scaled,  'Color', [0.7 0.7 0.7], 'LineWidth', 1.7);
-% Plot valid data on top
-plot(timebase(validIdx), EOGSignalValid, 'b', 'LineWidth', 1.5);
-plot(timebase(validIdx), y_scaled(validIdx), 'r', 'LineWidth', 1.7);
+plot(timebase, y_scaled,  'Color', [0.7 0.7 0.7], 'LineWidth', 1.5);
+% Plot valid (uncensored) data on top
+plot(timebase(validIdx), EOGSignal(validIdx), 'b--', 'LineWidth', 1.5);
+plot(timebase(validIdx), y_scaled(validIdx), 'r', 'LineWidth', 1.5);
 xlabel('Time (s)');
 ylabel('Amplitude');
 title('EOG Signal vs Scaled Model');
