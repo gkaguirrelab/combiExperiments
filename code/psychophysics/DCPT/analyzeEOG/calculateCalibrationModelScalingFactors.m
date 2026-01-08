@@ -10,10 +10,11 @@ EOGCalibrationDir = 'EOGCalibration';
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 
 % 'FLIC_0028','FLIC_0039', 'FLIC_0042'};
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-%         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};  
+%        'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};  
 % Had to take out 'FLIC_0028' for controls bc haven't done the fitting with her
-subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-   'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};        
+subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
+'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',... 
+'FLIC_0028','FLIC_0039', 'FLIC_0042'};     
 nSubj = length(subjectID);
 nSessions = 4;
 
@@ -51,6 +52,9 @@ for subjIdx = 1:nSubj
 
         % Generate the model
         [x, y] = generateEOGModel(timebase, onsets, cmdValues, reactionTime, fc);
+
+        % Grab the EOG signal from the data
+        EOGSignal = sessionData.EOGData.response(1,:);
 
         % Force column vectors
         y = y(:);

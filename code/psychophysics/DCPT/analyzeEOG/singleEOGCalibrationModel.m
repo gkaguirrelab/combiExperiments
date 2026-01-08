@@ -23,7 +23,7 @@ onsets = find(d == 1) / fs;
 
 %%
 % Select EOG file and extract the data
-load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_0018/EOGCalibration/EOGSession1Cal.mat', ...
+load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_0019/EOGCalibration/EOGSession3Cal.mat', ...
     'sessionData');
 EOGSignal = sessionData.EOGData.response(1,:); 
 
