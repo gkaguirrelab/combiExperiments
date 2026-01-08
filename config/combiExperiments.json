@@ -30,7 +30,7 @@
         "flavor": "",
         "hook": "",
         "importance": "",
-        "localHookTemplate": "",
+        "localHookTemplate": "config/combiAirToolboxLocalHookTemplate.m",
         "name": "combiAirToolbox",
         "pathPlacement": "append",
         "subfolder": "",
