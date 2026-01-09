@@ -21,7 +21,7 @@ classdef PsychPuffLightModulate < handle
         lightModDurSecs
         lightModPhase
         blinkEventIntervalSecs = 5;
-        blinkEventProbability = 0.2;
+        blinkEventProbability = 0.1;
         blinkResponseIntervalSecs = 1.5;
         trialLabel
         trialData
