@@ -143,6 +143,64 @@ for contrastIdx = 1:length(contrastNames)
 
 end
 %% Set up & plotting sigma values at each ref freq for each subj
+% collapsed across light level level ONLY
+% Plotting a line for sigma parameter and another line for sigma zero
+
+% Average across light level (Dimension 3 of the matrix)
+% The result will be [Subj, Contrast, 1, Freq]
+% Then squeeze to remove the singleton dimension
+avgSigma1 = squeeze(mean(sigmaMatrix1, 3));
+avgSigma2 = squeeze(mean(sigmaMatrix2, 3));
+
+% Prepare plot parameters
+colors = lines(nSubj); % one color per subject
+catIdxFlat = repmat((1:nSubj)', nFreqs, 1); % identifies 1 to nSubj
+xPositions = 1:nFreqs;
+
+% Loop over contrast conditions (1 = low, 2 = high)
+contrastNames = {'Low contrast', 'High contrast'};
+
+for contrastIdx = 1:length(contrastNames)
+
+    % Extract the slice for this contrast
+    data2D_1 = squeeze(avgSigma1(:, contrastIdx, :)); % sigma
+    data2D_2 = squeeze(avgSigma2(:, contrastIdx, :)); % sigma zero
+
+    % Mean ± SEM across subjects
+    mean1 = mean(data2D_1, 1);
+    sem1  = std(data2D_1, [], 1) / sqrt(nSubj);
+
+    mean2 = mean(data2D_2, 1);
+    sem2  = std(data2D_2, [], 1) / sqrt(nSubj);
+
+    % PLOT
+    fig = figure;
+    ax = axes(fig);
+    hold(ax, 'on');
+
+    h1 = errorbar(xPositions, mean1, sem1, ...
+        '-o', 'LineWidth', 2, 'MarkerSize', 8);
+
+    h2 = errorbar(xPositions, mean2, sem2, ...
+        '--s', 'LineWidth', 2, 'MarkerSize', 8);
+
+    % Labels & formatting
+    title(['CONTROLS: ' contrastNames{contrastIdx} ...
+        ' Bayesian sigma across frequency'], 'FontWeight', 'bold');
+
+    xlabel('Reference frequency [Hz]');
+    ylabel('Sigma parameter');
+
+    xticks(xPositions);
+    xticklabels(refFreqHz);
+    ylim([0 3]);
+
+    legend([h1 h2], {'Sigma', 'Sigma Zero'}, 'Location', 'best');
+
+    hold(ax, 'off');
+
+end
+%% Set up & plotting sigma values at each ref freq for each subj
 % collapsed across contrast ONLY
 
 % Average across contrast (Dimension 2 of the matrix)
