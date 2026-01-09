@@ -222,7 +222,7 @@ for bb=1:nBlocks
     % Loop over trials in this run
     for tt = 1:length(objIdxList)
 
-        % Update the camera and light obj object
+        % Update the camera and light objects
         if ~simulateModeFlag
             psychObjArray{objIdxList(tt)}.irCameraObj = irCameraObj;
             psychObjArray{objIdxList(tt)}.LightObj = LightObj;
@@ -239,6 +239,7 @@ for bb=1:nBlocks
     end
 
     % Report completion of this block
+    Speak('done.');
     fprintf('done.\n');
 
     % Store the psychObjArray entries
