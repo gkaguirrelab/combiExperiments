@@ -13,7 +13,7 @@ experimentName = 'DCPT_SDT';
 %         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};  
 % Had to take out 'FLIC_0028' for controls bc haven't done the fitting with her
 subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-   'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};        
+  'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};        
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -32,6 +32,7 @@ nSubj = length(subjectID);
 % nSubj x 2 x 2 x 5, subj x nContrasts x nLightLevels x nFreqs
 sigmaMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+fValMatrix = zeros(nSubj, nContrasts, nLightLevels, nFreqs);
 
 for subjIdx = 1:nSubj
 
@@ -163,12 +164,13 @@ for subjIdx = 1:nSubj
                 options.MaxFunEvals = 500;
                 lb = [0,1,0,0.001]; ub = [0,1,5,3];
                 % lb = 0.001; ub = 2;
-                fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials, epsilon), ...
+                [fit, fbest] = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials, epsilon), ...
                     initial_params, lb, ub, lb, ub, [], options);
 
                 % Add the crit_baseline and sigma values to the matrix
                 sigmaMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(4);
                 critBaselineMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(3);
+                fValMatrix(subjIdx, contrastIdx, lightIdx, refFreqIdx) = fbest;
 
                 % Plot the fit for this ref frequency
                 hold on;

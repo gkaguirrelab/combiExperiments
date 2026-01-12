@@ -91,6 +91,8 @@ function [x, y] = generateEOGModel(timebase, onsets, cmdValues, reactionTime, fc
     Neog = length(timebase);
     nCmd = length(cmdValues);
     x = zeros(Neog,1);
+    lateResponse = 0.15;
+    onsets = onsets + lateResponse;
     for k = 1:nCmd
         if k < nCmd
             idx = timebase >= (onsets(k) + reactionTime) & timebase < (onsets(k+1) + reactionTime);

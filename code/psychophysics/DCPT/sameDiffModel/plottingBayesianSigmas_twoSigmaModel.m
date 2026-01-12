@@ -32,7 +32,7 @@ errorbar(xPositions, sigmaZeroMean, sigmaZeroSEM, ...
     'MarkerSize', 8);
 
 % Axes & labels
-title('MIGRAINERS: Bayesian sigma parameters across reference frequencies', ...
+title('CONTROLS: Bayesian sigma parameters across reference frequencies', ...
     'FontWeight', 'bold');
 xlabel('Reference frequency [Hz]');
 ylabel('Sigma parameter');
@@ -152,9 +152,6 @@ end
 avgSigma1 = squeeze(mean(sigmaMatrix1, 3));
 avgSigma2 = squeeze(mean(sigmaMatrix2, 3));
 
-% Prepare plot parameters
-colors = lines(nSubj); % one color per subject
-catIdxFlat = repmat((1:nSubj)', nFreqs, 1); % identifies 1 to nSubj
 xPositions = 1:nFreqs;
 
 % Loop over contrast conditions (1 = low, 2 = high)
@@ -179,14 +176,16 @@ for contrastIdx = 1:length(contrastNames)
     hold(ax, 'on');
 
     h1 = errorbar(xPositions, mean1, sem1, ...
-        '-o', 'LineWidth', 2, 'MarkerSize', 8);
+        '-ok','LineWidth', 2, 'MarkerSize', 8);
+    h1.MarkerFaceColor = 'k';
 
     h2 = errorbar(xPositions, mean2, sem2, ...
-        '--s', 'LineWidth', 2, 'MarkerSize', 8);
+        '-ob','LineWidth', 2, 'MarkerSize', 8);
+    h2.MarkerFaceColor = 'b';
 
     % Labels & formatting
     title(['CONTROLS: ' contrastNames{contrastIdx} ...
-        ' Bayesian sigma across frequency'], 'FontWeight', 'bold');
+        ' Bayesian sigmas across frequency'], 'FontWeight', 'bold');
 
     xlabel('Reference frequency [Hz]');
     ylabel('Sigma parameter');
@@ -213,7 +212,7 @@ colors = lines(nSubj); % one color per subject
 catIdxFlat = repmat((1:nSubj)', nFreqs, 1); % identifies 1 to nSubj
 xPositions = 1:nFreqs;
 
-% Loop over contrast conditions (1 = low, 2 = high)
+% Loop over light conditions (1 = low, 2 = high)
 lightNames = {'Low light', 'High light'};
 
 for lightIdx = 1:length(lightNames)
@@ -295,4 +294,59 @@ for lightIdx = 1:length(lightNames)
 
 end
 
-%% False alarms??
+%% Set up & plotting sigma values at each ref freq for each subj
+% collapsed across contrast ONLY
+% Plotting a line for sigma parameter and another line for sigma zero
+
+% Average across contrast (Dimension 2 of the matrix)
+% The result will be [Subj, 1, LightLevel, Freq]
+% Then squeeze to remove the singleton dimension
+avgSigma1 = squeeze(mean(sigmaMatrix1, 2));
+avgSigma2 = squeeze(mean(sigmaMatrix2, 2));
+
+xPositions = 1:nFreqs;
+
+% Loop over light conditions (1 = low, 2 = high)
+lightNames = {'Low light', 'High light'};
+
+for lightIdx = 1:length(lightNames)
+
+    % Extract the slice for this contrast
+    data2D_1 = squeeze(avgSigma1(:, lightIdx, :)); % sigma
+    data2D_2 = squeeze(avgSigma2(:, lightIdx, :)); % sigma zero
+
+    % Mean ± SEM across subjects
+    mean1 = mean(data2D_1, 1);
+    sem1  = std(data2D_1, [], 1) / sqrt(nSubj);
+
+    mean2 = mean(data2D_2, 1);
+    sem2  = std(data2D_2, [], 1) / sqrt(nSubj);
+
+    % PLOT
+    fig = figure;
+    ax = axes(fig);
+    hold(ax, 'on');
+
+    h1 = errorbar(xPositions, mean1, sem1, ...
+        '-ok','LineWidth', 2, 'MarkerSize', 8);
+    h1.MarkerFaceColor = 'k';
+
+    h2 = errorbar(xPositions, mean2, sem2, ...
+        '-ob','LineWidth', 2, 'MarkerSize', 8);
+    h2.MarkerFaceColor = 'b';
+
+    % Labels & formatting
+    title(['MIGRAINERS: ' lightNames{lightIdx} ' Bayesian sigmas across frequency' ], 'FontWeight', 'bold');
+
+    xlabel('Reference frequency [Hz]');
+    ylabel('Sigma parameter');
+
+    xticks(xPositions);
+    xticklabels(refFreqHz);
+    ylim([0 3]);
+
+    legend([h1 h2], {'Sigma', 'Sigma Zero'}, 'Location', 'best');
+
+    hold(ax, 'off');
+
+end
