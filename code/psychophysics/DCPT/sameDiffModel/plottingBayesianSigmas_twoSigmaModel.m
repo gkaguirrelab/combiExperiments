@@ -360,9 +360,9 @@ fValSubjFreq_BayesianTwoSigma = squeeze(mean(mean(fValMatrixBayesianTwoSigma, 2)
 fValMean_BayesianTwoSigma = mean(fValSubjFreq_BayesianTwoSigma, 1);                      
 fValSEM_BayesianTwoSigma  = std(fValSubjFreq_BayesianTwoSigma, [], 1) ./ sqrt(nSubj);
 % Bayesian one sigma model
-fValSubjFreq_BayesianOneSigma = squeeze(mean(mean(fValMatrixBayesianOneSigma, 2), 3));  % [Subj × Freq]
-fValMean_BayesianOneSigma = mean(fValSubjFreq_BayesianOneSigma, 1);                      
-fValSEM_BayesianOneSigma  = std(fValSubjFreq_BayesianOneSigma, [], 1) ./ sqrt(nSubj);
+% fValSubjFreq_BayesianOneSigma = squeeze(mean(mean(fValMatrixBayesianOneSigma, 2), 3));  % [Subj × Freq]
+% fValMean_BayesianOneSigma = mean(fValSubjFreq_BayesianOneSigma, 1);                      
+% fValSEM_BayesianOneSigma  = std(fValSubjFreq_BayesianOneSigma, [], 1) ./ sqrt(nSubj);
 % SDT model
 fValSubjFreq_SDT = squeeze(mean(mean(fValMatrixSDT, 2), 3));  % [Subj × Freq]
 fValMean_SDT = mean(fValSubjFreq_SDT, 1);                      
@@ -381,12 +381,12 @@ h1 = errorbar(xPositions, fValMean_BayesianTwoSigma, fValSEM_BayesianTwoSigma, .
     'MarkerSize', 8);
 
 % Plotting f vals for Bayesian one sigma model
-h2 = errorbar(xPositions, fValMean_BayesianOneSigma, fValSEM_BayesianOneSigma, ...
-    '-o', ...
-    'Color', [0.8500 0.3250 0.0980], ...   % red/orange
-    'MarkerFaceColor', [0.8500 0.3250 0.0980], ...
-    'LineWidth', 1.8, ...
-    'MarkerSize', 8);
+% h2 = errorbar(xPositions, fValMean_BayesianOneSigma, fValSEM_BayesianOneSigma, ...
+%     '-o', ...
+%     'Color', [0.8500 0.3250 0.0980], ...   % red/orange
+%     'MarkerFaceColor', [0.8500 0.3250 0.0980], ...
+%     'LineWidth', 1.8, ...
+%     'MarkerSize', 8);
 
 % Plotting f vals for SDT model
 h3 = errorbar(xPositions, fValMean_SDT, fValSEM_SDT, ...
@@ -397,18 +397,16 @@ h3 = errorbar(xPositions, fValMean_SDT, fValSEM_SDT, ...
     'MarkerSize', 8);
 
 % Axes & labels
-title('CONTROLS: Bayesian two sigma f values across reference frequencies', ...
+title('MIGRAINERS: F values across reference frequencies', ...
     'FontWeight', 'bold');
 xlabel('Reference frequency [Hz]');
-ylabel('Sigma parameter');
-xlim([0.5, nFreqs + 0.5])
+ylabel('F value');
 
 xticks(xPositions);
 xticklabels(refFreqHz);
-ylim([0 3]);
 
-legend([h1 h2 h3], ...
-    {'Bayesian Two Sigma', 'Bayesian One Sigma', 'SDT'}, ...
+legend([h1 h3], ...
+    {'Bayesian Two Sigma', 'SDT'}, ...
     'Location', 'best');
 
 box off;
