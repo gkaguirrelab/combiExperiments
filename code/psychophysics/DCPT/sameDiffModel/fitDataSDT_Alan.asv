@@ -174,21 +174,21 @@ for subjIdx = 1:nSubj
                 fValMatrix(subjIdx, contrastIdx, lightIdx, refFreqIdx) = fbest;
 
                 % Plot the fit for this ref frequency
-                hold on;
-
-                x = -5:0.1:5;  % evaluate the model at more dB values
-                plot(x, modifiedSameDiffModel(x,fit,epsilon), 'k-', 'LineWidth',2);
-
-                xlabel('stimulus difference [dB]');
-                if lightIdx == 1 && refFreqIdx == 1
-                    ylabel({'LOW', 'proportion respond different'});
-                end
-                if lightIdx == 2 && refFreqIdx == 1
-                    ylabel({'HIGH', 'proportion respond different'});
-                end
-                title(sprintf('Ref freq = %.1f Hz', currentRefFreq));
-                ylim([-0.1 1.1]);
-                xlim([-6.0 6.0]);
+                % hold on;
+                % 
+                % x = -5:0.1:5;  % evaluate the model at more dB values
+                % plot(x, modifiedSameDiffModel(x,fit,epsilon), 'k-', 'LineWidth',2);
+                % 
+                % xlabel('stimulus difference [dB]');
+                % if lightIdx == 1 && refFreqIdx == 1
+                %     ylabel({'LOW', 'proportion respond different'});
+                % end
+                % if lightIdx == 2 && refFreqIdx == 1
+                %     ylabel({'HIGH', 'proportion respond different'});
+                % end
+                % title(sprintf('Ref freq = %.1f Hz', currentRefFreq));
+                % ylim([-0.1 1.1]);
+                % xlim([-6.0 6.0]);
 
 
             end

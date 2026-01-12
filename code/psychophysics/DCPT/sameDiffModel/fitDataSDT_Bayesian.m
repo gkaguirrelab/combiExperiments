@@ -33,6 +33,7 @@ nSubj = length(subjectID);
 %sigmaMatrix1 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 %sigmaMatrix2 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 % critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+fValMatrix = zeros(nSubj, nContrasts, nLightLevels, nFreqs);
 
 for subjIdx = 1:nSubj
 
@@ -165,10 +166,11 @@ for subjIdx = 1:nSubj
                 options.MaxFunEvals = 500;
                 lb  = [0.001, 0.001];
                 ub  = [3, 3];
-                fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
+                [fit, fbest] = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
                     sigma, lb, ub, lb, ub, [], options);
 
                 % Add the crit_baseline and sigma values to the matrix
+                fValMatrix(subjIdx, contrastIdx, lightIdx, refFreqIdx) = fbest;
                 sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(1);
                 sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(2);
                 %   sigmaMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit;
@@ -177,21 +179,21 @@ for subjIdx = 1:nSubj
                 % fit(2) = sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx);
 
                 % Plot the fit for this ref frequency
-                hold on;
-
-                x = -5:0.1:5;  % evaluate the model at more dB values
-                plot(x, bayesianSameDiffModelTwoSigma(x,fit,0.5), 'k-', 'LineWidth',2);
-
-                xlabel('stimulus difference [dB]');
-                if lightIdx == 1 && refFreqIdx == 1
-                    ylabel({'LOW', 'proportion respond different'});
-                end
-                if lightIdx == 2 && refFreqIdx == 1
-                    ylabel({'HIGH', 'proportion respond different'});
-                end
-                title(sprintf('Ref freq = %.1f Hz', currentRefFreq));
-                ylim([-0.1 1.1]);
-                xlim([-6.0 6.0]);
+                % hold on;
+                % 
+                % x = -5:0.1:5;  % evaluate the model at more dB values
+                % plot(x, bayesianSameDiffModelTwoSigma(x,fit,0.5), 'k-', 'LineWidth',2);
+                % 
+                % xlabel('stimulus difference [dB]');
+                % if lightIdx == 1 && refFreqIdx == 1
+                %     ylabel({'LOW', 'proportion respond different'});
+                % end
+                % if lightIdx == 2 && refFreqIdx == 1
+                %     ylabel({'HIGH', 'proportion respond different'});
+                % end
+                % title(sprintf('Ref freq = %.1f Hz', currentRefFreq));
+                % ylim([-0.1 1.1]);
+                % xlim([-6.0 6.0]);
 
 
             end
