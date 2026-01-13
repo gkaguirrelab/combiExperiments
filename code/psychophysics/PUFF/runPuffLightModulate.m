@@ -31,6 +31,7 @@ p.addParameter('phases',[0,pi],@isnumeric);
 p.addParameter('nTrialsPerObj',1,@isnumeric);
 p.addParameter('nBlocks',1,@isnumeric);
 p.addParameter('adaptDurationMins',2,@isnumeric);
+p.addParameter('useKeyboardFlag',false,@islogical);
 p.addParameter('simulateModeFlag',false,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
 p.addParameter('verboseCameraObj',false,@islogical);
@@ -44,6 +45,7 @@ directions = p.Results.directions;
 contrasts = p.Results.photoreceptorContrasts;
 phases = p.Results.phases;
 adaptDurationMins = p.Results.adaptDurationMins;
+useKeyboardFlag = p.Results.useKeyboardFlag;
 simulateModeFlag = p.Results.simulateModeFlag;
 verboseLightObj = p.Results.verboseLightObj;
 verboseCameraObj = p.Results.verboseCameraObj;
@@ -138,7 +140,9 @@ for dd = 1:nDirections
                     'trialLabel',psychFileStem,...
                     'lightModContrast',modContrast,...
                     'lightModPhase',phases(pp),...
-                    'simulateStimuli',simulateModeFlag,'simulateResponse',simulateModeFlag,...
+                    'useKeyboardFlag',useKeyboardFlag,...
+                    'simulateStimuli',simulateModeFlag,...
+                    'simulateResponse',simulateModeFlag,...
                     'verbose',verbosePsychObj);
                 % Store the filename
                 psychObj.filename = filename;
@@ -176,9 +180,18 @@ end
 % Provide instructions
 fprintf('**********************************\n');
 fprintf('After a 2 minutes of adaptation to the light field, you will\n');
-fprintf('perform 24 tests, each 45 seconds in duration. During the test\n');
+fprintf('perform 16 tests, each 60 seconds in duration. During the test\n');
 fprintf('your job is to monitor for a sudden, brief dimming of the light.\n');
-fprintf('If you see this dimming, press the button on the game pad.\n');
+
+if useKeyboardFlag
+    fprintf('If you see this dimming, press the space bar. Press return\n');
+    fprintf('when ready for the next trial.\n');
+else
+    fprintf('If you see this dimming, press either of the two upper bumper\n');
+    fprintf('buttons on the game pad. Press any of the four colored buttons\n');
+    fprintf('on the front of the game pad when ready for the next trial.\n');
+end
+
 fprintf('You may be aware of the light slowly changing in other ways, such\n');
 fprintf('as overall brightness or color. Do your best to ignore these\n');
 fprintf('changes. Instead, keep your eyes open and watch closely for the\n');
@@ -188,10 +201,15 @@ fprintf('**********************************\n\n');
 
 % Wait for the subject to start adaptation
 Speak('adapt');
-fprintf('Press enter to start adaptation for %d minutes...',adaptDurationMins);
-input('');
+if useKeyboardFlag
+    fprintf('Press enter to start adaptation for %d minutes...',adaptDurationMins);
+    input('');
+else
+    fprintf('Press a front button to start adaptation for %d minutes...\n',adaptDurationMins);
+    getGamepadResponse(Inf,[1 2 3 4]);
+end
 
-% Start the light ramp
+% Start the adaptation period
 if ~simulateModeFlag
 
     % Count down the minutes and record a video during each minute
@@ -230,8 +248,13 @@ for bb=1:nBlocks
 
         % Alert the subject
         Speak(sprintf('trial %d of %d',tt,length(objIdxList)));
-        fprintf('Press enter to start...');
-        input('');
+        if useKeyboardFlag
+            fprintf('Press enter to start...');
+            input('');
+        else
+            fprintf('Press a front button to start\n');
+            getGamepadResponse(Inf,[1 2 3 4]);
+        end
 
         % Present the next trial
         psychObjArray{objIdxList(tt)}.presentTrial;
