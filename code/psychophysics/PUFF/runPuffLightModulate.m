@@ -16,8 +16,8 @@ function runPuffLightModulate(subjectID,varargin)
 %
 % Examples:
 %{
-    subjectID = 'TEST_001';
-    runPuffLightModulate(subjectID,'simulateModeFlag',false);
+    subjectID = 'TEST_005';
+    runPuffLightModulate(subjectID,'simulateModeFlag',true);
 %}
 
 % Parse the parameters
@@ -168,11 +168,11 @@ nPsychObjs = length(psychObjArray);
 
 
 %% Adapt
-% Grab the first psychObj; we will assign the adaptation period to this
-psychObj = psychObjArray{1};
-
-% Initialize the display
-psychObj.initializeDisplay;
+% Grab a particular psychObj to tally the adapt period
+psychFileStem = sprintf( [subjectID '_' experimentName ...
+ '_direction-' directions{1} '_contrast-%2.2f_phase-%2.2f'], contrasts(1), phases(1) );
+idx = cellfun(@(x) strcmp(psychFileStem,x.trialLabel),psychObjArray);
+psychObj = psychObjArray{idx};
 
 % refresh the irObj
 if ~simulateModeFlag
@@ -182,7 +182,8 @@ end
 
 % Provide instructions
 fprintf('**********************************\n');
-fprintf('After a 2 minutes of adaptation to the light field, you will\n');
+fprintf('After a 1 minute period in the dark, there will be minutes of \n');
+fprintf('adaptation to the light field. Just stare ahead. You will then\n');
 fprintf('perform 16 tests, each 60 seconds in duration. During the test\n');
 fprintf('your job is to monitor for a sudden, brief dimming of the light.\n');
 
@@ -201,6 +202,41 @@ fprintf('changes. Instead, keep your eyes open and watch closely for the\n');
 fprintf('brief dimming events.\n');
 fprintf('**********************************\n\n');
 
+% Darken the CombiLED and wait for the subject to start the dark recording
+if ~simulateModeFlag
+    LightObj.goDark;
+end
+
+Speak('dark');
+if useKeyboardFlag
+    fprintf('Press enter to start a dark recording for 1 minute...');
+    input('');
+else
+    fprintf('Press a front button to start a dark recording for 1 minute...\n');
+    getGamepadResponse(Inf,[1 2 3 4]);
+end
+
+% Record the dark period
+Speak('go');
+recordLabel = sprintf( [subjectID '_' experimentName ...
+    '_dark-%02d' ],psychObj.adaptIdx);
+psychObj.recordAdaptPeriod(recordLabel,55);
+pause(5);
+
+% Give the subject a moment to move away from the light source
+Speak('sit back');
+if useKeyboardFlag
+    fprintf('Press enter to illuminate the spheres...');
+    input('');
+else
+    fprintf('Press a front button to illuminate the spheres...\n');
+    getGamepadResponse(Inf,[1 2 3 4]);
+end
+
+% Initialize the display
+if ~simulateModeFlag
+    psychObj.initializeDisplay;
+end
 
 % Wait for the subject to start adaptation
 Speak('adapt');
@@ -213,17 +249,14 @@ else
 end
 
 % Start the adaptation period
-if ~simulateModeFlag
-
-    % Count down the minutes and record a video during each minute
-    for mm = 1:adaptDurationMins
-        % Define the label to be used for the adaptation video recording
-        recordLabel = sprintf( [subjectID '_' experimentName ...
-            '_direction-' whichDirection '_session_%d_adapt-%d' ],psychObj.adaptIdx+1,mm);
-        Speak(sprintf('%d',adaptDurationMins-(mm-1)));
-        psychObj.recordAdaptPeriod(recordLabel,55);
-        pause(5);
-    end
+Speak('go');
+for mm = 1:adaptDurationMins
+    % Define the label to be used for the adaptation video recording
+    recordLabel = sprintf( [subjectID '_' experimentName ...
+        '_adapt-%02d' ],psychObj.adaptIdx);
+    Speak(sprintf('%d',adaptDurationMins-(mm-1)));
+    psychObj.recordAdaptPeriod(recordLabel,55);
+    pause(5);
 end
 
 
