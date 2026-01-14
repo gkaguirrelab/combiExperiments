@@ -198,7 +198,7 @@ if ~simulateModeFlag
     for mm = 1:adaptDurationMins
         % Define the label to be used for the adaptation video recording
         recordLabel = sprintf( [subjectID '_' experimentName ...
-            '_direction-' whichDirection '_adapt-%d' ],mm);
+            '_direction-' whichDirection '_session_%d_adapt-%d' ],psychObj.adaptIdx+1,mm);
         Speak(sprintf('%d',adaptDurationMins-(mm-1)));
         psychObj.recordAdaptPeriod(recordLabel,55);
         pause(5);
