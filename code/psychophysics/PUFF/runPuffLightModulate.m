@@ -217,8 +217,9 @@ else
 end
 
 % Record the dark period
+Speak('go');
 recordLabel = sprintf( [subjectID '_' experimentName ...
-    '_direction-' whichDirection '_dark-%d' ],psychObj.adaptIdx);
+    '_dark-%02d' ],psychObj.adaptIdx);
 psychObj.recordAdaptPeriod(recordLabel,55);
 pause(5);
 
@@ -248,10 +249,11 @@ else
 end
 
 % Start the adaptation period
+Speak('go');
 for mm = 1:adaptDurationMins
     % Define the label to be used for the adaptation video recording
     recordLabel = sprintf( [subjectID '_' experimentName ...
-        '_direction-' whichDirection '_adapt-%d' ],psychObj.adaptIdx);
+        '_adapt-%02d' ],psychObj.adaptIdx);
     Speak(sprintf('%d',adaptDurationMins-(mm-1)));
     psychObj.recordAdaptPeriod(recordLabel,55);
     pause(5);
