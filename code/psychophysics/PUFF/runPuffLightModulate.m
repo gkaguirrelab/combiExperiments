@@ -83,6 +83,9 @@ if ~simulateModeFlag
     % Set up the CombiLED LightObj
     LightObj = CombiLEDcontrol('verbose',verboseLightObj);
 
+    % Go dark for now
+        LightObj.goDark;
+
     % Set the gamma table
     LightObj.setGamma(modResult.meta.cal.processedData.gammaTable);
 
