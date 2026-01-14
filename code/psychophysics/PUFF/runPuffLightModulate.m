@@ -16,8 +16,8 @@ function runPuffLightModulate(subjectID,varargin)
 %
 % Examples:
 %{
-    subjectID = 'TEST_001';
-    runPuffLightModulate(subjectID,'simulateModeFlag',false);
+    subjectID = 'TEST_005';
+    runPuffLightModulate(subjectID,'simulateModeFlag',true);
 %}
 
 % Parse the parameters
@@ -168,8 +168,11 @@ nPsychObjs = length(psychObjArray);
 
 
 %% Adapt
-% Grab the first psychObj; we will assign the adaptation period to this
-psychObj = psychObjArray{1};
+% Grab a particular psychObj to tally the adapt period
+psychFileStem = sprintf( [subjectID '_' experimentName ...
+ '_direction-' directions{1} '_contrast-%2.2f_phase-%2.2f'], contrasts(1), phases(1) );
+idx = cellfun(@(x) strcmp(psychFileStem,x.trialLabel),psychObjArray);
+psychObj = psychObjArray{idx};
 
 % Initialize the display
 psychObj.initializeDisplay;
@@ -219,7 +222,7 @@ if ~simulateModeFlag
     for mm = 1:adaptDurationMins
         % Define the label to be used for the adaptation video recording
         recordLabel = sprintf( [subjectID '_' experimentName ...
-            '_direction-' whichDirection '_session_%d_adapt-%d' ],psychObj.adaptIdx+1,mm);
+            '_direction-' whichDirection '_adapt-%d' ],psychObj.adaptIdx);
         Speak(sprintf('%d',adaptDurationMins-(mm-1)));
         psychObj.recordAdaptPeriod(recordLabel,55);
         pause(5);
