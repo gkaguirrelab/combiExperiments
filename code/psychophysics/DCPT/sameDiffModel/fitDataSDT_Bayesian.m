@@ -12,7 +12,7 @@ experimentName = 'DCPT_SDT';
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 %         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
 subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-    'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
+        'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -33,6 +33,7 @@ nSubj = length(subjectID);
 %sigmaMatrix1 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 %sigmaMatrix2 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 % critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+fValMatrix = zeros(nSubj, nContrasts, nLightLevels, nFreqs);
 
 for subjIdx = 1:nSubj
 
@@ -165,10 +166,11 @@ for subjIdx = 1:nSubj
                 options.MaxFunEvals = 500;
                 lb  = [0.001, 0.001];
                 ub  = [3, 3];
-                fit = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
+                [fit, fbest] = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
                     sigma, lb, ub, lb, ub, [], options);
 
                 % Add the crit_baseline and sigma values to the matrix
+                fValMatrix(subjIdx, contrastIdx, lightIdx, refFreqIdx) = fbest;
                 sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(1);
                 sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(2);
                 %   sigmaMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit;

@@ -58,7 +58,7 @@ xlabel('stimulus difference [dB]');
 ylabel('P(respond different)');
 ylim([0 1]);
 xlim([-6 6]);
-title('Bayesian two sigma model: varying sigma level');
+title('Bayesian two sigma model: varying sigma zero level');
 box on;
 
 %%

@@ -6,7 +6,7 @@ function generateModResultsForPUFF(subjectID,observerAgeInYears,varargin)
 %
 % Examples:
 %{
-    subjectID = 'TEST_001';
+    subjectID = 'TEST_003';
     observerAgeInYears = 55;
     experimentName = 'modulate';
     generateModResultsForPUFF(subjectID,observerAgeInYears,'experimentName',experimentName);

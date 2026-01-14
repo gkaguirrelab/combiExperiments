@@ -43,7 +43,8 @@ if obj.useKeyboardFlag
 else
 
     %% Using gamepad
-    [buttonPress, responseTimeSecs] = getGamepadResponse(responseDurSecs,[5 7 6 8]);
+    % Upper bumpers to record a response to a blink
+    [buttonPress, responseTimeSecs] = getGamepadResponse(responseDurSecs,[5 6]);
     if isempty(buttonPress)
         detected = false;
     else

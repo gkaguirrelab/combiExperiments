@@ -23,9 +23,8 @@ onsets = find(d == 1) / fs;
 offsets = find(d == -1) / fs;
 
 %%
-close all;
 % Select EOG file and extract the data
-load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_1041/EOGCalibration/EOGSession2Cal.mat', ...
+load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_data/combiLED/FLIC_1034/EOGCalibration/EOGSession1Cal.mat', ...
     'sessionData');
 EOGSignal = sessionData.EOGData.response(1,:); 
 % FLIC_1036 Session 3 and FLIC_1034 Session 1 have early return to center
@@ -64,7 +63,7 @@ beta = yValid \ EOGSignalValid;
 y_scaled = beta * y;
 
 % Visualization of model
-figure(1);
+figure(3);
 plot(timebase, x, 'k--', 'LineWidth', 1.5); hold on;
 plot(timebase, y, 'r', 'LineWidth', 1.5);
 xlabel('Time (s)');
@@ -75,7 +74,7 @@ xlim([0 25]);
 ylim([-1.5 1.5]);
 
 % Visualization of scaled model that fits the data
-figure(2);
+figure(4);
 % Plot in gray first, indicating data that has been censored out 
 plot(timebase, EOGSignal, 'Color', [0.7 0.7 0.7], 'LineWidth', 1.5); hold on;
 plot(timebase, y_scaled,  'Color', [0.7 0.7 0.7], 'LineWidth', 1.7);
@@ -96,13 +95,14 @@ function [x, y] = generateEOGModel(timebase, onsets, cmdValues, reactionTime, fc
     nCmd = length(cmdValues);
     x = zeros(Neog,1);
     % For subjects that exhibit early return-to-center behavior
-    % earlyReturn = 0.5;
-    % earlyOnsets = onsets - earlyReturn;
+    earlyReturn = 0.15;
+    earlyOnsets = onsets - earlyReturn;
     for k = 1:nCmd
-        if k < nCmd && mod(k,2) == 0 % check if this is a not a center command (even index)
-            % If it is not a "center" command, move the next onset to an earlier time (subject returns to center early)
-            idx = timebase >= (onsets(k) + reactionTime) & timebase < (onsets(k+1) + reactionTime);
-        elseif k < nCmd && mod(k,2) ~= 0 % after a center command, subject waits until they hear the next command
+        if k < nCmd && mod(k,2) ~= 0 % check if this is a not a center command (even index)
+            % If it w a "center" command, replace the second onset with
+            % an earlier onset
+            idx = timebase >= (onsets(k) + reactionTime) & timebase < (earlyOnsets(k+1) + reactionTime);
+        elseif  k < nCmd && mod(k,2) ~= 0 % after a center command, subject waits until they hear the next command
             idx = timebase >= (onsets(k) + reactionTime) & timebase < (onsets(k+1) + reactionTime);
         else
             idx = timebase >= (onsets(k) + reactionTime);
