@@ -47,6 +47,7 @@ mGrid = linspace(min(stimDiffDb), max(stimDiffDb), 1000)';  % column vector
 dm = mGrid(2) - mGrid(1);
 
 % Likelihood for same trials (D = 0)
+% m represents the difference between the measurements
 P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigmaZero); % std dev is sqrt(2)*sigmaZero
 
 % Likelihood for different trials (D = 1) as integral of Gaussians (box shape)

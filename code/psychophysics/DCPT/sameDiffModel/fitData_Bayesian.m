@@ -28,6 +28,7 @@ nSubj = length(subjectID);
 %% FITTING CODE %%
 
 % Initialize matrices of params
+% HAVE TO FIGURE OUT WHAT I WANT HERE:
 % nSubj x 2 x 2 x 5, subj x nContrasts x nLightLevels x nFreqs
 % sigmaMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 %sigmaMatrix1 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
@@ -35,6 +36,34 @@ nSubj = length(subjectID);
 % critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 fValMatrix = zeros(nSubj, nContrasts, nLightLevels, nFreqs);
 
+% Pooled sigma fit (across subjects)
+
+% Initialize structs
+for contrastIdx = 1:nContrasts
+    for lightIdx = 1:nLightLevels
+        pooledData(contrastIdx, lightIdx).dB = [];
+        pooledData(contrastIdx, lightIdx).responseData = [];
+    end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+            
+%% OLD CODE
 for subjIdx = 1:nSubj
 
     thisSubj = subjectID{subjIdx};
