@@ -72,19 +72,18 @@ if ~simulateStimuli
     % Play the ready sound
     Speak('go');
 
-    % Start the light modulation
-    obj.LightObj.startModulation;
-
     % Store the start time
     startTimeSecs = cputime();
+
+    % Start the light modulation
+    obj.LightObj.startModulation;
 
     % Calculate when the modulation should end
     stopTimeModSeconds = startTimeSecs + obj.lightModDurSecs;
 
-    % Calculate when the blink detection period should end
     % Define the stop time for the end of the blink detection period.
     stopTimeBlinkSeconds = stopTimeModSeconds ...
-        - obj.blinkEventIntervalSecs - obj.blinkResponseIntervalSecs;
+        - 2*obj.blinkEventIntervalSecs - obj.blinkResponseIntervalSecs;
 
     % Enter a while loop that presents occasional blink events for the
     % subject to detect. This continues until we reach the end of the light

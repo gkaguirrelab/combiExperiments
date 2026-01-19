@@ -47,6 +47,7 @@ else
     [buttonPress, responseTimeSecs] = getGamepadResponse(responseDurSecs,[5 6]);
     if isempty(buttonPress)
         detected = false;
+        responseTimeSecs = nan;
     else
         detected = true;
     end
