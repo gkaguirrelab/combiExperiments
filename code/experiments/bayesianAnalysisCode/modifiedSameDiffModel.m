@@ -1,0 +1,88 @@
+function pDifferent = modifiedSameDiffModel( stimDiffDb, p, epsilon)
+% Probability of reporting "different" in a same different judgement
+%
+% Syntax:
+%   pDifferent = modifiedSameDiffModel( stimDiffDb, p )
+%
+% Description:
+%   This function implements a descriptive same–different
+%   discrimination model. The model converts each physical stimulus
+%   difference Δ (in dB) into an internal decision variable, compares it
+%   against a flexible criterion, and returns the probability that the
+%   observer reports "different."
+%
+% Special case at Δ = 0 (the “v-state”):
+%   When the physical stimulus difference is exactly 0 dB, the model
+%   treats this as a special state in which prediction must reflect the
+%   listener's tendency to occasionally respond “different” even when
+%   the stimuli are physically identical. This behavior results from
+%   internal noise (sigma) and the baseline criterion.
+%
+% Inputs:
+%   stimDiffDb            - Vector of numeric values. The difference
+%                           between the stimuli in units of decibels.
+%   p                     - 1x4 vector of parameter values that controls
+%                           the output of the model.
+%   epsilon               - Scalar numeric value. The constant lapse rate.
+%
+% Optional key/value pairs:
+%   none
+%
+% Outputs:
+%   pDifferent            - Vector of same length as stimDiffDb that gives
+%                           the probability of reporting "different" for
+%                           that degree of stimulus difference.
+%
+% Examples:
+%{
+    % Define some params
+    p = [1.4, 2.5, 0.5, 1];
+    stimDiffDb = -10:0.5:10;   
+    epsilon = 0.0001;
+    pDifferent = modifiedSameDiffModel(stimDiffDb, p, epsilon );
+    plot(stimDiffDb, pDifferent,'*-r');
+%}
+
+% Unpack the parameters
+m = p(1);
+x_limit = p(2);
+crit_baseline = p(3);
+sigma = p(4);
+
+% First calculate the "c" value, which is the criterion that the observer
+% uses to determine if same or different given the internal measurement.
+% If abs(stimDiffDb) > x_limit, we will have c = crit_baseline;
+c = crit_baseline - m * max(0, (x_limit - abs(stimDiffDb))); 
+% Plotting the criterion
+% figure;
+% plot(stimDiffDb, c, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 6); 
+% xlabel('Stimulus difference (dB)');
+% ylabel('Criterion');
+
+% Integral limits
+mR_min = -inf;
+mR_max = inf;
+
+% Loop for integral evaluation
+for ii = 1:numel(stimDiffDb)
+    mu_R = 0;
+    mu_T = stimDiffDb(ii);
+
+    % Define joint PDF
+    f = @(mR, mT) normpdf(mR, mu_R, sigma) .* normpdf(mT, mu_T, sigma);
+
+    % Integration bounds for mT given mR
+    g = @(mR) mR - c(ii);
+    h = @(mR) mR + c(ii);
+
+    % Compute probability of "same"
+    P_same = integral2(f, mR_min, mR_max, g, h);
+
+    % Probability of "different" (Lapse-Free)
+    P_diff_lapse_free = 1 - P_same;
+    % Apply lapse rate correction
+    % divide epsilon by 2 because equal chance same or different
+    pDifferent(ii) = (1 - epsilon) * P_diff_lapse_free + epsilon/2;
+end
+
+end
