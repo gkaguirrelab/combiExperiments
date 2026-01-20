@@ -63,6 +63,7 @@ P_m_given_D1 = mean(normpdf(mGrid, thetaRange, sqrt(sigma^2 + sigmaZero^2)), 2);
 P_D1_given_m = (P_m_given_D1 * pDiff) ./ (P_m_given_D0 * pSame + P_m_given_D1 * pDiff);
 
 % Decision rule
+% Depends only on internal measurement, not on theta
 decisionDifferent = (P_D1_given_m > 0.5);
 
 dm = mGrid(2) - mGrid(1);
@@ -72,18 +73,28 @@ pDifferent = zeros(size(stimDiffDb));
 
 for i = 1:length(stimDiffDb)
     delta = stimDiffDb(i);
+    % If the true stimulus value were theta, how often would
+    % the observer say different?
 
-    % likelihood of measurement given this stimulus difference
-    % Why are we integrating under this distribution only?
-    % I thought it was because we were only considering different
-    % trials in this but idk if that is the case
-    P_m_given_delta = normpdf(mGrid, delta, sqrt(sigma^2 + sigmaZero^2));
+    % Determine the variance of the measurement depending on trial type
+    if abs(delta) < 1e-12 % delta == 0
+        % Same trial: two reference stimuli
+        var_m = 2 * sigmaZero^2;
+    else
+        % Different trial: one reference, one test stimulus
+        var_m = sigmaZero^2 + sigma^2;
+    end
+
+    % Likelihood of measurement given this stimulus difference
+    % This is the sensory encoding stage
+    P_m_given_delta = normpdf(mGrid, delta, sqrt(var_m));
 
     % Normalize
     P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm);
 
-    % Probability of decision = integration over measurements
-    pDifferent(i) = sum(P_m_given_delta .* decisionDifferent * dm);
+    % Probability of decision = integration (average) over measurements
+    % Add up the fractions of trials in each measurement bin that lead to a "diff" response
+    pDifferent(i) = sum(P_m_given_delta .* decisionDifferent) * dm;
 end
 
 end
