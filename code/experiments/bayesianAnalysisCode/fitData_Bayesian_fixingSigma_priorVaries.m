@@ -113,15 +113,15 @@ for contrastIdx = 1:nContrasts
         end
 
         % Now fit the psychometric function
-        initialSigmas = [0.5 0.5];
-        lb = [0.001 0.001];
-        ub = [3 3];
+        initialParams = [0.5 0.5 0.5];  % [sigma, sigmaZero, priorSame]
+        lb = [0.001 0.001 0.01];
+        ub = [3 3 0.99];
 
         options = bads('defaults');
         options.MaxIter = 100;
 
-        [fit, ~] = bads(@(p) negLogLikelihood(p, uniqueDb, probData, nTrials, priorSame), ...
-            initialSigmas, lb, ub, lb, ub, [], options);
+        [fit, ~] = bads(@(p) negLogLikelihood(p, uniqueDb, probData, nTrials), ...
+            initialParams, lb, ub, lb, ub, [], options);
 
         sigmaPooled{contrastIdx, lightIdx} = fit;
         
@@ -266,11 +266,15 @@ end
 
 %% Objective function %%%
 
-function nll = negLogLikelihood(sigma, uniqueDbValues, probData, nTrials, priorSame)
+function nll = negLogLikelihood(params, uniqueDbValues, probData, nTrials)
+
+    % Unpack parameters
+    sigmaParams = params(1:2);
+    priorSame = p(3);
 
     % Predict probability of "different" at each unique dB level
     % P_diff = bayesianSameDiffModel(uniqueDbValues, sigma);
-    P_diff = bayesianSameDiffModelTwoSigma(uniqueDbValues, sigma, priorSame);
+    P_diff = bayesianSameDiffModelTwoSigma(uniqueDbValues, sigmaParams, priorSame);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
     % Finding the count of different responses (aka the number of

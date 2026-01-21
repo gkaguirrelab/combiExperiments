@@ -76,18 +76,10 @@ for i = 1:length(stimDiffDb)
     % If the true stimulus value were theta, how often would
     % the observer say different?
 
-    % Determine the variance of the measurement depending on trial type
-    if abs(delta) < 1e-12 % delta == 0
-        % Same trial: two reference stimuli
-        var_m = 2 * sigmaZero^2;
-    else
-        % Different trial: one reference, one test stimulus
-        var_m = sigmaZero^2 + sigma^2;
-    end
-
     % Likelihood of measurement given this stimulus difference
     % This is the sensory encoding stage
-    P_m_given_delta = normpdf(mGrid, delta, sqrt(var_m));
+    % Observer treats every trial as if it might be a difference trial
+    P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaZero^2 + sigma^2));
 
     % Normalize
     P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm);
