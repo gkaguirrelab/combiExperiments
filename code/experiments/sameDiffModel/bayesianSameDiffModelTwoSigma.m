@@ -78,7 +78,7 @@ for i = 1:length(stimDiffDb)
 
     % Likelihood of measurement given this stimulus difference
     % This is the sensory encoding stage
-    % Observer treats every trial as if it might be a difference trial
+    % Observer treats every trial as if it might be a different trial
     P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaZero^2 + sigma^2));
 
     % Normalize

@@ -12,8 +12,9 @@ experimentName = 'DCPT_SDT';
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 %         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
 % subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-%         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
-subjectID = {'FLIC_1016'};
+%         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044', 'FLIC_1046'};
+subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
+        'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044', 'FLIC_1046'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -29,8 +30,6 @@ nSubj = length(subjectID);
 %% FITTING CODE %%
 
 % Pooled sigma fit (across subjects, reference freqs, and sides)
-
-priorSame = 0.5;
 
 % Initialize struct for pooled data
 pooledData = struct();
@@ -245,7 +244,9 @@ for subjIdx = 1:nSubj
                 fit = sigmaPooled{contrastIdx, lightIdx};
 
                 x = -6:0.1:6;
-                plot(x, bayesianSameDiffModelTwoSigma(x, fit, priorSame), ...
+                sigmaParams = fit(1:2);
+                priorSameFit = fit(3);  % the fitted prior
+                plot(x, bayesianSameDiffModelTwoSigma(x, sigmaParams, priorSameFit), ...
                     'k-', 'LineWidth', 2);
 
                 xlabel('stimulus difference [dB]');
@@ -270,7 +271,7 @@ function nll = negLogLikelihood(params, uniqueDbValues, probData, nTrials)
 
     % Unpack parameters
     sigmaParams = params(1:2);
-    priorSame = p(3);
+    priorSame = params(3);
 
     % Predict probability of "different" at each unique dB level
     % P_diff = bayesianSameDiffModel(uniqueDbValues, sigma);
