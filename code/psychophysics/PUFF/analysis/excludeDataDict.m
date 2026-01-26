@@ -1,0 +1,23 @@
+function vecEndSecs = excludeDataDict(filestem)
+
+filestemsDict = {...
+    'BLNK_1006_modulate_direction-Mel_contrast-0.20_phase-3.14_trial-003',...
+    'BLNK_1006_modulate_direction-Mel_contrast-0.40_phase-3.14_trial-002',...
+    'BLNK_1006_modulate_direction-LMS_contrast-0.40_phase-0.00_trial-002',...
+    };
+
+vecEndSecsDict = {...
+    [45],...
+    [45],...
+    [54]};
+
+idx = strcmp(filestem,filestemsDict);
+
+if any(idx)
+    vecEndSecs = vecEndSecsDict{idx};
+else
+    vecEndSecs = [];
+end
+
+
+end

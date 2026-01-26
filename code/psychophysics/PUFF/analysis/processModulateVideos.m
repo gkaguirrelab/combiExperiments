@@ -43,7 +43,7 @@ mList = dir(fullfile(dataDir,'*trial*mat'));
 %% argument block
 arguments
     subjectID
-    options.videoDurSecs = 60
+    options.vecDurSecs = 60
     options.initialSecsToDiscard = 0
     options.fps = 180
 end
@@ -62,7 +62,7 @@ contrasts = [0.2,0.4];
 nTrials = 4;
 
 % Define the data properties
-nFrames = options.videoDurSecs * options.fps;
+nFrames = options.vecDurSecs * options.fps;
 
 % Get the path to the data files
 dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
@@ -84,6 +84,11 @@ end
 for dd = 1:length(directions)
     for cc = 1:length(contrasts)
         for pp = 1:length(phases)
+
+            % Initialize the results field
+            results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).palpFissure = nan(4,nFrames);
+
+            % Loop over trials
             for tt = 1:nTrials
 
                 % Get the filenames for this trial
@@ -97,20 +102,31 @@ for dd = 1:length(directions)
 
                 % Check if the file exists
                 if ~isfile(fileNameL)
+                    results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).palpFissure(tt,1:nFrames) = nan;
                     continue
                 end
 
+                % See if we have a custom duration for this video (which
+                % happens in a couple cases in which the subject removed
+                % their face from the apparatus prematurely
+                vecEndSecs = excludeDataDict(fileNameStem);                
+
                 % Calculate the lag of the L vector relative to R
-                [lagFrames, output] = calcTemporalOffset(fileNameL,fileNameR);
+                if isempty(vecEndSecs)
+                    vecDurSecs = options.vecDurSecs;
+                else
+                    vecDurSecs = vecEndSecs - options.initialSecsToDiscard;
+                end
+                [lagFrames, output] = calcTemporalOffset(fileNameL,fileNameR,'vecDurSecs',vecDurSecs);                
                 if isnan(output.rFinal) || output.rFinal < 0.7
-                    calcTemporalOffset(fileNameL,fileNameR,'makePlotFlag',true)
-                    foo=1;
+                    calcTemporalOffset(fileNameL,fileNameR,'makePlotFlag',true);
+                    warning(['Poor L-R alignment for ' fileNameStem]);
                 end
 
                 % Load the videos, correct lag on the left, convert to
                 % proportion eye open
-                palpFissureR = loadSquintVector(fileNameR);
-                palpFissureL = loadSquintVector(fileNameL);
+                palpFissureR = loadSquintVector(fileNameR,'vecDurSecs',vecDurSecs);
+                palpFissureL = loadSquintVector(fileNameL,'vecDurSecs',vecDurSecs);
                 palpFissureL = circshift(palpFissureL,lagFrames);
                 if ~any(isnan(medianDarkWidth(:,tt)))
                     mdw = medianDarkWidth(:,tt);
@@ -129,7 +145,7 @@ for dd = 1:length(directions)
                 palpFissure = mean([palpFissureR;palpFissureL],'omitmissing');
 
                 % Store the vector
-                results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).palpFissure(tt,1:nFrames) = palpFissure;
+                results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).palpFissure(tt,1:length(palpFissure)) = palpFissure;
                 results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).meta.lagFrames = lagFrames;
                 results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).meta.rFinal = output.rFinal;
                 results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).meta.mdw = mdw;

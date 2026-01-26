@@ -34,7 +34,7 @@ arguments
     eyeFeaturesPathB
     options.fps = 180
     options.startTimeSecs = 0
-    options.vecDurSecs = 120
+    options.vecDurSecs = 60
     options.makePlotFlag = false
 end
 
