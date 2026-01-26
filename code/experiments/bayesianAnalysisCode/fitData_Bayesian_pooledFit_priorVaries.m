@@ -14,7 +14,10 @@ experimentName = 'DCPT_SDT';
 % subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 %         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044', 'FLIC_1046'};
 subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-        'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044', 'FLIC_1046'};
+    'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044', 'FLIC_1046', ...
+    'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
+    'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022','FLIC_0027',...
+    'FLIC_0028','FLIC_0039', 'FLIC_0042','FLIC_0049','FLIC_0051'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -103,13 +106,18 @@ for contrastIdx = 1:nContrasts
         respondYes = pooledData(contrastIdx, lightIdx).respondYes;
 
         uniqueDb = unique(dB);
-        probData = zeros(size(uniqueDb));
+        pRespondDifferent = zeros(size(uniqueDb));
         nTrials  = zeros(size(uniqueDb));
 
         for ii = 1:length(uniqueDb)
-            probData(ii) = mean(respondYes(dB == uniqueDb(ii)));
+            pRespondDifferent(ii) = mean(respondYes(dB == uniqueDb(ii)));
             nTrials(ii)  = sum(dB == uniqueDb(ii)); % nTrials at each dB
         end
+
+        % Save in pooled data struct
+        pooledData(contrastIdx, lightIdx).uniqueDb = uniqueDb;
+        pooledData(contrastIdx, lightIdx).pRespondDifferent = pRespondDifferent;
+        pooledData(contrastIdx, lightIdx).nTrials = nTrials;
 
         % Now fit the psychometric function
         initialParams = [0.5 0.5 0.5];  % [sigma, sigmaZero, priorSame]
@@ -119,7 +127,7 @@ for contrastIdx = 1:nContrasts
         options = bads('defaults');
         options.MaxIter = 100;
 
-        [fit, ~] = bads(@(p) negLogLikelihood(p, uniqueDb, probData, nTrials), ...
+        [fit, ~] = bads(@(p) negLogLikelihood(p, uniqueDb, pRespondDifferent, nTrials), ...
             initialParams, lb, ub, lb, ub, [], options);
 
         sigmaPooled{contrastIdx, lightIdx} = fit;
@@ -127,141 +135,66 @@ for contrastIdx = 1:nContrasts
     end
 end
 
-% PLOTTING
-% Still producing plots for each subject 
-for subjIdx = 1:nSubj
+% PLOTTING: plot pooled fit on pooled data
 
-    thisSubj = subjectID{subjIdx};
+figure;
+t = tiledlayout(nContrasts, nLightLevels, ...
+    'TileSpacing','compact','Padding','compact');
 
-    % Create layouts, one per contrast
-    figLow = figure;
-    tLowContrast = tiledlayout(figLow, nLightLevels, nFreqs, ...
-        'TileSpacing','compact','Padding','compact');
-    title(tLowContrast, ['Low contrast psychometric functions for ' thisSubj], ...
-        'FontWeight','bold');
-
-    figHigh = figure;
-    tHighContrast = tiledlayout(figHigh, nLightLevels, nFreqs, ...
-        'TileSpacing','compact','Padding','compact');
-    title(tHighContrast, ['High contrast psychometric functions for ' thisSubj], ...
-        'FontWeight','bold');
-
+for contrastIdx = 1:nContrasts
     for lightIdx = 1:nLightLevels
-        for refFreqIdx = 1:nFreqs
-            currentRefFreq = refFreqHz(refFreqIdx);
 
-            for contrastIdx = 1:nContrasts
+        nexttile; hold on;
 
-                % Pick the correct layout
-                if contrastIdx == 1
-                    % Low contrast
-                    nexttile(tLowContrast);
-                else
-                    % High contrast
-                    nexttile(tHighContrast);
-                end
-                hold on;
+        uniqueDb = pooledData(contrastIdx, lightIdx).uniqueDb;
+        pRespondDifferent = pooledData(contrastIdx, lightIdx).pRespondDifferent;
+        nTrials = pooledData(contrastIdx, lightIdx).nTrials;
 
-                 % Combined trial data for one subj over high and low sides
-                comboTrialData = [];
+        % Determine marker size
+        markerSizeIdx = discretize(nTrials(2:end), 3);  % skip first point for now
+        markerSizeIdx = [3 markerSizeIdx];              % force first point largest
+        markerSizeSet = [25, 50, 100];
 
-                for sideIdx = 1:length(stimParamLabels)
+        for ii = 1:length(uniqueDb)
 
-                    % Build path to the data file
-                    subjectDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, thisSubj);
-                    dataDir = fullfile(subjectDir, ...
-                        [modDirection '_ND' NDLabel{lightIdx} '_shifted'], experimentName);
-
-                    fileName = fullfile(dataDir, ...
-                        [thisSubj '_' modDirection '_' experimentName ...
-                        '_cont-' targetPhotoContrast{contrastIdx} ...
-                        '_refFreq-' num2str(currentRefFreq) 'Hz_' ...
-                        stimParamLabels{sideIdx} '.mat']);
-
-                    if exist(fileName, 'file')
-                        load(fileName, 'psychObj');
-
-                        thisTrialData = psychObj.questData.trialData;
-
-                        % Flip the sign for the low side values
-                        if contains(fileName, 'lo')
-                            for trial = 1:numel(thisTrialData)
-                                thisTrialData(trial).stim = -thisTrialData(trial).stim;
-                            end
-                        end
-
-                        % Append to combined trial data
-                        comboTrialData = [comboTrialData; thisTrialData];
-
-                        % Store one psychObj as template if needed
-                        if refFreqIdx == 1 && sideIdx == 1
-                            templatePsychObj = psychObj;
-                        end
-                    else
-                        warning('File not found: %s', fileName);
-                    end
-                end
-
-                % FIRST: plot subject data for this ref freq
-                stimCounts = qpCounts(qpData(comboTrialData), ...
-                    templatePsychObj.questData.nOutcomes);
-
-                stim = zeros(length(stimCounts), templatePsychObj.questData.nStimParams);
-                pRespondDifferent = zeros(1,length(stimCounts));
-                nTrialsPlot = zeros(1,length(stimCounts));
-
-                for cc = 1:length(stimCounts)
-                    stim(cc) = stimCounts(cc).stim;
-                    nTrialsPlot(cc) = sum(stimCounts(cc).outcomeCounts);
-                    pRespondDifferent(cc) = ...
-                        stimCounts(cc).outcomeCounts(2) / nTrialsPlot(cc);
-                end
-
-                % Determine marker sizes based on number of trials
-                markerSizeIdx = discretize(nTrialsPlot(2:end), 3);
-                markerSizeIdx = [3 markerSizeIdx];  % keep first point largest
-                markerSizeSet = [25, 50, 100];
-
-                % Plot points with color/size encoding
-                for cc = 1:length(stimCounts)
-
-                    if stim(cc) == 0
-                        markerShape = 'diamond';
-                    else
-                        markerShape = 'o';
-                    end
-
-                    scatter(stim(cc), pRespondDifferent(cc), ...
-                        markerSizeSet(markerSizeIdx(cc)), ...
-                        'MarkerFaceColor', [pRespondDifferent(cc) 0 1-pRespondDifferent(cc)], ...
-                        'MarkerEdgeColor','k', ...
-                        'MarkerFaceAlpha', nTrialsPlot(cc)/max(nTrialsPlot), ...
-                        'Marker', markerShape);
-                    hold on;
-                end
-
-                % SECOND: plot pooled fit
-                fit = sigmaPooled{contrastIdx, lightIdx};
-
-                x = -6:0.1:6;
-                sigmaParams = fit(1:2);
-                priorSameFit = fit(3);  % the fitted prior
-                plot(x, bayesianSameDiffModelTwoSigma(x, sigmaParams, priorSameFit), ...
-                    'k-', 'LineWidth', 2);
-
-                xlabel('stimulus difference [dB]');
-                if lightIdx == 1 && refFreqIdx == 1
-                    ylabel({'LOW', 'proportion respond different'});
-                end
-                if lightIdx == 2 && refFreqIdx == 1
-                    ylabel({'HIGH', 'proportion respond different'});
-                end
-                title(sprintf('Ref freq = %.1f Hz', currentRefFreq));
-                ylim([-0.1 1.1]);
-                xlim([-6.0 6.0]);
-
+            if uniqueDb(ii) == 0
+                markerShape = 'diamond';
+            else
+                markerShape = 'o';
             end
+
+            minAlpha = 0.1;
+            alphaVal = max(minAlpha, nTrials(ii)/max(nTrials));
+
+            scatter(uniqueDb(ii), pRespondDifferent(ii), ...
+                markerSizeSet(markerSizeIdx(ii)), ...
+                'MarkerFaceColor', ...
+                [pRespondDifferent(ii) 0 1-pRespondDifferent(ii)], ...
+                'MarkerEdgeColor','k', ...
+                'MarkerFaceAlpha', alphaVal, ...
+                'Marker', markerShape);
         end
+
+        % Plot pooled fit
+        fit = sigmaPooled{contrastIdx, lightIdx};
+
+        sigmaParams = fit(1:2);
+        priorSameFit = fit(3);
+
+        x = -6:0.1:6;
+
+        plot(x, bayesianSameDiffModelTwoSigma(x, sigmaParams, priorSameFit), ...
+            'k-', 'LineWidth', 2);
+
+        % Labels
+        ylim([-0.05 1.05]);
+        xlim([-6 6]);
+        xlabel('stimulus difference [dB]');
+        ylabel('proportion respond different');
+
+        title(sprintf('%s contrast | ND %s', ...
+            stimParamLabels{contrastIdx}, NDLabel{lightIdx}));
+
     end
 end
 
