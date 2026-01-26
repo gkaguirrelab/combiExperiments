@@ -31,8 +31,8 @@ function pDifferent = bayesianSameDiffModelTwoSigma( stimDiffDb, sigmaParams, pr
 %}
 
 % Unpack two sigma values
-sigma = sigmaParams(1);
-sigmaZero = sigmaParams(2);
+sigma = sigmaParams(1); % sigma test
+sigmaZero = sigmaParams(2);  % sigma ref
 
 % Priors
 pSame = priorSame;

@@ -14,9 +14,9 @@ experimentName = 'DCPT_SDT';
 % subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 %         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
 subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-    'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
-modDirection = 'LightFlux';
-NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
+    'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044', 'FLIC_1046'};
+    modDirection = 'LightFlux';
+    NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
 refFreqHz = logspace(log10(10),log10(30),5);  % logspace(log10(10),log10(30),5)
 targetPhotoContrast = {'0x1','0x3'};  % {'0x1','0x3'}
@@ -30,7 +30,7 @@ nSubj = length(subjectID);
 %% FITTING CODE %%
 % Pooled sigma fit (across subjects, reference freqs, and sides)
 
-priorSame = 0.5;
+priorSame = 0.55;
 
 % Initialize struct for pooled data
 pooledData = struct();
@@ -39,20 +39,11 @@ for contrastIdx = 1:nContrasts
     for lightIdx = 1:nLightLevels
         pooledData(contrastIdx, lightIdx).stim = [];
         pooledData(contrastIdx, lightIdx).respondYes = [];
+        pooledData(contrastIdx, lightIdx).uniqueDb = [];
+        pooledData(contrastIdx, lightIdx).pRespondDifferent = [];
+        pooledData(contrastIdx, lightIdx).nTrials = [];
     end
 end
-
-% And initialize a per-subject pooled struct for plotting
-pooledBySubj = cell(nSubj,1);
-
-for subjIdx = 1:nSubj
-    for contrastIdx = 1:nContrasts
-        for lightIdx = 1:nLightLevels
-            pooledBySubj{subjIdx}(contrastIdx, lightIdx).stim = [];
-            pooledBySubj{subjIdx}(contrastIdx, lightIdx).respondYes = [];
-        end
-    end
-end 
 
 % Loading files and pooling dB and response data in structs
 % Data is pooled across subjects, frequencies, and sides
@@ -95,13 +86,6 @@ for subjIdx = 1:nSubj
                         pooledData(contrastIdx, lightIdx).respondYes = ...
                             [pooledData(contrastIdx, lightIdx).respondYes, [thisTrialData.respondYes]];
 
-                        % Pooled by subject for plotting
-                        pooledBySubj{subjIdx}(contrastIdx, lightIdx).stim = ...
-                            [pooledBySubj{subjIdx}(contrastIdx, lightIdx).stim, [thisTrialData.stim]];
-
-                        pooledBySubj{subjIdx}(contrastIdx, lightIdx).respondYes = ...
-                            [pooledBySubj{subjIdx}(contrastIdx, lightIdx).respondYes, [thisTrialData.respondYes]];
-
                     else
                         warning('File not found: %s', fileName);
                     end
@@ -123,13 +107,18 @@ for contrastIdx = 1:nContrasts
         respondYes = pooledData(contrastIdx, lightIdx).respondYes;
 
         uniqueDb = unique(dB);
-        probData = zeros(size(uniqueDb));
+        pRespondDifferent = zeros(size(uniqueDb));
         nTrials  = zeros(size(uniqueDb));
 
         for ii = 1:length(uniqueDb)
-            probData(ii) = mean(respondYes(dB == uniqueDb(ii)));
-            nTrials(ii)  = sum(dB == uniqueDb(ii)); % nTrials at each dB
+            pRespondDifferent(ii) = mean(respondYes(dB == uniqueDb(ii)));
+            nTrials(ii) = sum(dB == uniqueDb(ii)); % nTrials at each dB
         end
+
+        % Save in pooled data struct
+        pooledData(contrastIdx, lightIdx).uniqueDb = uniqueDb;
+        pooledData(contrastIdx, lightIdx).pRespondDifferent = pRespondDifferent;
+        pooledData(contrastIdx, lightIdx).nTrials = nTrials;
 
         % Now fit the psychometric function
         initialSigmas = [0.5 0.5];
@@ -139,7 +128,7 @@ for contrastIdx = 1:nContrasts
         options = bads('defaults');
         options.MaxIter = 100;
 
-        [fit, ~] = bads(@(p) negLogLikelihood(p, uniqueDb, probData, nTrials, priorSame), ...
+        [fit, ~] = bads(@(p) negLogLikelihood(p, uniqueDb, pRespondDifferent, nTrials, priorSame), ...
             initialSigmas, lb, ub, lb, ub, [], options);
 
         sigmaPooled{contrastIdx, lightIdx} = fit;
@@ -153,52 +142,38 @@ figure;
 t = tiledlayout(nContrasts, nLightLevels, ...
     'TileSpacing','compact','Padding','compact');
 
-colors = lines(nSubj);
-
 for contrastIdx = 1:nContrasts
     for lightIdx = 1:nLightLevels
 
         nexttile; hold on;
 
-        for subjIdx = 1:nSubj
+        uniqueDb = pooledData(contrastIdx, lightIdx).uniqueDb;
+        pRespondDifferent = pooledData(contrastIdx, lightIdx).pRespondDifferent;
+        nTrials = pooledData(contrastIdx, lightIdx).nTrials;
 
-            % Load in the data for this contrast and light idx combo, for
-            % this subject
-            dB = pooledBySubj{subjIdx}(contrastIdx, lightIdx).stim;
-            respondYes  = pooledBySubj{subjIdx}(contrastIdx, lightIdx).respondYes;
+        % Determine marker size
+        markerSizeIdx = discretize(nTrials(2:end), 3);  % skip first point for now
+        markerSizeIdx = [3 markerSizeIdx];              % force first point largest
+        markerSizeSet = [25, 50, 100];
 
-            uniqueDb = unique(dB);
-            pRespondDifferent = zeros(size(uniqueDb));
-            nTrials = zeros(size(uniqueDb));
+        for ii = 1:length(uniqueDb)
 
-            % Determine proportion respond different and nTrials at each dB level
-            for ii = 1:length(uniqueDb)
-                idx = dB == uniqueDb(ii);
-                pRespondDifferent(ii) = mean(respondYes(idx));
-                nTrials(ii) = sum(idx);
+            if uniqueDb(ii) == 0
+                markerShape = 'diamond';
+            else
+                markerShape = 'o';
             end
 
-            % Determine marker size
-            markerSizeIdx = discretize(nTrials(2:end), 3);  % skip first point for now
-            markerSizeIdx = [3 markerSizeIdx];              % force first point largest
-            markerSizeSet = [25, 50, 100];
+            minAlpha = 0.1;
+            alphaVal = max(minAlpha, nTrials(ii)/max(nTrials));
 
-            for ii = 1:length(uniqueDb)
-
-                if uniqueDb(ii) == 0
-                    markerShape = 'diamond';
-                else
-                    markerShape = 'o';
-                end
-
-                scatter(uniqueDb(ii), pRespondDifferent(ii), ...
-                    markerSizeSet(markerSizeIdx(ii)), ...
-                    'MarkerFaceColor', ...
-                    [pRespondDifferent(ii) 0 1-pRespondDifferent(ii)], ...
-                    'MarkerEdgeColor','k', ...
-                    'MarkerFaceAlpha', nTrials(ii)/max(nTrials), ...
-                    'Marker', markerShape);
-            end
+            scatter(uniqueDb(ii), pRespondDifferent(ii), ...
+                markerSizeSet(markerSizeIdx(ii)), ...
+                'MarkerFaceColor', ...
+                [pRespondDifferent(ii) 0 1-pRespondDifferent(ii)], ...
+                'MarkerEdgeColor','k', ...
+                'MarkerFaceAlpha', alphaVal, ...
+                'Marker', markerShape);
         end
 
         % Plot pooled fit
