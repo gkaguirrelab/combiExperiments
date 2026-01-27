@@ -30,8 +30,6 @@ nSubj = length(subjectID);
 %% FITTING CODE %%
 % Pooled sigma fit (across subjects, reference freqs, and sides)
 
-priorSame = 0.55;
-
 % Initialize struct for pooled data
 pooledData = struct();
 
@@ -120,10 +118,13 @@ for contrastIdx = 1:nContrasts
         pooledData(contrastIdx, lightIdx).pRespondDifferent = pRespondDifferent;
         pooledData(contrastIdx, lightIdx).nTrials = nTrials;
 
+        % INSERT PRIOR CALCULATION HERE
+        priorSame = 0.5;
+
         % Now fit the psychometric function
         initialSigmas = [0.5 0.5];
         lb = [0.001 0.001];
-        ub = [3 3];
+        ub = [5 5];
 
         options = bads('defaults');
         options.MaxIter = 100;
@@ -152,9 +153,12 @@ for contrastIdx = 1:nContrasts
         nTrials = pooledData(contrastIdx, lightIdx).nTrials;
 
         % Determine marker size
-        markerSizeIdx = discretize(nTrials(2:end), 3);  % skip first point for now
-        markerSizeIdx = [3 markerSizeIdx];              % force first point largest
-        markerSizeSet = [25, 50, 100];
+        sameIdx = find(uniqueDb == 0); % Find the index of the zero dB point
+        % Discretize all points except the zero-dB point
+        markerSizeIdx = zeros(size(nTrials));   
+        markerSizeIdx((1:end) ~= sameIdx) = discretize(nTrials((1:end) ~= sameIdx), 3);
+        markerSizeIdx(sameIdx) = 4;  % Force zero dB point to largest bin
+        markerSizeSet = [25, 50, 75, 100];
 
         for ii = 1:length(uniqueDb)
 
@@ -165,7 +169,8 @@ for contrastIdx = 1:nContrasts
             end
 
             minAlpha = 0.1;
-            alphaVal = max(minAlpha, nTrials(ii)/max(nTrials));
+            % alphaVal = max(minAlpha, nTrials(ii)/max(nTrials));
+            alphaVal = nTrials(ii)/max(nTrials); 
 
             scatter(uniqueDb(ii), pRespondDifferent(ii), ...
                 markerSizeSet(markerSizeIdx(ii)), ...
