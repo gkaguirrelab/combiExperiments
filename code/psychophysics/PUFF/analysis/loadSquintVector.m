@@ -1,4 +1,4 @@
-function palpFissureHeight = loadSquintVector( eyeFeaturesPath, options )
+function [palpFissureHeight, confidence] = loadSquintVector( eyeFeaturesPath, options )
 % Returns the palpebral fissure and pupil diameter with blink events nan'd
 %
 % Syntax:
@@ -33,6 +33,7 @@ arguments
     options.startTimeSecs = 0
     options.vecDurSecs = 60
     options.medianWindow = 180*3
+    options.confidenceThresh = 0.5
     options.makePlotFlag = false % Unused
 end
 
@@ -54,6 +55,7 @@ nFrames = min([nFrames nDataCells-startFrame]);
 % Loop over the frames and calculate the palpebral fissure width at the
 % midpoint of the upper and lower lid
 palpFissureHeight = nan(1,nFrames);
+confidence = nan(1,nFrames);
 for ff = startFrame:nFrames
     thisFrame = ff+startFrame-1;
     xVals = eyeFeatures.data{thisFrame}.eyelids.eyelid_x;
@@ -64,7 +66,11 @@ for ff = startFrame:nFrames
     if val > 0 && val < 100
         palpFissureHeight(ff) = val;
     end
+    confidence(ff) = mean(eyeFeatures.data{thisFrame}.eyelids.dlc_confidence);
 end
+
+% Nan any points with confidence below threshold
+palpFissureHeight(confidence < options.confidenceThresh) = nan;
 
 % Perform smoothing
 palpFissureHeight = movmedian(palpFissureHeight,options.medianWindow,"omitnan");

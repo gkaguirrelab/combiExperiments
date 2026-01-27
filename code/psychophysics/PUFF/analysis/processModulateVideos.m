@@ -2,41 +2,25 @@ function results = processModulateVideos( subjectID, options )
 % Extract measure of eye closure in videos from the modulate experiment
 %
 % Syntax:
-%   output = myFunc(input)
+%   results = processModulateVideos( subjectID)
 %
 % Description:
-%   Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean euismod
-%   nulla a tempor scelerisque. Maecenas et lobortis est. Donec et turpis
-%   sem. Sed fringilla in metus ut malesuada. Pellentesque nec eros
-%   efficitur, pellentesque nisl vel, dapibus felis. Morbi eu gravida enim.
-%   Sed sodales ipsum eget finibus dapibus. Fusce sagittis felis id orci
-%   egestas, non convallis neque porttitor. Proin ut mi augue. Cras posuere
-%   diam at purus dignissim, vel vestibulum tellus ultrices
+%   Process the data for a subject in the PuffLight modulate experiment
 %
 % Inputs:
-%   none
-%   foo                   - Scalar. Foo foo foo foo foo foo foo foo foo foo
-%                           foo foo foo foo foo foo foo foo foo foo foo foo
-%                           foo foo foo
+%   subjectID             - Char vector. E.g., 'BLNK_1001'
 %
 % Optional key/value pairs:
-%   none
 %  'bar'                  - Scalar. Bar bar bar bar bar bar bar bar bar bar
 %                           bar bar bar bar bar bar bar bar bar bar bar bar
 %                           bar bar bar bar bar bar
 %
 % Outputs:
-%   none
-%   baz                   - Cell. Baz baz baz baz baz baz baz baz baz baz
-%                           baz baz baz baz baz baz baz baz baz baz baz baz
-%                           baz baz baz
+%   results               - Structure
 %
 % Examples:
 %{
-% Get a list of the analysis files
-directionSet = {'-LMS','-Mel','-S'};
-dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/BLNK_analysis/PuffLight/modulate/HERO_gka/videos';
-mList = dir(fullfile(dataDir,'*trial*mat'));
+
 %}
 
 
@@ -46,6 +30,7 @@ arguments
     options.vecDurSecs = 60
     options.initialSecsToDiscard = 0
     options.fps = 180
+    options.makePlotFlag = true
 end
 
 % Define some experiment properties
@@ -85,8 +70,10 @@ for dd = 1:length(directions)
     for cc = 1:length(contrasts)
         for pp = 1:length(phases)
 
-            % Initialize the results field
+            % Initialize the results and confidence fields
             results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).palpFissure = nan(4,nFrames);
+            results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).confidenceL = nan(4,nFrames);
+            results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).confidenceR = nan(4,nFrames);
 
             % Loop over trials
             for tt = 1:nTrials
@@ -109,7 +96,7 @@ for dd = 1:length(directions)
                 % See if we have a custom duration for this video (which
                 % happens in a couple cases in which the subject removed
                 % their face from the apparatus prematurely
-                vecEndSecs = excludeDataDict(fileNameStem);                
+                vecEndSecs = excludeDataDict(fileNameStem);
 
                 % Calculate the lag of the L vector relative to R
                 if isempty(vecEndSecs)
@@ -119,15 +106,16 @@ for dd = 1:length(directions)
                 end
                 [lagFrames, output] = calcTemporalOffset(fileNameL,fileNameR,'vecDurSecs',vecDurSecs);                
                 if isnan(output.rFinal) || output.rFinal < 0.7
-                    calcTemporalOffset(fileNameL,fileNameR,'makePlotFlag',true);
+                    calcTemporalOffset(fileNameL,fileNameR,'vecDurSecs',vecDurSecs,'makePlotFlag',true);
                     warning(['Poor L-R alignment for ' fileNameStem]);
                 end
 
                 % Load the videos, correct lag on the left, convert to
                 % proportion eye open
-                palpFissureR = loadSquintVector(fileNameR,'vecDurSecs',vecDurSecs);
-                palpFissureL = loadSquintVector(fileNameL,'vecDurSecs',vecDurSecs);
+                [palpFissureR, confidenceR] = loadSquintVector(fileNameR,'vecDurSecs',vecDurSecs);
+                [palpFissureL, confidenceL] = loadSquintVector(fileNameL,'vecDurSecs',vecDurSecs);
                 palpFissureL = circshift(palpFissureL,lagFrames);
+                confidenceL = circshift(confidenceL,lagFrames);
                 if ~any(isnan(medianDarkWidth(:,tt)))
                     mdw = medianDarkWidth(:,tt);
                 else
@@ -146,6 +134,8 @@ for dd = 1:length(directions)
 
                 % Store the vector
                 results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).palpFissure(tt,1:length(palpFissure)) = palpFissure;
+                results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).confidenceL(tt,1:length(palpFissure)) = confidenceL;
+                results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).confidenceR(tt,1:length(palpFissure)) = confidenceR;
                 results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).meta.lagFrames = lagFrames;
                 results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).meta.rFinal = output.rFinal;
                 results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).meta.mdw = mdw;
@@ -154,7 +144,24 @@ for dd = 1:length(directions)
     end
 end
 
-
-
+% Make some plots if requested
+if options.makePlotFlag
+    plotColors = {'c','y','b','k'};
+    lineWidth = [1,2];
+    t = 0:1/options.fps:(nFrames-1)/options.fps;
+    figure
+    for dd = 1:length(directions)
+        for cc = 1:length(contrasts)
+            vecs=-results.(directionLabels{dd}).(contrastLabels{cc}).OffOn.palpFissure;
+            vecs(5:8,:)=results.(directionLabels{dd}).(contrastLabels{cc}).OnOff.palpFissure;
+            mu = mean(vecs,'omitmissing');
+            plot(t,mu,[plotColors{dd} '-'],'LineWidth',lineWidth(cc));
+            hold on
+        end
+    end
+    xlabel('Time [secs]');
+    ylabel('proportion ∆ eye closure');
+    title(subjectID,'Interpreter','none');
+end
 
 end
