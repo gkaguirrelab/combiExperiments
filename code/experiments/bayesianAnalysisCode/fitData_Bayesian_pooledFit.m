@@ -96,7 +96,10 @@ end
 
 % Fit one sigma per each of the four (contrast x light) levels
 sigmaPooled = cell(nContrasts, nLightLevels);
+nSameTrials = 0;
+nDiffTrials = 0;
 
+% First load in the data
 for contrastIdx = 1:nContrasts
     for lightIdx = 1:nLightLevels
 
@@ -118,10 +121,23 @@ for contrastIdx = 1:nContrasts
         pooledData(contrastIdx, lightIdx).pRespondDifferent = pRespondDifferent;
         pooledData(contrastIdx, lightIdx).nTrials = nTrials;
 
-        % INSERT PRIOR CALCULATION HERE
-        priorSame = 0.5;
+        % Calculation of the prior probability of same
+        sameIdx = find(uniqueDb == 0); % Find the index of the zero dB point
+        nDiffTrials = nDiffTrials + sum(nTrials(1:(sameIdx-1))) + sum(nTrials((sameIdx+1):end));
+        nSameTrials = nSameTrials + nTrials(sameIdx);
 
-        % Now fit the psychometric function
+        % Prior calculation once all trials are summed
+        if contrastIdx == 2 && lightIdx == 2
+            priorSame = nSameTrials/(nSameTrials + nDiffTrials);
+        end
+
+    end
+end
+
+% Now fit the psychometric function
+for contrastIdx = 1:nContrasts
+    for lightIdx = 1:nLightLevels
+
         initialSigmas = [0.5 0.5];
         lb = [0.001 0.001];
         ub = [5 5];
