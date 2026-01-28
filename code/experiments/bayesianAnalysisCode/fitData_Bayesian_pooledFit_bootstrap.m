@@ -30,12 +30,12 @@ nSubj = length(subjectID);
 %% FITTING CODE %%
 % Bootstrapped pooled sigma fit (across subjects, reference freqs, and sides)
 
-nBoot = 1000; % number of bootstrap iterations
+nBoot = 2; % number of bootstrap iterations
 nConditions = nContrasts * nLightLevels;
 
 % Preallocate separate matrices for sigma and sigma zero
-sigmaMatrix = zeros(nBoots, nConditions);
-sigmaZeroMatrix = zeros(nBoots, nConditions);
+sigmaMatrix = zeros(nBoot, nConditions);
+sigmaZeroMatrix = zeros(nBoot, nConditions);
 
 rng(0); % set the seed to 0
 
@@ -166,8 +166,8 @@ for bootIdx = 1:nBoot
 
             sigmaPooled{contrastIdx, lightIdx} = fit;
 
-            sigmaMatrix(boot, colIdx) = fit(1);
-            sigmaZeroMatrix(boot, colIdx) = fit(2);
+            sigmaMatrix(bootIdx, colIdx) = fit(1);
+            sigmaZeroMatrix(bootIdx, colIdx) = fit(2);
 
             colIdx = colIdx + 1; % move to next condition
 
