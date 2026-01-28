@@ -1,9 +1,15 @@
 % SETUP
+saveData = true;% true to save bootstrapping data as a file. if false, make it load existing
 % Defining the directory
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir = 'FLIC_data';
 projectName = 'combiLED';
 experimentName = 'DCPT_SDT';
+
+if saveData
+    saveFileDir = [dropBoxBaseDir, '/FLIC_analysis/dichopticFlicker/sigmaData'];
+    saveFileName = [saveFileDir, '/BootrstappedSigmas14Migraine.mat'];
+end
 
 % Define subjects + parameters
 % Control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
@@ -30,7 +36,7 @@ nSubj = length(subjectID);
 %% FITTING CODE %%
 % Bootstrapped pooled sigma fit (across subjects, reference freqs, and sides)
 
-nBoot = 2; % number of bootstrap iterations
+nBoot = 1000; % number of bootstrap iterations
 nConditions = nContrasts * nLightLevels;
 
 % Preallocate separate matrices for sigma and sigma zero
@@ -176,7 +182,8 @@ for bootIdx = 1:nBoot
 end
 
 %%
-% PLOTTING: plot pooled fit on pooled data
+% PLOTTING: plot pooled fit (with bootstrapping) on pooled data (not bootstrapped)
+% NEEDS TO BE UPDATED
 
 figure;
 t = tiledlayout(nContrasts, nLightLevels, ...
@@ -238,9 +245,12 @@ for contrastIdx = 1:nContrasts
 
     end
 end
+if saveData
+    save(saveFileName, "sigmaMatrix", "sigmaZeroMatrix");
+end
+
 
 %% Plotting bootstrapped sigmas
-
 
 
 %% Objective function %%
