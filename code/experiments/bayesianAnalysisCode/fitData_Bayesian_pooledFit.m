@@ -10,13 +10,13 @@ experimentName = 'DCPT_SDT';
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',
 % 'FLIC_0028','FLIC_0039', 'FLIC_0042'}; eventually add 'FLIC_0051'
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-%         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
-% subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-%         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};
+    % 'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
+    % 'FLIC_1044', 'FLIC_1046', 'FLIC_1047'};
 subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-    'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044', 'FLIC_1046'};
-    modDirection = 'LightFlux';
-    NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
+    'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
+    'FLIC_1044', 'FLIC_1046', 'FLIC_1047'};
+modDirection = 'LightFlux';
+NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
 refFreqHz = logspace(log10(10),log10(30),5);  % logspace(log10(10),log10(30),5)
 targetPhotoContrast = {'0x1','0x3'};  % {'0x1','0x3'}
