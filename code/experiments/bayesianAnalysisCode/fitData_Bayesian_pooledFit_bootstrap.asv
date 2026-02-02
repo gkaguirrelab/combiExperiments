@@ -394,10 +394,7 @@ for contrastIdx = 1:nContrasts
         sigmaZeroMean = mean(sigmaZeroMatrix(:,colIdx));
         paramMeans{contrastIdx, lightIdx} = [sigmaMean sigmaZeroMean];
 
-        % Compute 95% CI
-        sigmaCI = prctile(sigmaMatrix(:,colIdx), [2.5 97.5]);
-        sigmaZeroCI = prctile(sigmaZeroMatrix(:,colIdx), [2.5 97.5]);
-        paramCI{contrastIdx, lightIdx} = [sigmaCI; sigmaZeroCI];
+        % Compute 95% CU
 
         colIdx = colIdx + 1;
     end
