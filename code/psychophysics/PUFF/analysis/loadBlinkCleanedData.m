@@ -36,6 +36,7 @@ arguments
     options.fps = 180
     options.blinkDurSecs = 0.5
     options.makePlotFlag = false
+    options.addToExistingPlot = false
 end
 
 % How many frames should we expect?
@@ -98,8 +99,10 @@ pupilDiameterCleaned(unique(idx)) = NaN;
 % Plot the original and cleaned vectors
 if options.makePlotFlag
     t = 0:1/options.fps:(nFrames-1)/options.fps;
+    if ~options.addToExistingPlot
     figure
     tiledlayout("vertical");
+    end
     nexttile
     plot(t,repmat(median(palpFissureHeightCleaned,'omitmissing'),size(t)),'-b','LineWidth',2);
     hold on
@@ -107,12 +110,6 @@ if options.makePlotFlag
     plot(t,palpFissureHeightCleaned,'.r');
     [~,filename]=fileparts(eyeFeaturesPath);
     title({filename,'Palpebral fissure height'},'Interpreter','none');
-    nexttile
-    plot(t,repmat(median(pupilDiameterCleaned,'omitmissing'),size(t)),'-b','LineWidth',2);
-    hold on
-    plot(t,pupilDiameter,'-k');
-    plot(t,pupilDiameterCleaned,'.r');
-    title('Pupil diameter');
 end
 
 

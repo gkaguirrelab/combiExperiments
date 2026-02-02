@@ -61,7 +61,7 @@ for dd = 1:4
     filenameL = sprintf([subjectID '_modulate_dark-%02d_L_eyeFeatures.mat'],idx);
     if isfile(fullfile(dataDir,filenameR))
         medianDarkWidth(1,dd) = median(loadBlinkCleanedData(fullfile(dataDir,filenameR),'makePlotFlag',true),'omitmissing');
-        medianDarkWidth(2,dd) = median(loadBlinkCleanedData(fullfile(dataDir,filenameL),'makePlotFlag',true),'omitmissing');
+        medianDarkWidth(2,dd) = median(loadBlinkCleanedData(fullfile(dataDir,filenameL),'makePlotFlag',true,'addToExistingPlot',true),'omitmissing');
     end
 end
 
