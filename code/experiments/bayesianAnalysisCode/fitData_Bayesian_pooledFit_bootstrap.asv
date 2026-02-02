@@ -394,7 +394,10 @@ for contrastIdx = 1:nContrasts
         sigmaZeroMean = mean(sigmaZeroMatrix(:,colIdx));
         paramMeans{contrastIdx, lightIdx} = [sigmaMean sigmaZeroMean];
 
-        % Compute 95% CU
+        % Compute 95% CI
+        sigmaCI = prctile(sigmaMatrix(:,colIdx), [2.5 97.5]);
+        sigmaZeroCI = prctile(sigmaZeroMatrix(:,colIdx), [2.5 97.5]);
+        paramCI{contrastIdx, lightIdx} = [sigmaCI; sigmaZeroCI];
 
         colIdx = colIdx + 1;
     end
@@ -457,7 +460,9 @@ for contrastIdx = 1:nContrasts
         ciLower = paramCI{contrastIdx, lightIdx}(:,1);  % 2.5 percentile
         ciUpper = paramCI{contrastIdx, lightIdx}(:,2);  % 97.5 percentile
 
-        plot(x, ciLower, '--', 'Color', [0.2 0.2 0.2], 'LineWidth', 1.5);
+        CIfitLow = [ciLower]
+
+        plot(x, bayesianSameDiffModelTwoSigma(x, ciLower, priorSame), '--', 'Color', [0.2 0.2 0.2], 'LineWidth', 1.5);
         plot(x, ciUpper, '--', 'Color', [0.2 0.2 0.2], 'LineWidth', 1.5);
 
         % Labels

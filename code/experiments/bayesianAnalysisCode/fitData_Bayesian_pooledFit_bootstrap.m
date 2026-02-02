@@ -22,9 +22,9 @@ end
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
     % 'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
     % 'FLIC_1044', 'FLIC_1046', 'FLIC_1047'};
-subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
-'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',...
-'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0051'}; 
+subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
+'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
+'FLIC_1044', 'FLIC_1046', 'FLIC_1047'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -408,7 +408,7 @@ end
 figure;
 t = tiledlayout(nContrasts, nLightLevels, ...
     'TileSpacing','compact','Padding','compact');
-title(t, 'Control Subjects'); 
+title(t, 'Migraine Subjects'); 
 
 for contrastIdx = 1:nContrasts
     for lightIdx = 1:nLightLevels
@@ -457,11 +457,11 @@ for contrastIdx = 1:nContrasts
             'k-', 'LineWidth', 2);
 
         % Add 95% CI lines
-        ciLower = paramCI{contrastIdx, lightIdx}(:,1);  % 2.5 percentile
-        ciUpper = paramCI{contrastIdx, lightIdx}(:,2);  % 97.5 percentile
+        ciLower = paramCI{contrastIdx, lightIdx}(:, 1);  % 2.5 percentile of sigma and sigmaZero vals
+        ciUpper = paramCI{contrastIdx, lightIdx}(:, 2);  % 97.5 percentile of sigma and sigmaZero vals
 
-        plot(x, ciLower, '--', 'Color', [0.2 0.2 0.2], 'LineWidth', 1.5);
-        plot(x, ciUpper, '--', 'Color', [0.2 0.2 0.2], 'LineWidth', 1.5);
+        plot(x, bayesianSameDiffModelTwoSigma(x, ciLower, priorSame), '--', 'Color', [0.6 0.75 0.9], 'LineWidth', 1.5);
+        plot(x, bayesianSameDiffModelTwoSigma(x, ciUpper, priorSame), '--', 'Color', [0.2 0.4 0.8], 'LineWidth', 1.5);
 
         % Labels
         ylim([-0.05 1.05]);
