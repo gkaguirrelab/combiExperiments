@@ -30,6 +30,7 @@ arguments
     options.vecDurSecs = 60
     options.initialSecsToDiscard = 0
     options.fps = 180
+    options.badLagCorrelationThresh = 0.5
     options.makePlotFlag = true
 end
 
@@ -105,8 +106,12 @@ for dd = 1:length(directions)
                     vecDurSecs = vecEndSecs - options.initialSecsToDiscard;
                 end
                 [lagFrames, output] = calcTemporalOffset(fileNameL,fileNameR,'vecDurSecs',vecDurSecs);                
-                if isnan(output.rFinal) || output.rFinal < 0.7
-                    calcTemporalOffset(fileNameL,fileNameR,'vecDurSecs',vecDurSecs,'makePlotFlag',true);
+                if isnan(output.rFinal) || ...
+                        output.rFinal < options.badLagCorrelationThresh || ...
+                        abs(lagFrames) > options.fps/2
+                    if options.makePlotFlag
+                        calcTemporalOffset(fileNameL,fileNameR,'vecDurSecs',vecDurSecs,'makePlotFlag',true);
+                    end
                     warning(['Poor L-R alignment for ' fileNameStem]);
                 end
 
