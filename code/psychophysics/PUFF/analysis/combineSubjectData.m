@@ -54,10 +54,9 @@ for dd = 1:length(directions)
     end
 end
 
-% Make a summary figure
+% Make a summary time-series figure
 figure
 t = 0:1/options.fps:(nFrames-1)/options.fps;
-figure
 plot(t,zeros(size(t)),'-k');
 hold on
 for dd = 1:length(directions)
