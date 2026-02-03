@@ -3,7 +3,7 @@ clear
 
 % Define the list of subjects
 subjects = {'BLNK_1007','BLNK_1006','BLNK_1001',...
-    'BLNK_1009','BLNK_1011'};
+    'BLNK_1009','BLNK_1011','BLNK_1003'};
 
 % Define temporal properties of the recording
 options.fps = 180;
@@ -22,12 +22,12 @@ nTrials = 4;
 % Define plot properties
 directionColors = {'c','y','b','k'};
 directionPlotOrder = [2 3 4 1];
-contrastLineWidth = [1,2];
+contrastLineWidth = [2,1];
 
 
 % Get the results
 for ss = 1:length(subjects)
-    results{ss} = processModulateVideos(subjects{ss},'makePlotFlag',false);
+    results{ss} = processModulateVideos(subjects{ss},'makePlotFlag',true);
 end
 
 % Fit a Fourier regression to the data from every subject and condition
@@ -67,7 +67,7 @@ for dd = 1:length(directions)
             avgSubVec(ss,:) = mean(vecs,'omitmissing');
         end
         mu = mean(avgSubVec,'omitmissing');
-        plot(t,mu,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
+%        plot(t,mu,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
         [~, ~,yFit] = fitFourier(mu, 'fitFreqHz', 1/60);
         plot(t,yFit,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
     end
