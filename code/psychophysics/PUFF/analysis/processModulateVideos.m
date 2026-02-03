@@ -30,6 +30,7 @@ arguments
     options.vecDurSecs = 60
     options.initialSecsToDiscard = 0
     options.fps = 180
+    options.badLagCorrelationThresh = 0.5
     options.makePlotFlag = true
 end
 
@@ -60,8 +61,8 @@ for dd = 1:4
     filenameR = sprintf([subjectID '_modulate_dark-%02d_R_eyeFeatures.mat'],idx);
     filenameL = sprintf([subjectID '_modulate_dark-%02d_L_eyeFeatures.mat'],idx);
     if isfile(fullfile(dataDir,filenameR))
-        medianDarkWidth(1,dd) = median(loadBlinkCleanedData(fullfile(dataDir,filenameR),'makePlotFlag',true),'omitmissing');
-        medianDarkWidth(2,dd) = median(loadBlinkCleanedData(fullfile(dataDir,filenameL),'makePlotFlag',true,'addToExistingPlot',true),'omitmissing');
+        medianDarkWidth(1,dd) = median(loadBlinkCleanedData(fullfile(dataDir,filenameR),'makePlotFlag',options.makePlotFlag),'omitmissing');
+        medianDarkWidth(2,dd) = median(loadBlinkCleanedData(fullfile(dataDir,filenameL),'makePlotFlag',options.makePlotFlag,'addToExistingPlot',true),'omitmissing');
     end
 end
 
@@ -105,8 +106,12 @@ for dd = 1:length(directions)
                     vecDurSecs = vecEndSecs - options.initialSecsToDiscard;
                 end
                 [lagFrames, output] = calcTemporalOffset(fileNameL,fileNameR,'vecDurSecs',vecDurSecs);                
-                if isnan(output.rFinal) || output.rFinal < 0.7
-                    calcTemporalOffset(fileNameL,fileNameR,'vecDurSecs',vecDurSecs,'makePlotFlag',true);
+                if isnan(output.rFinal) || ...
+                        output.rFinal < options.badLagCorrelationThresh || ...
+                        abs(lagFrames) > options.fps/2
+                    if options.makePlotFlag
+                        calcTemporalOffset(fileNameL,fileNameR,'vecDurSecs',vecDurSecs,'makePlotFlag',true);
+                    end
                     warning(['Poor L-R alignment for ' fileNameStem]);
                 end
 

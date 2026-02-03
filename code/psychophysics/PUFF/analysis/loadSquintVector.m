@@ -32,7 +32,7 @@ arguments
     options.fps = 180
     options.startTimeSecs = 0
     options.vecDurSecs = 60
-    options.medianWindow = 180*3
+    options.smoothWindowSecs = 5
     options.confidenceThresh = 0.5
     options.makePlotFlag = false % Unused
 end
@@ -73,7 +73,7 @@ end
 palpFissureHeight(confidence < options.confidenceThresh) = nan;
 
 % Perform smoothing
-palpFissureHeight = movmedian(palpFissureHeight,options.medianWindow,"omitnan");
+palpFissureHeight = movmean(palpFissureHeight,round(options.smoothWindowSecs*options.fps),"omitnan");
 
 end
 
