@@ -1,4 +1,4 @@
-function plotFourierFits(amplitude,phase)
+function plotFourierFits(amplitude,phase,symbolColor)
 
 % Calculate the mean and covariance in Cartesian coordinates
 [x, y] = pol2cart(phase, amplitude);
@@ -24,7 +24,7 @@ ellipse_cart = V * sqrt(D) * unit_circle + [mu_x; mu_y];
 % Plot the data
 % figHandle = figure();
 
-polarplot(phase, amplitude, 'ko', 'MarkerFaceColor', [.7 .7 .7], 'DisplayName', 'Data Points'); 
+polarplot(phase, amplitude, 'o', 'MarkerFaceColor', symbolColor, 'MarkerEdgeColor',[0.7 0.7 0.7], 'DisplayName', 'Data Points'); 
 hold on;
 polarplot(el_theta, el_rho, 'r-', 'LineWidth', 2, 'DisplayName', 'Standard Error (SEM)');
 polarplot(mu_theta, mu_rho, 'r+', 'MarkerSize', 12, 'MarkerFaceColor', 'r', 'DisplayName', 'Mean Vector');

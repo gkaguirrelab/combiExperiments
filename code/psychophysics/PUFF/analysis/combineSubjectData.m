@@ -3,7 +3,7 @@ clear
 
 % Define the list of subjects
 subjects = {'BLNK_1001','BLNK_1003','BLNK_1006','BLNK_1007',...
-    'BLNK_1009','BLNK_1011'};
+    'BLNK_1009','BLNK_1010','BLNK_1011'};
 
 % Define temporal properties of the recording
 options.fps = 180;
@@ -14,10 +14,16 @@ nFrames = options.vecDurSecs * options.fps;
 directions = {'Mel','LMS','S_peripheral','LightFlux'};
 directionLabels = {'Mel','LMS','S','LF'};
 phaseLabels = {'OnOff','OffOn'};
-contrastLabels = {'Low','High'};
+contrastLabels = {'High','Low'};
 phases = [0,pi];
-contrasts = [0.2,0.4];
+contrasts = [0.4,0.2];
 nTrials = 4;
+
+% Define plot properties
+directionColors = {'c','y','b','k'};
+directionPlotOrder = [2 3 4 1];
+contrastLineWidth = [1,2];
+
 
 % Get the results
 for ss = 1:length(subjects)
@@ -26,7 +32,7 @@ end
 
 % Fit a Fourier regression to the data from every subject and condition
 figure
-tiledlayout
+tiledlayout(length(contrasts),length(directions))
 for dd = 1:length(directions)
     for cc = 1:length(contrasts)
         for ss = 1:length(subjects)
@@ -40,9 +46,9 @@ for dd = 1:length(directions)
             fitResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude(ss)=amplitude;
             fitResults.(directionLabels{dd}).(contrastLabels{cc}).phase(ss)=phase;
         end
-        nexttile
+        nexttile((cc-1)*length(directions)+directionPlotOrder(dd))
         plotFourierFits(fitResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude,...
-        fitResults.(directionLabels{dd}).(contrastLabels{cc}).phase);
+        fitResults.(directionLabels{dd}).(contrastLabels{cc}).phase,directionColors{dd});
         title([directionLabels{dd} ' ' contrastLabels{cc}]);
         rlim([0 0.4]);
     end
@@ -50,8 +56,6 @@ end
 
 % Make a summary figure
 figure
-plotColors = {'c','y','b','k'};
-lineWidth = [1,2];
 t = 0:1/options.fps:(nFrames-1)/options.fps;
 figure
 plot(t,zeros(size(t)),'-k');
@@ -64,9 +68,9 @@ for dd = 1:length(directions)
             avgSubVec(ss,:) = mean(vecs,'omitmissing');
         end
         mu = mean(avgSubVec,'omitmissing');
-        plot(t,mu,[plotColors{dd} '-'],'LineWidth',lineWidth(cc));
+        plot(t,mu,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
         [~, ~,yFit] = fitFourier(mu, 'fitFreqHz', 1/60);
-        plot(t,yFit,[plotColors{dd} '-'],'LineWidth',lineWidth(cc));
+        plot(t,yFit,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
     end
 end
 xlabel('Time [secs]');
