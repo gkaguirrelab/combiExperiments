@@ -3,7 +3,7 @@ clear
 
 % Define the list of subjects
 subjects = {'BLNK_1001','BLNK_1003','BLNK_1006','BLNK_1007',...
-    'BLNK_1009','BLNK_1010','BLNK_1011'};
+    'BLNK_1009','BLNK_1011'};
 
 % Define temporal properties of the recording
 options.fps = 180;
@@ -24,6 +24,30 @@ for ss = 1:length(subjects)
     results{ss} = processModulateVideos(subjects{ss},'makePlotFlag',false);
 end
 
+% Fit a Fourier regression to the data from every subject and condition
+figure
+tiledlayout
+for dd = 1:length(directions)
+    for cc = 1:length(contrasts)
+        for ss = 1:length(subjects)
+            % Get the vector
+            vecs=-results{ss}.(directionLabels{dd}).(contrastLabels{cc}).OffOn.palpFissure;
+            vecs(5:8,:)=results{ss}.(directionLabels{dd}).(contrastLabels{cc}).OnOff.palpFissure;
+            vec = mean(vecs,'omitmissing');
+            % Fit the vector
+            [amplitude, phase] = fitFourier(vec, 'fitFreqHz', 1/60);
+            % Store the results
+            fitResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude(ss)=amplitude;
+            fitResults.(directionLabels{dd}).(contrastLabels{cc}).phase(ss)=phase;
+        end
+        nexttile
+        plotFourierFits(fitResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude,...
+        fitResults.(directionLabels{dd}).(contrastLabels{cc}).phase);
+        title([directionLabels{dd} ' ' contrastLabels{cc}]);
+        rlim([0 0.4]);
+    end
+end
+
 % Make a summary figure
 figure
 plotColors = {'c','y','b','k'};
@@ -41,6 +65,8 @@ for dd = 1:length(directions)
         end
         mu = mean(avgSubVec,'omitmissing');
         plot(t,mu,[plotColors{dd} '-'],'LineWidth',lineWidth(cc));
+        [~, ~,yFit] = fitFourier(mu, 'fitFreqHz', 1/60);
+        plot(t,yFit,[plotColors{dd} '-'],'LineWidth',lineWidth(cc));
     end
 end
 xlabel('Time [secs]');
