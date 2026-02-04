@@ -306,6 +306,7 @@ end
 set(gca,'XTick',1:nCond,'XTickLabel',condLabels);
 % xtickangle(45)
 ylabel('sigma test');
+ylim([0 2.5]);
 legend({'Control','Migraine'}, 'Location','Northwest');
 title('sigma test by contrast × light');
 box off;
@@ -331,9 +332,12 @@ end
 set(gca,'XTick',1:nCond,'XTickLabel',condLabels);
 % xtickangle(45)
 ylabel('sigma ref');
+ylim([0 2.5]);
 legend({'Control','Migraine'}, 'Location','Northwest');
 title('sigma ref by contrast × light');
 box off;
+
+%% Plotting the F values from this
 
 %% Objective function %%
 function nll = negLogLikelihood(sigma, uniqueDbValues, probData, nTrials, priorSame)
