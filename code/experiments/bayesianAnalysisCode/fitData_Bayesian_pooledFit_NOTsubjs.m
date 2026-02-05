@@ -8,13 +8,13 @@ experimentName = 'DCPT_SDT';
 % Define subjects + parameters
 % Control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',
-% 'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0051'}; 
+% 'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0050', 'FLIC_0051'}; 
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 % 'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
-% 'FLIC_1044', 'FLIC_1046', 'FLIC_1047'};
-% subjectID =  {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
-% 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',...
-% 'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0051'}; 
+% 'FLIC_1044', 'FLIC_1046', 'FLIC_1047', 'FLIC_1048'};
+subjectID =  {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
+'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
+'FLIC_1044', 'FLIC_1046', 'FLIC_1047', 'FLIC_1048'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -135,6 +135,7 @@ end
 priorSame = nSameTrials/(nSameTrials + nDiffTrials);
 
 sigmaPooled = cell(nSubj, nContrasts, nLightLevels);
+fValPooled = cell(nSubj, nContrasts, nLightLevels);
 % Now fit the psychometric function
 for subjIdx = 1:nSubj
     for contrastIdx = 1:nContrasts
@@ -151,10 +152,11 @@ for subjIdx = 1:nSubj
             options = bads('defaults');
             options.MaxIter = 100;
 
-            [fit, ~] = bads(@(p) negLogLikelihood(p, uniqueDb, pRespondDifferent, nTrials, priorSame), ...
+            [fit, fVal] = bads(@(p) negLogLikelihood(p, uniqueDb, pRespondDifferent, nTrials, priorSame), ...
                 initialSigmas, lb, ub, lb, ub, [], options);
 
             sigmaPooled{subjIdx, contrastIdx, lightIdx} = fit;
+            fValPooled{subjIdx, contrastIdx, lightIdx} = fVal;
 
         end
     end
@@ -228,6 +230,7 @@ for subjIdx = 1:nSubj
 end
 
 %% Plotting sigma parameters for each contrast x light level condition
+% Bar plot
 
 % Creating sigma matrices
 % Dimensions: subj × contrast × light
@@ -337,7 +340,80 @@ legend({'Control','Migraine'}, 'Location','Northwest');
 title('sigma ref by contrast × light');
 box off;
 
-%% Plotting the F values from this
+%% Plotting the F values from fitting the migraine and control subjects
+% Using the entire sets of nSubj x 4 F values, from migrainers and controls
+
+% Migrainers
+fValsMigraine = cell2mat(fValPooledMigraine(:));
+% Control
+fValsControl = cell2mat(fValPooledControl(:));
+
+% Define shared bin edges
+edges = linspace(min([fValsMigraine; fValsControl]), ...
+                 max([fValsMigraine; fValsControl]), 20);
+
+% Overlaid histogram
+figure; hold on
+
+histogram(fValsMigraine, edges, ...
+    'FaceAlpha',0.5, ...
+    'EdgeColor','none');
+
+histogram(fValsControl, edges, ...
+    'FaceAlpha',0.5, ...
+    'EdgeColor','none');
+
+xlabel('Negative log-likelihood (fVal)')
+ylabel('Count')
+legend({'Migrainers','Controls'})
+title('Model fit quality across groups')
+
+box off
+
+%% Omnibus ANOVA 
+% Group × Contrast × Light mixed ANOVA, with subjects nested in group
+
+% Migrainers
+migraineSigmaMatrix = cell2mat(sigmaPooledMigraine);
+% Control
+controlSigmaMatrix = cell2mat(sigmaPooledControl);
+
+% Make matrices for ANOVA
+sigmaAll = cat(1, controlSigmaMatrix, migraineSigmaMatrix);
+nControl = size(controlSigma,1);
+nMigraine = size(migraineSigma,1);
+nSubjAll = nControl + nMigraine;
+
+% Subject matrix
+subjMatrix = nan(nSubjAll,nContrasts,nLightLevels);
+for subjIdx =1:nSubjAll
+    subjMatrix(subjIdx, :, :) = subjIdx;
+end
+% Contrast matrix
+contrastMtrx = nan(nSubjAll,nContrasts,nLightLevels);
+for contrastIdx = 1:nContrasts
+    contrastMtrx(:,contrastIdx,:) = contrastIdx;
+end
+% Light level matrix
+lightLevelMtrx = nan(nSubjAll,nContrasts,nLightLevels);
+for lightIdx = 1:nLightLevels
+    lightLevelMtrx(:,:,lightIdx) = lightIdx;
+end
+
+% Group matrix
+groupMtrx = nan(nSubjAll,nContrasts,nLightLevels);
+groupMtrx(1:nControl,:,:) = 1;          % Control
+groupMtrx((nControl+1):end,:,:) = 2;      % Migraine
+
+% Participants are nested within groups
+nest = zeros(4,4);
+nest(1,2) = 1;   % subject nested in group
+
+% Participants as random
+[panova, output.anova, anova_table] = anovan(sigmaAll(:), {subjMatrix(:), ...
+    groupMtrx(:), contrastMtrx(:), lightLevelMtrx(:)}, 'nested', nest, ...
+    'random', 1, 'model', 'full', 'varnames', {'subject', 'group'...
+    'contrast', 'light level'}, 'display', 'on');
 
 %% Objective function %%
 function nll = negLogLikelihood(sigma, uniqueDbValues, probData, nTrials, priorSame)
