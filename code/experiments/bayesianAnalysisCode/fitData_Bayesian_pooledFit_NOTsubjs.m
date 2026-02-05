@@ -8,13 +8,13 @@ experimentName = 'DCPT_SDT';
 % Define subjects + parameters
 % Control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',
-% 'FLIC_0028','FLIC_0039', 'FLIC_0042'}; eventually add 'FLIC_0051'
+% 'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0051'}; 
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 % 'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
 % 'FLIC_1044', 'FLIC_1046', 'FLIC_1047'};
-subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
-    'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',...
-    'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0051'};
+% subjectID =  {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
+% 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',...
+% 'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0051'}; 
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -144,7 +144,7 @@ for subjIdx = 1:nSubj
             pRespondDifferent = pooledData(subjIdx, contrastIdx, lightIdx).pRespondDifferent;
             nTrials = pooledData(subjIdx, contrastIdx, lightIdx).nTrials;
 
-            initialSigmas = [0.3 0.3];
+            initialSigmas = [1 1];
             lb = [0.001 0.001];
             ub = [5 5];
 
@@ -226,6 +226,118 @@ for subjIdx = 1:nSubj
         end
     end
 end
+
+%% Plotting sigma parameters for each contrast x light level condition
+
+% Creating sigma matrices
+% Dimensions: subj × contrast × light
+sigmaControl = nan(nSubj, nContrasts, nLightLevels);
+sigmaZeroControl = nan(nSubj, nContrasts, nLightLevels);
+sigmaMigraine = nan(nSubj, nContrasts, nLightLevels);
+sigmaZeroMigraine = nan(nSubj, nContrasts, nLightLevels);
+
+for subjIdx = 1:nSubj
+    for contrastIdx = 1:nContrasts
+        for lightIdx = 1:nLightLevels
+            fitControl = sigmaPooledControl{subjIdx, contrastIdx, lightIdx};
+            sigmaControl(subjIdx, contrastIdx, lightIdx)  = fitControl(1);
+            sigmaZeroControl(subjIdx, contrastIdx, lightIdx) = fitControl(2);
+            fitMigraine = sigmaPooledMigraine{subjIdx, contrastIdx, lightIdx};
+            sigmaMigraine(subjIdx, contrastIdx, lightIdx)  = fitMigraine(1);
+            sigmaZeroMigraine(subjIdx, contrastIdx, lightIdx) = fitMigraine(2);
+        end
+    end
+end
+
+nCond = nContrasts * nLightLevels;
+
+% subj × condition
+sigmaControlMat      = reshape(sigmaControl,      nSubj, nCond);
+sigmaZeroControlMat  = reshape(sigmaZeroControl,  nSubj, nCond);
+sigmaMigraineMat     = reshape(sigmaMigraine,     nSubj, nCond);
+sigmaZeroMigraineMat = reshape(sigmaZeroMigraine, nSubj, nCond);
+
+% calculate mean and SEM 
+mu_sigma_ctrl  = mean(sigmaControlMat,  1);
+mu_sigma_mig   = mean(sigmaMigraineMat, 1);
+sem_sigma_ctrl = std(sigmaControlMat,  [], 1) ./ sqrt(nSubj);
+sem_sigma_mig  = std(sigmaMigraineMat, [], 1) ./ sqrt(nSubj);
+
+mu_sigma0_ctrl  = mean(sigmaZeroControlMat,  1);
+mu_sigma0_mig   = mean(sigmaZeroMigraineMat, 1);
+sem_sigma0_ctrl = std(sigmaZeroControlMat,  [], 1) ./ sqrt(nSubj);
+sem_sigma0_mig  = std(sigmaZeroMigraineMat, [], 1) ./ sqrt(nSubj);
+
+% Condition labels
+condLabels = cell(1, nCond);
+c = 1;
+for contrastIdx = 1:nContrasts
+    for lightIdx = 1:nLightLevels
+        condLabels{c} = sprintf('%s | ND %s', ...
+            stimParamLabels{contrastIdx}, NDLabel{lightIdx});
+        c = c + 1;
+    end
+end
+
+% Plot sigma (control v migraine)
+figure; hold on;
+
+barData = [mu_sigma_ctrl; mu_sigma_mig]';
+b = bar(barData, 'grouped');
+
+% Colors (optional)
+b(1).FaceColor = [0.3 0.3 0.8];  % Control
+b(2).FaceColor = [0.8 0.3 0.3];  % Migraine
+
+% Error bars
+ngroups = nCond;
+nbars   = 2;
+groupwidth = min(0.8, nbars/(nbars+1.5));
+
+for ii = 1:nbars
+    x = (1:ngroups) - groupwidth/2 + (2*ii-1)*groupwidth/(2*nbars);
+    if ii == 1
+        errorbar(x, mu_sigma_ctrl, sem_sigma_ctrl, 'k', 'linestyle','none');
+    else
+        errorbar(x, mu_sigma_mig, sem_sigma_mig, 'k', 'linestyle','none');
+    end
+end
+
+set(gca,'XTick',1:nCond,'XTickLabel',condLabels);
+% xtickangle(45)
+ylabel('sigma test');
+ylim([0 2.5]);
+legend({'Control','Migraine'}, 'Location','Northwest');
+title('sigma test by contrast × light');
+box off;
+
+% Plot sigma zero (control v migraine)
+figure; hold on;
+
+barData = [mu_sigma0_ctrl; mu_sigma0_mig]';
+b = bar(barData, 'grouped');
+
+b(1).FaceColor = [0.3 0.3 0.8];
+b(2).FaceColor = [0.8 0.3 0.3];
+
+for ii = 1:nbars
+    x = (1:nCond) - groupwidth/2 + (2*ii-1)*groupwidth/(2*nbars);
+    if ii == 1
+        errorbar(x, mu_sigma0_ctrl, sem_sigma0_ctrl, 'k', 'linestyle','none');
+    else
+        errorbar(x, mu_sigma0_mig, sem_sigma0_mig, 'k', 'linestyle','none');
+    end
+end
+
+set(gca,'XTick',1:nCond,'XTickLabel',condLabels);
+% xtickangle(45)
+ylabel('sigma ref');
+ylim([0 2.5]);
+legend({'Control','Migraine'}, 'Location','Northwest');
+title('sigma ref by contrast × light');
+box off;
+
+%% Plotting the F values from this
 
 %% Objective function %%
 function nll = negLogLikelihood(sigma, uniqueDbValues, probData, nTrials, priorSame)
