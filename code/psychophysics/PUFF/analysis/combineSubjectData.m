@@ -1,9 +1,11 @@
 close all
 clear
 
-% Define the list of subjects
-subjects = {'BLNK_1007','BLNK_1006','BLNK_1001',...
-    'BLNK_1009','BLNK_1011','BLNK_1003'};
+% Define the list of subjects. Data from subject BLNK_1010 was excluded
+% post-hoc due to constant movement during recordings, which caused more
+% than 50% loss of measurements in the majority of trials.
+subjects = {'BLNK_1001','BLNK_1003','BLNK_1006',...
+    'BLNK_1007','BLNK_1008','BLNK_1009','BLNK_1011'};
 
 % Define temporal properties of the recording
 options.fps = 180;
@@ -27,7 +29,7 @@ contrastLineWidth = [2,1];
 
 % Get the results
 for ss = 1:length(subjects)
-    results{ss} = processModulateVideos(subjects{ss},'makePlotFlag',true);
+    results{ss} = processModulateVideos(subjects{ss},'makePlotFlag',false);
 end
 
 % Fit a Fourier regression to the data from every subject and condition
@@ -67,9 +69,9 @@ for dd = 1:length(directions)
             avgSubVec(ss,:) = mean(vecs,'omitmissing');
         end
         mu = mean(avgSubVec,'omitmissing');
-%        plot(t,mu,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
+        plot(t,mu,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
         [~, ~,yFit] = fitFourier(mu, 'fitFreqHz', 1/60);
-        plot(t,yFit,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
+%        plot(t,yFit,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
     end
 end
 xlabel('Time [secs]');
