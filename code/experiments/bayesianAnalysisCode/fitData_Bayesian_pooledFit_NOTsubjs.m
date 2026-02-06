@@ -17,6 +17,7 @@ subjectID =  {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 'FLIC_1044', 'FLIC_1046', 'FLIC_1047', 'FLIC_1048'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
+lightParamLabels = {'low light', 'high light'};
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
 refFreqHz = logspace(log10(10),log10(30),5);  % logspace(log10(10),log10(30),5)
 targetPhotoContrast = {'0x1','0x3'};  % {'0x1','0x3'}
@@ -222,8 +223,8 @@ for subjIdx = 1:nSubj
             xlabel('stimulus difference [dB]');
             ylabel('proportion respond different');
 
-            title(sprintf('%s contrast | ND %s', ...
-                stimParamLabels{contrastIdx}, NDLabel{lightIdx}));
+            title(sprintf('%s contrast | %s', ...
+                stimParamLabels{contrastIdx}, lightParamLabels{lightIdx}));
 
         end
     end
@@ -306,13 +307,41 @@ for ii = 1:nbars
     end
 end
 
-set(gca,'XTick',1:nCond,'XTickLabel',condLabels);
-% xtickangle(45)
+% X tick labels = light level (top row)
+lightLabels = repmat(lightParamLabels, 1, nContrasts);
+set(gca,'XTick',1:nCond,'XTickLabel',lightLabels);
 ylabel('sigma test');
 ylim([0 2.5]);
 legend({'Control','Migraine'}, 'Location','Northwest');
 title('sigma test by contrast × light');
 box off;
+% Add contrast labels underneath
+ax = gca;
+
+% Normalized x positions of contrast centers
+xLow  = (mean(1:nLightLevels) - 0.5) / nCond;
+xHigh = (mean((nLightLevels+1):nCond) - 0.5) / nCond;
+
+% Y position BELOW the axis (negative = below)
+yText = -0.07;
+
+text(ax, xLow,  yText, 'low contrast', ...
+    'Units','normalized', ...
+    'HorizontalAlignment','center', ...
+    'VerticalAlignment','top', ...
+    'FontWeight','bold', ...
+    'FontSize', 12);
+
+text(ax, xHigh, yText, 'high contrast', ...
+    'Units','normalized', ...
+    'HorizontalAlignment','center', ...
+    'VerticalAlignment','top', ...
+    'FontWeight','bold', ...
+    'FontSize', 12);
+
+ax.Clipping = 'off';
+ax.Position(2) = ax.Position(2) + 0.01;   % move axes up
+ax.Position(4) = ax.Position(4) - 0.01;   % shrink height
 
 % Plot sigma zero (control v migraine)
 figure; hold on;
@@ -332,13 +361,41 @@ for ii = 1:nbars
     end
 end
 
-set(gca,'XTick',1:nCond,'XTickLabel',condLabels);
-% xtickangle(45)
+% X tick labels = light level (top row)
+lightLabels = repmat(lightParamLabels, 1, nContrasts);
+set(gca,'XTick',1:nCond,'XTickLabel',lightLabels);
 ylabel('sigma ref');
 ylim([0 2.5]);
-legend({'Control','Migraine'}, 'Location','Northwest');
+legend({'Control', 'Migraine'}, 'Location','Northwest');
 title('sigma ref by contrast × light');
 box off;
+% Add contrast labels underneath
+ax = gca;
+
+% Normalized x positions of contrast centers
+xLow  = (mean(1:nLightLevels) - 0.5) / nCond;
+xHigh = (mean((nLightLevels+1):nCond) - 0.5) / nCond;
+
+% Y position BELOW the axis (negative = below)
+yText = -0.07;
+
+text(ax, xLow,  yText, 'low contrast', ...
+    'Units','normalized', ...
+    'HorizontalAlignment','center', ...
+    'VerticalAlignment','top', ...
+    'FontWeight','bold', ...
+    'FontSize', 12);
+
+text(ax, xHigh, yText, 'high contrast', ...
+    'Units','normalized', ...
+    'HorizontalAlignment','center', ...
+    'VerticalAlignment','top', ...
+    'FontWeight','bold', ...
+    'FontSize', 12);
+
+ax.Clipping = 'off';
+ax.Position(2) = ax.Position(2) + 0.01;   % move axes up
+ax.Position(4) = ax.Position(4) - 0.01;   % shrink height
 
 %% Plotting the F values from fitting the migraine and control subjects
 % Using the entire sets of nSubj x 4 F values, from migrainers and controls
@@ -373,16 +430,25 @@ box off
 %% Omnibus ANOVA 
 % Group × Contrast × Light mixed ANOVA, with subjects nested in group
 
-% Migrainers
-migraineSigmaMatrix = cell2mat(sigmaPooledMigraine);
-% Control
-controlSigmaMatrix = cell2mat(sigmaPooledControl);
+% Pull either sigma or sigma zero params out of the cell arrays
+for ii = 1:numel(sigmaPooledMigraine)
+    sigmaPooledMigraineAdj{ii} = sigmaPooledMigraine{ii}(1);
+    sigmaZeroPooledMigraineAdj{ii} = sigmaPooledMigraine{ii}(2);
+end
+for ii = 1:numel(sigmaPooledControl)
+    sigmaPooledControlAdj{ii} = sigmaPooledControl{ii}(1);
+    sigmaZeroPooledControlAdj{ii} = sigmaPooledControl{ii}(2);
+end
 
-% Make matrices for ANOVA
-sigmaAll = cat(1, controlSigmaMatrix, migraineSigmaMatrix);
-nControl = size(controlSigma,1);
-nMigraine = size(migraineSigma,1);
-nSubjAll = nControl + nMigraine;
+% Convert cell arrays to matrices
+migraineSigmaVec = cell2mat(sigmaPooledMigraineAdj);
+controlSigmaVec = cell2mat(sigmaPooledControlAdj);
+nSubjAll = 30;
+
+% Combine subjects
+sigmaAll2D = [controlSigmaMatrix; migraineSigmaMatrix];
+sigmaAll = reshape(sigmaAll2D, ...
+    nSubjAll, nContrasts, nLightLevels);
 
 % Subject matrix
 subjMatrix = nan(nSubjAll,nContrasts,nLightLevels);
