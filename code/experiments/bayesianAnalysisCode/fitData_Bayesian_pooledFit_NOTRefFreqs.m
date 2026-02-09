@@ -29,18 +29,20 @@ nLightLevels = length(NDLabel);
 nSubj = length(subjectID);
 
 %% FITTING CODE %%
-% In this code, the data is pooled across sides, contrast, light levels, and subjects,
-% but NOT across reference freqs. 
+% In this code, the data is pooled across sides, contrast, and light levels,
+% but NOT across reference freqs or subjs. 
 
 % Initialize struct for pooled data (pooled across subj, contrast, light, side)
 pooledData = struct();
 
-for refFreqIdx = 1:nFreqs
-    pooledData(refFreqIdx).stim = [];
-    pooledData(refFreqIdx).respondYes = [];
-    pooledData(refFreqIdx).uniqueDb = [];
-    pooledData(refFreqIdx).pRespondDifferent = [];
-    pooledData(refFreqIdx).nTrials = [];
+for subjIdx = 1:nSubj
+    for refFreqIdx = 1:nFreqs
+        pooledData(subjIdx, refFreqIdx).stim = [];
+        pooledData(subjIdx, refFreqIdx).respondYes = [];
+        pooledData(subjIdx, refFreqIdx).uniqueDb = [];
+        pooledData(subjIdx, refFreqIdx).pRespondDifferent = [];
+        pooledData(subjIdx, refFreqIdx).nTrials = [];
+    end
 end
 
 % Loading files and pooling dB and response data in structs
@@ -76,11 +78,11 @@ for subjIdx = 1:nSubj
                             end
                         end
 
-                        pooledData(refFreqIdx).stim = ...
-                            [pooledData(refFreqIdx).stim, [thisTrialData.stim]];
+                        pooledData(subjIdx, refFreqIdx).stim = ...
+                            [pooledData(subjIdx, refFreqIdx).stim, [thisTrialData.stim]];
 
-                        pooledData(refFreqIdx).respondYes = ...
-                            [pooledData(refFreqIdx).respondYes, [thisTrialData.respondYes]];
+                        pooledData(subjIdx, refFreqIdx).respondYes = ...
+                            [pooledData(subjIdx, refFreqIdx).respondYes, [thisTrialData.respondYes]];
 
 
                     else
@@ -98,30 +100,31 @@ nSameTrials = 0;
 nDiffTrials = 0;
 
 % First load in the data
-for refFreqIdx = 1:nFreqs
-            % Load in the data for this contrast and light idx combo
-            dB = pooledData(refFreqIdx).stim;
-            respondYes = pooledData(refFreqIdx).respondYes;
+for subjIdx = 1:nSubj
+    for refFreqIdx = 1:nFreqs
+        % Load in the data for this ref freq and subj combo
+        dB = pooledData(subjIdx, refFreqIdx).stim;
+        respondYes = pooledData(subjIdx, refFreqIdx).respondYes;
 
-            uniqueDb = unique(dB);
-            pRespondDifferent = zeros(size(uniqueDb));
-            nTrials  = zeros(size(uniqueDb));
+        uniqueDb = unique(dB);
+        pRespondDifferent = zeros(size(uniqueDb));
+        nTrials  = zeros(size(uniqueDb));
 
-            for ii = 1:length(uniqueDb)
-                pRespondDifferent(ii) = mean(respondYes(dB == uniqueDb(ii)));
-                nTrials(ii) = sum(dB == uniqueDb(ii)); % nTrials at each dB
-            end
+        for ii = 1:length(uniqueDb)
+            pRespondDifferent(ii) = mean(respondYes(dB == uniqueDb(ii)));
+            nTrials(ii) = sum(dB == uniqueDb(ii)); % nTrials at each dB
+        end
 
-            % Save in pooled data struct
-            pooledData(refFreqIdx).uniqueDb = uniqueDb;
-            pooledData(refFreqIdx).pRespondDifferent = pRespondDifferent;
-            pooledData(refFreqIdx).nTrials = nTrials;
+        % Save in pooled data struct
+        pooledData(subjIdx, refFreqIdx).uniqueDb = uniqueDb;
+        pooledData(subjIdx, refFreqIdx).pRespondDifferent = pRespondDifferent;
+        pooledData(subjIdx, refFreqIdx).nTrials = nTrials;
 
-            % Summing trials for the prior probability of same
-            sameIdx = find(uniqueDb == 0); % Find the index of the zero dB point
-            nDiffTrials = nDiffTrials + sum(nTrials(1:(sameIdx-1))) + sum(nTrials((sameIdx+1):end));
-            nSameTrials = nSameTrials + nTrials(sameIdx);
-
+        % Summing trials for the prior probability of same
+        sameIdx = find(uniqueDb == 0); % Find the index of the zero dB point
+        nDiffTrials = nDiffTrials + sum(nTrials(1:(sameIdx-1))) + sum(nTrials((sameIdx+1):end));
+        nSameTrials = nSameTrials + nTrials(sameIdx);
+    end
 end
 
 % Global prior calculation once all trials are summed
@@ -130,84 +133,93 @@ priorSame = nSameTrials/(nSameTrials + nDiffTrials);
 sigmaPooled = cell(1, nFreqs);
 fValPooled  = cell(1, nFreqs);
 % Now fit the psychometric function
-for refFreqIdx = 1:nFreqs
+for subjIdx = 1:nSubj
+    for refFreqIdx = 1:nFreqs
 
-    uniqueDb = pooledData(refFreqIdx).uniqueDb;
-    pRespondDifferent = pooledData(refFreqIdx).pRespondDifferent;
-    nTrials = pooledData(refFreqIdx).nTrials;
+        uniqueDb = pooledData(subjIdx, refFreqIdx).uniqueDb;
+        pRespondDifferent = pooledData(subjIdx, refFreqIdx).pRespondDifferent;
+        nTrials = pooledData(subjIdx, refFreqIdx).nTrials;
 
-    initialSigmas = [1 1];
-    lb = [0.001 0.001];
-    ub = [5 5];
+        initialSigmas = [1 1];
+        lb = [0.001 0.001];
+        ub = [5 5];
 
-    options = bads('defaults');
-    options.MaxIter = 100;
+        options = bads('defaults');
+        options.MaxIter = 100;
 
-    [fit, fVal] = bads(@(p) negLogLikelihood(p, uniqueDb, pRespondDifferent, nTrials, priorSame), ...
-        initialSigmas, lb, ub, lb, ub, [], options);
+        [fit, fVal] = bads(@(p) negLogLikelihood(p, uniqueDb, pRespondDifferent, nTrials, priorSame), ...
+            initialSigmas, lb, ub, lb, ub, [], options);
 
-    sigmaPooled{refFreqIdx} = fit;
-    fValPooled{refFreqIdx} = fVal;
+        sigmaPooled{subjIdx, refFreqIdx} = fit;
+        fValPooled{subjIdx, refFreqIdx} = fVal;
 
+    end
 end
 
 % PLOTTING: plot pooled fit on pooled data
 % One figure per reference frequency
-for refFreqIdx = 1:nFreqs
+for subjIdx = 1:nSubj
 
-    figure; hold on;
-    title(sprintf('Pooled data | Ref freq = %d Hz', refFreqHz(refFreqIdx)));
+    figure;
+    tiledlayout(1, nFreqs, 'TileSpacing','compact', 'Padding','compact');
 
-    uniqueDb = pooledData(refFreqIdx).uniqueDb;
-    pRespondDifferent = pooledData(refFreqIdx).pRespondDifferent;
-    nTrials = pooledData(refFreqIdx).nTrials;
+    sgtitle(sprintf('Pooled data | Subject %s', subjectID{subjIdx}),'Interpreter','none');
 
-    % Marker size logic
-    sameIdx = find(uniqueDb == 0); % Find the index of the zero dB point
+    for refFreqIdx = 1:nFreqs
 
-    markerSizeIdx = zeros(size(nTrials));
-    markerSizeIdx((1:end) ~= sameIdx) = ...
-        discretize(nTrials((1:end) ~= sameIdx), 3);
-    markerSizeIdx(sameIdx) = 4;  % Force zero dB point to largest bin
+        nexttile; hold on;
+        title(sprintf('Ref freq = %d Hz', refFreqHz(refFreqIdx)));
 
-    markerSizeSet = [25, 50, 75, 100];
+        uniqueDb = pooledData(subjIdx, refFreqIdx).uniqueDb;
+        pRespondDifferent = pooledData(subjIdx, refFreqIdx).pRespondDifferent;
+        nTrials = pooledData(subjIdx, refFreqIdx).nTrials;
 
-    % Scatter points
-    for ii = 1:length(uniqueDb)
+        % Marker size logic
+        sameIdx = find(uniqueDb == 0);
 
-        if uniqueDb(ii) == 0
-            markerShape = 'diamond';
-        else
-            markerShape = 'o';
+        markerSizeIdx = zeros(size(nTrials));
+        markerSizeIdx((1:end) ~= sameIdx) = ...
+            discretize(nTrials((1:end) ~= sameIdx), 3);
+        markerSizeIdx(sameIdx) = 4;
+
+        markerSizeSet = [25, 50, 75, 100];
+
+        % Scatter points
+        for ii = 1:length(uniqueDb)
+
+            if uniqueDb(ii) == 0
+                markerShape = 'diamond';
+            else
+                markerShape = 'o';
+            end
+
+            alphaVal = nTrials(ii) / max(nTrials);
+
+            scatter(uniqueDb(ii), pRespondDifferent(ii), ...
+                markerSizeSet(markerSizeIdx(ii)), ...
+                'MarkerFaceColor', ...
+                [pRespondDifferent(ii) 0 1-pRespondDifferent(ii)], ...
+                'MarkerEdgeColor','k', ...
+                'MarkerFaceAlpha', alphaVal, ...
+                'Marker', markerShape);
         end
 
-        alphaVal = nTrials(ii) / max(nTrials);
+        % Plot pooled fit
+        fit = sigmaPooled{subjIdx, refFreqIdx};
+        x = -6:0.1:6;
 
-        scatter(uniqueDb(ii), pRespondDifferent(ii), ...
-            markerSizeSet(markerSizeIdx(ii)), ...
-            'MarkerFaceColor', ...
-            [pRespondDifferent(ii) 0 1-pRespondDifferent(ii)], ...
-            'MarkerEdgeColor','k', ...
-            'MarkerFaceAlpha', alphaVal, ...
-            'Marker', markerShape);
+        plot(x, bayesianSameDiffModelTwoSigma(x, fit, priorSame), ...
+            'k-', 'LineWidth', 2);
+
+        % Axes formatting
+        ylim([-0.05 1.05]);
+        xlim([-6 6]);
+        xlabel('stimulus difference [dB]');
+        ylabel('proportion respond different');
+        box off;
+
     end
-
-    % Plot pooled fit
-    fit = sigmaPooled{refFreqIdx};
-    x = -6:0.1:6;
-
-    plot(x, bayesianSameDiffModelTwoSigma(x, fit, priorSame), ...
-        'k-', 'LineWidth', 2);
-
-    % Axes labels
-    ylim([-0.05 1.05]);
-    xlim([-6 6]);
-    xlabel('stimulus difference [dB]');
-    ylabel('proportion respond different');
-    box off;
-
 end
-
 
 %% Plotting sigma parameters for each reference frequency 
 
