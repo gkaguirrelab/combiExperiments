@@ -225,71 +225,81 @@ end
 
 nFreqs = numel(refFreqHz);
 
-sigmaTest_ctrl = nan(1, nFreqs);
-sigmaRef_ctrl  = nan(1, nFreqs);
-sigmaTest_mig  = nan(1, nFreqs);
-sigmaRef_mig   = nan(1, nFreqs);
+[nSubj, nFreqs] = size(sigmaPooledControl);
 
-for refFreqIdx = 1:nFreqs
-    fitCtrl = sigmaPooledControl{refFreqIdx};
-    fitMig  = sigmaPooledMigraine{refFreqIdx};
+sigmaTest_ctrl = nan(nSubj, nFreqs);
+sigmaRef_ctrl  = nan(nSubj, nFreqs);
 
-    sigmaTest_ctrl(refFreqIdx) = fitCtrl(1);
-    sigmaRef_ctrl(refFreqIdx)  = fitCtrl(2);
+sigmaTest_mig = nan(nSubj, nFreqs);
+sigmaRef_mig  = nan(nSubj, nFreqs);
 
-    sigmaTest_mig(refFreqIdx)  = fitMig(1);
-    sigmaRef_mig(refFreqIdx)   = fitMig(2);
+for subjIdx = 1:nSubj
+    for refFreqIdx = 1:nFreqs
+        sigmaTest_ctrl(subjIdx, refFreqIdx) = sigmaPooledControl{subjIdx, refFreqIdx}(1);
+        sigmaRef_ctrl(subjIdx, refFreqIdx)  = sigmaPooledControl{subjIdx, refFreqIdx}(2);
+
+        sigmaTest_mig(subjIdx, refFreqIdx) = sigmaPooledMigraine{subjIdx, refFreqIdx}(1);
+        sigmaRef_mig(subjIdx, refFreqIdx)  = sigmaPooledMigraine{subjIdx, refFreqIdx}(2);
+    end
 end
 
+sigmaTest_ctrl_mean = mean(sigmaTest_ctrl, 1);
+sigmaTest_ctrl_sem  = std(sigmaTest_ctrl, 0, 1) / sqrt(size(sigmaTest_ctrl,1));
+
+sigmaRef_ctrl_mean  = mean(sigmaRef_ctrl, 1);
+sigmaRef_ctrl_sem   = std(sigmaRef_ctrl, 0, 1) / sqrt(size(sigmaRef_ctrl,1));
+
+sigmaTest_mig_mean = mean(sigmaTest_mig, 1);
+sigmaTest_mig_sem  = std(sigmaTest_mig, 0, 1) / sqrt(size(sigmaTest_mig,1));
+
+sigmaRef_mig_mean  = mean(sigmaRef_mig, 1);
+sigmaRef_mig_sem   = std(sigmaRef_mig, 0, 1) / sqrt(size(sigmaRef_mig,1));
+
+% Sigma test plotting
 figure; hold on;
+errorbar(refFreqHz, sigmaTest_ctrl_mean, sigmaTest_ctrl_sem, '-o', ...
+    'LineWidth',2, ...
+    'Color',[0.3 0.3 0.8], ...
+    'MarkerFaceColor',[0.3 0.3 0.8], ...
+    'CapSize',10);
 
-plot(refFreqHz, sigmaTest_ctrl, '-o', ...
-    'LineWidth', 2, ...
-    'Color', [0.3 0.3 0.8], ...
-    'MarkerFaceColor', [0.3 0.3 0.8]);
+errorbar(refFreqHz, sigmaTest_mig_mean, sigmaTest_mig_sem, '-o', ...
+    'LineWidth',2, ...
+    'Color',[0.8 0.3 0.3], ...
+    'MarkerFaceColor',[0.8 0.3 0.3], ...
+    'CapSize',10);
 
-plot(refFreqHz, sigmaTest_mig, '-o', ...
-    'LineWidth', 2, ...
-    'Color', [0.8 0.3 0.3], ...
-    'MarkerFaceColor', [0.8 0.3 0.3]);
-
-set(gca, 'XScale', 'log');
-ax = gca;
-ax.XLim = [min(refFreqHz)*0.9, max(refFreqHz)*1.1];
-ax.YLim = [min(ylim)*0.9, max(ylim)*1.1];
-xticks(refFreqHz); 
+set(gca,'XScale','log');
+xticks(refFreqHz);
 xlabel('Reference frequency (Hz)');
 ylabel('sigma test');
-ylim([0 2]);
-title('sigma test vs reference frequency');
-
+axis padded
+ylim([0 2.5]);
+title('Sigma test across reference frequency');
 legend({'Control','Migraine'}, 'Location','Northwest');
-box off;
 
+% Sigma ref plotting
 figure; hold on;
+errorbar(refFreqHz, sigmaRef_ctrl_mean, sigmaRef_ctrl_sem, '-o', ...
+    'LineWidth',2, ...
+    'Color',[0.3 0.3 0.8], ...
+    'MarkerFaceColor',[0.3 0.3 0.8], ...
+    'CapSize',10);
 
-plot(refFreqHz, sigmaRef_ctrl, '-o', ...
-    'LineWidth', 2, ...
-    'Color', [0.3 0.3 0.8], ...
-    'MarkerFaceColor', [0.3 0.3 0.8]);
+errorbar(refFreqHz, sigmaRef_mig_mean, sigmaRef_mig_sem, '-o', ...
+    'LineWidth',2, ...
+    'Color',[0.8 0.3 0.3], ...
+    'MarkerFaceColor',[0.8 0.3 0.3], ...
+    'CapSize',10);
 
-plot(refFreqHz, sigmaRef_mig, '-o', ...
-    'LineWidth', 2, ...
-    'Color', [0.8 0.3 0.3], ...
-    'MarkerFaceColor', [0.8 0.3 0.3]);
-
-set(gca, 'XScale', 'log');
-ax = gca;
-ax.XLim = [min(refFreqHz)*0.9, max(refFreqHz)*1.1];
-ax.YLim = [min(ylim)*0.9, max(ylim)];
+set(gca,'XScale','log');
 xticks(refFreqHz);
 xlabel('Reference frequency (Hz)');
 ylabel('sigma ref');
-ylim([0 2]);
-title('sigma ref vs reference frequency');
-
+axis padded
+ylim([0 2.5]);
+title('Sigma ref across reference frequency');
 legend({'Control','Migraine'}, 'Location','Northwest');
-box off;
 
 
 
