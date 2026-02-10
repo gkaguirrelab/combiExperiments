@@ -430,46 +430,29 @@ box off
 %% Omnibus ANOVA 
 % Group × Contrast × Light mixed ANOVA, with subjects nested in group
 
-% Pull either sigma or sigma zero params out of the cell arrays
-for ii = 1:numel(sigmaPooledMigraine)
-    sigmaPooledMigraineAdj{ii} = sigmaPooledMigraine{ii}(1);
-    sigmaZeroPooledMigraineAdj{ii} = sigmaPooledMigraine{ii}(2);
-end
-for ii = 1:numel(sigmaPooledControl)
-    sigmaPooledControlAdj{ii} = sigmaPooledControl{ii}(1);
-    sigmaZeroPooledControlAdj{ii} = sigmaPooledControl{ii}(2);
-end
+sigmaPooledMigraine = load([getpref("lightLoggerAnalysis", 'dropboxBaseDir'), '/FLIC_analysis/dichopticFlicker/sigmaData/15MigraineSigmasNOTSubjPooled.mat'], 'sigmaPooled').sigmaPooled;
+sigmaPooledControl = load([getpref("lightLoggerAnalysis", 'dropboxBaseDir'), '/FLIC_analysis/dichopticFlicker/sigmaData/15ControlSigmasNOTSubjPooled.mat'], 'sigmaPooled').sigmaPooled;
 
-% Convert cell arrays to matrices
-migraineSigmaVec = cell2mat(sigmaPooledMigraineAdj);
-controlSigmaVec = cell2mat(sigmaPooledControlAdj);
-nSubjAll = 30;
+sigmaTestPooledMigraine = cellfun(@(x) x(1), sigmaPooledMigraine);
+sigmaZeroPooledMigraine = cellfun(@(x) x(2), sigmaPooledMigraine);
+sigmaTestPooledControl = cellfun(@(x) x(1), sigmaPooledControl);
+sigmaZeroPooledControl = cellfun(@(x) x(2), sigmaPooledControl);
+nControl = size(sigmaTestPooledControl,1);
+nMigraine = size(sigmaTestPooledMigraine,1);
 
-% Combine subjects
-sigmaAll2D = [controlSigmaMatrix; migraineSigmaMatrix];
-sigmaAll = reshape(sigmaAll2D, ...
-    nSubjAll, nContrasts, nLightLevels);
+% Combine subjects. Data are now subj x contrast x light level x group
+sigmaAll = [sigmaTestPooledMigraine; sigmaTestPooledControl];
+sigmaZeroAll = [sigmaZeroPooledMigraine; sigmaZeroPooledControl];
 
-% Subject matrix
-subjMatrix = nan(nSubjAll,nContrasts,nLightLevels);
-for subjIdx =1:nSubjAll
-    subjMatrix(subjIdx, :, :) = subjIdx;
-end
-% Contrast matrix
-contrastMtrx = nan(nSubjAll,nContrasts,nLightLevels);
-for contrastIdx = 1:nContrasts
-    contrastMtrx(:,contrastIdx,:) = contrastIdx;
-end
-% Light level matrix
-lightLevelMtrx = nan(nSubjAll,nContrasts,nLightLevels);
-for lightIdx = 1:nLightLevels
-    lightLevelMtrx(:,:,lightIdx) = lightIdx;
-end
+[nS, nC, nL] = size(sigmaAll); % Subjects, Contrasts, LightLevels
 
-% Group matrix
-groupMtrx = nan(nSubjAll,nContrasts,nLightLevels);
-groupMtrx(1:nControl,:,:) = 1;          % Control
-groupMtrx((nControl+1):end,:,:) = 2;      % Migraine
+% Create Factor Vectors using ndgrid 
+% This creates coordinate matrices matching the size of sigmaAll
+[S_idx, C_idx, L_idx] = ndgrid(1:nS, 1:nC, 1:nL);
+
+% Create Group Vector
+G_idx = ones(nS, nC, nL);
+G_idx((nMigraine+1):end, :, :) = 2; % Subjects 16-30 are Control
 
 % Participants are nested within groups
 nest = zeros(4,4);
@@ -477,6 +460,12 @@ nest(1,2) = 1;   % subject nested in group
 
 % Participants as random
 [panova, output.anova, anova_table] = anovan(sigmaAll(:), {subjMatrix(:), ...
+    groupMtrx(:), contrastMtrx(:), lightLevelMtrx(:)}, 'nested', nest, ...
+    'random', 1, 'model', 'full', 'varnames', {'subject', 'group'...
+    'contrast', 'light level'}, 'display', 'on');
+
+% Participants as random
+[panova, output.anovaZero, anova_table] = anovan(sigmaZeroAll(:), {subjMatrix(:), ...
     groupMtrx(:), contrastMtrx(:), lightLevelMtrx(:)}, 'nested', nest, ...
     'random', 1, 'model', 'full', 'varnames', {'subject', 'group'...
     'contrast', 'light level'}, 'display', 'on');
