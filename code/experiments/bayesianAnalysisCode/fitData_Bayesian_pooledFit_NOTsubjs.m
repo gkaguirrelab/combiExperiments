@@ -17,6 +17,7 @@ subjectID =  {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 'FLIC_1044', 'FLIC_1046', 'FLIC_1047', 'FLIC_1048'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
+contrastParamLabels = {'low contrast', 'high contrast'};
 lightParamLabels = {'low light', 'high light'};
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
 refFreqHz = logspace(log10(10),log10(30),5);  % logspace(log10(10),log10(30),5)
@@ -275,8 +276,8 @@ sem_sigma0_mig  = std(sigmaZeroMigraineMat, [], 1) ./ sqrt(nSubj);
 % Condition labels
 condLabels = cell(1, nCond);
 c = 1;
-for contrastIdx = 1:nContrasts
-    for lightIdx = 1:nLightLevels
+for lightIdx = 1:nLightLevels
+    for contrastIdx = 1:nContrasts
         condLabels{c} = sprintf('%s | ND %s', ...
             stimParamLabels{contrastIdx}, NDLabel{lightIdx});
         c = c + 1;
@@ -285,6 +286,23 @@ end
 
 % Plot sigma (control v migraine)
 figure; hold on;
+set(gcf, 'Color', 'w');
+
+% make a dark background for low light
+xStart = 0.5;
+xEnd   = (nCond/2) + 0.5;
+yLimits = [0 2.5]; % Matches your ylim([0 2.5])
+
+%Draw the rectangle for low light
+% rectangle('Position', [x, y, width, height])
+patch([xStart xEnd xEnd xStart], ...
+      [yLimits(1) yLimits(1) yLimits(2) yLimits(2)], ...
+      [0.9 0.9 0.9], ...         % Light gray color
+      'EdgeColor', 'none', ...
+      'FaceAlpha', 0.5);         % Transparency (0 = clear, 1 = solid)
+
+% Ensure the grid and bars stay on top
+set(gca, 'Layer', 'top');
 
 barData = [mu_sigma_ctrl; mu_sigma_mig]';
 b = bar(barData, 'grouped');
@@ -308,11 +326,11 @@ for ii = 1:nbars
 end
 
 % X tick labels = light level (top row)
-lightLabels = repmat(lightParamLabels, 1, nContrasts);
+lightLabels = repmat(contrastParamLabels, 1, nLightLevels);
 set(gca,'XTick',1:nCond,'XTickLabel',lightLabels);
 ylabel('sigma test');
 ylim([0 2.5]);
-legend({'Control','Migraine'}, 'Location','Northwest');
+legend({'','Control','Migraine'}, 'Location','Northwest');
 title('sigma test by contrast × light');
 box off;
 % Add contrast labels underneath
@@ -325,14 +343,14 @@ xHigh = (mean((nLightLevels+1):nCond) - 0.5) / nCond;
 % Y position BELOW the axis (negative = below)
 yText = -0.07;
 
-text(ax, xLow,  yText, 'low contrast', ...
+text(ax, xLow,  yText, 'low light', ...
     'Units','normalized', ...
     'HorizontalAlignment','center', ...
     'VerticalAlignment','top', ...
     'FontWeight','bold', ...
     'FontSize', 12);
 
-text(ax, xHigh, yText, 'high contrast', ...
+text(ax, xHigh, yText, 'high light', ...
     'Units','normalized', ...
     'HorizontalAlignment','center', ...
     'VerticalAlignment','top', ...
@@ -345,6 +363,23 @@ ax.Position(4) = ax.Position(4) - 0.01;   % shrink height
 
 % Plot sigma zero (control v migraine)
 figure; hold on;
+set(gcf, 'Color', 'w');
+
+% make a dark background for low light
+xStart = 0.5;
+xEnd   = (nCond/2) + 0.5;
+yLimits = [0 2.5]; % Matches your ylim([0 2.5])
+
+%Draw the rectangle for low light
+% rectangle('Position', [x, y, width, height])
+patch([xStart xEnd xEnd xStart], ...
+      [yLimits(1) yLimits(1) yLimits(2) yLimits(2)], ...
+      [0.9 0.9 0.9], ...         % Light gray color
+      'EdgeColor', 'none', ...
+      'FaceAlpha', 0.5);         % Transparency (0 = clear, 1 = solid)
+
+% Ensure the grid and bars stay on top
+set(gca, 'Layer', 'top');
 
 barData = [mu_sigma0_ctrl; mu_sigma0_mig]';
 b = bar(barData, 'grouped');
@@ -362,11 +397,11 @@ for ii = 1:nbars
 end
 
 % X tick labels = light level (top row)
-lightLabels = repmat(lightParamLabels, 1, nContrasts);
+contrastLabels = repmat(contrastParamLabels, 1, nLightLevels);
 set(gca,'XTick',1:nCond,'XTickLabel',lightLabels);
 ylabel('sigma ref');
 ylim([0 2.5]);
-legend({'Control', 'Migraine'}, 'Location','Northwest');
+legend({'','Control', 'Migraine'}, 'Location','Northwest');
 title('sigma ref by contrast × light');
 box off;
 % Add contrast labels underneath
@@ -379,14 +414,14 @@ xHigh = (mean((nLightLevels+1):nCond) - 0.5) / nCond;
 % Y position BELOW the axis (negative = below)
 yText = -0.07;
 
-text(ax, xLow,  yText, 'low contrast', ...
+text(ax, xLow,  yText, 'low light', ...
     'Units','normalized', ...
     'HorizontalAlignment','center', ...
     'VerticalAlignment','top', ...
     'FontWeight','bold', ...
     'FontSize', 12);
 
-text(ax, xHigh, yText, 'high contrast', ...
+text(ax, xHigh, yText, 'high light', ...
     'Units','normalized', ...
     'HorizontalAlignment','center', ...
     'VerticalAlignment','top', ...
@@ -473,6 +508,28 @@ nest(1,2) = 1;   % subject nested in group
     'random', 1, ... % Subject is random
     'model', 'full', ...
     'varnames', {'Subject', 'Group', 'Contrast', 'LightLevel'});
+
+% Create a grouping table for easy viewing
+groupNames = {'Migraine', 'Control'};
+contrastNames = {'Low Contrast', 'High Contrast'};
+lightNames = {'Low Light', 'High Light'};
+
+% Convert indices to categorical labels for readability
+G_labels = groupNames(G_idx(:))';
+C_labels = contrastNames(C_idx(:))';
+L_labels = lightNames(L_idx(:))';
+
+% Display Sigma Test Means
+fprintf('\n--- MEANS: Sigma Test ---\n');
+T_sigma = table(G_labels, C_labels, L_labels, sigmaAll(:), ...
+    'VariableNames', {'Group', 'Contrast', 'LightLevel', 'Sigma'});
+grpstats(T_sigma, {'Group', 'Contrast', 'LightLevel'}, 'mean')
+
+% Display Sigma Zero (Ref) Means
+fprintf('\n--- MEANS: Sigma Ref ---\n');
+T_zero = table(G_labels, C_labels, L_labels, sigmaZeroAll(:), ...
+    'VariableNames', {'Group', 'Contrast', 'LightLevel', 'SigmaZero'});
+grpstats(T_zero, {'Group', 'Contrast', 'LightLevel'}, 'mean')
 
 %% Objective function %%
 function nll = negLogLikelihood(sigma, uniqueDbValues, probData, nTrials, priorSame)
