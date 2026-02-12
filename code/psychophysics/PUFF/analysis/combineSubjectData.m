@@ -7,7 +7,7 @@ clear
 subjects = {'BLNK_1001','BLNK_1002','BLNK_1003','BLNK_1005','BLNK_1006',...
     'BLNK_1007','BLNK_1008','BLNK_1009','BLNK_1011','BLNK_1012'};
 
-% Current half-finished subjects: _1002, _1003, _1008
+% Current half-finished subjects: _1002, _1003
 
 % Define temporal properties of the recording
 options.fps = 180;
@@ -56,10 +56,12 @@ for dd = 1:length(directions)
             % Store the results
             fitResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude(ss)=mu_amp;
             fitResults.(directionLabels{dd}).(contrastLabels{cc}).phase(ss)=mu_phase;
+            fitResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude(ss)=mu_amp;
+            fitResults.(directionLabels{dd}).(contrastLabels{cc}).phase(ss)=mu_phase;
             % Add the bivariate ellipse for this subject; we rotate -pi/2
             % so that up in the polar plot is eye closing, and down is eye
             % opening
-            plotPolarBivariateEllipse(amplitude,phase-pi/2,'errorType','sd',...
+            plotPolarBivariateEllipse(amplitude,phase,'errorType','sd',...
                 'FillEdgeColor',directionLineColors{dd},...
                 'FillFaceColor',directionColors{dd},...
                 'FillFaceAlpha',0.1,...
@@ -67,6 +69,11 @@ for dd = 1:length(directions)
         end
         title([directionLabels{dd} ' ' contrastLabels{cc}]);
         rlim([0 0.4]);
+        a = gca();
+        a.ThetaZeroLocation = 'bottom';
+        a.Box = 'off';
+        a.ThetaTickLabel = {};
+        a.RTickLabel = {};
     end
 end
 
@@ -78,14 +85,20 @@ for dd = 1:length(directions)
         nexttile((cc-1)*(length(directions)+1)+length(directions)+1)
         amplitude = fitResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude;
         phase = fitResults.(directionLabels{dd}).(contrastLabels{cc}).phase;
-        % Add the bivariate ellipse for this subject
-        plotPolarBivariateEllipse(amplitude,phase-pi/2,'errorType','sem',...
+        % Add the bivariate ellipse for this direction and contrast
+        plotPolarBivariateEllipse(amplitude,phase,'errorType','sem',...
             'FillEdgeColor',directionLineColors{dd},...
             'FillFaceColor',directionColors{dd},...
             'FillFaceAlpha',0.1,...
-            'MarkerSymbol','+','MarkerEdgeColor',directionLineColors{dd});
+            'MarkerSymbol','.','MarkerEdgeColor',directionLineColors{dd});
         title([directionLabels{dd} ' ' contrastLabels{cc}]);
-        rlim([0 0.4]);
+        rlim([0 0.2]);
+        a = gca();
+        a.ThetaZeroLocation = 'bottom';
+        a.Box = 'off';
+        a.ThetaTickLabel = {};
+        a.RTickLabel = {};
+        title(['Group: ' contrastLabels{cc}]);
     end
 end
 

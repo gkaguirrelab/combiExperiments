@@ -6,13 +6,12 @@ function runPuffLightModulate(subjectID,varargin)
 % field.
 %
 % The session begins with a 2 minute period of adaptation to the
-% background. This is followed by 24 stimulation periods, each 60 seconds
+% background. This is followed by 16 stimulation periods, each 60 seconds
 % in duration (plus 5 seconds of an inter-trial-interval for camera
 % recording clean up). There are 16 different stimulus conditions,
 % consisting of a LightFLux, Mel, LMS, and S-directed modulation, crossed
 % with 0.2 and 0.4 photoreceptor contrast levels, crossed with forward and
 % reversed phases. Presentation order of these 16 trials is randomized.
-% Total data collection is about 18 minutes.
 %
 % Examples:
 %{
@@ -26,7 +25,7 @@ p.addParameter('dropBoxBaseDir',getpref('combiExperiments','dropboxBaseDir'),@is
 p.addParameter('dropBoxSubDir','BLNK_data',@ischar);
 p.addParameter('projectName','PuffLight',@ischar);
 p.addParameter('directions',{'Mel','LMS','S_peripheral','LightFlux'},@iscell);
-p.addParameter('photoreceptorContrasts',[0.2,0.4],@isnumeric);
+p.addParameter('photoreceptorContrasts',{[0.2,0.2,0.2,0.2],[0.4,0.4,0.4,0.4]},@iscell);
 p.addParameter('phases',[0,pi],@isnumeric);
 p.addParameter('nTrialsPerObj',1,@isnumeric);
 p.addParameter('nBlocks',1,@isnumeric);
@@ -113,7 +112,7 @@ for dd = 1:nDirections
     for cc = 1:nContrasts
 
         % Get this photoreceptor contrast
-        thisPhotoContrast = contrasts(cc);
+        thisPhotoContrast = contrasts{cc}(dd);
 
         % Loop over the phases
         for pp = 1:nPhases
@@ -170,7 +169,7 @@ nPsychObjs = length(psychObjArray);
 %% Adapt
 % Grab a particular psychObj to tally the adapt period
 psychFileStem = sprintf( [subjectID '_' experimentName ...
- '_direction-' directions{1} '_contrast-%2.2f_phase-%2.2f'], contrasts(1), phases(1) );
+ '_direction-' directions{1} '_contrast-%2.2f_phase-%2.2f'], contrasts{1}(1), phases(1) );
 idx = cellfun(@(x) strcmp(psychFileStem,x.trialLabel),psychObjArray);
 psychObj = psychObjArray{idx};
 
