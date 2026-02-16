@@ -48,7 +48,7 @@ xlim([thetaMin thetaMax]);
 ylim([0 maxHeight]);
 set(gca, 'FontSize', 14);
 
-%% Plotting (marginal) likelihoods
+%% Plotting marginal and conditional likelihoods
 
 % Likelihood = marginal likelihood for same trials (D = 0)
 % m represents the difference between the measurements
@@ -61,44 +61,34 @@ P_m_given_D1 = mean(normpdf(mGrid, thetaRange, sqrt(sigmaTest^2 + sigmaRef^2)), 
 % taking the mean(..., 2) averages across theta values for each fixed m
 
 % Select a few theta values to plot example shifted Gaussians
-exampleIdx = round(linspace(1, length(thetaRange), 5));  % 5 evenly spaced theta
+exampleIdx = round(linspace(1, length(thetaRange), 10));  % 5 evenly spaced theta
 figure; hold on;
+
+% Same trials Gaussian (blue)
+plot(mGrid, P_m_given_D0, 'b', 'LineWidth', 1.5);
+
+% Marginal likelihood (red)
+plot(mGrid, P_m_given_D1, 'r', 'LineWidth', 1.5);
 
 % Plot example shifted Gaussians (light red)
 for i = 1:length(exampleIdx)
     theta_i = thetaRange(exampleIdx(i));
-    plot(mGrid, normpdf(mGrid, theta_i, sigmaTot), ...
-         'Color', [0.8 0 0 0.3], 'LineWidth', 1.5);
+    plot(mGrid, normpdf(mGrid, theta_i, sqrt(sigmaTest^2 + sigmaRef^2)), ...
+         'Color', [0.8 0 0 0.15],'LineWidth', 1);
 end
 
-% Overlay marginal likelihood (red)
-plot(mGrid, P_m_given_D1, 'r', 'LineWidth', 3);
-
-% Overlay same trials Gaussian (blue)
-plot(mGrid, P_m_given_D0, 'b', 'LineWidth', 3);
-
 % Labels and formatting
-xlabel('Measurement m');
+xlabel('Internal measurement difference m');
 ylabel('p(m | D)');
-legend('Shifted Gaussians', 'D = 1 marginal', 'D = 0 Gaussian');
+legend({'Likelihood p(m | D = 0)', ...
+    'Marginal likelihood p(m | D = 1)', ...
+    'Conditional likelihoods p(m | \theta)',});
 set(gca, 'FontSize', 14);
-xlim([-6 6]);
+xlim([thetaMin thetaMax]);
 ylim([0 max([P_m_given_D1; P_m_given_D0])*1.2]);
 box off;
 
 %%
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
