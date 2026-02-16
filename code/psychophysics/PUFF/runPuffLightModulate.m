@@ -30,6 +30,7 @@ p.addParameter('phases',[0,pi],@isnumeric);
 p.addParameter('nTrialsPerObj',1,@isnumeric);
 p.addParameter('nBlocks',1,@isnumeric);
 p.addParameter('adaptDurationMins',2,@isnumeric);
+p.addParameter('adaptIdx',[],@isnumeric);
 p.addParameter('useKeyboardFlag',false,@islogical);
 p.addParameter('simulateModeFlag',false,@islogical);
 p.addParameter('verboseLightObj',false,@islogical);
@@ -44,6 +45,7 @@ directions = p.Results.directions;
 contrasts = p.Results.photoreceptorContrasts;
 phases = p.Results.phases;
 adaptDurationMins = p.Results.adaptDurationMins;
+adaptIdx = p.Results.adaptIdx;
 useKeyboardFlag = p.Results.useKeyboardFlag;
 simulateModeFlag = p.Results.simulateModeFlag;
 verboseLightObj = p.Results.verboseLightObj;
@@ -167,11 +169,16 @@ nPsychObjs = length(psychObjArray);
 
 
 %% Adapt
-% Grab a particular psychObj to tally the adapt period
+% Grab a particular psychObj to use to run the adaptation
 psychFileStem = sprintf( [subjectID '_' experimentName ...
  '_direction-' directions{1} '_contrast-%2.2f_phase-%2.2f'], contrasts{1}(1), phases(1) );
 idx = cellfun(@(x) strcmp(psychFileStem,x.trialLabel),psychObjArray);
 psychObj = psychObjArray{idx};
+
+% If an adaptIdx was passed, update this in the object
+if ~isempty(adaptIdx)
+    psychObj.adaptIdx = adaptIdx;
+end
 
 % refresh the irObj
 if ~simulateModeFlag

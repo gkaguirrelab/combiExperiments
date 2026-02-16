@@ -32,20 +32,27 @@ arguments
     options.fps = 180
     options.badLagCorrelationThresh = 0.5
     options.makePlotFlag = true
+    options.directions = {'Mel','LMS','S_peripheral','LightFlux'}
+    options.directionLabels = {'Mel','LMS','S','LF'}
+    options.phaseLabels = {'OnOff','OffOn'}
+    options.contrastLabels = {'Low','High'}
+    options.phases = [0,pi]
+    options.contrasts = {[0.2,0.2,0.2,.02],[0.4,0.4,0.4,0.4]}
+    options.nTrials = 4
 end
 
 % Define some experiment properties
 projectName = 'PuffLight';
 experimentName = 'modulate';
 
-% Define the stimulus properties
-directions = {'Mel','LMS','S_peripheral','LightFlux'};
-directionLabels = {'Mel','LMS','S','LF'};
-phaseLabels = {'OnOff','OffOn'};
-contrastLabels = {'Low','High'};
-phases = [0,pi];
-contrasts = [0.2,0.4];
-nTrials = 4;
+% Extract the stimulus properties
+directions = options.directionLabels;
+directionLabels = options.directionLabels;
+phaseLabels = options.phaseLabels;
+contrastLabels = options.contrastLabels;
+phases = options.phases;
+contrasts = options.contrasts;
+nTrials = options.nTrials;
 
 % Define the data properties
 nFrames = options.vecDurSecs * options.fps;
@@ -72,16 +79,16 @@ for dd = 1:length(directions)
         for pp = 1:length(phases)
 
             % Initialize the results and confidence fields
-            results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).palpFissure = nan(4,nFrames);
-            results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).confidenceL = nan(4,nFrames);
-            results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).confidenceR = nan(4,nFrames);
+            results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).palpFissure = nan(nTrials,nFrames);
+            results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).confidenceL = nan(nTrials,nFrames);
+            results.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{pp}).confidenceR = nan(nTrials,nFrames);
 
             % Loop over trials
             for tt = 1:nTrials
 
                 % Get the filenames for this trial
                 whichDirection = directions{dd};
-                thisContrast = contrasts(cc);
+                thisContrast = contrasts{cc}(dd);
                 thisPhase = phases(pp);
                 fileNameStem = sprintf( [subjectID '_' experimentName ...
                     '_direction-' whichDirection '_contrast-%2.2f_phase-%2.2f_trial-%03d'], thisContrast, thisPhase, tt );

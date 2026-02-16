@@ -4,8 +4,7 @@ clear
 % Define the list of subjects. Data from subject BLNK_1010 was excluded
 % post-hoc due to constant movement during recordings, which caused more
 % than 50% loss of measurements in the majority of trials.
-subjects = {'BLNK_1001','BLNK_1002','BLNK_1003','BLNK_1005','BLNK_1006',...
-    'BLNK_1007','BLNK_1008','BLNK_1009','BLNK_1011','BLNK_1012'};
+subjects = {'BLNK_1001'};
 
 % Current half-finished subjects: _1002, _1003
 
@@ -15,24 +14,36 @@ options.vecDurSecs = 60;
 nFrames = options.vecDurSecs * options.fps;
 
 % Define the stimulus properties
-directions = {'Mel','LMS','S_peripheral','LightFlux'};
-directionLabels = {'Mel','LMS','S','LF'};
+directions = {'S_peripheral','LminusM_MelSilent_peripheral'};
+directionLabels = {'S','LminusM'};
 phaseLabels = {'OnOff','OffOn'};
-contrastLabels = {'High','Low'};
+contrastLabels = {'Max'};
 phases = [0,pi];
-contrasts = [0.4,0.2];
-nTrials = 4;
+contrasts = {[0.7,0.1]};
+nTrials = 8;
+
+% Store these stimulus settings in an options variable for the
+% processModulateVideos function
+stimOpts.directions = directions;
+stimOpts.directionLabels = directionLabels;
+stimOpts.phaseLabels = phaseLabels;
+stimOpts.contrastLabels = contrastLabels;
+stimOpts.phases = phases;
+stimOpts.contrasts = contrasts;
+stimOpts.nTrials = nTrials;
+stimOpts.makePlotFlag = false;
+stimOpts = namedargs2cell(stimOpts);
 
 % Define plot properties
-directionColors = {'c','y','b','k'};
-directionLineColors = {'c',[0.7 0.7 0.7],'b','k'};
-directionPlotOrder = [2 3 4 1];
-contrastLineWidth = [2,1];
+directionColors = {'b','r'};
+directionLineColors = {'b','r'};
+directionPlotOrder = [1,2];
+contrastLineWidth = 3;
 
 
 % Get the results
 for ss = 1:length(subjects)
-    results{ss} = processModulateVideos(subjects{ss},'makePlotFlag',false);
+    results{ss} = processModulateVideos(subjects{ss},stimOpts{:});
 end
 
 % Create a figure with a separate sub-plot for each direction and contrast.
@@ -46,7 +57,7 @@ for dd = 1:length(directions)
         for ss = 1:length(subjects)
             % Get the vector
             vecs=-results{ss}.(directionLabels{dd}).(contrastLabels{cc}).OffOn.palpFissure;
-            vecs(5:8,:)=results{ss}.(directionLabels{dd}).(contrastLabels{cc}).OnOff.palpFissure;
+            vecs(nTrials+1:nTrials*2,:)=results{ss}.(directionLabels{dd}).(contrastLabels{cc}).OnOff.palpFissure;
             % Get a set of boot-strapped amplitude and phase values
             [amplitude, phase] = fitFourier(vecs, 'fitFreqHz', 1/60, 'returnBoots', true);
             % Obtain the mean within Cartesian space, then covert back
@@ -103,6 +114,8 @@ for dd = 1:length(directions)
 end
 
 
+
+
 % Make a summary time-series figure
 figure
 t = 0:1/options.fps:(nFrames-1)/options.fps;
@@ -112,13 +125,13 @@ for dd = 1:length(directions)
     for cc = 1:length(contrasts)
         for ss = 1:length(subjects)
             vecs=-results{ss}.(directionLabels{dd}).(contrastLabels{cc}).OffOn.palpFissure;
-            vecs(5:8,:)=results{ss}.(directionLabels{dd}).(contrastLabels{cc}).OnOff.palpFissure;
+            vecs(nTrials+1:nTrials*2,:)=results{ss}.(directionLabels{dd}).(contrastLabels{cc}).OnOff.palpFissure;
             avgSubVec(ss,:) = mean(vecs,'omitmissing');
         end
         mu = mean(avgSubVec,'omitmissing');
         plot(t,mu,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
         [~, ~,yFit] = fitFourier(mu, 'fitFreqHz', 1/60);
-        %        plot(t,yFit,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
+%        plot(t,yFit,[directionColors{dd} '-'],'LineWidth',contrastLineWidth(cc));
     end
 end
 xlabel('Time [secs]');
