@@ -64,11 +64,11 @@ P_m_given_D1 = mean(normpdf(mGrid, thetaRange, sqrt(sigmaTest^2 + sigmaRef^2)), 
 exampleIdx = round(linspace(1, length(thetaRange), 10));  % 5 evenly spaced theta
 figure; hold on;
 
-% Same trials Gaussian (blue)
-plot(mGrid, P_m_given_D0, 'b', 'LineWidth', 1.5);
+% Same trials Gaussian (black)
+plot(mGrid, P_m_given_D0, 'k', 'LineWidth', 1);
 
 % Marginal likelihood (red)
-plot(mGrid, P_m_given_D1, 'r', 'LineWidth', 1.5);
+plot(mGrid, P_m_given_D1, 'b', 'LineWidth', 1);
 
 % Plot example shifted Gaussians (light red)
 for i = 1:length(exampleIdx)
