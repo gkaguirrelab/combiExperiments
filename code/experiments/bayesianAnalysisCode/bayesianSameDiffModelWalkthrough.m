@@ -50,6 +50,7 @@ dm = mGrid(2) - mGrid(1);
 
 % Create figure with three panels
 figure('Position',[100 100 1700 500]);
+axis tight; 
 
 %% Plot of stimulus priors: first panel
 
@@ -65,11 +66,14 @@ maxHeight = max(p_theta_given_D1) * 1.5;
 plot([0 0], [0 maxHeight], '--', 'LineWidth', 1.5, 'Color','k');
 
 % Formatting
-xlabel('\theta (true stimulus difference)');
-ylabel('p(\theta | \it{D})');
-legend('\it{D}\rm = 1 (different trials, uniform prior)', ...
-       '\it{D}\rm = 0 (same trials, delta function prior)', ...
-       'Location', 'Southeast', 'Interpreter', 'tex');
+xlabel('True stimulus difference \theta');
+ylabel('Prior \it{p}(\theta | \it{D})');
+title('Stimulus Priors');
+% legend('\it{D}\rm = 1 (different trials, uniform prior)', ...
+%        '\it{D}\rm = 0 (same trials, delta function prior)', ...
+%        'Location', 'Northeast', 'Interpreter', 'tex');
+legend(' \it{p}\rm(\theta | \it{D}\rm = 1)', ...
+        ' \it{p}\rm(\theta | \it{D}\rm = 0) (delta function)');
 xlim([thetaMin thetaMax]);
 ylim([0 maxHeight]);
 set(gca, 'FontSize', 14);
@@ -99,11 +103,12 @@ plot(mGrid, P_m_given_D0, 'k', 'LineWidth', 1.5);
 ax = gca;
 ax.Layer = 'top';   % draws axes behind the data
 xlabel('Internal measurement difference \it{m}');
-ylabel('p(\it{m} | \it{D})');
+ylabel('Likelihood \it{p}(\it{m} | \it{D})');
+title('Likelihood Functions');
 % Have to add spaces in the legend for each conditional likelihood graph
-legend({'Conditional likelihoods p(\it{m} | \theta)', '', '', '', '', '', '', '', '', '',  ...
-    'Marginal likelihood p(\it{m} | D = 1)', ...
-    'Likelihood p(\it{m} | \it{D} = 0)',});
+legend({'Conditional likelihoods \it{p}\rm(\it{m}\rm | \theta)', '', '', '', '', '', '', '', '', '',  ...
+    'Marginal likelihood \it{p}\rm(\it{m}\rm | D = 1)', ...
+    'Marginal likelihood \it{p}\rm(\it{m}\rm | \it{D}\rm = 0)',});
 set(gca, 'FontSize', 14);
 xlim([thetaMin thetaMax]);
 ylim([0 max([P_m_given_D1; P_m_given_D0])*1.2]);
@@ -128,9 +133,10 @@ yline(0.5, '-.', 'Color', [0.4 0.4 0.4], 'LineWidth', 1);
 
 % Labels
 xlabel('Internal measurement difference \it{m}');
-ylabel('Posterior P(\it{D} | \it{m})');
-legend({'p(\it{D} = 1 | \it{m})', 'p(\it{D} = 0 | \it{m})', 'Decision threshold'}, ...
-       'Location', 'SouthEast');
+ylabel('Posterior \it{p}(\it{D} | \it{m})');
+title('Posteriors and Decision Threshold');
+legend({' \it{p}\rm(\it{D}\rm = 1 | \it{m}\rm)', ' \it{p}\rm(\it{D} = 0 | \it{m}\rm)', 'Decision threshold'}, ...
+       'Location', 'Northeast');
 
 % Axes limits
 xlim([thetaMin thetaMax]);
