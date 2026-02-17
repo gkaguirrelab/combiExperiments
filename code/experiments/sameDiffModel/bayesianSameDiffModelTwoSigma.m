@@ -1,4 +1,4 @@
-function pDifferent = bayesianSameDiffModelTwoSigma( stimDiffDb, sigmaParams, priorSame )
+function pDifferent = bayesianSameDiffModelTwoSigma( stimParamsDomainList, stimDiffDb, sigmaParams, priorSame )
 % Probability of reporting "different" in a same different judgement
 %
 % Syntax:
@@ -38,18 +38,14 @@ sigmaZero = sigmaParams(2);  % sigma ref
 pSame = priorSame;
 pDiff = 1 - priorSame;
 
-% Theoretical stimulus range
-% CHANGE TO STIM PARAMS DOMAIN LIST
-possibleStimDiffDb = [-5, 5];
-
 % Possible theta values for different trials
 % These are the true stimulus differences, approximates the prior p(theta | D = 1)
-thetaRange = linspace(min(possibleStimDiffDb), max(possibleStimDiffDb), 1000); % smoother than stimDiffDb
+thetaRange = linspace(min(stimParamsDomainList), max(stimParamsDomainList), 1000); % smoother than stimDiffDb
 thetaRange = thetaRange(find(thetaRange ~= 0)); % do not include 0 in the range
 
 % Measurement grid for numerical integration
 % The variable that the observer actually sees, possible measurement values 
-mGrid = linspace(min(possibleStimDiffDb), max(possibleStimDiffDb), 1000)';  % column vector
+mGrid = linspace(min(stimParamsDomainList), max(stimParamsDomainList), 1000)';  % column vector
 dm = mGrid(2) - mGrid(1);
 
 % Likelihood = marginal likelihood for same trials (D = 0)
