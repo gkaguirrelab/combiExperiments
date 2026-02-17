@@ -43,6 +43,10 @@ pDiff = 1 - priorSame;
 thetaRange = linspace(min(stimParamsDomainList), max(stimParamsDomainList), 1000); % smoother than stimDiffDb
 thetaRange = thetaRange(find(thetaRange ~= 0)); % do not include 0 in the range
 
+% Uniform prior (for "different" trials) over theta
+priorTheta = ones(size(thetaRange)) / ...
+             (thetaRange(end) - thetaRange(1));
+
 % Measurement grid for numerical integration
 % The variable that the observer actually sees, possible measurement values 
 mGrid = linspace(min(stimParamsDomainList), max(stimParamsDomainList), 1000)';  % column vector
@@ -53,10 +57,12 @@ dm = mGrid(2) - mGrid(1);
 P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigmaZero); % std dev is sqrt(2)*sigmaZero
 
 % Marginal likelihood for different trials (D = 1) as integral of Gaussians (box shape)
-P_m_given_D1 = mean(normpdf(mGrid, thetaRange, sqrt(sigma^2 + sigmaZero^2)), 2);
+dtheta = thetaRange(2) - thetaRange(1);
 % normpdf() produces a matrix, with rows = m values and columns = theta values
 % each column is p(m | theta_j)
-% taking the mean(..., 2) averages across theta values for each fixed m
+likelihood = normpdf(mGrid, thetaRange, sqrt(sigma^2 + sigmaZero^2));
+% taking the sum(..., 2) is an integral: averages across theta values for each fixed m
+P_m_given_D1 = sum(likelihood .* priorTheta, 2) * dtheta;
 
 % Precompute posterior P(D = 1 | m) (same for all stimDiffDb)
 % Provides the decision rule
