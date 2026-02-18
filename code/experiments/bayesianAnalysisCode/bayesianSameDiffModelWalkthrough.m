@@ -51,13 +51,13 @@ decisionDifferent = (P_D1_given_m > 0.5);
 dm = mGrid(2) - mGrid(1);
 
 % Create figure with three panels
-figure('Position',[100 100 1700 500]);
+figure('Position',[100 100 2200 500]);
 axis tight; 
 
 %% Plot of stimulus priors: first panel
 
 % Plot
-subplot(1,3,1); hold on;
+subplot(1,4,1); hold on;
 
 % Plot uniform prior (different trials)
 plot(thetaRange, p_theta_given_D1, 'Color', [0 0.4470 0.7410], 'LineWidth', 1.5);
@@ -84,7 +84,7 @@ set(gca, 'FontSize', 14);
 
 % Select a few theta values to plot example shifted Gaussians
 exampleIdx = round(linspace(1, length(thetaRange), 10));  % 10 evenly spaced theta
-subplot(1,3,2); hold on;
+subplot(1,4,2); hold on;
 
 % Plot example shifted Gaussians (light blue)
 mainBlue = [0 0.4470 0.7410];
@@ -109,7 +109,7 @@ ylabel('Likelihood \it{p}(\it{m} | \it{D})');
 title('Likelihood Functions');
 % Have to add spaces in the legend for each conditional likelihood graph
 legend({'Conditional likelihoods \it{p}\rm(\it{m}\rm | \theta)', '', '', '', '', '', '', '', '', '',  ...
-    'Marginal likelihood \it{p}\rm(\it{m}\rm | D = 1)', ...
+    'Marginal likelihood \it{p}\rm(\it{m}\rm | \it{D} = 1)', ...
     'Marginal likelihood \it{p}\rm(\it{m}\rm | \it{D}\rm = 0)',});
 set(gca, 'FontSize', 14);
 xlim([thetaMin thetaMax]);
@@ -118,7 +118,7 @@ box off;
 
 %% Plotting posteriors: third panel
 
-subplot(1,3,3); hold on;
+subplot(1,4,3); hold on;
 
 % Colors
 mainBlue  = [0 0.4470 0.7410];  % D=1
@@ -146,47 +146,64 @@ ylim([-0.05 1.05]);  % small padding above/below 0/1
 set(gca, 'FontSize', 14);
 box off;
 
-%% Example demonstration: P("different") from posterior
+%% Stimulus-specific integration: fourth panel
 
-% Pick a stimulus difference to demonstrate
-deltaExample = 1; % in dB
-% Find closest index in mGrid
-[~, idxExample] = min(abs(mGrid - deltaExample));
+delta = 1.5; % choose stimulus (dB value)
 
-% Likelihood of measurements given this stimulus
-P_m_given_delta = normpdf(mGrid, deltaExample, sqrt(sigmaRef^2 + sigmaTest^2));
+% Measurement distribution for this stimulus
+P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaRef^2 + sigmaTest^2));
 P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm); % normalize
+% Probability of responding "different"
+pDifferent = sum(P_m_given_delta .* decisionDifferent) * dm;
 
-% Posterior for this example
-P_D1_given_m_demo = (P_m_given_D1 * pDiff) ./ (P_m_given_D0 * pSame + P_m_given_D1 * pDiff);
+subplot(1,4,4); hold on;
 
-% Decision rule
-decisionDifferent_demo = P_D1_given_m_demo > 0.5;
+% Plot measurement distribution
+plot(mGrid, P_m_given_delta, 'k', 'LineWidth', 1.5);
 
-% Probability of responding "different" for this stimulus
-pDifferent_demo = sum(P_m_given_delta .* decisionDifferent_demo) * dm;
 
-figure; hold on;
 
-% Plot likelihood
-plot(mGrid_row, P_m_given_delta_row, 'Color', [0 0.4470 0.7410], 'LineWidth', 1.5);
 
-% But only shade the likelihood for this δ
-fill([mGrid_row fliplr(mGrid_row)], ...
-     [zeros(size(mGrid_row)) P_m_given_delta_row .* decisionDifferent_mask], ...
-     [0.6 0.8 1], 'FaceAlpha',0.4,'EdgeColor','none');
-
-% Vertical line for example stimulus
-xline(deltaExample, '--k', sprintf('\\delta = %.1f dB', deltaExample));
-
-% Annotate probability
-text(deltaExample + 0.2, max(P_m_given_delta_row)*0.6, ...
-    sprintf('P("different") = %.2f', pDifferent_demo), ...
-    'FontSize',12, 'Color', [0 0.4470 0.7410]);
-
-xlabel('Internal measurement m');
-ylabel('Likelihood p(m|\delta)');
-xlim([thetaMin thetaMax]);
-ylim([0 max(P_m_given_delta_row)*1.2]);
-set(gca,'FontSize',14);
-box off;
+%%
+% Pick a stimulus difference to demonstrate
+% deltaExample = 1; % in dB
+% % Find closest index in mGrid
+% [~, idxExample] = min(abs(mGrid - deltaExample));
+% 
+% % Likelihood of measurements given this stimulus
+% P_m_given_delta = normpdf(mGrid, deltaExample, sqrt(sigmaRef^2 + sigmaTest^2));
+% P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm); % normalize
+% 
+% % Posterior for this example
+% P_D1_given_m_demo = (P_m_given_D1 * pDiff) ./ (P_m_given_D0 * pSame + P_m_given_D1 * pDiff);
+% 
+% % Decision rule
+% decisionDifferent_demo = P_D1_given_m_demo > 0.5;
+% 
+% % Probability of responding "different" for this stimulus
+% pDifferent_demo = sum(P_m_given_delta .* decisionDifferent_demo) * dm;
+% 
+% figure; hold on;
+% 
+% % Plot likelihood
+% plot(mGrid_row, P_m_given_delta_row, 'Color', [0 0.4470 0.7410], 'LineWidth', 1.5);
+% 
+% % But only shade the likelihood for this δ
+% fill([mGrid_row fliplr(mGrid_row)], ...
+%      [zeros(size(mGrid_row)) P_m_given_delta_row .* decisionDifferent_mask], ...
+%      [0.6 0.8 1], 'FaceAlpha',0.4,'EdgeColor','none');
+% 
+% % Vertical line for example stimulus
+% xline(deltaExample, '--k', sprintf('\\delta = %.1f dB', deltaExample));
+% 
+% % Annotate probability
+% text(deltaExample + 0.2, max(P_m_given_delta_row)*0.6, ...
+%     sprintf('P("different") = %.2f', pDifferent_demo), ...
+%     'FontSize',12, 'Color', [0 0.4470 0.7410]);
+% 
+% xlabel('Internal measurement m');
+% ylabel('Likelihood p(m|\delta)');
+% xlim([thetaMin thetaMax]);
+% ylim([0 max(P_m_given_delta_row)*1.2]);
+% set(gca,'FontSize',14);
+% box off;
