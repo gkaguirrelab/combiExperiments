@@ -34,10 +34,10 @@ arguments
     options.makePlotFlag = true
     options.directions = {'Mel','LMS','S_peripheral','LightFlux'}
     options.directionLabels = {'Mel','LMS','S','LF'}
-    options.phaseLabels = {'OnOff','OffOn'}
+    options.phaseLabels = {'OffOn','OnOff'}
     options.contrastLabels = {'Low','High'}
     options.phases = [0,pi]
-    options.contrasts = {[0.2,0.2,0.2,.02],[0.4,0.4,0.4,0.4]}
+    options.contrasts = {[0.2,0.2,0.2,0.2],[0.4,0.4,0.4,0.4]}
     options.nTrials = 4
 end
 
@@ -46,7 +46,7 @@ projectName = 'PuffLight';
 experimentName = 'modulate';
 
 % Extract the stimulus properties
-directions = options.directionLabels;
+directions = options.directions;
 directionLabels = options.directionLabels;
 phaseLabels = options.phaseLabels;
 contrastLabels = options.contrastLabels;
