@@ -393,3 +393,37 @@ for loop = 1:3  % repeat 3 times
     pause(1);
 
 end
+
+%% Elementary plot of the likelihood as a difference of Gaussians
+
+% WORK ON THE LABELING HERE
+
+% Conceptual illustration: reference vs test likelihoods and their difference
+sigma = 1;       % standard deviation of measurement
+delta = 3;       % test stimulus difference
+
+m = linspace(-5, 8, 1000);
+
+% Reference likelihood (centered at 0)
+P_ref = normpdf(m, 0, sigma);
+
+% Test likelihood (centered at delta)
+P_test = normpdf(m, delta, sigma);
+
+% Difference distribution: ref - test
+% Variance adds: sigma_diff = sqrt(sigma^2 + sigma^2) = sqrt(2)*sigma
+P_diff = normpdf(m, 0, sqrt(2)*sigma);  % centered at 0 if diff = ref - test
+
+% Plot
+figure; hold on;
+plot(m, P_ref, 'k-', 'LineWidth', 2);
+plot(m, P_test, 'b-', 'LineWidth', 2);
+plot(m, P_diff, 'r-.', 'LineWidth', 2);
+
+xlabel('Internal measurement m');
+ylabel('Likelihood / Difference');
+title('Reference vs Test Distributions and their Difference');
+legend({'Reference (0 dB)', 'Test (3 dB)', 'Likelihood'}, 'Location','NorthEast');
+xlim([-5 8]);
+ylim([0 max([P_ref P_test P_diff])*1.2]);
+set(gca,'FontSize',14); box off;
