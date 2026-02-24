@@ -208,26 +208,9 @@ meanRecoveredRef = mean(recoveredSigmaRef, 2);             % mean across repeats
 stdRecoveredRef  = std(recoveredSigmaRef, 0, 2);           % std across repeats
 semRecoveredRef  = stdRecoveredRef ./ sqrt(nRepeats);      % SEM
 
-% Sigma parameter recovery plot
-figure; hold on;
+% Sigma pa
 
-errorbar(chosenSigmaRefList, ...
-         meanRecoveredRef, ...
-         semRecoveredRef, ...
-         'o-', ...
-         'LineWidth', 2, ...
-         'MarkerSize', 8, ...
-         'MarkerFaceColor', 'w');
 
-% Unity line
-plot([0 2.5], [0 2.5], 'k--', 'LineWidth', 2);
-
-xlabel('Input \sigma_{ref}');
-ylabel('Recovered \sigma_{ref}');
-title('Sigma Ref Recovery (mean ± SEM)');
-
-xlim([0 2.5]);
-ylim([0 2.5]);
 
 %% Function for trial-level simulation %%
 
