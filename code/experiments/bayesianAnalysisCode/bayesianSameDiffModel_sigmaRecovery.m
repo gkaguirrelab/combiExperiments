@@ -19,12 +19,14 @@ experimentName = 'DCPT_SDT';
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 % 'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
 % 'FLIC_1044', 'FLIC_1046', 'FLIC_1047', 'FLIC_1048'};
-subjectID = {'FLIC_1031'};
+subjectID = {'FLIC_0020'};
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
 refFreqHz = logspace(log10(10),log10(30),5);  % logspace(log10(10),log10(30),5)
 targetPhotoContrast = {'0x1','0x3'};  % {'0x1','0x3'}
+contrastLabels = {'LoContrast', 'HiContrast'};
+lightLabels = {'LoLight', 'HiLight'};
 
 % Define length variables
 nFreqs = length(refFreqHz);
@@ -40,6 +42,9 @@ refFreqIdx   = 3;   % list is: 10.0000   13.1607   17.3205   22.7951   30.0000
 
 thisSubj = subjectID{subjIdx};
 currentRefFreq = refFreqHz(refFreqIdx);
+
+% Choose whether you want to save the recovery parameter data in a .mat file
+saveData = true; 
 
 %% Simulation using simulate function for one subj, one condition. Plot simulated data.
 % Repeat simulating and fitting data 100 times
@@ -102,7 +107,7 @@ chosenSigmaRefFixed = 0.5;
 sigmaRefSweep = linspace(0.2, 2, 8); % define both sweeps
 sigmaTestSweep = linspace(0.2, 2, 8);
 
-nRepeats = 5; % set to desired number of repeats
+nRepeats = 100; % set to desired number of repeats
 
 for recoveryMode = 1:2 % varying sigma ref or test
 
@@ -134,7 +139,7 @@ for recoveryMode = 1:2 % varying sigma ref or test
         if recoveryMode == 1 % vary sigma ref
             chosenSigmaTest = chosenSigmaTestFixed;
             chosenSigmaRef  = sweepList(ss);
-        else
+        else   % vary sigma test
             chosenSigmaTest = sweepList(ss);
             chosenSigmaRef  = chosenSigmaRefFixed;
         end
@@ -190,8 +195,8 @@ for recoveryMode = 1:2 % varying sigma ref or test
                 recoveredRef_fromTestSweep(ss, rr)  = fit(2);
             end
 
-            % Plot the simulated data + fit for the first repeat + sigma val only
-            if rr == 1 && ss == 1 && recoveryMode == 1
+            % Plot the simulated data + fit for the first repeat + 3rd sigma val only
+            if rr == 1 && ss == 3 && recoveryMode == 1
                 figure; hold on;
 
                 % Marker size based on trial counts
@@ -237,31 +242,68 @@ for recoveryMode = 1:2 % varying sigma ref or test
 
 end
 
+if saveData
+
+    % Build save directory
+    saveSubDir = 'FLIC_analysis/dichopticFlicker/';
+    saveDir = fullfile(dropBoxBaseDir, saveSubDir,'sigmaData');
+
+    if ~exist(saveDir, 'dir') % Create directory if it doesn't exist
+        mkdir(saveDir);
+    end
+
+    % Construct filename
+    filename = fullfile(saveDir, ...
+        sprintf('%s_%dHz_%s_%s_sigmaRecovery.mat', ...
+            thisSubj, ...
+            round(currentRefFreq), ...
+            contrastLabels{contrastIdx}, ...
+            lightLabels{lightIdx}));
+
+    save(filename, 'recoveredRef_fromRefSweep','recoveredTest_fromRefSweep',...
+        'recoveredTest_fromTestSweep','recoveredRef_fromTestSweep',...
+        'sigmaRefSweep','sigmaTestSweep','chosenSigmaTestFixed','chosenSigmaRefFixed');
+
+end
+
 %% Parameter recovery plots
 
 % Plot the input sigma REF value vs recovered sigma
 % Average across simulating + fitting repetitions
 meanRecoveredRef = mean(recoveredRef_fromRefSweep, 2);             % mean across repeats
 stdRecoveredRef  = std(recoveredRef_fromRefSweep, 0, 2);           % std across repeats
-semRecoveredRef  = stdRecoveredRef ./ sqrt(nRepeats);      % SEM
+meanRecoveredTest_fromRefSweep = mean(recoveredTest_fromRefSweep, 2); % mean across repeats for TEST
+% semRecoveredRef  = stdRecoveredRef ./ sqrt(nRepeats);      % SEM
 
 % Sigma ref parameter recovery plot
 figure; hold on;
 
 errorbar(sigmaRefSweep, ...
          meanRecoveredRef, ...
-         semRecoveredRef, ...
+         stdRecoveredRef, ...
          'o-', ...
          'LineWidth', 2, ...
          'MarkerSize', 8, ...
          'MarkerFaceColor', 'w');
+
+% Adding the recovered test values
+plot(sigmaRefSweep, ...
+     meanRecoveredTest_fromRefSweep, ...
+     'o-', ...
+     'Color',[0.5 0.5 0.5], ...
+     'LineWidth', 2);
 
 % Unity line
 plot([0 2.5], [0 2.5], 'k--', 'LineWidth', 2);
 
 xlabel('Input \sigma_{ref}');
 ylabel('Recovered \sigma_{ref}');
-title('Sigma Ref Recovery (mean ± SEM)');
+title('Sigma Ref Recovery (mean ± SD)');
+
+legend({'Recovered \sigma_{ref} (± SD)', ...
+        'Recovered \sigma_{test} (mean)', ...
+        'Unity line'}, ...
+       'Location', 'northwest');
 
 xlim([0 2.5]);
 ylim([0 2.5]);
@@ -270,25 +312,38 @@ ylim([0 2.5]);
 % Average across simulating + fitting repetitions
 meanRecoveredTest = mean(recoveredTest_fromTestSweep, 2);             % mean across repeats
 stdRecoveredTest  = std(recoveredTest_fromTestSweep, 0, 2);           % std across repeats
-semRecoveredTest = stdRecoveredTest ./ sqrt(nRepeats);      % SEM
+meanRecoveredRef_fromTestSweep = mean(recoveredRef_fromTestSweep, 2); % mean across repeats for REF
+% semRecoveredTest = stdRecoveredTest ./ sqrt(nRepeats);      % SEM
 
 % Sigma ref parameter recovery plot
 figure; hold on;
 
 errorbar(sigmaTestSweep, ...
          meanRecoveredTest, ...
-         semRecoveredTest, ...
+         stdRecoveredTest, ...
          'o-', ...
          'LineWidth', 2, ...
          'MarkerSize', 8, ...
          'MarkerFaceColor', 'w');
+
+% Adding the recovered ref values
+plot(sigmaTestSweep, ...
+     meanRecoveredRef_fromTestSweep, ...
+     'o-', ...
+     'Color',[0.5 0.5 0.5], ...
+     'LineWidth', 2);
 
 % Unity line
 plot([0 2.5], [0 2.5], 'k--', 'LineWidth', 2);
 
 xlabel('Input \sigma_{test}');
 ylabel('Recovered \sigma_{test}');
-title('Sigma Test Recovery (mean ± SEM)');
+title('Sigma Test Recovery (mean ± SD)');
+
+legend({'Recovered \sigma_{test} (± SD)', ...
+        'Recovered \sigma_{ref} (mean)', ...
+        'Unity line'}, ...
+       'Location', 'northwest');
 
 xlim([0 2.5]);
 ylim([0 2.5]);

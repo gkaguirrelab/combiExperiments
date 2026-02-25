@@ -1,4 +1,11 @@
-% SETUP
+% SETUP - defining variables and choosing subject IDs
+
+% Choose whether you want to save the sigma data in a .mat file
+saveData = true; 
+
+% Choose whether you want to run migrainer or control subjects
+control = true; 
+
 % Defining the directory
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir = 'FLIC_data';
@@ -6,13 +13,17 @@ projectName = 'combiLED';
 experimentName = 'DCPT_SDT';
 
 % Define subjects + parameters
-% Control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
-% 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 
-% 'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049','FLIC_0051'}; 
-% Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-%         'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044', 'FLIC_1046'};
-subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
-   'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044', 'FLIC_1046'};
+if control   % control subject IDs
+    subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
+        'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', ...
+        'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0050', 'FLIC_0051'};
+else   % migrainer subject IDs
+    subjectID = {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
+        'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
+        'FLIC_1044', 'FLIC_1046', 'FLIC_1047', 'FLIC_1048'};
+end
+
+% Define experimental condition variables 
 modDirection = 'LightFlux';
 NDLabel = {'3x0', '0x5'};   % {'3x0', '0x5'}
 stimParamLabels = {'low', 'hi'}; % {'low', 'hi'}
@@ -25,14 +36,13 @@ nContrasts = length(targetPhotoContrast);
 nLightLevels = length(NDLabel); 
 nSubj = length(subjectID);
 
+
 %% FITTING CODE %%
 
 % Initialize matrices of params
 % nSubj x 2 x 2 x 5, subj x nContrasts x nLightLevels x nFreqs
-% sigmaMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
-sigmaMatrix1 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
-sigmaMatrix2 = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
-% critBaselineMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+sigmaTestMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
+sigmaRefMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
 fValMatrix = zeros(nSubj, nContrasts, nLightLevels, nFreqs);
 
 for subjIdx = 1:nSubj
@@ -99,9 +109,17 @@ for subjIdx = 1:nSubj
                         % Append to combined trial data
                         comboTrialData = [comboTrialData; thisTrialData];
 
-                        % Store one psychObj as template if needed
-                        if refFreqIdx == 1 && sideIdx == 1
+                        % Find stimParamsDomainList and store one psychObj as template
+                        if ~exist('stimParamsDomainList','var')
                             templatePsychObj = psychObj;
+
+                            % Extract domain list (positive values only)
+                            stimParamsDomainList = psychObj.questData.stimParamsDomainList;
+                            stimParamsDomainList = stimParamsDomainList{:}';
+
+                            % Make symmetric domain 
+                            stimParamsDomainList = unique([-stimParamsDomainList, stimParamsDomainList]);
+                            stimParamsDomainList = sort(stimParamsDomainList);
                         end
                     else
                         warning('File not found: %s', fileName);
@@ -156,33 +174,32 @@ for subjIdx = 1:nSubj
                 epsilon = 0.01; % Define the constant lapse rate value
 
                 % Fit the psychometric function
-                % initial_params = [m, x_limit, crit_baseline, sigma]
-                initial_params = [0,1,2,0.5];
-                % sigma = 0.5; % for single sigma model
-                sigma = [0.5, 0.5]; 
+                initialParams = [0.5, 0.5];
+                priorSame = 0.5; 
 
                 options = bads('defaults');
                 options.MaxIter = 50;
                 options.MaxFunEvals = 500;
                 lb  = [0.001, 0.001];
-                ub  = [3, 3];
-                [fit, fbest] = bads(@(p) negLogLikelihood(p,uniqueDbValues,probData,nTrials), ...
-                    sigma, lb, ub, lb, ub, [], options);
+                ub  = [5, 5];
+                [fit, fbest] = bads(@(p) negLogLikelihood(p, ...
+                    stimParamsDomainList, ...
+                    uniqueDbValues, ...
+                    probData, ...
+                    nTrials, ...
+                    priorSame), ...
+                    initialParams, lb, ub, lb, ub, [], options);
 
-                % Add the crit_baseline and sigma values to the matrix
+                % Add the fVal and sigma values to the matrix
                 fValMatrix(subjIdx, contrastIdx, lightIdx, refFreqIdx) = fbest;
-                sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(1);
-                sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(2);
-                %   sigmaMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit;
-                %  critBaselineMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(3);
-                 % fit(1) = sigmaMatrix1(subjIdx, contrastIdx,lightIdx,refFreqIdx);
-                 % fit(2) = sigmaMatrix2(subjIdx, contrastIdx,lightIdx,refFreqIdx);
+                sigmaTestMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(1);
+                sigmaRefMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(2);
 
                 % Plot the fit for this ref frequency
                 hold on;
 
                 x = -5:0.1:5;  % evaluate the model at more dB values
-                plot(x, bayesianSameDiffModelTwoSigma(x,fit,0.5), 'k-', 'LineWidth',2);
+                plot(x, bayesianSameDiffModelTwoSigma(stimParamsDomainList,x,fit,priorSame), 'k-', 'LineWidth',2);
 
                 xlabel('stimulus difference [dB]');
                 if lightIdx == 1 && refFreqIdx == 1
@@ -203,14 +220,38 @@ for subjIdx = 1:nSubj
 
 end
 
+if saveData
+
+    % Build save directory 
+    saveSubDir = 'FLIC_analysis/dichopticFlicker/';
+    saveDir = fullfile(dropBoxBaseDir, saveSubDir,'sigmaData');
+
+    if ~exist(saveDir, 'dir') % Create directory if it doesn't exist
+        mkdir(saveDir);
+    end
+
+    % Determine whether the fitting was done for control or migrainer data
+    subjNumber = str2double(thisSubj(end-3:end));
+    if subjNumber >= 1000
+        groupLabel = 'Migrainer';
+    else
+        groupLabel = 'Control';
+    end
+
+    % Build filename
+    filename = fullfile(saveDir, [num2str(nSubj) groupLabel '_individualSigmaFits.mat']);
+
+    save(filename, 'refFreqHz','subjectID','fValMatrix','sigmaRefMatrix','sigmaTestMatrix');
+
+end
+
 %% Objective function %%%
 
-function nll = negLogLikelihood(sigma, uniqueDbValues, probData, nTrials)
+function nll = negLogLikelihood(sigma, stimParamsDomainList, uniqueDbValues, probData, nTrials, priorSame)
 
     % Predict probability of "different" at each unique dB level
     % P_diff = bayesianSameDiffModel(uniqueDbValues, sigma);
-    priorSame = 0.5; 
-    P_diff = bayesianSameDiffModelTwoSigma(uniqueDbValues, sigma, priorSame);
+    P_diff = bayesianSameDiffModelTwoSigma(stimParamsDomainList, uniqueDbValues, sigma, priorSame);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
     % Finding the count of different responses (aka the number of
