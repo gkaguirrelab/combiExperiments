@@ -1,11 +1,12 @@
 % SETUP - defining variables and choosing subject IDs
 
+% VARIABLES TO CHANGE
 % Choose whether you want to save the sigma data in a .mat file
 saveData = true; 
-
 % Choose whether you want to run migrainer or control subjects
 control = true; 
 
+% The rest of the code does not need to be changed
 % Defining the directory
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir = 'FLIC_data';
