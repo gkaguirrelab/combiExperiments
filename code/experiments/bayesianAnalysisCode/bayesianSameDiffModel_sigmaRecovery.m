@@ -10,16 +10,16 @@
 % VARIABLES TO CHANGE
 % Choose the subject and condition
 subjIdx      = 1;   % choose subject index from subject ID list below
-contrastIdx  = 2;   % 1 = low, 2 = high 
-lightIdx     = 2;   % 1 = low, 2 = high 
-refFreqIdx   = 3;   % list is: 10.0000   13.1607   17.3205   22.7951   30.0000
+contrastIdx  = 1;   % 1 = low, 2 = high 
+lightIdx     = 1;   % 1 = low, 2 = high 
+refFreqIdx   = 1;   % list is: 10.0000   13.1607   17.3205   22.7951   30.0000
 % Control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',
 % 'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0050', 'FLIC_0051'}; 
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 % 'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1043',...
 % 'FLIC_1044', 'FLIC_1046', 'FLIC_1047', 'FLIC_1048'};
-subjectID = {'FLIC_0020'}; % choose a subject here
+subjectID = {'FLIC_1016'}; % choose a subject here
 % Choose whether you want to save the recovery parameter data in a .mat file
 saveData = true; 
 

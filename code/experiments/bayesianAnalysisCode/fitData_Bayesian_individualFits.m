@@ -4,7 +4,7 @@
 % Choose whether you want to save the sigma data in a .mat file
 saveData = true; 
 % Choose whether you want to run migrainer or control subjects
-control = true; 
+control = false; 
 
 % The rest of the code does not need to be changed
 % Defining the directory
