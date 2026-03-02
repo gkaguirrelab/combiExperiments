@@ -31,6 +31,7 @@ arguments
     options.initialSecsToDiscard = 0
     options.fps = 180
     options.badLagCorrelationThresh = 0.5
+    options.smoothWindowSecs = 5
     options.makePlotFlag = true
     options.directions = {'Mel','LMS','S_peripheral','LightFlux'}
     options.directionLabels = {'Mel','LMS','S','LF'}
@@ -124,8 +125,8 @@ for dd = 1:length(directions)
 
                 % Load the videos, correct lag on the left, convert to
                 % proportion eye open
-                [palpFissureR, confidenceR] = loadSquintVector(fileNameR,'vecDurSecs',vecDurSecs);
-                [palpFissureL, confidenceL] = loadSquintVector(fileNameL,'vecDurSecs',vecDurSecs);
+                [palpFissureR, confidenceR] = loadSquintVector(fileNameR,'vecDurSecs',vecDurSecs,'smoothWindowSecs',options.smoothWindowSecs);
+                [palpFissureL, confidenceL] = loadSquintVector(fileNameL,'vecDurSecs',vecDurSecs,'smoothWindowSecs',options.smoothWindowSecs);
                 palpFissureL = circshift(palpFissureL,lagFrames);
                 confidenceL = circshift(confidenceL,lagFrames);
                 if ~any(isnan(medianDarkWidth(:,tt)))
