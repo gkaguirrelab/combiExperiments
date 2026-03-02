@@ -1,17 +1,19 @@
 % SETUP - defining variables and choosing subject IDs
 
-% VARIABLES TO CHANGE
-% Choose whether you want to save the sigma data in a .mat file
-saveData = true; 
-% Choose whether you want to run migrainer or control subjects
-control = false; 
+% VARIABLES TO CHANGE 
+% Choose whether you want to plot data for migrainer or control subjects
+control = true; 
 
 % The rest of the code does not need to be changed
-% Defining the directory
+% Defining the directory for loading experiment files
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir = 'FLIC_data';
 projectName = 'combiLED';
 experimentName = 'DCPT_SDT';
+% Define directory for loading sigma data
+dropBoxDataSubDir = 'FLIC_analysis';
+projectDataName = 'dichopticFlicker';
+sigmaDataDir = 'sigmaData';
 
 % Define subjects + parameters
 if control   % control subject IDs
@@ -37,14 +39,20 @@ nContrasts = length(targetPhotoContrast);
 nLightLevels = length(NDLabel); 
 nSubj = length(subjectID);
 
+%% PLOTTING CODE %%
 
-%% FITTING CODE %%
-
-% Initialize matrices of params
-% nSubj x 2 x 2 x 5, subj x nContrasts x nLightLevels x nFreqs
-sigmaTestMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
-sigmaRefMatrix = zeros(nSubj,nContrasts,nLightLevels,nFreqs);
-fValMatrix = zeros(nSubj, nContrasts, nLightLevels, nFreqs);
+% Load matrices of params for either control or migraine subjects
+clear sigmaTestMatrix % clear any matrices currently in the workspace
+clear sigmaRefMatrix
+if control
+    dataFileName = fullfile(dropBoxBaseDir, dropBoxDataSubDir, projectDataName, ...
+        sigmaDataDir, '15Control_individualSigmaFits');
+    load(dataFileName,'sigmaTestMatrix', 'sigmaRefMatrix');
+else
+    dataFileName = fullfile(dropBoxBaseDir, dropBoxDataSubDir, projectDataName, ...
+        sigmaDataDir, '15Migrainer_individualSigmaFits');
+    load(dataFileName,'sigmaTestMatrix', 'sigmaRefMatrix');
+end
 
 for subjIdx = 1:nSubj
 
@@ -172,29 +180,11 @@ for subjIdx = 1:nSubj
                     nTrials(ii) = sum(dB_data == uniqueDbValues(ii)); % nTrials at each dB
                 end
 
-                epsilon = 0.01; % Define the constant lapse rate value
+                % Get the fitted param values from the matrices 
+                fit(1) = sigmaTestMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx);
+                fit(2) = sigmaRefMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx);
 
-                % Fit the psychometric function
-                initialParams = [0.5, 0.5];
                 priorSame = 0.5; 
-
-                options = bads('defaults');
-                options.MaxIter = 50;
-                options.MaxFunEvals = 500;
-                lb  = [0.001, 0.001];
-                ub  = [5, 5];
-                [fit, fbest] = bads(@(p) negLogLikelihood(p, ...
-                    stimParamsDomainList, ...
-                    uniqueDbValues, ...
-                    probData, ...
-                    nTrials, ...
-                    priorSame), ...
-                    initialParams, lb, ub, lb, ub, [], options);
-
-                % Add the fVal and sigma values to the matrix
-                fValMatrix(subjIdx, contrastIdx, lightIdx, refFreqIdx) = fbest;
-                sigmaTestMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(1);
-                sigmaRefMatrix(subjIdx, contrastIdx,lightIdx,refFreqIdx) = fit(2);
 
                 % Plot the fit for this ref frequency
                 hold on;
@@ -221,46 +211,4 @@ for subjIdx = 1:nSubj
 
 end
 
-if saveData
-
-    % Build save directory 
-    saveSubDir = 'FLIC_analysis/dichopticFlicker/';
-    saveDir = fullfile(dropBoxBaseDir, saveSubDir,'sigmaData');
-
-    if ~exist(saveDir, 'dir') % Create directory if it doesn't exist
-        mkdir(saveDir);
-    end
-
-    % Determine whether the fitting was done for control or migrainer data
-    subjNumber = str2double(thisSubj(end-3:end));
-    if subjNumber >= 1000
-        groupLabel = 'Migrainer';
-    else
-        groupLabel = 'Control';
-    end
-
-    % Build filename
-    filename = fullfile(saveDir, [num2str(nSubj) groupLabel '_individualSigmaFits.mat']);
-
-    save(filename, 'refFreqHz','subjectID','fValMatrix','sigmaRefMatrix','sigmaTestMatrix');
-
-end
-
-%% Objective function %%%
-
-function nll = negLogLikelihood(sigma, stimParamsDomainList, uniqueDbValues, probData, nTrials, priorSame)
-
-    % Predict probability of "different" at each unique dB level
-    % P_diff = bayesianSameDiffModel(uniqueDbValues, sigma);
-    P_diff = bayesianSameDiffModelTwoSigma(stimParamsDomainList, uniqueDbValues, sigma, priorSame);
-    P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
-
-    % Finding the count of different responses (aka the number of
-    % "successes")
-    k = probData .* nTrials; % prop observed diff multiplied by total number of trials at that dB
-    
-    % Finding the binomial negative log-likelihood
-    nll = -sum(k .* log(P_diff) + (nTrials - k) .* log(1 - P_diff));
-
-end
 

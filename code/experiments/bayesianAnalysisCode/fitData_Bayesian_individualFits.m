@@ -186,6 +186,7 @@ for subjIdx = 1:nSubj
                 lb  = [0.001, 0.001];
                 ub  = [5, 5];
                 if nonLinearConstraint
+                    % Constraint that sigmaRef <= sigmaTest
                     % Linear constraints: A*p <= b  ->  [1, -1] * [sigmaRef; sigmaTest] <= 0
                     A = [1, -1];
                     b = 0;
