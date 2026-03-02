@@ -2,7 +2,7 @@
 
 % VARIABLES TO CHANGE 
 % Choose whether you want to plot data for migrainer or control subjects
-control = true; 
+control = false; 
 
 % The rest of the code does not need to be changed
 % Defining the directory for loading experiment files
@@ -199,7 +199,7 @@ for subjIdx = 1:nSubj
                 if lightIdx == 2 && refFreqIdx == 1
                     ylabel({'HIGH', 'proportion respond different'});
                 end
-                title(sprintf('Ref freq = %.1f Hz', currentRefFreq));
+                title(sprintf('Ref: %.1f Hz | σ Test: %.2f | σ Ref: %.2f', currentRefFreq, fit(1), fit(2)));
                 ylim([-0.1 1.1]);
                 xlim([-6.0 6.0]);
 
