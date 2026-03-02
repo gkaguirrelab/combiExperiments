@@ -10,9 +10,9 @@
 % VARIABLES TO CHANGE
 % Choose the subject and condition
 subjIdx      = 1;   % choose subject index from subject ID list below
-contrastIdx  = 1;   % 1 = low, 2 = high 
-lightIdx     = 1;   % 1 = low, 2 = high 
-refFreqIdx   = 1;   % list is: 10.0000   13.1607   17.3205   22.7951   30.0000
+contrastIdx  = 2;   % 1 = low, 2 = high 
+lightIdx     = 2;   % 1 = low, 2 = high 
+refFreqIdx   = 3;   % list is: 10.0000   13.1607   17.3205   22.7951   30.0000
 % Control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',
 % 'FLIC_0028','FLIC_0039', 'FLIC_0042', 'FLIC_0049', 'FLIC_0050', 'FLIC_0051'}; 
@@ -106,8 +106,8 @@ priorSame = 0.5;
 chosenSigmaTestFixed = 0.5;
 chosenSigmaRefFixed = 0.5;
 
-sigmaRefSweep = linspace(0.2, 2, 8); % define both sweeps
-sigmaTestSweep = linspace(0.2, 2, 8);
+sigmaRefSweep = linspace(0.2, 4, 16); % define both sweeps
+sigmaTestSweep = linspace(0.2, 4, 16);
 
 nRepeats = 100; % set to desired number of repeats
 
@@ -296,7 +296,7 @@ plot(sigmaRefSweep, ...
      'LineWidth', 2);
 
 % Unity line
-plot([0 2.5], [0 2.5], 'k--', 'LineWidth', 2);
+plot([0 4.5], [0 4.5], 'k--', 'LineWidth', 2);
 
 xlabel('Input \sigma_{ref}');
 ylabel('Recovered \sigma_{ref}');
@@ -307,8 +307,8 @@ legend({'Recovered \sigma_{ref} (± SD)', ...
         'Unity line'}, ...
        'Location', 'northwest');
 
-xlim([0 2.5]);
-ylim([0 2.5]);
+xlim([0 4.5]);
+ylim([0 4.5]);
 
 % Plot the input sigma TEST value vs recovered sigma
 % Average across simulating + fitting repetitions
@@ -336,7 +336,7 @@ plot(sigmaTestSweep, ...
      'LineWidth', 2);
 
 % Unity line
-plot([0 2.5], [0 2.5], 'k--', 'LineWidth', 2);
+plot([0 4.5], [0 4.5], 'k--', 'LineWidth', 2);
 
 xlabel('Input \sigma_{test}');
 ylabel('Recovered \sigma_{test}');
@@ -347,8 +347,8 @@ legend({'Recovered \sigma_{test} (± SD)', ...
         'Unity line'}, ...
        'Location', 'northwest');
 
-xlim([0 2.5]);
-ylim([0 2.5]);
+xlim([0 4.5]);
+ylim([0 4.5]);
 
 %% Function for trial-level simulation %%
 

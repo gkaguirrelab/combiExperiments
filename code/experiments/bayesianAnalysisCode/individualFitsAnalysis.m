@@ -35,6 +35,8 @@ sigmaTestC = controlFits.sigmaTestMatrix;
 % define labels
 contrastLabels = {'lo', 'hi'};
 NDLabel = {'3.0', '0.5'};
+refFreqHz   = migraineFits.refFreqHz;
+
 
 
 %% Calculate Mean and SEM
@@ -53,7 +55,6 @@ semSigmaRefM  = squeeze(std(mean(sigmaRefM,  4), [], 1) ./ sqrt(nSubjM));
 %  Prepare Colors
 colMigraine = [0.8 0.3 0.3];
 colControl  = [0.3 0.3 0.8];
-refFreqHz   = migraineFits.refFreqHz;
 
 % Loop through light levels (1 = Low, 2 = High)
 for l = 1:2
@@ -374,6 +375,44 @@ if options.anova
     % Group by all factors
     grpstats(T_sigma, {'Group', 'Contrast', 'Light', 'Freq'}, 'mean')
 end
+
+%Flatten Data
+% Combine all conditions for Sigma Test
+testM = migraineFits.sigmaTestMatrix(:);
+testC = controlFits.sigmaTestMatrix(:);
+
+% Combine all conditions for Sigma Ref 
+refM  = migraineFits.sigmaRefMatrix(:);
+refC  = controlFits.sigmaRefMatrix(:);
+
+% --- Define Shared Bin Edges ---
+allTest = [testM; testC];
+allRef  = [refM; refC];
+testEdges = linspace(min(allTest), max(allTest), 40);
+refEdges  = linspace(min(allRef), max(allRef), 40);
+
+% Plot
+figure('Color', 'w', 'Position', [100 100 900 400]);
+t = tiledlayout(1, 2, 'TileSpacing', 'compact');
+
+% Panel 1: Sigma Test
+nexttile; hold on;
+histogram(testM, testEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+histogram(testC, testEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+title('Distribution: Sigma Test');
+xlabel('Sigma Value'); ylabel('Count');
+legend({'Migraine', 'Control'}, 'Box', 'off');
+box off; grid on;
+
+% Panel 2: Sigma Ref
+nexttile; hold on;
+histogram(refM, refEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+histogram(refC, refEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+title('Distribution: Sigma Ref');
+xlabel('Sigma Value'); ylabel('Count');
+legend({'Migraine', 'Control'}, 'Box', 'off');
+box off; grid on;
+
 end
 
 % Helper function for title logic
