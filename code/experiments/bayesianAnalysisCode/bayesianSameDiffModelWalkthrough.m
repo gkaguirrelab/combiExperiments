@@ -396,11 +396,9 @@ end
 
 %% Elementary plot of the likelihood as a difference of Gaussians
 
-% WORK ON THE LABELING HERE
-
 % Conceptual illustration: reference vs test likelihoods and their difference
 sigmaRef = 0.5;       % standard deviation of measurement
-sigmaTest = 1;
+sigmaTest = 0.75;
 delta = 3;       % test stimulus difference
 
 m = linspace(-5, 8, 1000);

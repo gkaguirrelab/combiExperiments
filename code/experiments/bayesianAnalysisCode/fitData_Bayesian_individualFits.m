@@ -188,8 +188,8 @@ for subjIdx = 1:nSubj
                 if nonLinearConstraint
                     % Constraint that sigmaRef <= sigmaTest
                     % Linear constraints: A*p <= b  ->  [1, -1] * [sigmaRef; sigmaTest] <= 0
-                    A = [1, -1];
-                    b = 0;
+                    options.A = [1, -1];
+                    options.b = 0;
 
                     [fit, fbest] = bads(@(p) negLogLikelihood(p, ...
                         stimParamsDomainList, ...
@@ -197,7 +197,7 @@ for subjIdx = 1:nSubj
                         probData, ...
                         nTrials, ...
                         priorSame), ...
-                        initialParams, lb, ub, lb, ub, [], options, A, b);
+                        initialParams, lb, ub, lb, ub, [], options);
                 else
                     [fit, fbest] = bads(@(p) negLogLikelihood(p, ...
                         stimParamsDomainList, ...
@@ -239,9 +239,33 @@ for subjIdx = 1:nSubj
 
 end
 
-if saveData
+if saveData && nonLinearConstraint % saving the data after constrained fitting
 
-    % Build save directory 
+    % Build save directory
+    saveSubDir = 'FLIC_analysis/dichopticFlicker/';
+    saveDir = fullfile(dropBoxBaseDir, saveSubDir,'sigmaData');
+
+    if ~exist(saveDir, 'dir') % Create directory if it doesn't exist
+        mkdir(saveDir);
+    end
+
+    % Determine whether the fitting was done for control or migrainer data
+    subjNumber = str2double(thisSubj(end-3:end));
+    if subjNumber >= 1000
+        groupLabel = 'Migrainer';
+    else
+        groupLabel = 'Control';
+    end
+
+    % Build filename
+    % Add "constrained" label
+    filename = fullfile(saveDir, [num2str(nSubj) groupLabel '_individualSigmaFitsConstrained.mat']);
+
+    save(filename, 'refFreqHz','subjectID','fValMatrix','sigmaRefMatrix','sigmaTestMatrix');
+
+elseif saveData
+
+    % Build save directory
     saveSubDir = 'FLIC_analysis/dichopticFlicker/';
     saveDir = fullfile(dropBoxBaseDir, saveSubDir,'sigmaData');
 
