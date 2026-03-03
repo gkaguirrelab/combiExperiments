@@ -212,3 +212,14 @@ for subjIdx = 1:nSubj
 end
 
 
+tolerance = 1e-6; % Default epsilon
+
+% Check for equality within the defined tolerance
+% Using abs(a - b) < tolerance
+isEqual = abs(sigmaTestMatrix - sigmaRefMatrix) < tolerance;
+
+% Calculate the proportion
+proportion = mean(isEqual(:))
+
+% Return the mask in case you want to see which indices matched
+equalityMask = isEqual;

@@ -14,8 +14,8 @@ projectName = 'dichopticFlicker';
 experimentName = 'sigmaData';
 
 dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, experimentName);
-migraineFilePath = fullfile(dataDir, '15Migrainer_individualSigmaFits.mat');
-controlFilePath  = fullfile(dataDir, '15Control_individualSigmaFits.mat');
+migraineFilePath = fullfile(dataDir, '15Migrainer_individualSigmaFitsConstrained.mat');
+controlFilePath  = fullfile(dataDir, '15Control_individualSigmaFitsConstrained.mat');
 %load
 % data is subj x contrasts x lightLevels x freqs
 migraineFits = load(migraineFilePath);
