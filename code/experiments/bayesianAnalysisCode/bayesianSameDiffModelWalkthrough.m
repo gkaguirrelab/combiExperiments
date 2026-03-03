@@ -223,7 +223,7 @@ box off;
 %% Posteriors for different sigma test and ref values
 
 % Change this variable to change sigmaTest values instead of sigmaRef
-changeSigmaRef = true;
+changeSigmaRef = false;
 
 if changeSigmaRef
     sigmaTest = 0.5;                   % keep sigmaTest constant

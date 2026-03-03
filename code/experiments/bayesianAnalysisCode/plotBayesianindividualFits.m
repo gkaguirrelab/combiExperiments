@@ -46,11 +46,11 @@ clear sigmaTestMatrix % clear any matrices currently in the workspace
 clear sigmaRefMatrix
 if control
     dataFileName = fullfile(dropBoxBaseDir, dropBoxDataSubDir, projectDataName, ...
-        sigmaDataDir, '15Control_individualSigmaFits');
+        sigmaDataDir, '15Control_individualSigmaFitsConstrained.mat');
     load(dataFileName,'sigmaTestMatrix', 'sigmaRefMatrix');
 else
     dataFileName = fullfile(dropBoxBaseDir, dropBoxDataSubDir, projectDataName, ...
-        sigmaDataDir, '15Migrainer_individualSigmaFits');
+        sigmaDataDir, '15Migrainer_individualSigmaFitsConstrained.mat');
     load(dataFileName,'sigmaTestMatrix', 'sigmaRefMatrix');
 end
 
