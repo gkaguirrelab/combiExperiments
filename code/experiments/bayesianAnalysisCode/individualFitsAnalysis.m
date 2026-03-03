@@ -1,8 +1,8 @@
 function output = individualFitsAnalysis(options)
 % Define the arguments block
 arguments
-    options.barPlot (1,1) logical = true
-    options.fVal (1,1) logical = true
+    options.barPlot (1,1) logical = false
+    options.fVal (1,1) logical = false
     options.anova (1,1) logical = true
 end
 
@@ -329,7 +329,7 @@ if options.anova
     % Create Factor Indices
     % Use ndgrid to create a coordinate grid for the 4 data dimensions
     [S_idx, C_idx, L_idx, F_idx] = ndgrid(1:nS, 1:nC, 1:nL, 1:nF);
-
+ 
     % Create Group Vector (1 = Migraine, 2 = Control)
     nMigraine = size(migraineFits.sigmaTestMatrix, 1);
     G_idx = ones(nS, nC, nL, nF);
@@ -353,14 +353,14 @@ if options.anova
     [p, tbl, stats] = anovan(sigmaTestAll(:), factors, ...
         'nested', nest, ...
         'random', 1, ... % Subject is random
-        'model', 'full', ...
+        'model', 'interaction', ...
         'varnames', varnames);
 
     fprintf('\nRunning ANOVA for Sigma Ref...\n');
     [pZero, tblZero, statsZero] = anovan(sigmaRefAll(:), factors, ...
         'nested', nest, ...
         'random', 1, ...
-        'model', 'full', ...
+        'model', 'interaction', ...
         'varnames', varnames);
 
     % 5. Create a table for visualization
@@ -410,6 +410,8 @@ histogram(refM, refEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeCol
 histogram(refC, refEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
 title('Distribution: Sigma Ref');
 xlabel('Sigma Value'); ylabel('Count');
+xlim([0 5]); % to match sigma test
+ylim([0 40]);
 legend({'Migraine', 'Control'}, 'Box', 'off');
 box off; grid on;
 

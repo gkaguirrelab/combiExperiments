@@ -416,18 +416,27 @@ end
 
 function nll = negLogLikelihood(p, stimParamsDomainList, uniqueDbValues, probData, nTrials)
     sigma = p; % unpack fitted parameters
-
+    
+    sigmaTest = sigma(1);
+    sigmaRef = sigma(2);
+    
     % Predict probability of "different" at each unique dB level
-    priorSame = 0.5; 
+    priorSame = 0.5;
     P_diff = bayesianSameDiffModelTwoSigma(stimParamsDomainList, uniqueDbValues, sigma, priorSame);
     P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
     % Finding the count of different responses (aka the number of
     % "successes")
     k = probData .* nTrials; % prop observed diff multiplied by total number of trials at that dB
-    
+
     % Finding the binomial negative log-likelihood
     nll = -sum(k .* log(P_diff) + (nTrials - k) .* log(1 - P_diff));
+
+    % Penalty constraint so that sigmaRef <= sigmaTest
+    if sigmaRef > sigmaTest
+        penalty = (sigmaRef - sigmaTest) * 1e3;
+        nll = nll + penalty;
+    end
 
 end
 
