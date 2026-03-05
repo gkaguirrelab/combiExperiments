@@ -184,6 +184,74 @@ for l = 1:2
     end
 end
 
+%% Plots to examine main effect of frequency  
+% Average Sigma across Contrast and Light, keep Group and Frequency
+
+% Pull data
+sigmaTestData = cat(1, migraineFits.sigmaTestMatrix, controlFits.sigmaTestMatrix);  % [Subjects × Contrast × Light × Freq]
+sigmaRefData  = cat(1, migraineFits.sigmaRefMatrix, controlFits.sigmaRefMatrix);
+
+% Group labels
+nMigraine = size(migraineFits.sigmaTestMatrix,1);
+groupLabels = [ones(nMigraine,1); 2*ones(size(controlFits.sigmaTestMatrix,1),1)];
+groups = unique(groupLabels);
+
+% Preallocate mean & SEM
+nFreqs = length(refFreqHz);
+meanSigmaTest = zeros(length(groups), nFreqs);
+semSigmaTest  = zeros(length(groups), nFreqs);
+meanSigmaRef  = zeros(length(groups), nFreqs);
+semSigmaRef   = zeros(length(groups), nFreqs);
+
+for g = 1:length(groups)
+    idx = groupLabels == groups(g);
+    
+    % Average across Contrast x Light
+    dataTest = squeeze(mean(mean(sigmaTestData(idx,:,:,:),3),2)); % [Subjects × Freq]
+    dataRef  = squeeze(mean(mean(sigmaRefData(idx,:,:,:),3),2));
+    
+    meanSigmaTest(g,:) = mean(dataTest,1);
+    semSigmaTest(g,:)  = std(dataTest,0,1)/sqrt(sum(idx));
+    
+    meanSigmaRef(g,:) = mean(dataRef,1);
+    semSigmaRef(g,:)  = std(dataRef,0,1)/sqrt(sum(idx));
+end
+
+% Plot Sigma Test
+figure('Color','w'); hold on;
+colMigraine = [0.8 0.3 0.3];
+colControl  = [0.3 0.3 0.8];
+
+% Migraine
+errorbar(refFreqHz, meanSigmaTest(1,:), semSigmaTest(1,:), '-o', ...
+    'Color', colMigraine, 'MarkerFaceColor', colMigraine, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Migraine');
+% Control
+errorbar(refFreqHz, meanSigmaTest(2,:), semSigmaTest(2,:), '-s', ...
+    'Color', colControl, 'MarkerFaceColor', colControl, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Control');
+
+set(gca,'XScale','log'); 
+xlabel('Reference Frequency (Hz)'); ylabel('Sigma Test');
+ylim([0 2]); 
+title('Frequency vs Sigma Test');
+legend('Location','northwest'); grid on; box off;
+xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
+
+% Plot Sigma Ref
+figure('Color','w'); hold on;
+
+% Migraine
+errorbar(refFreqHz, meanSigmaRef(1,:), semSigmaRef(1,:), '-o', ...
+    'Color', colMigraine, 'MarkerFaceColor', colMigraine, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Migraine');
+% Control
+errorbar(refFreqHz, meanSigmaRef(2,:), semSigmaRef(2,:), '-s', ...
+    'Color', colControl, 'MarkerFaceColor', colControl, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Control');
+
+set(gca,'XScale','log'); 
+xlabel('Reference Frequency (Hz)'); ylabel('Sigma Ref');
+ylim([0 2]); 
+title('Frequency vs Sigma Ref');
+legend('Location','northwest'); grid on; box off;
+xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
 %% Bar plot: Plotting sigma parameters for each contrast x light level condition
 if options.barPlot
     %Prepare Data
@@ -353,14 +421,14 @@ if options.anova
     [p, tbl, stats] = anovan(sigmaTestAll(:), factors, ...
         'nested', nest, ...
         'random', 1, ... % Subject is random
-        'model', 'interaction', ...
+        'model', 3, ...   % up to 3 way interactions
         'varnames', varnames);
 
     fprintf('\nRunning ANOVA for Sigma Ref...\n');
     [pZero, tblZero, statsZero] = anovan(sigmaRefAll(:), factors, ...
         'nested', nest, ...
         'random', 1, ...
-        'model', 'interaction', ...
+        'model', 3, ...    % up to 3 way interactions
         'varnames', varnames);
 
     % 5. Create a table for visualization

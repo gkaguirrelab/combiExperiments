@@ -4,6 +4,8 @@
 % Simulate + refit 100 using one subject’s real dB sequence.
 % Plot input vs recovered sigma with unity line.
 % Repeat for both sigma_ref and sigma_test.
+% This version of the code implements a non-linear constraint in the
+% the nll function, to ensure that sigmaRef <= sigmaTest. 
 
 % SETUP - defining and choosing variables
 
@@ -106,8 +108,8 @@ priorSame = 0.5;
 chosenSigmaTestFixed = 0.5;
 chosenSigmaRefFixed = 0.5;
 
-sigmaRefSweep = linspace(0.2, 4, 16); % define both sweeps
-sigmaTestSweep = linspace(0.2, 4, 16);
+sigmaRefSweep = [0, 0.1, linspace(0.2, 4, 14)]; % define both sweeps
+sigmaTestSweep = [0, 0.1, linspace(0.2, 4, 14)];
 
 nRepeats = 100; % set to desired number of repeats
 
@@ -436,6 +438,9 @@ function nll = negLogLikelihood(p, stimParamsDomainList, uniqueDbValues, probDat
     if sigmaRef > sigmaTest
         penalty = (sigmaRef - sigmaTest) * 1e3;
         nll = nll + penalty;
+
+        % DEBUG
+        fprintf('Penalty active: sigmaRef=%.3f, sigmaTest=%.3f\n', sigmaRef, sigmaTest);
     end
 
 end
