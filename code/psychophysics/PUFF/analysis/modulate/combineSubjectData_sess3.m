@@ -1,9 +1,7 @@
 close all
 clear
 
-% Define the list of subjects. Data from subject BLNK_1010 was excluded
-% post-hoc due to constant movement during recordings, which caused more
-% than 50% loss of measurements in the majority of trials.
+% Define the list of subjects.
 subjects = {'BLNK_1001','BLNK_1005','BLNK_1008','BLNK_1009','BLNK_1011',...
     'BLNK_1013','BLNK_1014'};
 

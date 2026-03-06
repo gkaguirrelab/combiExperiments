@@ -11,7 +11,9 @@ function [amplitude, phase, yFit] = fitFourier(y, options)
 %   y                     - Vector.
 %
 % Outputs:
-%   none
+%   amplitude
+%   phase
+%   yFit
 %
 
 %% argument block
