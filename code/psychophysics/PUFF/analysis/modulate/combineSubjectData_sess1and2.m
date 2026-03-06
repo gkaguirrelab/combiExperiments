@@ -21,9 +21,9 @@ directionColors = {[0 0 0],[0 1 1],[1 0.75 0],[0 0 1]};
 directionLineColors = {'k','c',[1 0.75 0],'b'};
 
 % Get the results from disk
+% To check the results for each subject, set makePlotFlag to true, and
+% then uncomment the pause and close all steps below
 for ss = 1:length(subjects)
-    % To check the results for each subject, set makePlotFlag to true, and
-    % then uncomment the pause and close all steps below
     results{ss} = processModulateVideos(subjects{ss},...
         'directions',directions,...
         'directionLabels',directionLabels,...
@@ -43,24 +43,25 @@ end
 % Get the across-subject average results
 avgResults = acrossSubjectAverage(results);
 
-% Get the individual subject fourier fits
-fourierFitResults = obtainFourierResults(results);
-
-% Get the photoreceptor integration model fits (and create a figure)
-fitWeightModel(fourierFitResults);
-
-% A summary plot of the Fourier fits
-summaryPolarPlot(fourierFitResults,...
-    'directionColors',directionColors,...
-    'directionLineColors',directionLineColors);
-
 % Plot the across-subject average responses
 plotAvgResponses(avgResults,...
     'directionColors',directionColors)
 
-% Polar correlated individual variation
-plotIndividVariation(fourierFitResults)
+% Get the individual subject fourier fits
+fourierFitResults = obtainFourierResults(results);
 
+% Plot a summary of the Fourier fits
+plotSummaryPolar(fourierFitResults,...
+    'directionColors',directionColors,...
+    'directionLineColors',directionLineColors);
+
+% Plot correlated individual variation in photoreceptor responses
+plotIndividVariation(fourierFitResults,...
+    'dirSets',{directionLabels([4,2]),directionLabels([4,3])},...
+    'contrastLabel',contrastLabels{1});
+
+% Get the photoreceptor integration model fits (and create a figure)
+[weights,fitVals,fVals] = fitWeightModel(fourierFitResults);
 
 
 

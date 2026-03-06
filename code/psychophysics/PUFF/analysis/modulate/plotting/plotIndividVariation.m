@@ -1,8 +1,14 @@
-function plotIndividVariation(fourierFitResults)
+function plotIndividVariation(fourierFitResults, options)
+
+arguments
+    fourierFitResults
+    options.dirSets = {{'S','Mel'},{'S','LMS'}}
+    options.contrastLabel = 'High';
+end
 
 % Make a plot of individual variation
-dirSets = {{'S','Mel'},{'S','LMS'}};
-conX = 'High'; conY = 'High';
+dirSets = options.dirSets;
+conX = options.contrastLabel; conY = options.contrastLabel;
 figure('WindowStyle', 'normal');
 tiledlayout(1,length(dirSets));
 for dd = 1:length(dirSets)

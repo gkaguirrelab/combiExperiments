@@ -1,4 +1,4 @@
-function summaryPolarPlot(fourierFitResults,options)
+function plotSummaryPolar(fourierFitResults,options)
 
 
 arguments

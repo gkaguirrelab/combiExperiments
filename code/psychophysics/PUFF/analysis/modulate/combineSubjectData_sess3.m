@@ -43,19 +43,20 @@ end
 % Get the across-subject average results
 avgResults = acrossSubjectAverage(results);
 
-% Get the individual subject fourier fits
-fourierFitResults = obtainFourierResults(results);
-
-% A summary plot of the Fourier fits
-summaryPolarPlot(fourierFitResults,...
-    'directionColors',directionColors,...
-    'directionLineColors',directionLineColors);
-
 % Plot the across-subject average responses
 plotAvgResponses(avgResults,...
     'directionColors',directionColors)
 
+% Get the individual subject fourier fits
+fourierFitResults = obtainFourierResults(results);
 
+% Plot a summary of the Fourier fits
+plotSummaryPolar(fourierFitResults,...
+    'directionColors',directionColors,...
+    'directionLineColors',directionLineColors);
 
-
+% Plot correlated individual variation in photoreceptor responses
+plotIndividVariation(fourierFitResults,...
+    'dirSets',{directionLabels([1,2])},...
+    'contrastLabel',contrastLabels{1});
 
