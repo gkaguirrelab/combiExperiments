@@ -28,7 +28,7 @@ opts = optimoptions('fmincon');
 opts.Display = 'none';
 
 % Prepare a figure
-figure
+figure('WindowStyle', 'normal');
 plot([-0.3,0.4],[-0.3,0.4],'--k');
 hold on
 plot([0,0],[-0.3,0],':k');

@@ -37,6 +37,8 @@ arguments
     options.directionLabels = {'Mel','LMS','S','LF'}
     options.phaseLabels = {'OffOn','OnOff'}
     options.contrastLabels = {'Low','High'}
+    options.directionColors = {[0 0 0],[0 1 1],[1 0.75 0],[0 0 1]}
+    options.contrastLineWidth = [2,2]
     options.phases = [0,pi]
     options.contrasts = {[0.2,0.2,0.2,0.2],[0.4,0.4,0.4,0.4]}
     options.nTrials = 4
@@ -63,8 +65,8 @@ dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 dataDir = fullfile(dropboxBaseDir,'BLNK_analysis',projectName,experimentName,subjectID);
 
 % Get the median palpebral fissure width during the dark periods
-medianDarkWidth = nan(2,4);
-for dd = 1:4
+medianDarkWidth = nan(2,20);
+for dd = 1:10
     idx = (dd-1)*3+1;
     filenameR = sprintf([subjectID '_modulate_dark-%02d_R_eyeFeatures.mat'],idx);
     filenameL = sprintf([subjectID '_modulate_dark-%02d_L_eyeFeatures.mat'],idx);
@@ -73,6 +75,8 @@ for dd = 1:4
         medianDarkWidth(2,dd) = median(loadBlinkCleanedData(fullfile(dataDir,filenameL),'makePlotFlag',options.makePlotFlag,'addToExistingPlot',true),'omitmissing');
     end
 end
+mdw(1) = mean(medianDarkWidth(1,:),'omitmissing');
+mdw(2) = mean(medianDarkWidth(2,:),'omitmissing');
 
 % Loop through the stimulus properties
 for dd = 1:length(directions)
@@ -129,12 +133,6 @@ for dd = 1:length(directions)
                 [palpFissureL, confidenceL] = loadSquintVector(fileNameL,'vecDurSecs',vecDurSecs,'smoothWindowSecs',options.smoothWindowSecs);
                 palpFissureL = circshift(palpFissureL,lagFrames);
                 confidenceL = circshift(confidenceL,lagFrames);
-                if ~any(isnan(medianDarkWidth(:,tt)))
-                    mdw = medianDarkWidth(:,tt);
-                else
-                    mdw(1) = mean(medianDarkWidth(1,:),'omitmissing');
-                    mdw(2) = mean(medianDarkWidth(2,:),'omitmissing');
-                end
                 palpFissureR = palpFissureR / mdw(1);
                 palpFissureL = palpFissureL / mdw(2);
 
@@ -159,16 +157,16 @@ end
 
 % Make some plots if requested
 if options.makePlotFlag
-    plotColors = {'c','y','b','k'};
-    lineWidth = [1,2];
+    directionColors = options.directionColors;
+    lineWidth = options.contrastLineWidth;
     t = 0:1/options.fps:(nFrames-1)/options.fps;
     figure
     for dd = 1:length(directions)
         for cc = 1:length(contrasts)
             vecs=-results.(directionLabels{dd}).(contrastLabels{cc}).OffOn.palpFissure;
-            vecs(5:8,:)=results.(directionLabels{dd}).(contrastLabels{cc}).OnOff.palpFissure;
+            vecs(nTrials+1:nTrials*2,:)=results.(directionLabels{dd}).(contrastLabels{cc}).OnOff.palpFissure;
             mu = mean(vecs,'omitmissing');
-            plot(t,mu,[plotColors{dd} '-'],'LineWidth',lineWidth(cc));
+            plot(t,mu,'-','Color',directionColors{dd},'LineWidth',lineWidth(cc));
             hold on
         end
     end

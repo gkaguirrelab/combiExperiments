@@ -47,7 +47,7 @@ palpFissureHeightA = loadSquintVector(eyeFeaturesPathA,cellOptions{:});
 palpFissureHeightB = loadSquintVector(eyeFeaturesPathB,cellOptions{:});
 
 % Obtain the circular cross-correlation
-[corrVals, lags] =cxcorr(palpFissureHeightA, palpFissureHeightB, options.fps);
+[corrVals, lags] =cxcorr(palpFissureHeightA, palpFissureHeightB, options.fps * 2);
 
 % Find the lag that maximizes the correlation between these two unsmoothed
 % vectors

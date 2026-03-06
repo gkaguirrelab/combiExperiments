@@ -4,19 +4,22 @@ function fitResults = obtainFourierResults(results,options)
 arguments
     results
     options.fitFreqHz = 1/60
-    options.directionLabels = {'Mel','LMS','S','LF'}
-    options.phaseLabels = {'OffOn','OnOff'}
-    options.contrastLabels = {'Low','High'}
-    options.nTrials = 4
 end
 
+% Extract the number of subjects, and direction, contrast, and phase labels
+% from the results structure
+nSubs = length(results);
+directionLabels = fieldnames(results{1});
+contrastLabels = fieldnames(results{1}.(directionLabels{1}));
+phaseLabels = fieldnames(results{1}.(directionLabels{1}).(contrastLabels{1}));
+nTrials = size(results{1}.(directionLabels{1}).(contrastLabels{1}).(phaseLabels{1}).palpFissure,1);
 
-for dd = 1:length(options.directionLabels)
-    for cc = 1:length(options.contrastLabels)
+for dd = 1:length(directionLabels)
+    for cc = 1:length(contrastLabels)
         for ss = 1:length(results)
             % Get the vector
-            vecs=-results{ss}.(options.directionLabels{dd}).(options.contrastLabels{cc}).(options.phaseLabels{1}).palpFissure;
-            vecs(options.nTrials+1:options.nTrials*2,:)=results{ss}.(options.directionLabels{dd}).(options.contrastLabels{cc}).(options.phaseLabels{2}).palpFissure;
+            vecs=-results{ss}.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{1}).palpFissure;
+            vecs(nTrials+1:nTrials*2,:)=results{ss}.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{2}).palpFissure;
             % Get a set of boot-strapped amplitude and phase values
             [bootAmplitude, bootPhase] = fitFourier(vecs, 'fitFreqHz', options.fitFreqHz, 'returnBoots', true);
             % Obtain the mean within Cartesian space, then covert back
@@ -27,11 +30,11 @@ for dd = 1:length(options.directionLabels)
             % is the standard error of the mean
             [mu_phase, mu_amp] = cart2pol(mu_x, mu_y);
             % Store the results
-            fitResults.(options.directionLabels{dd}).(options.contrastLabels{cc}).amplitude(ss)=mu_amp;
-            fitResults.(options.directionLabels{dd}).(options.contrastLabels{cc}).phase(ss)=mu_phase;
-            fitResults.(options.directionLabels{dd}).(options.contrastLabels{cc}).amplitudeSEM(ss)=semAmp;
-            fitResults.(options.directionLabels{dd}).(options.contrastLabels{cc}).bootAmplitude(ss,:)=bootAmplitude;
-            fitResults.(options.directionLabels{dd}).(options.contrastLabels{cc}).bootPhase(ss,:)=bootPhase;
+            fitResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude(ss)=mu_amp;
+            fitResults.(directionLabels{dd}).(contrastLabels{cc}).phase(ss)=mu_phase;
+            fitResults.(directionLabels{dd}).(contrastLabels{cc}).amplitudeSEM(ss)=semAmp;
+            fitResults.(directionLabels{dd}).(contrastLabels{cc}).bootAmplitude(ss,:)=bootAmplitude;
+            fitResults.(directionLabels{dd}).(contrastLabels{cc}).bootPhase(ss,:)=bootPhase;
         end
     end
 end

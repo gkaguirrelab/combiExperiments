@@ -46,7 +46,7 @@ hold on
 fill(el_theta, el_rho, options.FillFaceColor, 'FaceAlpha', options.FillFaceAlpha);
 polarplot(el_theta, el_rho, '-','Color', options.FillEdgeColor,'MarkerEdgeColor',options.FillEdgeColor);
 if ~strcmp(options.MarkerSymbol,'none')
-polarplot(mu_theta, mu_rho, options.MarkerSymbol,'Color', options.MarkerFaceColor,'MarkerEdgeColor',options.MarkerEdgeColor);
+    polarplot(mu_theta, mu_rho, options.MarkerSymbol,'Color', options.MarkerFaceColor,'MarkerEdgeColor',options.MarkerEdgeColor);
 end
 grid on;
 
