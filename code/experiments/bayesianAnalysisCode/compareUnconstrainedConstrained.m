@@ -61,13 +61,13 @@ colControl = [0.3 0.3 0.8];
 % Plot all points
 scatter(migraineUnconfVals, migraineConfVals, 60, colMigraine, 'filled', 'MarkerFaceAlpha', 0.5);
 % Highlight tiny ones
-scatter(migraineUnconTinyfVals, migraineConTinyfVals, 60, colMigraine, 'o', 'LineWidth', 1.5, ...
-    'MarkerFaceColor', 'none');
+scatter(migraineUnconTinyfVals, migraineConTinyfVals, 60, colMigraine, 'filled', 'LineWidth', 1.5, ...
+    'MarkerFaceAlpha', 1);
 
 % Control
 scatter(controlUnconfVals, controlConfVals, 60, colControl, 'filled', 'MarkerFaceAlpha', 0.5);
-scatter(controlUnconTinyfVals, controlConTinyfVals, 60, colControl, 'o', 'LineWidth', 1.5, ...
-    'MarkerFaceColor', 'none');
+scatter(controlUnconTinyfVals, controlConTinyfVals, 60, colControl, 'filled', 'LineWidth', 1.5, ...
+    'MarkerFaceAlpha', 1);
 
 % Identity line for reference
 xl = xlim; yl = ylim;

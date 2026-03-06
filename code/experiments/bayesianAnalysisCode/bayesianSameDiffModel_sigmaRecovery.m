@@ -4,8 +4,10 @@
 % Simulate + refit 100 using one subject’s real dB sequence.
 % Plot input vs recovered sigma with unity line.
 % Repeat for both sigma_ref and sigma_test.
-% This version of the code implements a non-linear constraint in the
-% the nll function, to ensure that sigmaRef <= sigmaTest. 
+% This version of the code does NOT implement the non-linear constraint
+% we added to our fitting procedure. It simply ensures that the ref and
+% test parameters can be estimated independently, which is the key
+% property of the model. 
 
 % SETUP - defining and choosing variables
 
@@ -433,15 +435,6 @@ function nll = negLogLikelihood(p, stimParamsDomainList, uniqueDbValues, probDat
 
     % Finding the binomial negative log-likelihood
     nll = -sum(k .* log(P_diff) + (nTrials - k) .* log(1 - P_diff));
-
-    % Penalty constraint so that sigmaRef <= sigmaTest
-    if sigmaRef > sigmaTest
-        penalty = (sigmaRef - sigmaTest) * 1e3;
-        nll = nll + penalty;
-
-        % DEBUG
-        fprintf('Penalty active: sigmaRef=%.3f, sigmaTest=%.3f\n', sigmaRef, sigmaTest);
-    end
 
 end
 
