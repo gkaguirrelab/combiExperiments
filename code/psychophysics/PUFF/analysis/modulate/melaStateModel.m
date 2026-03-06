@@ -114,7 +114,7 @@ if options.makeDemoPlot
     xlabel('Wavelength (nm)');
     ylabel('Relative Photosensitivity');
     title('Figure 7A: State Photosensitivities');
-    legend('R \rightarrow M', 'M exit (signaling)', 'E \rightarrow M', 'Location', 'northeast');
+    legend('R \rightarrow M (dark adapted)', 'M exit (signaling)', 'E \rightarrow M', 'Location', 'northeast');
     grid on; axis([300 700 0 1.05]); 
 
     % Figure 7B: Equilibrium Fractions
