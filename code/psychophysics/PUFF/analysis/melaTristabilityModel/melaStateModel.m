@@ -1,4 +1,4 @@
-function [fractions, t] = melaStateModel(wls, spd, duration, initialStates, options)
+function [fractions, t] = melaStateModel(spd, S, initialStates, options)
 % Temporal evolution of tristable melanopsin states in response to an spd
 %
 % Syntax:
@@ -37,9 +37,8 @@ function [fractions, t] = melaStateModel(wls, spd, duration, initialStates, opti
 %}
 
 arguments
-    wls
     spd
-    duration
+    S
     initialStates
     options.lmax = [467, 476, 446]       % R, M, E peaks
     options.ext  = [33000, 52600, 42000] * 1000 % Convert to cm^2/mol
@@ -47,8 +46,13 @@ arguments
     options.fMR  = 0.5
     options.fME = 0.5        % Symmetry of conversion
     options.dt = 1/1000   % 1 ms
-    options.stopAfterConverging = false   % 1 ms
+    options.stopAfterConverging = true   % 1 ms
+    options.covergeTol = 1e-6   % 1 ms
+    options.durationMax = 10000   % in seconds
 end
+
+% Convert S to wavelengths
+wls = SToWls(S);
 
 % Biophysical parameters from Emanuel & Do (2015)
 lmax = options.lmax;
@@ -60,9 +64,6 @@ fME = options.fME;
 % Constants and resolution
 dwl = mean(diff(wls));
 dt  = options.dt;
-t   = (0:dt:duration)';
-fractions = zeros(length(t), 3);
-fractions(1, :) = initialStates(:)';
 
 % Calculate Transition Rates (K)
 ln10 = log(10);
@@ -70,15 +71,21 @@ A_R = govardovskii_standard(wls, lmax(1));
 A_M = govardovskii_standard(wls, lmax(2));
 A_E = govardovskii_standard(wls, lmax(3));
 
-% K_i is the probability of a molecule in state i capturing a photon per second
+% The probability of each melanopsin state of capturing a photon per second
 KR = sum(ln10 * spd .* ext(1) .* A_R .* phi(1)) * dwl;
 KM = sum(ln10 * spd .* ext(2) .* A_M .* phi(2)) * dwl;
 KE = sum(ln10 * spd .* ext(3) .* A_E .* phi(3)) * dwl;
 
+% Prepare variables for the iterative state model
+n = 1;
+t = 0;
+fractions(1, :) = initialStates(:)';
+
 % Numerical Loop
-    n = 1;
 notDone = true;
 while notDone
+
+    % The current state fractions
     fR = fractions(n, 1);
     fM = fractions(n, 2);
     fE = fractions(n, 3);
@@ -87,23 +94,28 @@ while notDone
     dfR = (fMR * KM * fM - KR * fR) * dt;
     dfE = (fME * KM * fM - KE * fE) * dt;
 
+    % Store the next step
     fractions(n+1, 1) = fR + dfR;
     fractions(n+1, 3) = fE + dfE;
     fractions(n+1, 2) = 1 - (fractions(n+1, 1) + fractions(n+1, 3));
+    
+    % Extend the temporal support
+    t(n+1) = t(n) + dt;
 
-    % We can optionally stop prematurely if we have converged
+    % We can optionally stop if we have converged
     if options.stopAfterConverging && n > 1
-        if all(abs(diff(fractions(n-1:n,:))) < 1e-10)
+        if all(abs(diff(fractions(n-1:n,:))) < options.covergeTol)
             notDone = false;
-            fractions = fractions(1:n,:);
-            t = t(1:n);
         end
     end
+
     % If we have used all of our time steps, we are done
     if n > length(t)-1
         notDone = false;
     end
-    n = n +1;
+
+    % Iter
+    n = n+1;
 end
 
 end
