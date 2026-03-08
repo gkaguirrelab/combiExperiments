@@ -18,10 +18,31 @@ function [fractions, t] = melaStateModel(spd, S, initialStates, options)
 %
 % Inputs:
 %   wls
-%   spd
+%   spd                   - in units of moles of photons per cm^2/s/nm.
 %   duration              - Scalar, seconds
 %   initial_states        - 1x3 vector. Fractions of R, M, and E states.
 %                           Must sum to unity.
+%
+% Options:
+%  'lmax'                 - Lambda max of the R, M, and E spectral
+%                           sensitvity functions.
+%  'ext'                  - Extinction coefficients. Effectively, this is
+%                           the relative overall sensitivity of the R, M,
+%                           and E spectral sensitivity functions. This is
+%                           expressed in the units cm^2/mol
+%  'phi'                  - Quantum efficiencies for the R, M, and E
+%                           species
+%  'fMR', 'fME'           - The probability of producing the R and E states
+%                           after the M state absorbs a photon.
+%  'decayTimeConstant'    - Time constant with which E decays to M, and M
+%                           to R.
+%  'dt'                   - Time step size for the model, in seconds
+%  'covergeTol'           - When the change in state fractions is less than
+%                           this for a step, the model has converged.
+%  'stopAfterConverging'  - Logical. Stop the model after converging.
+%  'durationMax'          - The maximum modeled time in seconds for the
+%                           search. We exit at this point even if the model
+%                           has not coverged.
 %
 % Outputs:
 %   fractions             - tx3 matrix. Proportions of the three states at
@@ -30,25 +51,27 @@ function [fractions, t] = melaStateModel(spd, S, initialStates, options)
 %
 % Examples:
 %{
-    S = [300 2 251];
+    S = [380 1 401];
     spd = zeros(size(SToWls(S)));
-    spd(50)=1;
-    [P_M_spd,P_R_spd,P_E_spd] = melaStateModel(spd,S,'makeDemoPlot',true);
+    spd(50) = 1e-6;
+    initialStates = [1 0 0]; % Start dark adapted
+    [fractions, t] = melaStateModel(spd, S, initialStates);
 %}
 
 arguments
     spd
     S
     initialStates
-    options.lmax = [467, 476, 446]       % R, M, E peaks
-    options.ext  = [33000, 52600, 42000] * 1000 % Convert to cm^2/mol
-    options.phi  = [0.7, 0.2, 0.4]       % Quantum efficiencies
+    options.lmax = [467, 476, 446]
+    options.ext  = [33000, 52600, 42000] * 1000
+    options.phi  = [0.7, 0.2, 0.4]
     options.fMR  = 0.5
-    options.fME = 0.5        % Symmetry of conversion
-    options.dt = 1/1000   % 1 ms
-    options.stopAfterConverging = true   % 1 ms
-    options.covergeTol = 1e-6   % 1 ms
-    options.durationMax = 10000   % in seconds
+    options.fME = 0.5
+    options.decayTimeConstant = 122
+    options.dt = 1/1000
+    options.covergeTol = 1e-8
+    options.stopAfterConverging = true
+    options.durationMax = 300
 end
 
 % Convert S to wavelengths
@@ -76,6 +99,10 @@ KR = sum(ln10 * spd .* ext(1) .* A_R .* phi(1)) * dwl;
 KM = sum(ln10 * spd .* ext(2) .* A_M .* phi(2)) * dwl;
 KE = sum(ln10 * spd .* ext(3) .* A_E .* phi(3)) * dwl;
 
+% Decay rate constant. This is the probability of spontaneous conversion of
+% E -> M, and or M -> R
+KDecay = 1 / options.decayTimeConstant;
+
 % Prepare variables for the iterative state model
 n = 1;
 t = 0;
@@ -84,19 +111,21 @@ fractions(1, :) = initialStates(:)';
 % Numerical Loop
 notDone = true;
 while notDone
-
+    
     % The current state fractions
     fR = fractions(n, 1);
     fM = fractions(n, 2);
     fE = fractions(n, 3);
 
-    % R leaves via KR; M leaves via KM (splitting to R and E)
-    dfR = (fMR * KM * fM - KR * fR) * dt;
-    dfE = (fME * KM * fM - KE * fE) * dt;
+    % Incorporates effect of light, and changes due to spontaneous decay
+    dfR = (fMR * KM * fM - KR * fR + KDecay * fM) * dt;
+    dfE = (fME * KM * fM - KE * fE - KDecay * fE) * dt;
 
-    % Store the next step
+    % Store next step
     fractions(n+1, 1) = fR + dfR;
     fractions(n+1, 3) = fE + dfE;
+    
+    % The M fraction is what remains
     fractions(n+1, 2) = 1 - (fractions(n+1, 1) + fractions(n+1, 3));
     
     % Extend the temporal support
@@ -109,8 +138,8 @@ while notDone
         end
     end
 
-    % If we have used all of our time steps, we are done
-    if n > length(t)-1
+    % Enforce a maximum duration for the saerch
+    if t(end) > options.durationMax
         notDone = false;
     end
 
