@@ -6,9 +6,7 @@ function [fractions, t] = melaStateModel(spd, S, initialStates, options)
 %
 % Description:
 %   Implementation of the state model from Emanuel & Do 2015, "Melanopsin
-%   Tristability for Sustained and Broadband Phototransduction". The model
-%   is extended to provide the proportion of melanopsin tristable states
-%   for an arbitrary spd.
+%   Tristability for Sustained and Broadband Phototransduction".
 %
 %   Melanopsin has two silent states (R-melanopsin and Extramelanopsin),
 %   and one signaling state (M-melanopsin). From either silent states,
@@ -16,10 +14,12 @@ function [fractions, t] = melaStateModel(spd, S, initialStates, options)
 %
 %       R (11-cis) ↔︎ M (all-trans) ↔︎ E (7-cis)
 %
+%   We incorporate as well the observed decay of M (and presumably E)
+%   states back to the R groud state.
+%
 % Inputs:
 %   wls
 %   spd                   - in units of moles of photons per cm^2/s/nm.
-%   duration              - Scalar, seconds
 %   initial_states        - 1x3 vector. Fractions of R, M, and E states.
 %                           Must sum to unity.
 %
@@ -76,6 +76,9 @@ end
 
 % Convert S to wavelengths
 wls = SToWls(S);
+
+% Check the initial state
+assert(abs(sum(initialStates) - 1) < 1e-6);
 
 % Biophysical parameters from Emanuel & Do (2015)
 lmax = options.lmax;

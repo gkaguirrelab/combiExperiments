@@ -65,7 +65,7 @@ initialState = [0.2, 0.6, 0.2];      % Start in an activated state
 spd = zeros(size(SToWls(S)));
 
 % Run simulation
-[fractions, t] = melaStateModel(spd, S, initialState);
+[fractions, t] = melaStateModel(spd, S, initialState,'durationMax',10*60);
 
 % plot
 figure('Color', 'w');
