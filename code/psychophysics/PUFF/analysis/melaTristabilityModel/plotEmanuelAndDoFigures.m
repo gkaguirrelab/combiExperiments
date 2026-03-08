@@ -44,7 +44,7 @@ plot(testWls, finalFractionsByWls(:,2), 'b', 'LineWidth', 2);
 plot(testWls, finalFractionsByWls(:,3), 'r', 'LineWidth', 2);
 xlabel('Wavelength (nm)'); ylabel('Pigment Fraction');
 legend('R (Melanopsin)', 'M (Metamelanopsin)', 'E (Extramelanopsin)');
-title('Figure 7B: Corrected Equilibrium Convergence');
+title('Figure 7B: Equilibrium Convergence');
 grid on; axis([400 600 0 1]);
 
 % Figure S4B

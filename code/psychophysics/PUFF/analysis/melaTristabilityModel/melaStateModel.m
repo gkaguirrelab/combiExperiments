@@ -68,7 +68,7 @@ arguments
     options.fMR  = 0.5
     options.fME = 0.5
     options.decayTimeConstant = 122
-    options.dt = 1/1000
+    options.dt = 1/100
     options.covergeTol = 1e-8
     options.stopAfterConverging = true
     options.durationMax = 300
@@ -100,7 +100,7 @@ KM = sum(ln10 * spd .* ext(2) .* A_M .* phi(2)) * dwl;
 KE = sum(ln10 * spd .* ext(3) .* A_E .* phi(3)) * dwl;
 
 % Decay rate constant. This is the probability of spontaneous conversion of
-% E -> M, and or M -> R
+% E -> M, and M -> R
 KDecay = 1 / options.decayTimeConstant;
 
 % Prepare variables for the iterative state model
