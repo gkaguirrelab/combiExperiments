@@ -41,7 +41,7 @@ photonEnergy = (h * c) ./ (wls .* 1e-9);
 % Photons / m^2 / s / nm
 spdOut = spdOut ./ photonEnergy;
 
-% 5. Convert m^2 to micrometers^2 (1 m^2 = 10^12 um^2)
+% Convert m^2 to micrometers^2 (1 m^2 = 10^12 um^2)
 spdOut = spdOut / 1e12;
 
 
