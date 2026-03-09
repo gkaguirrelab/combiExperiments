@@ -91,13 +91,14 @@ fME = options.fME;
 dwl = mean(diff(wls));
 dt  = options.dt;
 
-% Calculate Transition Rates (K)
-ln10 = log(10);
-A_R = govardovskii_standard(wls, lmax(1));
-A_M = govardovskii_standard(wls, lmax(2));
-A_E = govardovskii_standard(wls, lmax(3));
+% The normalized quantal absorbance for each melanopsin state
+A_R = GovardovskiiNomogram(S,lmax(1))';
+A_M = GovardovskiiNomogram(S,lmax(2))';
+A_E = GovardovskiiNomogram(S,lmax(3))';
 
-% The probability of each melanopsin state of capturing a photon per second
+% The Transition Rates (K), which is the probability of each melanopsin
+% state of capturing a photon per second
+ln10 = log(10);
 KR = sum(ln10 * spd .* ext(1) .* A_R .* phi(1)) * dwl;
 KM = sum(ln10 * spd .* ext(2) .* A_M .* phi(2)) * dwl;
 KE = sum(ln10 * spd .* ext(3) .* A_E .* phi(3)) * dwl;

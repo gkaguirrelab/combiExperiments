@@ -5,12 +5,6 @@ directions = {'LightFlux','Mel','LMS','S_peripheral','LminusM_MelSilent_peripher
 dirLabels = {'LF','Mel','LMS','S','L-M'};
 photoContrast = [0.4,0.4,0.4,0.4,0.1];
 
-% We find that attenuating the background intensity by this many log units
-% places the model in the most sensitive range for changes in melanopsin
-% states. A problem, however, is that this results in unreasonably slow
-% kinetics. Not sure how to resolve this yet.
-attenFactor = 0;
-
 % Get the dropbox path
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 
@@ -27,12 +21,27 @@ for dd = 1:length(directions)
 
     % Extract S, and the background spectrum
     S = modResult.meta.cal.rawData.S;
+
+    % If this is the first direction, obtain the lens transmittance for
+    % this observer
+    if dd == 1
+        % Get the lens transmittance for this observer
+        observerAgeInYears = modResult.meta.photoreceptors(1).observerAgeInYears;
+        pupilDiameterMm = modResult.meta.photoreceptors(1).pupilDiameterMm;
+        lensTransmitt = LensTransmittance(S,...
+            'Human','StockmanSharpe',...
+            observerAgeInYears,pupilDiameterMm)';
+    end
+
+    % Load the background spd; we don't correct for lens transmittance
+    % just yet, as we need this original spd to derive the positive and
+    % negative spds
     backspd = modResult.backgroundSPD;
 
     % If this is the first direction, calculate the
     % initial state after adapting to the background spd
     if dd == 1
-        irradianceSPD = convertToMolarSpd(convertToPhotonSpd(backspd*10^attenFactor,S));
+        irradianceSPD = convertToMolarSpd(convertToPhotonSpd(backspd.*lensTransmitt,S,"pupilRadiusMm",pupilDiameterMm/2));
         fractions = melaStateModel(irradianceSPD,S, [1 0 0]);
         initialState = fractions(end,:);
     end
@@ -46,19 +55,23 @@ for dd = 1:length(directions)
     posspd = backspd + modContrast * (modResult.positiveModulationSPD - backspd);
     negspd = backspd + modContrast * (modResult.negativeModulationSPD - backspd);
 
+    % Adjust for lens transmittance
+    posspd = posspd.*lensTransmitt;
+    negspd = negspd.*lensTransmitt;
+
     % Move to the next tile
     nexttile;
     hold on;
 
     % Get the state plot for the positive, then negative modulations.
-    irradianceSPD = convertToMolarSpd(convertToPhotonSpd(posspd*10^attenFactor,S));
+    irradianceSPD = convertToMolarSpd(convertToPhotonSpd(posspd,S,"pupilRadiusMm",pupilDiameterMm/2));
     [fractions, t] = melaStateModel(irradianceSPD, S, initialState);
     plot(t, fractions(:,1), 'k', 'LineWidth', 2);
     plot(t, fractions(:,2), 'b', 'LineWidth', 2);
     plot(t, fractions(:,3), 'r', 'LineWidth', 2);
     drawnow
 
-    irradianceSPD = convertToMolarSpd(convertToPhotonSpd(negspd*10^attenFactor,S));
+    irradianceSPD = convertToMolarSpd(convertToPhotonSpd(negspd,S,"pupilRadiusMm",pupilDiameterMm/2));
     [fractions, t] = melaStateModel(irradianceSPD, S, initialState);
     plot(t, fractions(:,1), ':k', 'LineWidth', 2);
     plot(t, fractions(:,2), ':b', 'LineWidth', 2);
