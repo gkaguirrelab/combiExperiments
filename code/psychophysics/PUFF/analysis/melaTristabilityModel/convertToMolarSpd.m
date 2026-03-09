@@ -1,28 +1,15 @@
-function spdMolesPerCmSqPerSecPerNm = convertToMolarSpd(spdWattsPerMSqPerSrPerNm,S)
+function spdOut = convertToMolarSpd(spdIn)
+% Convert retinal irradiance in photons/μm^2/s/nm to moles/cm^2/s/nm
 
-% First, account for the wavelength sampling
-wlsSample = S(2);
-spdWattsPerMSqPerSrPerNm = spdWattsPerMSqPerSrPerNm / wlsSample;
+% Avogadro's constant
+Na = 6.02214076e23;
 
-% The input SPD is a measure of radiance. We assume that this radiance is
-% available uniformly across the visual field (as in a Ganzfeld dome). This
-% is the condition for the blink / squint rig. We can therefore convert
-% from Watts / m^2 / sr / nm to Watts / m^2 / nm by multiplying by the pi.
-spdWattsPerMSqPerNm = spdWattsPerMSqPerSrPerNm * pi;
+% Area conversion factor: (10,000 um / 1 cm)^2 = 10^8
+um2_to_cm2 = 1e8;
 
-% Convert from watts to photons
-h = 6.626e-34; % Plank's constant, in units of Joules * seconds
-c = 2.998e8; % Speed of light m/s
-lambda = SToWls(S) * 1e-9; % Wavelengths in meters
+% Multiply by 10^8 to scale area up to cm^2,
+% then divide by Na to convert photons to moles.
+spdOut = (spdIn .* um2_to_cm2) ./ Na;
 
-spdPhotonsPerMeterSqPerSecPerNm = spdWattsPerMSqPerNm .* lambda ./ ...
-    (h*c);
-
-% Convert from meters to cm, and divide by Avogadro's number to quantify
-% photons in moles
-meterToCm = 1e-4;
-Avogadro = 6.022e23;
-
-spdMolesPerCmSqPerSecPerNm = spdPhotonsPerMeterSqPerSecPerNm * meterToCm / Avogadro;
 
 end

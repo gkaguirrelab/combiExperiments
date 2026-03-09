@@ -1,26 +1,48 @@
-function spdPhotonsPerMicrometerPerSecPerNm = convertToPhotonSpd(spdWattsPerMSqPerSrPerNm,S)
+function spdOut = convertToPhotonSpd(spdIn,S,options)
+% Convert spd in radiance units to retinal irradiance in photons/μm/sec/nm
+%
+% Description
+%   We assume that the input SPD is in units of Watts/m^2/sr/nm, and that
+%   this radiance is present uniformly on a hemi-field that is viewed by a
+%   human observer with a pupil radius and nodal distance of the eye that
+%   is given in the optional input arguments.
+%
 
-% First, account for the wavelength sampling
-wlsSample = S(2);
-spdWattsPerMSqPerSrPerNm = spdWattsPerMSqPerSrPerNm / wlsSample;
+arguments
+    spdIn
+    S
+    options.pupilRadiusMm = 1       % Pupil radius in mm
+    options.nodalDistanceMm = 16.7; % Posterior nodal distance in mm
+end
 
-% The input SPD is a measure of radiance. We assume that this radiance is
-% available uniformly across the visual field (as in a Ganzfeld dome). This
-% is the condition for the blink / squint rig. We can therefore convert
-% from Watts / m^2 / sr / nm to Watts / m^2 / nm by multiplying by the pi.
-spdWattsPerMSqPerNm = spdWattsPerMSqPerSrPerNm * pi;
-
-% Convert from watts to photons
+% define some constants
 h = 6.626e-34; % Plank's constant, in units of Joules * seconds
 c = 2.998e8; % Speed of light m/s
-lambda = SToWls(S) * 1e-9; % Wavelengths in meters
-meterToMicrometer = 1e-12;
 
-spdPhotonsPerMeterSqPerSecPerNm = spdWattsPerMSqPerNm .* lambda ./ ...
-    (h*c);
+% Derive the wls from S
+wls = SToWls(S);
 
-% Convert from meters to micrometers
-spdPhotonsPerMicrometerPerSecPerNm = spdPhotonsPerMeterSqPerSecPerNm * meterToMicrometer;
+% Adjust the input SPD for wavelength sampling
+wlsSample = S(2);
+spdIn = spdIn / wlsSample;
+
+% Calculate the pupil area in meters^2
+areaPupil = pi * (options.pupilRadiusMm/1000)^2;
+
+% Retinal Irradiance in Watts (W / m^2 / nm)
+% Formula: E = L * (A_pupil / f^2)
+spdOut = spdIn .* (areaPupil / (options.nodalDistanceMm / 1000)^2);
+
+% Convert Watts to Photons per second
+% Energy of one photon: E_p = (h*c) / lambda_meters
+% We muliply wls by 1e-9 to convert nm to meters
+photonEnergy = (h * c) ./ (wls .* 1e-9);
+
+% Photons / m^2 / s / nm
+spdOut = spdOut ./ photonEnergy;
+
+% 5. Convert m^2 to micrometers^2 (1 m^2 = 10^12 um^2)
+spdOut = spdOut / 1e12;
 
 
 end

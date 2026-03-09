@@ -2,11 +2,6 @@
 % relationship between the melanopsin states and the relative intensity of
 % the background light.
 %
-% The state model has the unlikely property that the proportion of the
-% signaling form of melanopsin (M) reaches its maximum level in the
-% presence of a 7000 lux light environment. This performance is even worse
-% if we do not incorporate the spontaneous ("dark") decay of melanopsin to
-% the R ground state.
 
 clear
 
@@ -20,10 +15,11 @@ load(fullfile(filepath,filename),'modResult');
 backspd = modResult.backgroundSPD;
 S = modResult.meta.cal.rawData.S;
 initialState = [1 0 0];
-intensityRange = -3:0.25:0;
+intensityRange = -1:0.25:2;
 for ii = 1:length(intensityRange)
     scaledSPD = backspd * 10^intensityRange(ii);
-    [fractions, t] = melaStateModel(convertToMolarSpd(scaledSPD,S), S, initialState,'durationMax',5*60);
+    irradianceSPD = convertToMolarSpd(convertToPhotonSpd(scaledSPD,S));
+    [fractions, t] = melaStateModel(irradianceSPD, S, initialState,'durationMax',5*60);
     data(ii,:) = fractions(end,:);
 end
 

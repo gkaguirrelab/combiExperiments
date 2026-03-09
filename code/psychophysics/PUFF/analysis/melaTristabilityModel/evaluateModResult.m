@@ -9,7 +9,7 @@ photoContrast = [0.4,0.4,0.4,0.4,0.1];
 % places the model in the most sensitive range for changes in melanopsin
 % states. A problem, however, is that this results in unreasonably slow
 % kinetics. Not sure how to resolve this yet.
-attenFactor = -1.75;
+attenFactor = 0;
 
 % Get the dropbox path
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
@@ -32,8 +32,9 @@ for dd = 1:length(directions)
     % If this is the first direction, calculate the
     % initial state after adapting to the background spd
     if dd == 1
-    fractions = melaStateModel(convertToMolarSpd(backspd*10^attenFactor,S), S, [1 0 0]);
-    initialState = fractions(end,:);
+        irradianceSPD = convertToMolarSpd(convertToPhotonSpd(backspd*10^attenFactor,S));
+        fractions = melaStateModel(irradianceSPD,S, [1 0 0]);
+        initialState = fractions(end,:);
     end
 
     % Calculate the modulation contrast needed to achieve the called-for
@@ -50,13 +51,15 @@ for dd = 1:length(directions)
     hold on;
 
     % Get the state plot for the positive, then negative modulations.
-    [fractions, t] = melaStateModel(convertToMolarSpd(posspd*10^attenFactor,S), S, initialState);
+    irradianceSPD = convertToMolarSpd(convertToPhotonSpd(posspd*10^attenFactor,S));
+    [fractions, t] = melaStateModel(irradianceSPD, S, initialState);
     plot(t, fractions(:,1), 'k', 'LineWidth', 2);
     plot(t, fractions(:,2), 'b', 'LineWidth', 2);
     plot(t, fractions(:,3), 'r', 'LineWidth', 2);
     drawnow
 
-    [fractions, t] = melaStateModel(convertToMolarSpd(negspd*10^attenFactor,S), S, initialState);
+    irradianceSPD = convertToMolarSpd(convertToPhotonSpd(negspd*10^attenFactor,S));
+    [fractions, t] = melaStateModel(irradianceSPD, S, initialState);
     plot(t, fractions(:,1), ':k', 'LineWidth', 2);
     plot(t, fractions(:,2), ':b', 'LineWidth', 2);
     plot(t, fractions(:,3), ':r', 'LineWidth', 2);
