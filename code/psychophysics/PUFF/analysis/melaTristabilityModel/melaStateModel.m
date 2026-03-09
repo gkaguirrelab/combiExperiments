@@ -8,6 +8,9 @@ function [fractions, t] = melaStateModel(spd, S, initialStates, options)
 %   Implementation of the state model from Emanuel & Do 2015, "Melanopsin
 %   Tristability for Sustained and Broadband Phototransduction".
 %
+%   Many biophysical values taken from Matsuyama 2012, "Photochemical
+%   Properties of Mammalian Melanopsin"
+%
 %   Melanopsin has two silent states (R-melanopsin and Extramelanopsin),
 %   and one signaling state (M-melanopsin). From either silent states,
 %   melanopsin can transition to the signaling state:
@@ -18,8 +21,12 @@ function [fractions, t] = melaStateModel(spd, S, initialStates, options)
 %   states back to the R groud state.
 %
 % Inputs:
-%   wls
-%   spd                   - in units of moles of photons per cm^2/s/nm.
+%   spd                   - nx1 vector that specifies a spectral power 
+%                           distribution in units of
+%                               moles of photons/cm^2/s/nm.
+%   S                     - 1x3 vector. Starting wavelength, sampling
+%                           interval, number of samples. First two values
+%                           in nm.
 %   initial_states        - 1x3 vector. Fractions of R, M, and E states.
 %                           Must sum to unity.
 %
@@ -30,12 +37,13 @@ function [fractions, t] = melaStateModel(spd, S, initialStates, options)
 %                           the relative overall sensitivity of the R, M,
 %                           and E spectral sensitivity functions. This is
 %                           expressed in the units cm^2/mol
-%  'phi'                  - Quantum efficiencies for the R, M, and E
-%                           species
+%  'phi'                  - Quantum efficiencies for the R, M, and E states
 %  'fMR', 'fME'           - The probability of producing the R and E states
-%                           after the M state absorbs a photon.
+%                           after the M state absorbs a photon. We assume
+%                           that these states are equally likely.
 %  'decayTimeConstant'    - Time constant with which E decays to M, and M
-%                           to R.
+%                           to R. Taken from empirical measurements in
+%                           Emanuel & Do.
 %  'dt'                   - Time step size for the model, in seconds
 %  'covergeTol'           - When the change in state fractions is less than
 %                           this for a step, the model has converged.
@@ -51,11 +59,14 @@ function [fractions, t] = melaStateModel(spd, S, initialStates, options)
 %
 % Examples:
 %{
+    % Model the change in states following presentation of a 480 nm 
+    % light after fully dark adapting.
     S = [380 1 401];
     spd = zeros(size(SToWls(S)));
-    spd(50) = 1e-6;
+    spd(101) = 1e-6;
     initialStates = [1 0 0]; % Start dark adapted
     [fractions, t] = melaStateModel(spd, S, initialStates);
+    plot(t,fractions);
 %}
 
 arguments
@@ -63,9 +74,9 @@ arguments
     S
     initialStates
     options.lmax = [467, 476, 446]
-    options.ext  = [33000, 52600, 42000] * 1000
-    options.phi  = [0.7, 0.2, 0.4]
-    options.fMR  = 0.5
+    options.ext = [33000, 52600, 42000] * 1000
+    options.phi = [0.7, 0.2, 0.4]
+    options.fMR = 0.5
     options.fME = 0.5
     options.decayTimeConstant = 122
     options.dt = 1/100
@@ -77,18 +88,18 @@ end
 % Convert S to wavelengths
 wls = SToWls(S);
 
-% Check the initial state
+% Check that the initial states sum to unity
 assert(abs(sum(initialStates) - 1) < 1e-6);
 
-% Biophysical parameters from Emanuel & Do (2015)
+% Pull our values out of the optional arguments
 lmax = options.lmax;
 ext = options.ext;
 phi = options.phi;
 fMR = options.fMR;
 fME = options.fME;
 
-% Constants and resolution
-dwl = mean(diff(wls));
+% Sampling density
+dwl = S(2);
 dt  = options.dt;
 
 % The normalized quantal absorbance for each melanopsin state
@@ -96,8 +107,8 @@ A_R = GovardovskiiNomogram(S,lmax(1))';
 A_M = GovardovskiiNomogram(S,lmax(2))';
 A_E = GovardovskiiNomogram(S,lmax(3))';
 
-% The Transition Rates (K), which is the probability of each melanopsin
-% state of capturing a photon per second
+% The Transition Rates (K) are the probability of each melanopsin
+% state capturing a photon each second
 ln10 = log(10);
 KR = sum(ln10 * spd .* ext(1) .* A_R .* phi(1)) * dwl;
 KM = sum(ln10 * spd .* ext(2) .* A_M .* phi(2)) * dwl;
