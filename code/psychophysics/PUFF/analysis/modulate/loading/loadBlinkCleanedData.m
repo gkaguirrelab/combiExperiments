@@ -76,6 +76,7 @@ for tt = 1:nFrames
 end
 
 % This is a vector of blink events
+%from open to less than half its height from previous timepoint
 blinkVec = diff(palpFissureHeight < median(palpFissureHeight,'omitmissing')/2)>0;
 
 % Slide a window along and ensure that no more than one blink event exists

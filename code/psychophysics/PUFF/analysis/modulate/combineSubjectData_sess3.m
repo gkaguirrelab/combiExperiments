@@ -57,3 +57,10 @@ plotIndividVariation(fourierFitResults,...
     'dirSets',{directionLabels([1,2])},...
     'contrastLabel',contrastLabels{1});
 
+% Save results
+dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+projectName = 'PuffLight';
+experimentName = 'modulate';
+saveDir = fullfile(dropboxBaseDir,'BLNK_analysis',projectName,experimentName,'FitData');
+
+save([saveDir, '/fourierFitResultsSession3.mat'], 'fourierFitResults', 'subjects');
