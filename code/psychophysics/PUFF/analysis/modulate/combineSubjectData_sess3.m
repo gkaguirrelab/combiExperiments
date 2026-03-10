@@ -1,9 +1,8 @@
-close all
 clear
 
 % Define the list of subjects.
-subjects = {'BLNK_1001','BLNK_1005','BLNK_1008','BLNK_1009','BLNK_1011',...
-    'BLNK_1013','BLNK_1014'};
+subjects = {'BLNK_1001','BLNK_1002','BLNK_1005','BLNK_1006','BLNK_1008',...
+    'BLNK_1009','BLNK_1011','BLNK_1012','BLNK_1013','BLNK_1014'};
 
 % Define the stimulus properties
 directions = {'S_peripheral','LminusM_MelSilent_peripheral'};

@@ -1,4 +1,4 @@
-function [weights,fitVals,fVals] = fitWeightModel(fourierFitResults)
+function [p,fVals] = fitWeightModel(fourierFitResults)
 
 % Data properties
 nSubjects = length(fourierFitResults.Mel.High.amplitude);

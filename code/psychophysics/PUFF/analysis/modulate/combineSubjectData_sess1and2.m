@@ -1,4 +1,4 @@
-close all
+
 clear
 
 % Define the list of subjects. Data from subject BLNK_1010 was excluded
@@ -61,7 +61,7 @@ plotIndividVariation(fourierFitResults,...
     'contrastLabel',contrastLabels{1});
 
 % Get the photoreceptor integration model fits (and create a figure)
-[weights,fitVals,fVals] = fitWeightModel(fourierFitResults);
+[p,fVals] = fitWeightModel(fourierFitResults);
 
 
 
