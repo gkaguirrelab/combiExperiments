@@ -261,36 +261,3 @@ box off
     sum([psychObj.trialData.detected])/length([psychObj.trialData.detected])
     find(arrayfun(@(x) any(x.detected==0),psychObj.trialData))
 %}
-
-
-%
-% dataVecs = reshape(dataVecs,3,18,10800);
-%
-% figure
-% plot(t,zeros(size(t)),':k','LineWidth',2);
-% hold on
-%
-% colorSet = {[0 0 0],[0 1 1],[0 0 1]};
-% for tt = 1:3
-%     yMean = mean(squeeze(dataVecs(tt,:,:)),1,'omitmissing');
-%     ySEM = std(squeeze(dataVecs(tt,:,:)),1,'omitmissing') /sqrt(size(dataVecs,2));
-%     yMean = yMean-yMean(1);
-%     idx = ~isnan(yMean);
-%     yMean = yMean(idx);
-%     ySEM = ySEM(idx);
-%     yD = decimate(yMean,100);
-%     yS = decimate(ySEM,100);
-%     patch([t(idx) fliplr(t(idx))],[yMean+ySEM fliplr(yMean-ySEM)],colorSet{tt},'EdgeColor','none','FaceAlpha',0.2);
-%     deltaTD = (t(2)-t(1))*100;
-%     tD = t(1):deltaTD:deltaTD*(length(yD)-1);
-%     fitObj = fit(tD',yD','smoothingspline');
-%     plot(tD,fitObj(tD),'-','Color',colorSet{tt},'LineWidth',2);
-% end
-%
-% for tt = 1:length(tD)-1
-%     colorVal = [1 1 0]* 0.5*(sin(tD(tt)/60*2*pi)+1);
-%     patch([tD(tt) tD(tt+1) tD(tt+1) tD(tt)],[-0.4 -0.4 -0.5 -0.5],colorVal,'EdgeColor','none')
-% end
-%
-% ylabel('Proportion change in blink rate');
-% xlabel('Time [secs]');
