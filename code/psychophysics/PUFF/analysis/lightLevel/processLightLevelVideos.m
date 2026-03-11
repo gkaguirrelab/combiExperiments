@@ -31,7 +31,10 @@ sequenceSet{4} = [3,3,1,4,5,1,2,2,3,2,1,3,4,2,4,4,3,5,2,5,5,4,1,1,5,3];
 thisSequence = sequenceSet{1};
 
 % Define the data directory
-dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/BLNK_analysis/PuffLight/lightLevel';
+dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+projectName = 'PuffLight';
+experimentName = 'lightLevel';
+dataDir = fullfile(dropboxBaseDir,'BLNK_analysis',projectName,experimentName);
 
 dataVecsPalp = nan(length(subjectIDs),5,5,5800);
 dataVecsAdj = nan(length(subjectIDs),5,5,5800);
@@ -48,6 +51,9 @@ for subIdx = 1:length(subjectIDs)
     subjectID = subjectIDs{subIdx};
 
     contrastCounter = zeros(size(contrastLevels));
+
+    %preallocate
+    baselineTossedPercent = nan(5, 5);
 
     % Loop over
     for tt = 1:25
@@ -74,33 +80,32 @@ for subIdx = 1:length(subjectIDs)
             '_direction-' direction '_sequence-%d' ...
             '_contrast-%2.2f_trial-%03d_side-R_eye_features.mat'],...
             whichSequence, contrastLevel, trialIdx);
+        fullPath = fullfile(dataDir, subjectID, fileName);
 
-        % Load the data
-        load(fullfile(dataDir,subjectID,fileName));
-
-        % Handle the new vs. old Zach style for storing these data
-        if isfield(eye_features,'eye_features')
-            eye_features = eye_features.eye_features;
-        end
-
-        % Extract the upper and lower lid to calculate the height of the
-        % palpebral fissure over time, and the pupil diameter
-        nTimePoints = length(eye_features);
-        palpFissureHeight = nan(1,nTimePoints);
-        pupilDiameter = nan(1,nTimePoints);
-
+        % Get Palpebral Fissure for dark baseline and remove blinks
+        baselineDur = 200/fps;
+        [palpBaseline, pupilDiameterCleaned] = loadBlinkCleanedData(fullPath,...
+            'videoDurSecs', baselineDur, 'fps', fps);
+        trialStart = 201/fps;
+        trialDur = 30 - trialStart;
+        % Get Palpebral Fissure and Confidence for light trial
+        [palpTrial, confidenceTrial] = loadSquintVector(fullPath, 'fps', fps, ...
+            'startTimeSecs', trialStart, 'vecDurSecs', trialDur, 'smoothWindowSecs', 0);
+        % Combine them back into one vector for storage
+        palpFissureHeight = [palpBaseline, palpTrial];
+        
+        % Manual extraction of data because of Zach naming logic        
+        tmp = load(fullPath);
+        if isfield(tmp,'eye_features'), fts = tmp.eye_features; else, fts = tmp.eyeFeatures; end
+        if isfield(fts,'eye_features'), fts = fts.eye_features; end
+        % Handle potential .data nesting for pupil too
+        if isstruct(fts) && isfield(fts, 'data'), fts = fts.data; end
+        
+        nTimePoints = length(palpFissureHeight);
+        pupilDiameter = nan(1, nTimePoints);
         for pp = 1:nTimePoints
-            xVals = eye_features{pp}.eyelids.eyelid_x;
-            lidUpper = eye_features{pp}.eyelids.eyelid_up_y;
-            lidLower = eye_features{pp}.eyelids.eyelid_lo_y;
-            [~,xIdx] = min(abs(xVals-mean(xVals)));
-            val = lidLower(xIdx) - lidUpper(xIdx);
-            if val > 0 && val < 100
-                palpFissureHeight(pp) = val;
-            end
-            pupilDiameter(pp) = eye_features{pp}.pupil.diameter;
+            pupilDiameter(pp) = fts{pp}.pupil.diameter;
         end
-
         % Store the vecs
         dataVecsPalp(subIdx,contrastIdx,contrastCounter(contrastIdx),1:nTimePoints) = palpFissureHeight;
         dataVecsPupil(subIdx,contrastIdx,contrastCounter(contrastIdx),1:nTimePoints) = pupilDiameter;
@@ -109,10 +114,11 @@ for subIdx = 1:length(subjectIDs)
 
     % Obtain the median palpebral fissure width during the first 200 frames
     % for this subject
-    vals = squeeze(dataVecsPalp(subIdx,1,:,allFramRange));
+    vals = squeeze(dataVecsPalp(subIdx,1,:,startFrameRange));
     openVal = median(max(vals,[],2,'omitmissing'));
 
-    closedVal = min(vals(:),[],'omitmissing');
+    allVals = squeeze(dataVecsPalp(subIdx,1,:,allFramRange));
+    closedVal = min(allVals(:),[],'omitmissing');
     widthVal = openVal - closedVal;
 
     % For each trial, convert the data vector to proportion closure, and
@@ -199,8 +205,9 @@ for ss = 1:length(subjectPlotOrder)
     subIdx = subjectPlotOrder(ss);
     subplot(4,3,ss);
 
-    myObj = @(p) norm(palpCloseMean(subIdx,:) - mySigFit(log10(illuminanceLevels),p));
-    p(subIdx,:) = fmincon(myObj,[1 3]);
+myObj = @(p) norm(palpCloseMean(subIdx,~isnan(palpCloseMean(subIdx,:))) - ...
+             mySigFit(log10(illuminanceLevels(~isnan(palpCloseMean(subIdx,:)))), p));
+p(subIdx,:) = fmincon(myObj,[1 3]);
 
     % plot
     for ii = 1:length(illuminanceLevels)
