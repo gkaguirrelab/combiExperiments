@@ -112,12 +112,9 @@ for subIdx = 1:length(subjectIDs)
 
     end
 
-    % Obtain the median palpebral fissure width during the first 200 frames
-    % for this subject
-    vals = squeeze(dataVecsPalp(subIdx,1,:,startFrameRange));
-    openVal = median(max(vals,[],2,'omitmissing'));
-
+    % Obtain the median palpebral fissure width for this subject
     allVals = squeeze(dataVecsPalp(subIdx,1,:,allFramRange));
+    openVal = median(max(allVals,[],2,'omitmissing'));
     closedVal = min(allVals(:),[],'omitmissing');
     widthVal = openVal - closedVal;
 
@@ -146,6 +143,8 @@ for subIdx = 1:length(subjectIDs)
         % Plot the trial with the closest to the mean eye closure
         plot(t(allFramRange),1-squeeze(dataVecsAdj(subIdx,ll,exampleTrialIdx(subIdx,ll),allFramRange)),'-','Color',[0.5 0.5 0.5])
         hold on
+        %plot line showing where dark baseline ended.
+        xline(200/fps, '--r');
         ylim([0,1]);
         ylabel('Proportion open');
         xlabel('time [secs]');
@@ -158,7 +157,6 @@ end
 
 % Create a figure that shows the average, smoothed time-course of eye
 % closure across subjects for a given light level
-
 myExpFit = @(x,p) p(1) - p(2).*exp(-p(3).*x);
 
 figure
@@ -196,6 +194,8 @@ p=[];
 
 figure
 % Define a sigmoid fitting function
+% p(1) — 50% Threshold
+% p(2) — Slope
 mySigFit = @(x,p) 1 ./ (1 + exp(-p(2).*(x-p(1))));
 
 subjectPlotOrder = [11     3    10     7     4     9     1     5     6     8     2];
