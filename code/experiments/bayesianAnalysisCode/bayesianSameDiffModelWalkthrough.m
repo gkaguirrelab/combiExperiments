@@ -137,14 +137,18 @@ yline(0.5, '-.', 'Color', [0.4 0.4 0.4], 'LineWidth', 1);
 xlabel('Internal measurement difference \it{m}');
 ylabel('Posterior \it{p}(\it{D} | \it{m})');
 title('Posteriors and Decision Threshold');
-legend({' \it{p}\rm(\it{D}\rm = 1 | \it{m}\rm)', ' \it{p}\rm(\it{D} = 0 | \it{m}\rm)', 'Decision threshold'}, ...
+lgd = legend({' \it{p}\rm(\it{D}\rm = 1 | \it{m}\rm)', ' \it{p}\rm(\it{D} = 0 | \it{m}\rm)', 'Decision threshold'}, ...
        'Location', 'Northeast');
+lgd.Position(2) = lgd.Position(2) - 0.1;  % move DOWN 
 
 % Axes limits
 xlim([thetaMin thetaMax]);
 ylim([-0.05 1.05]);  % small padding above/below 0/1
 set(gca, 'FontSize', 14);
 box off;
+set(findall(gcf,'type','axes'),'LooseInset',[0.06 0.06 0.06 0.06]);
+exportgraphics(gcf, '/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_analysis/dichopticFlicker/bayesianModelPlots/bayesianInferenceSteps.pdf', ...
+    'ContentType', 'vector');
 
 %% Stimulus-specific integration: can be added as a fourth panel
 
