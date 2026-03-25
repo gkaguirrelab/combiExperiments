@@ -178,15 +178,19 @@ for groupIdx = 1:nGroups
                 pRespondDifferent = pooledData(groupIdx, contrastIdx, lightIdx, refFreqIdx).pRespondDifferent;
                 nTrials = pooledData(groupIdx, contrastIdx, lightIdx, refFreqIdx).nTrials;
 
-                initialSigmas = [0.5 0.5];
-                lb = [0.001 0.001];
-                ub = [5 5];
+                % initialSigmas = [0.5 0.5];
+                % lb = [0.001 0.001];
+                % ub = [5 5];
+                % TESTING single sigma value
+                initialSigma = 0.5;   % single starting value
+                lb = 0.001;            % lower bound
+                ub = 5;                % upper bound
 
                 options = bads('defaults');
                 options.MaxIter = 100;
 
                 [fit, fbest] = bads(@(p) negLogLikelihood(p, stimParamsDomainList, uniqueDb, pRespondDifferent, nTrials, priorSame(groupIdx)), ...
-                    initialSigmas, lb, ub, lb, ub, [], options);
+                    initialSigma, lb, ub, lb, ub, [], options);
 
                 sigmaPooled{groupIdx, contrastIdx, lightIdx, refFreqIdx} = fit;
                 fValMatrix{groupIdx, contrastIdx, lightIdx, refFreqIdx} = fbest;
@@ -280,15 +284,48 @@ if saveData
 
 end
 
+
+%% TESTING fitting with sigmaRef = sigmaTest (one parameter fit)
+% Constructing histogram of fVals
+
+% Using the entire sets of nSubj x 4 F values, from migrainers and controls
+
+% Extract by group (keep other dims, then flatten)
+fValsControl = fValMatrix(1,:,:,:);
+fValsMigraine = fValMatrix(2,:,:,:);
+
+% Convert from cell → numeric and flatten
+fValsControl = cell2mat(fValsControl(:));
+fValsMigraine = cell2mat(fValsMigraine(:));
+
+% Define shared bin edges
+% Use combined data to ensure both histograms share the same scale
+allData = [fValsMigraine; fValsControl];
+edges = linspace(min(allData), max(allData), 20);
+
+% Overlaid histogram so fancy so pretty
+figure; hold on;
+h1 = histogram(fValsMigraine, edges, 'FaceAlpha', 0.5, 'EdgeColor', 'none');
+h2 = histogram(fValsControl,  edges, 'FaceAlpha', 0.5, 'EdgeColor', 'none');
+
+xlabel('Negative log-likelihood (fVal)');
+ylabel('Count');
+legend({'Migrainers', 'Controls'});
+title('Model fit quality across conditions when sigmaTest = sigmaRef');
+box off;
+
 %% Objective function %%
 function nll = negLogLikelihood(sigma, stimParamsDomainList, uniqueDbValues, probData, nTrials, priorSame)
 
+% sigmaTest = sigma(1);
+% sigmaRef  = sigma(2);
+% Sigma is now a single parameter
 sigmaTest = sigma(1);
-sigmaRef  = sigma(2);
+sigmaRef  = sigmaTest;  % always equal
 
 % Predict probability of "different" at each unique dB level
 % P_diff = bayesianSameDiffModel(uniqueDbValues, sigma);
-P_diff = bayesianSameDiffModelTwoSigma(stimParamsDomainList, uniqueDbValues, sigma, priorSame);
+P_diff = bayesianSameDiffModelTwoSigma(stimParamsDomainList, uniqueDbValues, [sigmaTest sigmaRef], priorSame);
 P_diff = max(min(P_diff, 1 - 1e-9), 1e-9); % To make sure 0 < P_diff < 1
 
 % Finding the count of different responses (aka the number of
@@ -299,10 +336,10 @@ k = probData .* nTrials; % prop observed diff multiplied by total number of tria
 nll = -sum(k .* log(P_diff) + (nTrials - k) .* log(1 - P_diff));
 
 % Penalty constraint so that sigmaRef <= sigmaTest
-if sigmaRef > sigmaTest
-    penalty = (sigmaRef - sigmaTest) * 1e3;  
-    nll = nll + penalty;
-end
+% if sigmaRef > sigmaTest
+%     penalty = (sigmaRef - sigmaTest) * 1e3;  
+%     nll = nll + penalty;
+% end
 
 end
 
