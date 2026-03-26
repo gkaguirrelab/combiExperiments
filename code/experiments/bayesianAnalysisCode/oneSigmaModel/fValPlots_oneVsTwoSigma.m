@@ -39,17 +39,34 @@ nContrasts = length(targetPhotoContrast);
 nLightLevels = length(NDLabel); 
 nSubj = length(subjectID);
 
-
 %% Compare one and two sigma parameter models, for individual subject fits
 % Create side by side fVal plots
 
+% Using the entire sets of nSubj x 4 F values, from migrainers and controls
 
+% Extract by group (keep other dims, then flatten)
+fValsControl = fValMatrix(1,:,:,:);
+fValsMigraine = fValMatrix(2,:,:,:);
 
+% Convert from cell → numeric and flatten
+fValsControl = cell2mat(fValsControl(:));
+fValsMigraine = cell2mat(fValsMigraine(:));
 
+% Define shared bin edges
+% Use combined data to ensure both histograms share the same scale
+allData = [fValsMigraine; fValsControl];
+edges = linspace(min(allData), max(allData), 20);
 
+% Overlaid histogram so fancy so pretty
+figure; hold on;
+h1 = histogram(fValsMigraine, edges, 'FaceAlpha', 0.5, 'EdgeColor', 'none');
+h2 = histogram(fValsControl,  edges, 'FaceAlpha', 0.5, 'EdgeColor', 'none');
 
-
-
+xlabel('Negative log-likelihood (fVal)');
+ylabel('Count');
+legend({'Migrainers', 'Controls'});
+title('Model fit quality across conditions when sigmaTest = sigmaRef');
+box off;
 
 %% Compare one and two sigma parameter models, for super subject fits
 % Create side by side fVal plots
