@@ -33,7 +33,7 @@ nGroups = length(subjectGroups);
 %% FITTING CODE %%
 % Pooled sigma fit
 % Data pooled across subjs to make one control and one migrainer super subj
-% This code DOES incorporate a constraint so that sigmaRef <= sigmaTest
+% This code fits a single shared sigma (sigmaRef = sigmaTest)
 
 % Initialize pooled data struct for this group
 pooledData = struct();
@@ -246,7 +246,7 @@ for groupIdx = 1:nGroups
                 % Plot model fit
                 fit = sigmaPooled{groupIdx, contrastIdx, lightIdx, refFreqIdx};
                 x = -6:0.1:6;
-                plot(x, bayesianSameDiffModelTwoSigma(stimParamsDomainList,x,fit,priorSame(groupIdx)), 'k-', 'LineWidth',2);
+                plot(x, bayesianSameDiffModelTwoSigma(stimParamsDomainList,x,[fit fit],priorSame(groupIdx)), 'k-', 'LineWidth',2);
 
                 ylim([-0.05 1.05]);
                 xlim([-6 6]);
