@@ -1,56 +1,107 @@
+% Create plots related to the "light level" experiment. In this experiment,
+% participants observed a binocular uniform field. The field started dark,
+% and then illuminated to one of 5, log-spaced light levels. While the
+% light was on, the subject monitored for an infrequent diming of the light
+% to which they were to make a button response. Each trial was 30 seconds
+% total, including the initial 1 second dark period. There were a total of
+% 26 trials presented in a counter-balanced order of illuminance (first
+% trial discarded to achieve counter-balance).
+%
 
 clear
 close all
 
-subjectIDs = {'HERO_gka',...
+% Do we want to plot individual time-series examples?
+plotSubjectTimeSeriesFlag = false;
+
+% Properties of the subjects and source data
+subjectIDs = {...
     'BLNK_1001','BLNK_1002','BLNK_1003',...
     'BLNK_1004','BLNK_1005','BLNK_1006',...
     'BLNK_1007','BLNK_1008','BLNK_1009',...
     'BLNK_1010'};
+projectName = 'PuffLight';
 experimentName = 'lightLevel';
 direction = 'LightFlux';
 whichSequence = 1;
 
-% Define some properties of the analysis
-fps = 180;
+% Define some properties of the experiment
 contrastLevels = [0.0375,0.075,0.15,0.30,0.6];
+nLevels = length(contrastLevels);
 
-% Derive lux from the contrast levels
-illuminanceLevels = contrastLevels * (4273*2) * pi;
+% Define how we handle the time series. We will treat the first second of
+% the measurement the initial dark period; the subsequent frames of the 30
+% second measurement are the period with the light stimulus.
+fps = 180;
+allFramRange = 1:fps*30-1;
+startFrameRange = 1:fps;
+dataFrameRange = fps+1:fps*30-1;
 
-% Hard-code a couple of deBruijn sequences we will use to define the
-% stimulus order across blocks. In all cases, the sequence begins with the
-% middle intensity stimulus. The first trial is repeated, allowing us to
-% discard the first trial and have a fully counter-balanced sequence.
+% Get the path to the data files
+dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+
+% Prepare the photophic luminance function
+load('T_xyz1931.mat','T_xyz1931','S_xyz1931');
+
+% Hard-code the deBruijn sequences we will use to define the stimulus order
+% across blocks. In all cases, the sequence begins with the middle
+% intensity stimulus. The first trial is repeated, allowing us to discard
+% the first trial and have a fully counter-balanced sequence.
 sequenceSet{1} = [3,3,1,4,5,5,4,1,2,3,2,2,1,5,3,4,4,3,5,2,4,2,5,1,1,3];
 sequenceSet{2} = [3,3,2,5,3,5,2,4,3,4,1,1,5,1,3,1,2,2,1,4,4,5,5,4,2,3];
 sequenceSet{3} = [3,3,4,2,5,3,2,4,5,1,4,1,1,5,4,4,3,5,5,2,1,2,2,3,1,3];
 sequenceSet{4} = [3,3,1,4,5,1,2,2,3,2,1,3,4,2,4,4,3,5,2,5,5,4,1,1,5,3];
 
 % All subjects just did the first sequence
-thisSequence = sequenceSet{1};
+thisSequence = sequenceSet{whichSequence};
 
-% Define the data directory
-dataDir = '/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/BLNK_analysis/PuffLight/lightLevel';
-
+% Define the variables and temporal support for the data
 dataVecsPalp = nan(length(subjectIDs),5,5,5800);
 dataVecsAdj = nan(length(subjectIDs),5,5,5800);
 dataVecsPupil = nan(length(subjectIDs),5,5,5800);
 t = 0:1/fps:(5800-1)/fps;
 
-allFramRange = 1:fps*30-1;
-startFrameRange = 1:200;
-dataFrameRange = 201:fps*30-1;
+% Define a sigmoid fitting function
+mySigFit = @(x,p) 1 ./ (1 + exp(-p(2).*(x-p(1))));
+
 
 % Loop over the data files
 for subIdx = 1:length(subjectIDs)
 
+    % This subject ID
     subjectID = subjectIDs{subIdx};
 
-    contrastCounter = zeros(size(contrastLevels));
+    % Derive the max illuminance for the data for this subject during the
+    % lightLevel experiment by examining the modResult. We obtain the SPD
+    % for the maximum positive modulation, calculate the luminance, and
+    % then convert to illuminance for this hemi-field stimulus by
+    % multiplying by pi.
+    dataDir = fullfile(dropboxBaseDir,'BLNK_data',projectName,'lightLevel',subjectID);
+    load(fullfile(dataDir,'modResult_LightFlux.mat'),'modResult');
+    posModSPD = modResult.positiveModulationSPD;
+    wavelengthsNm = modResult.wavelengthsNm;
+    S = WlsToS(wavelengthsNm);
+    T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
+    maxLuxBySub_lightLevel(subIdx) = T_xyz(2,:)*posModSPD*pi;
 
-    % Loop over
-    for tt = 1:25
+    % Now do the same for the background illuminance of the modulate
+    % experiment. One of the lightLevel participants did not return for the
+    % modulate experiment, so we detect their missing measurement and skip.
+    dataDir = fullfile(dropboxBaseDir,'BLNK_data',projectName,'modulate',subjectID);
+    if isfile(fullfile(dataDir,'modResult_LMS.mat'))
+        load(fullfile(dataDir,'modResult_LMS.mat'),'modResult');
+        backgroundSPD = modResult.backgroundSPD;
+        wavelengthsNm = modResult.wavelengthsNm;
+        S = WlsToS(wavelengthsNm);
+        T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
+        bgLuxBySub_modulate(subIdx) = T_xyz(2,:)*backgroundSPD*pi;
+    else
+        bgLuxBySub_modulate(subIdx) = nan;
+    end
+
+    % Prepare to loop over trials and assemble the time-series data
+    contrastCounter = zeros(size(contrastLevels));
+    for tt = 1:length(thisSequence)-1
 
         % We discard the first of the 26 trials. Also, the trial counter
         % was off by one for subject gka. Handle all this here.
@@ -69,6 +120,9 @@ for subIdx = 1:length(subjectIDs)
         % Increment the contrast counter
         contrastCounter(contrastIdx) = contrastCounter(contrastIdx)+1;
 
+        % Directory
+        dataDir = fullfile(dropboxBaseDir,'BLNK_analysis',projectName,experimentName,subjectID);
+
         % Filename
         fileName = sprintf( [subjectID '_' experimentName ...
             '_direction-' direction '_sequence-%d' ...
@@ -76,7 +130,7 @@ for subIdx = 1:length(subjectIDs)
             whichSequence, contrastLevel, trialIdx);
 
         % Load the data
-        load(fullfile(dataDir,subjectID,fileName));
+        load(fullfile(dataDir,fileName));
 
         % Handle the new vs. old Zach style for storing these data
         if isfield(eye_features,'eye_features')
@@ -89,6 +143,8 @@ for subIdx = 1:length(subjectIDs)
         palpFissureHeight = nan(1,nTimePoints);
         pupilDiameter = nan(1,nTimePoints);
 
+        % Loop over the time points and extract palpebral fissure size and
+        % pupil diameter
         for pp = 1:nTimePoints
             xVals = eye_features{pp}.eyelids.eyelid_x;
             lidUpper = eye_features{pp}.eyelids.eyelid_up_y;
@@ -107,11 +163,11 @@ for subIdx = 1:length(subjectIDs)
 
     end
 
-    % Obtain the median palpebral fissure width during the first 200 frames
-    % for this subject
+    % Obtain the median, max and min palpebral fissure width during the
+    % recording. The max will likely occur during the dark period (but is
+    % not required to be so).
     vals = squeeze(dataVecsPalp(subIdx,1,:,allFramRange));
     openVal = median(max(vals,[],2,'omitmissing'));
-
     closedVal = min(vals(:),[],'omitmissing');
     widthVal = openVal - closedVal;
 
@@ -134,65 +190,112 @@ for subIdx = 1:length(subjectIDs)
         palpCloseSEM(subIdx,ll) = std(tmpCloseVals,[],2)/sqrt(contrastCounter(ll));
     end
 
-    figure
-    for ll = 1:5
-        subplot(2,3,ll)
-        % Plot the trial with the closest to the mean eye closure
-        plot(t(allFramRange),1-squeeze(dataVecsAdj(subIdx,ll,exampleTrialIdx(subIdx,ll),allFramRange)),'-','Color',[0.5 0.5 0.5])
-        hold on
-        ylim([0,1]);
-        ylabel('Proportion open');
-        xlabel('time [secs]');
-    end
-
-    drawnow
-
-end
-
-
-% Create a figure that shows the average, smoothed time-course of eye
-% closure across subjects for a given light level
-
-myExpFit = @(x,p) p(1) - p(2).*exp(-p(3).*x);
-
-figure
-for ll = 1:5
-    for ss = 1:length(subjectIDs)
-        dataMatrix = squeeze(dataVecsAdj(ss,ll,:,:));
-        for rr = 1:size(dataMatrix,1)
-            dataMatrix(rr,:) = smoothdata(dataMatrix(rr,:),'movmedian',10);
+    if plotSubjectTimeSeriesFlag
+        figure
+        for ll = 1:nLevels
+            subplot(2,3,ll)
+            % Plot the trial with the closest to the mean eye closure
+            plot(t(allFramRange),1-squeeze(dataVecsAdj(subIdx,ll,exampleTrialIdx(subIdx,ll),allFramRange)),'-','Color',[0.5 0.5 0.5])
+            hold on
+            ylim([0,1]);
+            ylabel('Proportion open');
+            xlabel('time [secs]');
         end
-        dataSub(ss,:) = smoothdata(mean(dataMatrix,'omitmissing'),'movmedian',1);
+        drawnow
     end
-    yVec = 1-smoothdata(mean(dataSub,'omitmissing'),'movmedian',1);
-    yVec = yVec(260:5500);
-    xVec = t(260:5500)-t(260);
-    t5idx = find(xVec>5,1);
-    plot(xVec,yVec,'.','Color',[0.5 0.5 0.5]);
-    hold on
-    myObj = @(p) norm(yVec(1:t5idx)-myExpFit(xVec(1:t5idx),p));
-    p = fmincon(myObj,[1 1 1]);
-    xFit = xVec(1):diff(xVec(1:2)):xVec(t5idx);
-    yExpFit = myExpFit(xFit,p);
-    plot(xFit,yExpFit,'-r','LineWidth',1.5);
-    coef(ll,:) = polyfit(xVec(t5idx:end),yVec(t5idx:end),1);
-    yFit = polyval(coef(ll,:),xVec(t5idx:end));
-    yFit = yFit - yFit(1) + yExpFit(end);
-    plot(xVec(t5idx:end),yFit,'-r','LineWidth',1.5);
+
 end
+
+% Calculate mean across subject illuminance of the stimuli for each of the
+% contrast levels
+illuminanceLevels = contrastLevels * mean(maxLuxBySub_lightLevel);
+
+% Calculate mean across subject illuminance of the background used for the
+% modulate experiment
+bgLuxMean_modulate = mean(bgLuxBySub_modulate,'omitmissing');
+
+
+
+%%%%%%%%%%%%%
+%% FIGURES %%
+%%%%%%%%%%%%%
+
+
+%% The average across-subject response function with a sigmoid fit
+figure('Position', [100 100 300 300])
+
+% Get the mean and SEM across subjects
+meanData = mean(palpCloseMean);
+semData = std(palpCloseMean)/sqrt(size(palpCloseMean,1));
+
+% Fit the sigmoid function
+myObj = @(p) norm(meanData - mySigFit(log10(illuminanceLevels),p));
+p = fmincon(myObj,[1 3]);
+
+% plot the error bars
+for ii = 1:length(illuminanceLevels)
+    plot([log10(illuminanceLevels(ii)), log10(illuminanceLevels(ii))],...
+        [meanData(ii)-semData(ii), meanData(ii)+semData(ii)],...
+        '-','Color',[0.5 0.5 0.5],'LineWidth',3);
+    hold on
+end
+
+% Add the fit
+xFit = 0:0.1:6;
+yFit = mySigFit(xFit,p);
+plot(xFit,yFit,'-r','LineWidth',1);
+
+% Add the data points
+plot(log10(illuminanceLevels),meanData,'.k','MarkerSize',25);
+
+% Clean up
 ylim([0 1]);
 box off
-xlabel('Time [s]');
-ylabel('Proportion eye open');
-set(gca,'TickDir','out');
-set(gca,'YTick',[0 0.5 1]);
-p=[];
+set(gca, 'TickDir', 'out')
+xlabel('log_1_0 lux');
+ylabel('Proportion eye closure');
+set(gca, 'XTick', [0 2 4 6])
+set(gca, 'YTick', [0 0.5 1])
+text(4,0.15,'±SEM');
+
+
+%% Illustration of the modulate background on the group, light-level
+%% squint function
+figure('Position', [100 100 300 300])
+plot(xFit,yFit,'-','Color',[0.5,0.5,0.5],'LineWidth',1);
+hold on
+% Background
+xVal = log10(bgLuxMean_modulate);
+yVal = mySigFit(xVal,p);
+plot([xVal xVal],[0 yVal],':','Color',[0.5 0.5 0.5],'LineWidth',1);
+plot([0 xVal],[yVal yVal],':','Color',[0.5 0.5 0.5],'LineWidth',1);
+% Positive arm
+xVal = log10(bgLuxMean_modulate*1.4);
+yVal = mySigFit(xVal,p);
+plot([xVal xVal],[0 yVal],':r','LineWidth',1);
+plot([0 xVal],[yVal yVal],':r','LineWidth',1);
+% Negative arm
+xVal = log10(bgLuxMean_modulate/1.4);
+yVal = mySigFit(xVal,p);
+plot([xVal xVal],[0 yVal],':k','LineWidth',1);
+plot([0 xVal],[yVal yVal],':k','LineWidth',1);
+% Clean up
+ylim([0 1]);
+box off
+set(gca, 'TickDir', 'out')
+xlabel('log_1_0 lux');
+ylabel('Proportion eye closure');
+set(gca, 'XTick', [0 2 4 6])
+set(gca, 'YTick', [0 0.5 1])
+
+
+
+
+%% The per-subject response function with a sigmoid fit
 
 figure
-% Define a sigmoid fitting function
-mySigFit = @(x,p) 1 ./ (1 + exp(-p(2).*(x-p(1))));
 
-subjectPlotOrder = [11     3    10     7     4     9     1     5     6     8     2];
+subjectPlotOrder = [3    10     7     4     9     1     5     6     8     2];
 
 for ss = 1:length(subjectPlotOrder)
 
@@ -243,16 +346,9 @@ set(gca, 'YTickLabel', [])
 set(gca,'xtick',[])
 set(gca,'ytick',[])
 
-figure
-plot(p(:,1),p(:,2),'.r','MarkerSize',20);
-ylim([0 3]);
-xlim([2.5 4.5]);
-set(gca, 'TickDir', 'out')
-ylabel('slope [Δclose / log_1_0 lux]');
-xlabel('50% closure threshold [log_1_0 lux]');
-axis square
-box off
 
+
+%% Loop through the psychometric objects and
 
 % If you have the psychObj in memory, these commands will give you the
 % proportion correct on the detection task, and identify the trials in
@@ -261,3 +357,43 @@ box off
     sum([psychObj.trialData.detected])/length([psychObj.trialData.detected])
     find(arrayfun(@(x) any(x.detected==0),psychObj.trialData))
 %}
+
+
+
+
+% Create a figure that shows the average, smoothed time-course of eye
+% closure across subjects for a given light level
+myExpFit = @(x,p) p(1) - p(2).*exp(-p(3).*x);
+
+figure
+for ll = 1:nLevels
+    for ss = 1:length(subjectIDs)
+        dataMatrix = squeeze(dataVecsAdj(ss,ll,:,:));
+        for rr = 1:size(dataMatrix,1)
+            dataMatrix(rr,:) = smoothdata(dataMatrix(rr,:),'movmedian',10);
+        end
+        dataSub(ss,:) = smoothdata(mean(dataMatrix,'omitmissing'),'movmedian',1);
+    end
+    yVec = 1-smoothdata(mean(dataSub,'omitmissing'),'movmedian',1);
+    yVec = yVec(260:5500);
+    xVec = t(260:5500)-t(260);
+    t5idx = find(xVec>5,1);
+    plot(xVec,yVec,'.','Color',[0.5 0.5 0.5]);
+    hold on
+    myObj = @(p) norm(yVec(1:t5idx)-myExpFit(xVec(1:t5idx),p));
+    p = fmincon(myObj,[1 1 1]);
+    xFit = xVec(1):diff(xVec(1:2)):xVec(t5idx);
+    yExpFit = myExpFit(xFit,p);
+    plot(xFit,yExpFit,'-r','LineWidth',1.5);
+    coef(ll,:) = polyfit(xVec(t5idx:end),yVec(t5idx:end),1);
+    yFit = polyval(coef(ll,:),xVec(t5idx:end));
+    yFit = yFit - yFit(1) + yExpFit(end);
+    plot(xVec(t5idx:end),yFit,'-r','LineWidth',1.5);
+end
+ylim([0 1]);
+box off
+xlabel('Time [s]');
+ylabel('Proportion eye open');
+set(gca,'TickDir','out');
+set(gca,'YTick',[0 0.5 1]);
+p=[];
