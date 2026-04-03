@@ -43,18 +43,40 @@ end
 nFrames = options.videoDurSecs*options.fps;
 
 % Load the data
-load(eyeFeaturesPath,'eyeFeatures');
+tmp = load(eyeFeaturesPath);
+
+% Check if the variable is named 'eyeFeatures' or 'eye_features'
+if isfield(tmp, 'eyeFeatures')
+    eyeFeatures = tmp.eyeFeatures;
+elseif isfield(tmp, 'eye_features')
+    eyeFeatures = tmp.eye_features;
+else
+    error('Could not find eyeFeatures or eye_features in the file');
+end
+
+% Handle the "Zach style" nesting: eye_features.eye_features
+if isfield(eyeFeatures, 'eye_features')
+    eyeFeatures = eyeFeatures.eye_features;
+end
+
+% Check if we are dealing with a struct that has a .data field 
+% or a direct cell array
+if isstruct(eyeFeatures) && isfield(eyeFeatures, 'data')
+    dataExtract = eyeFeatures.data;
+else
+    dataExtract = eyeFeatures; % It is already the cell array
+end
 
 % Detect if the length of the video is markedly different from as expected,
 % and trim if necessary
-nDataCells = length(eyeFeatures.data);
+nDataCells = length(dataExtract);
 if abs(nFrames-nDataCells)/nFrames > 0.01
     warning('The number of frames in this eyeFeatures file is not as expected');
 end
 if nDataCells < nFrames
     nFrames = nDataCells;
 end
-data = eyeFeatures.data(1:nFrames);
+data = dataExtract(1:nFrames);
 
 % Extract the upper and lower lid to calculate the height of the palpebral
 % fissure over time

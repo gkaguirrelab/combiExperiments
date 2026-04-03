@@ -2,7 +2,7 @@ function output = individualFitsAnalysis(options)
 % Define the arguments block
 arguments
     options.barPlot (1,1) logical = false
-    options.fVal (1,1) logical = false
+    options.fVal (1,1) logical = true
     options.anova (1,1) logical = true
 end
 
@@ -69,9 +69,9 @@ for l = 1:2
     for c = 1:2
         % Calculate Means and SEMs
         mMean = squeeze(mean(migraineFits.sigmaTestMatrix(:,c,l,:), 1));
-        mSEM  = squeeze(std(migraineFits.sigmaTestMatrix(:,c,l,:), [], 1)) / sqrt(15);
+        mSEM  = squeeze(std(migraineFits.sigmaTestMatrix(:,c,l,:), [], 1)) / sqrt(nSubjM);
         cMean = squeeze(mean(controlFits.sigmaTestMatrix(:,c,l,:), 1));
-        cSEM  = squeeze(std(controlFits.sigmaTestMatrix(:,c,l,:), [], 1)) / sqrt(15);
+        cSEM  = squeeze(std(controlFits.sigmaTestMatrix(:,c,l,:), [], 1)) / sqrt(nSubjC);
 
         % Styling Logic
         % c=1: Low Contrast (White Fill, Dashed)
@@ -384,6 +384,92 @@ if options.fVal
     legend({'Migrainers', 'Controls'});
     title('Model fit quality across groups');
     box off;
+
+    % ---------now plot fVal by condition-------
+    for l = 1:2
+        f = figure('Color', 'w', 'Name', ['Light Level ' num2str(l)]);
+        hold on;
+
+        % Store handles for the legend
+        hHandles = [];
+        hNames   = {};
+
+        % Loop through Contrasts (1 = Low, 2 = High)
+        for c = 1:2
+            % Calculate Means and SEMs
+            mMeanfVal = squeeze(mean(migraineFits.fValMatrix(:,c,l,:), 1));
+            mSEMfVal = squeeze(std(migraineFits.fValMatrix(:,c,l,:), [], 1)) / sqrt(nSubjM);
+            cMeanfVal = squeeze(mean(controlFits.fValMatrix(:,c,l,:), 1));
+            cSEMfVal  = squeeze(std(controlFits.fValMatrix(:,c,l,:), [], 1)) / sqrt(nSubjC);
+
+            % Styling Logic
+            % c=1: Low Contrast (White Fill, Dashed)
+            % c=2: High Contrast (Color Fill, Solid)
+            if c == 1
+                fColM = [1 1 1]; fColC = [1 1 1]; lStyle = '--';
+                cName = 'Low Contrast';
+            else
+                fColM = colMigraine; fColC = colControl; lStyle = '-';
+                cName = 'High Contrast';
+            end
+
+            % Plot Migraine
+            hM = errorbar(refFreqHz, mMeanfVal, mSEMfVal, ['o' lStyle], 'Color', colMigraine, ...
+                'MarkerFaceColor', fColM, 'LineWidth', 1.5, 'MarkerSize', 7);
+
+            % Plot Control
+            hC = errorbar(refFreqHz, cMeanfVal, cSEMfVal, ['o' lStyle], 'Color', colControl, ...
+                'MarkerFaceColor', fColC, 'LineWidth', 1.5, 'MarkerSize', 7);
+
+            % Add to legend lists
+            hHandles = [hHandles, hM, hC];
+            hNames   = [hNames, {['Migraine (' cName ')'], ['Control (' cName ')']}];
+        end
+
+        % Styling
+        xlabel('Reference Frequency (Hz)');
+        ylabel('Negative log-likelihood (fVal)');
+        title(['Light Level: ' char(if_then(l==1, "Low", "High"))]);
+        xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
+        box off;
+        grid on;
+        set(gca, 'XScale', 'log');
+
+        % Add Legend
+        legend(hHandles, hNames, 'Location', 'northeast', 'Box', 'off');
+
+        % --- Add Grey Background (Only for Low Light, l=1) ---
+        if l == 1
+            xl = xlim; yl = ylim;
+            p = patch([xl(1) xl(2) xl(2) xl(1)], [yl(1) yl(1) yl(2) yl(2)], ...
+                [0.9 0.9 0.9], 'EdgeColor', 'none', 'FaceAlpha', 0.5, 'Clipping', 'off');
+            uistack(p, 'bottom'); % Ensure it stays behind the data
+        end
+    end
+
+    %----------And now by frequency (avg across contrast and light level)--
+    meanMigfValAll = squeeze(mean(mean(mean(migraineFits.fValMatrix, 1),2),3));
+    migstdValAll = std(migraineFits.fValMatrix, 0, [1 2 3]);
+    migSEMValAll = squeeze(migstdValAll/ sqrt(nSubjM));
+    meanContfValAll = squeeze(mean(mean(mean(controlFits.fValMatrix, 1),2),3));
+    contstdValAll = std(controlFits.fValMatrix, 0, [1 2 3]);
+    contSEMValAll = squeeze(contstdValAll/ sqrt(nSubjC));
+
+    figure('Color','w'); hold on;
+
+    % Migraine
+    errorbar(refFreqHz, meanMigfValAll, migSEMValAll, '-o', ...
+        'Color', colMigraine, 'MarkerFaceColor', colMigraine, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Migraine');
+    % Control
+    errorbar(refFreqHz, meanContfValAll, contSEMValAll, '-s', ...
+        'Color', colControl, 'MarkerFaceColor', colControl, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Control');
+
+    set(gca,'XScale','log');
+    xlabel('Reference Frequency (Hz)'); ylabel('Negative log-likelihood (fVal)');
+    title('Frequency vs Sigma Test');
+    legend('Location','northwest'); grid on; box off;
+    xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
+
 end
 %% Omnibus ANOVAS for sigma test and sigma ref
 if options.anova

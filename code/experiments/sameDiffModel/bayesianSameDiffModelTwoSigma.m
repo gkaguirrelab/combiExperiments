@@ -30,6 +30,11 @@ function pDifferent = bayesianSameDiffModelTwoSigma( stimParamsDomainList, stimD
     plot(stimDiffDb, pDifferent,'*-r');
 %}
 
+% For the testing case where sigmaRef = sigmaTest
+if numel(sigmaParams) == 1
+    sigmaParams = [sigmaParams sigmaParams];
+end
+
 % Unpack two sigma values
 sigma = sigmaParams(1); % sigma test
 sigmaZero = sigmaParams(2);  % sigma ref
@@ -86,6 +91,7 @@ for i = 1:length(stimDiffDb)
     % Likelihood of measurement given this stimulus difference
     % This is the sensory encoding stage
     % Observer treats every trial as if it might be a different trial
+    % Add the if delta = 0 statement?
     P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaZero^2 + sigma^2));
 
     % Normalize

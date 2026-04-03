@@ -38,42 +38,63 @@ arguments
 end
 
 % Load the data
-load(eyeFeaturesPath,'eyeFeatures');
-nDataCells = length(eyeFeatures.data);
+tmp = load(eyeFeaturesPath);
 
-% Create the temporal support
+% Check if the variable is named 'eyeFeatures' or 'eye_features'
+if isfield(tmp, 'eyeFeatures')
+    eyeFeatures = tmp.eyeFeatures;
+elseif isfield(tmp, 'eye_features')
+    eyeFeatures = tmp.eye_features;
+else
+    error('Could not find eyeFeatures or eye_features in the file');
+end
+
+% Handle the "Zach style" nesting: eye_features.eye_features
+if isfield(eyeFeatures, 'eye_features')
+    eyeFeatures = eyeFeatures.eye_features;
+end
+
+% Check if we are dealing with a struct that has a .data field 
+% or a direct cell array
+if isstruct(eyeFeatures) && isfield(eyeFeatures, 'data')
+    dataExtract = eyeFeatures.data;
+else
+    dataExtract = eyeFeatures; % It is already the cell array
+end
+
+nDataCells = length(dataExtract);
 t = 0:1/options.fps:(nDataCells-1)/options.fps;
 
-% Identify the start and end frame
 [~,startFrame] = min(abs(t-options.startTimeSecs));
 [~,endFrame] = min(abs(t-(options.startTimeSecs+options.vecDurSecs)));
-nFrames = endFrame-startFrame;
+nFrames = min([endFrame-startFrame, nDataCells-startFrame]);
 
-% Force nFrames to not exceed the total number of frames
-nFrames = min([nFrames nDataCells-startFrame]);
-
-% Loop over the frames and calculate the palpebral fissure width at the
-% midpoint of the upper and lower lid
 palpFissureHeight = nan(1,nFrames);
 confidence = nan(1,nFrames);
-for ff = startFrame:nFrames
-    thisFrame = ff+startFrame-1;
-    xVals = eyeFeatures.data{thisFrame}.eyelids.eyelid_x;
-    lidUpper = eyeFeatures.data{thisFrame}.eyelids.eyelid_up_y;
-    lidLower = eyeFeatures.data{thisFrame}.eyelids.eyelid_lo_y;
+
+for ff = 1:nFrames
+    thisFrame = ff + startFrame - 1;
+    
+    % Access the frame (using {} for cell array)
+    xVals = dataExtract{thisFrame}.eyelids.eyelid_x;
+    lidUpper = dataExtract{thisFrame}.eyelids.eyelid_up_y;
+    lidLower = dataExtract{thisFrame}.eyelids.eyelid_lo_y;
+    
     [~,xIdx] = min(abs(xVals-mean(xVals)));
     val = lidLower(xIdx) - lidUpper(xIdx);
+    
     if val > 0 && val < 100
         palpFissureHeight(ff) = val;
     end
-    confidence(ff) = mean(eyeFeatures.data{thisFrame}.eyelids.dlc_confidence);
+    confidence(ff) = mean(dataExtract{thisFrame}.eyelids.dlc_confidence);
 end
 
 % Nan any points with confidence below threshold
 palpFissureHeight(confidence < options.confidenceThresh) = nan;
-
 % Perform smoothing
-palpFissureHeight = movmean(palpFissureHeight,round(options.smoothWindowSecs*options.fps),"omitnan");
+if options.smoothWindowSecs > 0
+    palpFissureHeight = movmean(palpFissureHeight,round(options.smoothWindowSecs*options.fps),"omitnan");
+end
 
 end
 

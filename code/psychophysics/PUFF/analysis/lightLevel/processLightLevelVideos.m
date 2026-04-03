@@ -53,7 +53,17 @@ sequenceSet{3} = [3,3,4,2,5,3,2,4,5,1,4,1,1,5,4,4,3,5,5,2,1,2,2,3,1,3];
 sequenceSet{4} = [3,3,1,4,5,1,2,2,3,2,1,3,4,2,4,4,3,5,2,5,5,4,1,1,5,3];
 
 % All subjects just did the first sequence
+<<<<<<< HEAD
 thisSequence = sequenceSet{whichSequence};
+=======
+thisSequence = sequenceSet{1};
+
+% Define the data directory
+dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+projectName = 'PuffLight';
+experimentName = 'lightLevel';
+dataDir = fullfile(dropboxBaseDir,'BLNK_analysis',projectName,experimentName);
+>>>>>>> fe2ca525aa29ee31cac5194defe67a3eef27b676
 
 % Define the variables and temporal support for the data
 dataVecsPalp = nan(length(subjectIDs),5,5,5800);
@@ -84,6 +94,7 @@ for subIdx = 1:length(subjectIDs)
     T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
     maxLuxBySub_lightLevel(subIdx) = T_xyz(2,:)*posModSPD*pi;
 
+<<<<<<< HEAD
     % Now do the same for the background illuminance of the modulate
     % experiment. One of the lightLevel participants did not return for the
     % modulate experiment, so we detect their missing measurement and skip.
@@ -102,6 +113,13 @@ for subIdx = 1:length(subjectIDs)
     % Prepare to loop over trials and assemble the time-series data
     contrastCounter = zeros(size(contrastLevels));
     for tt = 1:length(thisSequence)-1
+=======
+    %preallocate
+    baselineTossedPercent = nan(5, 5);
+
+    % Loop over
+    for tt = 1:25
+>>>>>>> fe2ca525aa29ee31cac5194defe67a3eef27b676
 
         % We discard the first of the 26 trials. Also, the trial counter
         % was off by one for subject gka. Handle all this here.
@@ -128,7 +146,9 @@ for subIdx = 1:length(subjectIDs)
             '_direction-' direction '_sequence-%d' ...
             '_contrast-%2.2f_trial-%03d_side-R_eye_features.mat'],...
             whichSequence, contrastLevel, trialIdx);
+        fullPath = fullfile(dataDir, subjectID, fileName);
 
+<<<<<<< HEAD
         % Load the data
         load(fullfile(dataDir,fileName));
 
@@ -145,30 +165,51 @@ for subIdx = 1:length(subjectIDs)
 
         % Loop over the time points and extract palpebral fissure size and
         % pupil diameter
+=======
+        % Get Palpebral Fissure for dark baseline and remove blinks
+        baselineDur = 200/fps;
+        [palpBaseline, pupilDiameterCleaned] = loadBlinkCleanedData(fullPath,...
+            'videoDurSecs', baselineDur, 'fps', fps);
+        trialStart = 201/fps;
+        trialDur = 30 - trialStart;
+        % Get Palpebral Fissure and Confidence for light trial
+        [palpTrial, confidenceTrial] = loadSquintVector(fullPath, 'fps', fps, ...
+            'startTimeSecs', trialStart, 'vecDurSecs', trialDur, 'smoothWindowSecs', 0);
+        % Combine them back into one vector for storage
+        palpFissureHeight = [palpBaseline, palpTrial];
+        
+        % Manual extraction of data because of Zach naming logic        
+        tmp = load(fullPath);
+        if isfield(tmp,'eye_features'), fts = tmp.eye_features; else, fts = tmp.eyeFeatures; end
+        if isfield(fts,'eye_features'), fts = fts.eye_features; end
+        % Handle potential .data nesting for pupil too
+        if isstruct(fts) && isfield(fts, 'data'), fts = fts.data; end
+        
+        nTimePoints = length(palpFissureHeight);
+        pupilDiameter = nan(1, nTimePoints);
+>>>>>>> fe2ca525aa29ee31cac5194defe67a3eef27b676
         for pp = 1:nTimePoints
-            xVals = eye_features{pp}.eyelids.eyelid_x;
-            lidUpper = eye_features{pp}.eyelids.eyelid_up_y;
-            lidLower = eye_features{pp}.eyelids.eyelid_lo_y;
-            [~,xIdx] = min(abs(xVals-mean(xVals)));
-            val = lidLower(xIdx) - lidUpper(xIdx);
-            if val > 0 && val < 100
-                palpFissureHeight(pp) = val;
-            end
-            pupilDiameter(pp) = eye_features{pp}.pupil.diameter;
+            pupilDiameter(pp) = fts{pp}.pupil.diameter;
         end
-
         % Store the vecs
         dataVecsPalp(subIdx,contrastIdx,contrastCounter(contrastIdx),1:nTimePoints) = palpFissureHeight;
         dataVecsPupil(subIdx,contrastIdx,contrastCounter(contrastIdx),1:nTimePoints) = pupilDiameter;
 
     end
 
+<<<<<<< HEAD
     % Obtain the median, max and min palpebral fissure width during the
     % recording. The max will likely occur during the dark period (but is
     % not required to be so).
     vals = squeeze(dataVecsPalp(subIdx,1,:,allFramRange));
     openVal = median(max(vals,[],2,'omitmissing'));
     closedVal = min(vals(:),[],'omitmissing');
+=======
+    % Obtain the median palpebral fissure width for this subject
+    allVals = squeeze(dataVecsPalp(subIdx,1,:,allFramRange));
+    openVal = median(max(allVals,[],2,'omitmissing'));
+    closedVal = min(allVals(:),[],'omitmissing');
+>>>>>>> fe2ca525aa29ee31cac5194defe67a3eef27b676
     widthVal = openVal - closedVal;
 
     % For each trial, convert the data vector to proportion closure, and
@@ -190,6 +231,7 @@ for subIdx = 1:length(subjectIDs)
         palpCloseSEM(subIdx,ll) = std(tmpCloseVals,[],2)/sqrt(contrastCounter(ll));
     end
 
+<<<<<<< HEAD
     if plotSubjectTimeSeriesFlag
         figure
         for ll = 1:nLevels
@@ -200,6 +242,36 @@ for subIdx = 1:length(subjectIDs)
             ylim([0,1]);
             ylabel('Proportion open');
             xlabel('time [secs]');
+=======
+    figure
+    for ll = 1:5
+        subplot(2,3,ll)
+        % Plot the trial with the closest to the mean eye closure
+        plot(t(allFramRange),1-squeeze(dataVecsAdj(subIdx,ll,exampleTrialIdx(subIdx,ll),allFramRange)),'-','Color',[0.5 0.5 0.5])
+        hold on
+        %plot line showing where dark baseline ended.
+        xline(200/fps, '--r');
+        ylim([0,1]);
+        ylabel('Proportion open');
+        xlabel('time [secs]');
+    end
+
+    drawnow
+
+end
+
+
+% Create a figure that shows the average, smoothed time-course of eye
+% closure across subjects for a given light level
+myExpFit = @(x,p) p(1) - p(2).*exp(-p(3).*x);
+
+figure
+for ll = 1:5
+    for ss = 1:length(subjectIDs)
+        dataMatrix = squeeze(dataVecsAdj(ss,ll,:,:));
+        for rr = 1:size(dataMatrix,1)
+            dataMatrix(rr,:) = smoothdata(dataMatrix(rr,:),'movmedian',10);
+>>>>>>> fe2ca525aa29ee31cac5194defe67a3eef27b676
         end
         drawnow
     end
@@ -294,6 +366,13 @@ set(gca, 'YTick', [0 0.5 1])
 %% The per-subject response function with a sigmoid fit
 
 figure
+<<<<<<< HEAD
+=======
+% Define a sigmoid fitting function
+% p(1) — 50% Threshold
+% p(2) — Slope
+mySigFit = @(x,p) 1 ./ (1 + exp(-p(2).*(x-p(1))));
+>>>>>>> fe2ca525aa29ee31cac5194defe67a3eef27b676
 
 subjectPlotOrder = [3    10     7     4     9     1     5     6     8     2];
 
@@ -302,8 +381,9 @@ for ss = 1:length(subjectPlotOrder)
     subIdx = subjectPlotOrder(ss);
     subplot(4,3,ss);
 
-    myObj = @(p) norm(palpCloseMean(subIdx,:) - mySigFit(log10(illuminanceLevels),p));
-    p(subIdx,:) = fmincon(myObj,[1 3]);
+myObj = @(p) norm(palpCloseMean(subIdx,~isnan(palpCloseMean(subIdx,:))) - ...
+             mySigFit(log10(illuminanceLevels(~isnan(palpCloseMean(subIdx,:)))), p));
+p(subIdx,:) = fmincon(myObj,[1 3]);
 
     % plot
     for ii = 1:length(illuminanceLevels)
