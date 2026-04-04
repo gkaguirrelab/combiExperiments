@@ -67,6 +67,40 @@ mySigFit = @(x,p) 1 ./ (1 + exp(-p(2).*(x-p(1))));
 % Define an exponential fitting function for later figure creation
 myExpFit = @(x,p) p(1) - p(2).*exp(-p(3).*x);
 
+% Set up some options to keep fmincon quiet
+optsFmincon = optimset('fmincon');
+optsFmincon.Display = 'off';
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Behavioral performance %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% Loop over the data files
+for subIdx = 1:length(subjectIDs)
+
+    % This subject ID
+    subjectID = subjectIDs{subIdx};
+
+    % Load the psychometric object
+    dataDir = fullfile(dropboxBaseDir,'BLNK_data',projectName,'lightLevel',subjectID);
+    fileName = [subjectID '_lightLevel_direction-LightFlux.mat'];
+    load(fullfile(dataDir,fileName),'psychObj');
+
+    % The proportion correct on the detection task, and  the trials in
+    % which any missed events occured
+    nDetectTrialsBySub(subIdx) = length([psychObj.trialData.detected]);
+    proportionDetectBySub(subIdx) = sum([psychObj.trialData.detected])/length([psychObj.trialData.detected]);
+    trialIdxWithMissedDetectionsBySub{subIdx} = find(arrayfun(@(x) any(x.detected==0),psychObj.trialData));
+end
+
+% Report the stats
+fprintf('Each subject was presented an average of %2.0f detection events across all trials.\n',mean(nDetectTrialsBySub));
+fprintf('Mean (across subject) detection performance in the lightLevel test was %2.2f \n',mean(proportionDetectBySub));
+fprintf('    with a range of %2.2f to %2.2f\n',min(proportionDetectBySub),max(proportionDetectBySub));
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% LOAD AND PROCESS %%
@@ -96,8 +130,8 @@ for subIdx = 1:length(subjectIDs)
     % experiment. One of the lightLevel participants did not return for the
     % modulate experiment, so we detect their missing measurement and skip.
     dataDir = fullfile(dropboxBaseDir,'BLNK_data',projectName,'modulate',subjectID);
-    if isfile(fullfile(dataDir,'modResult_LMS.mat'))
-        load(fullfile(dataDir,'modResult_LMS.mat'),'modResult');
+    if isfile(fullfile(dataDir,'modResult_LightFlux.mat'))
+        load(fullfile(dataDir,'modResult_LightFlux.mat'),'modResult');
         backgroundSPD = modResult.backgroundSPD;
         wavelengthsNm = modResult.wavelengthsNm;
         S = WlsToS(wavelengthsNm);
@@ -106,6 +140,10 @@ for subIdx = 1:length(subjectIDs)
     else
         bgLuxBySub_modulate(subIdx) = nan;
     end
+
+    % Save an example light flux modResult from the modulate experiment to
+    % use later
+    modResultLF_modulate = modResult;
 
     % Prepare to loop over trials and assemble the time-series data
     contrastCounter = zeros(size(contrastLevels));
@@ -242,12 +280,12 @@ semData = std(palpCloseMean)/sqrt(size(palpCloseMean,1));
 
 % Fit the sigmoid function
 myObj = @(p) norm(meanData - mySigFit(log10(illuminanceLevels),p));
-p = fmincon(myObj,[1 3]);
+p = fmincon(myObj,[1 3],[],[],[],[],[],[],[],optsFmincon);
 
 % plot the error bars
 for ii = 1:length(illuminanceLevels)
     plot([log10(illuminanceLevels(ii)), log10(illuminanceLevels(ii))],...
-        [meanData(ii)-semData(ii), meanData(ii)+semData(ii)],...
+        [meanData(ii)-2*semData(ii), meanData(ii)+2*semData(ii)],...
         '-','Color',[0.5 0.5 0.5],'LineWidth',3);
     hold on
 end
@@ -268,29 +306,30 @@ xlabel('log_1_0 lux');
 ylabel('Proportion eye closure');
 set(gca, 'XTick', [0 2 4 6])
 set(gca, 'YTick', [0 0.5 1])
-text(4,0.15,'±SEM');
+text(4,0.15,'±2SEM');
 
 
 %% Illustration of the modulate background on the group, light-level
 %% squint function
+contrastToShow = 0.4;
 figure('Position', [100 100 300 300])
 plot(xFit,yFit,':','Color',[0.5,0.5,0.5],'LineWidth',1);
 hold on
 % Background
 xVal = log10(bgLuxMean_modulate);
 yVal = mySigFit(xVal,p);
-plot([xVal xVal],[0 yVal],'-','Color',[0.5 0.5 0.5],'LineWidth',1);
-plot([0 xVal],[yVal yVal],'-','Color',[0.5 0.5 0.5],'LineWidth',1);
+plot([xVal xVal],[0 yVal],'-','Color',[0.5 0.5 0.5],'LineWidth',1.5);
+plot([0 xVal],[yVal yVal],'-','Color',[0.5 0.5 0.5],'LineWidth',1.5);
 % Positive arm
-xVal = log10(bgLuxMean_modulate*1.4);
+xVal = log10(bgLuxMean_modulate*(1+contrastToShow));
 yVal = mySigFit(xVal,p);
-plot([xVal xVal],[0 yVal],'-k','LineWidth',1);
-plot([0 xVal],[yVal yVal],'-k','LineWidth',1);
+plot([xVal xVal],[0 yVal],'--k','LineWidth',1);
+plot([0 xVal],[yVal yVal],'--k','LineWidth',1);
 % Negative arm
-xVal = log10(bgLuxMean_modulate/1.4);
+xVal = log10(bgLuxMean_modulate*(1-contrastToShow));
 yVal = mySigFit(xVal,p);
-plot([xVal xVal],[0 yVal],'-r','LineWidth',1);
-plot([0 xVal],[yVal yVal],'-r','LineWidth',1);
+plot([xVal xVal],[0 yVal],'--r','LineWidth',1);
+plot([0 xVal],[yVal yVal],'--r','LineWidth',1);
 % Clean up
 ylim([0 1]);
 box off
@@ -301,119 +340,89 @@ set(gca, 'XTick', [0 2 4 6])
 set(gca, 'YTick', [0 0.5 1])
 
 
-
-
 %% The per-subject response function with a sigmoid fit
-% 
-% figure
-% <<<<<<< HEAD
-% =======
-% % Define a sigmoid fitting function
-% % p(1) — 50% Threshold
-% % p(2) — Slope
-% mySigFit = @(x,p) 1 ./ (1 + exp(-p(2).*(x-p(1))));
-% >>>>>>> fe2ca525aa29ee31cac5194defe67a3eef27b676
-% 
-% subjectPlotOrder = [3    10     7     4     9     1     5     6     8     2];
-% 
-% for ss = 1:length(subjectPlotOrder)
-% 
-%     subIdx = subjectPlotOrder(ss);
-%     subplot(4,3,ss);
-% 
-% myObj = @(p) norm(palpCloseMean(subIdx,~isnan(palpCloseMean(subIdx,:))) - ...
-%              mySigFit(log10(illuminanceLevels(~isnan(palpCloseMean(subIdx,:)))), p));
-% p(subIdx,:) = fmincon(myObj,[1 3]);
-% 
-%     % plot
-%     for ii = 1:length(illuminanceLevels)
-%         plot([log10(illuminanceLevels(ii)), log10(illuminanceLevels(ii))],...
-%             [palpCloseMean(subIdx,ii)-2*palpCloseSEM(subIdx,ii), palpCloseMean(subIdx,ii)+2*palpCloseSEM(subIdx,ii)],...
-%             '-','Color',[0.5 0.5 0.5],'LineWidth',1.5);
-%         hold on
-%     end
-%     xFit = 0:0.1:6;
-%     yFit = mySigFit(xFit,p(subIdx,:));
-%     plot(xFit,yFit,'-r');
-%     plot(log10(illuminanceLevels),palpCloseMean(subIdx,:),'.k','MarkerSize',10);
-%     ylim([0 1]);
-%     box off
-%     set(gca, 'TickDir', 'out')
-%     if ss == 1
-%         xlabel('log_1_0 lux');
-%         ylabel('Proportion closed');
-%         set(gca, 'XTick', [0 2 4 6])
-%         set(gca, 'YTick', [0 0.5 1])
-%     else
-%         set(gca, 'XTickLabel', [])
-%         set(gca, 'YTickLabel', [])
-%         set(gca,'xtick',[])
-%         set(gca,'ytick',[])
-%     end
-%     text(1,0.85,sprintf('S%d',ss));
-% end
-% 
-% subplot(4,3,12);
-% yFit = mySigFit(xFit,p(6,:));
-% plot(xFit,yFit,'-r');
-% hold on
-% plot([0 p(6,1)],[0.5 0.5],':k');
-% plot([p(6,1) p(6,1)],[0 0.5],':k');
-% box off
-% set(gca, 'TickDir', 'out')
-% set(gca, 'XTickLabel', [])
-% set(gca, 'YTickLabel', [])
-% set(gca,'xtick',[])
-% set(gca,'ytick',[])
-% 
-% 
-% 
-% %% Loop through the psychometric objects and
-% 
-% % If you have the psychObj in memory, these commands will give you the
-% % proportion correct on the detection task, and identify the trials in
-% % which any missed events occured
-% %{
-%     sum([psychObj.trialData.detected])/length([psychObj.trialData.detected])
-%     find(arrayfun(@(x) any(x.detected==0),psychObj.trialData))
-% %}
-% 
-% 
-% 
-% 
-% % Create a figure that shows the average, smoothed time-course of eye
-% % closure across subjects for a given light level
-% myExpFit = @(x,p) p(1) - p(2).*exp(-p(3).*x);
-% 
-% figure
-% for ll = 1:nLevels
-%     for ss = 1:length(subjectIDs)
-%         dataMatrix = squeeze(dataVecsAdj(ss,ll,:,:));
-%         for rr = 1:size(dataMatrix,1)
-%             dataMatrix(rr,:) = smoothdata(dataMatrix(rr,:),'movmedian',10);
-%         end
-%         dataSub(ss,:) = smoothdata(mean(dataMatrix,'omitmissing'),'movmedian',1);
-%     end
-%     yVec = 1-smoothdata(mean(dataSub,'omitmissing'),'movmedian',1);
-%     yVec = yVec(260:5500);
-%     xVec = t(260:5500)-t(260);
-%     t5idx = find(xVec>5,1);
-%     plot(xVec,yVec,'.','Color',[0.5 0.5 0.5]);
-%     hold on
-%     myObj = @(p) norm(yVec(1:t5idx)-myExpFit(xVec(1:t5idx),p));
-%     p = fmincon(myObj,[1 1 1]);
-%     xFit = xVec(1):diff(xVec(1:2)):xVec(t5idx);
-%     yExpFit = myExpFit(xFit,p);
-%     plot(xFit,yExpFit,'-r','LineWidth',1.5);
-%     coef(ll,:) = polyfit(xVec(t5idx:end),yVec(t5idx:end),1);
-%     yFit = polyval(coef(ll,:),xVec(t5idx:end));
-%     yFit = yFit - yFit(1) + yExpFit(end);
-%     plot(xVec(t5idx:end),yFit,'-r','LineWidth',1.5);
-% end
-% ylim([0 1]);
-% box off
-% xlabel('Time [s]');
-% ylabel('Proportion eye open');
-% set(gca,'TickDir','out');
-% set(gca,'YTick',[0 0.5 1]);
-% p=[];
+figure('Position', [100 100 900 700])
+tiledlayout(3,4,'TileSpacing','compact');
+
+% Order the subjects by the steepness of their response functions
+subjectPlotOrder = [3    10     7     4     9     1     5     6     8     2];
+
+% Loop through the subjects
+for ss = 1:length(subjectPlotOrder)
+
+    % this subject
+    subIdx = subjectPlotOrder(ss);
+    nexttile(ss);
+
+    % Set up the sigmoid fit process
+    myObj = @(p) norm(palpCloseMean(subIdx,~isnan(palpCloseMean(subIdx,:))) - ...
+        mySigFit(log10(illuminanceLevels(~isnan(palpCloseMean(subIdx,:)))), p));
+    p(subIdx,:) = fmincon(myObj,[1 3],[],[],[],[],[],[],[],optsFmincon);
+
+    % Plot
+    for ii = 1:length(illuminanceLevels)
+        plot([log10(illuminanceLevels(ii)), log10(illuminanceLevels(ii))],...
+            [palpCloseMean(subIdx,ii)-2*palpCloseSEM(subIdx,ii), palpCloseMean(subIdx,ii)+2*palpCloseSEM(subIdx,ii)],...
+            '-','Color',[0.5 0.5 0.5],'LineWidth',1.5);
+        hold on
+    end
+    xFit = 0:0.1:6;
+    yFit = mySigFit(xFit,p(subIdx,:));
+    plot(xFit,yFit,'-r');
+    plot(log10(illuminanceLevels),palpCloseMean(subIdx,:),'.k','MarkerSize',10);
+    ylim([0 1]);
+    box off
+    axis square
+    set(gca, 'TickDir', 'out')
+    if ss == 1
+        xlabel('log_1_0 lux');
+        ylabel('Proportion closed');
+        set(gca, 'XTick', [0 2 4 6])
+        set(gca, 'YTick', [0 0.5 1])
+        text(4,0.15,'±2SEM');
+    else
+        set(gca, 'XTickLabel', [])
+        set(gca, 'YTickLabel', [])
+        set(gca,'xtick',[])
+        set(gca,'ytick',[])
+    end
+    title(subjectIDs{subIdx},'Interpreter','none');
+end
+
+
+%% Time-course of eye closure across subjects
+figure('Position', [100 100 500 300])
+
+% Loop over illuminance levels
+for ll = 1:nLevels
+    for ss = 1:length(subjectIDs)
+        dataMatrix = squeeze(dataVecsAdj(ss,ll,:,:));
+        for rr = 1:size(dataMatrix,1)
+            dataMatrix(rr,:) = smoothdata(dataMatrix(rr,:),'movmedian',10);
+        end
+        dataSub(ss,:) = smoothdata(mean(dataMatrix,'omitmissing'),'movmedian',1);
+    end
+    yVec = 1-smoothdata(mean(dataSub,'omitmissing'),'movmedian',1);
+    yVec = yVec(260:5500);
+    xVec = t(260:5500)-t(260);
+    t5idx = find(xVec>5,1);
+    plot(xVec,yVec,'.','Color',[0.5 0.5 0.5]);
+    hold on
+    myObj = @(p) norm(yVec(1:t5idx)-myExpFit(xVec(1:t5idx),p));
+    p = fmincon(myObj,[1 1 1],[],[],[],[],[],[],[],optsFmincon);
+    xFit = xVec(1):diff(xVec(1:2)):xVec(t5idx);
+    yExpFit = myExpFit(xFit,p);
+    plot(xFit,yExpFit,'-r','LineWidth',1.5);
+    coef(ll,:) = polyfit(xVec(t5idx:end),yVec(t5idx:end),1);
+    yFit = polyval(coef(ll,:),xVec(t5idx:end));
+    yFit = yFit - yFit(1) + yExpFit(end);
+    plot(xVec(t5idx:end),yFit,'-r','LineWidth',1.5);
+end
+ylim([0 1]);
+box off
+xlabel('Time [s]');
+ylabel('Proportion eye open');
+set(gca,'TickDir','out');
+set(gca,'YTick',[0 0.5 1]);
+p=[];
+
