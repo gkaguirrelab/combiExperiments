@@ -71,6 +71,9 @@ for ii = 1:nBoots
     b = X\subY';
     amplitude(ii) = norm(b);
     phase(ii) = -atan2(b(2),b(1));
+
+    % Wrapt to our desired domain
+    phase(ii) = wrapTo2Pi(phase(ii)+pi/2);
 end
 
 % Create the yFit if we are not performing bootstrapping

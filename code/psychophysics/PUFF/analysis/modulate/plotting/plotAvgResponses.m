@@ -18,8 +18,8 @@ contrastLabels = fieldnames(avgResults.(directionLabels{1}));
 % Create a bar plot with the mean±SEM across subjects for each direction.
 for dd = 1:length(directionLabels)
     for cc = 1:length(contrastLabels)        
-    meanAmp(dd,cc) = avgResults.(directionLabels{dd}).(contrastLabels{cc}).meanAmplitude;
-    semAmp(dd,cc) = avgResults.(directionLabels{dd}).(contrastLabels{cc}).semAmplitude;
+    meanAmp(dd,cc) = avgResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude;
+    semAmp(dd,cc) = avgResults.(directionLabels{dd}).(contrastLabels{cc}).amplitudeSEM;
     end
 end
 figure('WindowStyle', 'normal');

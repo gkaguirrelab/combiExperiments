@@ -42,9 +42,9 @@ for dd = 1:length(directionLabels)
         avgResults.(directionLabels{dd}).(contrastLabels{cc}).palpFissure = mean(avgVecs,'omitmissing');
         avgResults.(directionLabels{dd}).(contrastLabels{cc}).bootAmplitude = bootAmplitude;
         avgResults.(directionLabels{dd}).(contrastLabels{cc}).bootPhase = bootPhase;
-        avgResults.(directionLabels{dd}).(contrastLabels{cc}).meanAmplitude = meanAmplitude;
-        avgResults.(directionLabels{dd}).(contrastLabels{cc}).semAmplitude = semAmplitude;
-        avgResults.(directionLabels{dd}).(contrastLabels{cc}).meanPhase = meanPhase;
+        avgResults.(directionLabels{dd}).(contrastLabels{cc}).amplitude = meanAmplitude;
+        avgResults.(directionLabels{dd}).(contrastLabels{cc}).amplitudeSEM = semAmplitude;
+        avgResults.(directionLabels{dd}).(contrastLabels{cc}).phase = meanPhase;
     end
 end
 
