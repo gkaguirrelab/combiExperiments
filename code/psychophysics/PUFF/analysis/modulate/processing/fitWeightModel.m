@@ -40,7 +40,7 @@ for ss = 1:nSubjects
     % Assemble the data matrix
     for dd = 1:length(directions)
         for cc = 1:length(contrasts)
-            phase = sign(wrapToPi(fourierFitResults.(directions{dd}).(contrastLabels{cc}).phase(ss)+pi/2));
+            phase = sign(fourierFitResults.(directions{dd}).(contrastLabels{cc}).phase(ss));
             yVals(dd,cc) = phase*fourierFitResults.(directions{dd}).(contrastLabels{cc}).amplitude(ss);
             wVals(dd,cc) = 1/fourierFitResults.(directions{dd}).(contrastLabels{cc}).amplitudeSEM(ss);
         end

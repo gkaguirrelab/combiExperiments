@@ -63,6 +63,8 @@ plotIndividVariation(fourierFitResults,...
 % Get the photoreceptor integration model fits (and create a figure)
 [p,fVals] = fitWeightModel(fourierFitResults);
 
+
+
 % Save results
 dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 projectName = 'PuffLight';
