@@ -29,7 +29,7 @@ for dd = 1:length(directionLabels)
         % Some phase work here to get the positive and negative phase
         % values to correspond to the positive and negative directions of
         % eye closure response
-        meanPhase = wrapToPi(atan2(mu_y, mu_x)+pi/2);
+        meanPhase = wrapToPi(atan2(mu_y, mu_x));
         d = sqrt((x - mu_x).^2 + (y - mu_y).^2);
         semAmplitude = std(d); % The standard deviation of the boot-strap values
         % is the standard error of the mean
