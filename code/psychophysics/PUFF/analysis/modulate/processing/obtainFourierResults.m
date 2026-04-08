@@ -6,9 +6,13 @@ arguments
     options.fitFreqHz = 1/60
 end
 
+% Load the meanStimPhaseRightEyeRad. This is the phase of the stimulus in
+% the recording. We adjust the phase of the response to be relative to this
+% value.
+meanStimPhaseRightEyeRad = processVideoLags();
+
 % Extract the number of subjects, and direction, contrast, and phase labels
 % from the results structure
-nSubs = length(results);
 directionLabels = fieldnames(results{1});
 contrastLabels = fieldnames(results{1}.(directionLabels{1}));
 phaseLabels = fieldnames(results{1}.(directionLabels{1}).(contrastLabels{1}));
@@ -22,6 +26,8 @@ for dd = 1:length(directionLabels)
             vecs(nTrials+1:nTrials*2,:)=results{ss}.(directionLabels{dd}).(contrastLabels{cc}).(phaseLabels{2}).palpFissure;
             % Get a set of boot-strapped amplitude and phase values
             [bootAmplitude, bootPhase] = fitFourier(vecs, 'fitFreqHz', options.fitFreqHz, 'returnBoots', true);
+            % Adjust for mean stimulus timing
+            bootPhase = bootPhase - meanStimPhaseRightEyeRad;
             % Obtain the mean within Cartesian space, then covert back
             [x, y] = pol2cart(bootPhase, bootAmplitude);
             mu_x = mean(x); mu_y = mean(y);

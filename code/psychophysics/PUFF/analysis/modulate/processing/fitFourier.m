@@ -1,4 +1,4 @@
-function [amplitude, phase, yFit] = fitFourier(y, options)
+function [amplitude, phase, yFit, r2] = fitFourier(y, options)
 % Perform a fourier regression for a passed time series
 %
 % Syntax:
@@ -73,14 +73,16 @@ for ii = 1:nBoots
     phase(ii) = -atan2(b(2),b(1));
 
     % Wrapt to our desired domain
-    phase(ii) = wrapTo2Pi(phase(ii)+pi/2);
+    phase(ii) = wrapTo2Pi(phase(ii));
 end
 
-% Create the yFit if we are not performing bootstrapping
+% Create the yFit and r2 if we are not performing bootstrapping
 if ~options.returnBoots
     yFit = (X*b)';
+    r2 = corr(yFit',y')^2;
 else
     yFit = nan;
+    r2 = nan;
 end
 
 end
