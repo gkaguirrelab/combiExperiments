@@ -28,6 +28,8 @@ for dd = 1:length(directionLabels)
             [bootAmplitude, bootPhase] = fitFourier(vecs, 'fitFreqHz', options.fitFreqHz, 'returnBoots', true);
             % Adjust for mean stimulus timing
             bootPhase = bootPhase - meanStimPhaseRightEyeRad;
+            % Wrap to 2 pi
+            bootPhase = wrapTo2Pi(bootPhase);
             % Obtain the mean within Cartesian space, then covert back
             [x, y] = pol2cart(bootPhase, bootAmplitude);
             mu_x = mean(x); mu_y = mean(y);

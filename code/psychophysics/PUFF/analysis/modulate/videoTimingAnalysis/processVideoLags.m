@@ -2,8 +2,13 @@ function meanStimPhaseRightEyeRad = processVideoLags()
 % This routine examines the temporal offsets present in the video
 % intensityt data that is created by the extractVideoRegions routine
 
-varFile='/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/BLNK_analysis/PuffLight/modulate/videoLatencyAnalysis/08-Apr-2026.mat';
-load(varFile,'fileStructList','intensityData','regionMasks');
+% Define some directory info and load the results of the prior analysis
+projectName = 'PuffLight';
+experimentName = 'modulate';
+dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+varDir = fullfile(dropboxBaseDir,'BLNK_analysis',projectName,experimentName,'videoLatencyAnalysis');
+varFileName = '08-Apr-2026.mat';
+load(fullfile(varDir,varFileName),'fileStructList','intensityData','regionMasks');
 
 % Loop through the videos and find those recordings that have at least 50%
 % of the variance in the time series explained by a sinusoidal modulation
