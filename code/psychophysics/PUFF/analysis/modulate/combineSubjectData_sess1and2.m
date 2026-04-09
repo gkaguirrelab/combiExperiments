@@ -43,6 +43,9 @@ end
 % Get the across-subject average results
 avgResults = acrossSubjectAverage(results);
 
+% Report the ipRGC photoreceptor weights for the high-contrast stimulus set
+
+
 % Plot the across-subject average responses
 plotAvgResponses(avgResults,...
     'directionColors',directionColors)

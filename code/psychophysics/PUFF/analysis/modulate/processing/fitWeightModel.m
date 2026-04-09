@@ -40,8 +40,13 @@ for ss = 1:nSubjects
     % Assemble the data matrix
     for dd = 1:length(directions)
         for cc = 1:length(contrasts)
-            phase = sign(fourierFitResults.(directions{dd}).(contrastLabels{cc}).phase(ss));
-            yVals(dd,cc) = phase*fourierFitResults.(directions{dd}).(contrastLabels{cc}).amplitude(ss);
+            phase = fourierFitResults.(directions{dd}).(contrastLabels{cc}).phase(ss);
+            if phase >= pi/2 && phase < 3*pi/2
+                ampSign = -1;
+            else
+                ampSign = 1;
+            end
+            yVals(dd,cc) = ampSign*fourierFitResults.(directions{dd}).(contrastLabels{cc}).amplitude(ss);
             wVals(dd,cc) = 1/fourierFitResults.(directions{dd}).(contrastLabels{cc}).amplitudeSEM(ss);
         end
     end
@@ -61,10 +66,10 @@ for ss = 1:nSubjects
     k = myModel(p(ss,:));
     for dd = 1:length(directions)
         for cc = 1:length(contrastLabels)
-        scatter(yVals(dd,cc),k(dd,cc),contrastMarkerSize(cc),'o',...
-            'MarkerFaceColor',directionColors{dd},...
-            'MarkerFaceAlpha',0.5,...
-            'MarkerEdgeColor','none');
+            scatter(yVals(dd,cc),k(dd,cc),contrastMarkerSize(cc),'o',...
+                'MarkerFaceColor',directionColors{dd},...
+                'MarkerFaceAlpha',0.5,...
+                'MarkerEdgeColor','none');
         end
     end
 end
