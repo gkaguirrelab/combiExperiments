@@ -1,9 +1,10 @@
 % This code creates a demographic table from the FLIC subject summary Excel spreadsheet.
 
-% HAVE TO LOAD FILE HERE AND CHECK THIS CODE 
-% THEN make more nuanced table that includes CHYPS and medication info
+% Information stratified by group includes age, number of women, race
+% composition of the sample, and number of hispanic individuals
+% Add BCVA and color blindness information, not sure how to summarize
 
-subjSummaryFile = '/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_subject/FLIC_SubjectSummary.xlsx';
+subjSummaryFile = '/Users/melanopsin/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_subject/FLIC_SubjectSummary.xlsx';
 
 % Detect the default options for this file
 opts = detectImportOptions(subjSummaryFile);
@@ -32,13 +33,6 @@ T.SexAssignedAtBirth = string(T.SexAssignedAtBirth);
 T.NIHRace = string(T.NIHRace);
 T.NIHEthnicity = string(T.NIHEthnicity);
 
-% Subject demographic characteristics table
-% Age               % numeric
-% Sex               % categorical: 'F' or 'M'
-% NIHRace           % categorical: 5 categories (e.g., 'White','Black',...)
-% NIHEthnicity      % categorical: 2 categories (e.g., 'Hispanic','Non-Hispanic')
-% MigraineOrControl_   % categorical: 'Control' or 'MwA'
-
 % Compute age summary
 groups = {'Control','Migraine'};
 age_summary = strings(length(groups),1);
@@ -61,7 +55,13 @@ for i = 1:length(groups)
 end
 
 % Race composition column
-race_categories = unique(T.NIHRace);
+race_categories = [   % NIH race categories
+    "White"
+    "Black or African American"
+    "Asian"
+    "American Indian or Alaska Native"
+    "Native Hawaiian or Other Pacific Islander"
+];
 race_composition = strings(length(groups),1);
 
 for i = 1:length(groups)
@@ -69,7 +69,7 @@ for i = 1:length(groups)
     n_total = sum(idx);
     parts = strings(1, length(race_categories));
     for j = 1:length(race_categories)
-        n_race = sum(T.NIHRace(idx) == race_categories(j));
+        n_race = sum(contains(T.NIHRace(idx), race_categories(j)));
         pct = round(100 * n_race / n_total);
         if n_race > 0
             parts(j) = sprintf('%s %d (%d%%)', race_categories(j), n_race, pct);
@@ -92,11 +92,22 @@ end
 demographics_table = table();
 demographics_table.Group = groups';
 demographics_table.Age = age_summary;
-demographics_table.Sex = sex_summary;
-demographics_table.Race_Composition = race_composition;
-demographics_table.Hispanic_n = ethnicity_summary;
+demographics_table.NumberWomen = sex_summary;
+demographics_table.RaceComposition = race_composition;
+demographics_table.NumberHispanic = ethnicity_summary;
 
 disp(demographics_table)
+
+
+%% Subject demographic and clinical characteristics
+
+% Info stratified by group includes no of women, age, headache days/1 mo,
+% CHYPS score, MIDAS score, medication use last month
+
+% Have number of women, age, and CHYPS score from subj summary doc
+
+% Need to extract headache days, MIDAS, medication use from POEM
+
 
 %% Code specifically to make a table of the ages of all FLIC participants 
 % (including Fall 2024 data collection)
