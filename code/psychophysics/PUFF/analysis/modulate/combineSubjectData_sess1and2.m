@@ -13,12 +13,22 @@ directionLabels = {'LF','Mel','LMS','S'};
 phaseLabels = {'OnOff','OffOn'};
 contrastLabels = {'High','Low'};
 phases = [0,pi];
+phaseFileNames = {'0.00','3.14'};
 contrasts =  {[0.4,0.4,0.4,0.4],[0.2,0.2,0.2,0.2]};
 nTrials = 4;
 
 % Define plot properties
 directionColors = {[0 0 0],[0 1 1],[1 0.75 0],[0 0 1]};
 directionLineColors = {'k','c',[1 0.75 0],'b'};
+
+% Obtain the behavioral performance. We exclude BLINK_1011, as there seems
+% to have been some technical error that resulted in zero detected trials.
+goodSubs = ~strcmp(subjects,'BLNK_1011');
+[nDetectTrials,proportionDetect,trialIdxWithMissedDetections] = ...
+    reportModulateBehavPerformance(subjects(goodSubs),directions,contrasts,phases);
+nMisses = sum(cell2mat(cellfun(@(x) sum(x),trialIdxWithMissedDetections(:),'UniformOutput',false)));
+fprintf('On average, each participant was presented with a total of %2.0f trials across all conditions.\n',sum(nDetectTrials(:),'omitmissing')/sum(goodSubs));
+fprintf('Out of the total of %d trials across all subjects, only %d trials were missed.\n',sum(nDetectTrials(:),'omitmissing'),nMisses);
 
 % Get the results from disk
 % To check the results for each subject, set makePlotFlag to true, and
@@ -39,6 +49,7 @@ for ss = 1:length(subjects)
     close all
     %}
 end
+
 
 % Get the across-subject average results
 avgResults = acrossSubjectAverage(results);
