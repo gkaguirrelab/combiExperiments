@@ -24,10 +24,3 @@ for ss = 1:length(subjects)
         end
     end
 end
-
-% 
-% % Report the stats
-% fprintf('Each subject was presented an average of %2.0f detection events across all trials.\n',mean(nDetectTrialsBySub));
-% fprintf('Mean (across subject) detection performance in the lightLevel test was %2.2f \n',mean(proportionDetectBySub));
-% fprintf('    with a range of %2.2f to %2.2f\n',min(proportionDetectBySub),max(proportionDetectBySub));
-
