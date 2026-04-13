@@ -1,4 +1,4 @@
-function plot_photoreceptor_diffuse_lighting()
+function plot_photoreceptor_space()
     % Vector directions (normalized)
     v_mel = [0, 0, 1];
     v_s   = [0, 1, 0];
@@ -6,7 +6,7 @@ function plot_photoreceptor_diffuse_lighting()
     v_lmsm = [1, 1, 1];
 
     vectors = {v_mel, v_s, v_lms, v_lmsm};
-    colors = {[0 1 1], [0 0 1], [1 0.9 0], [0 0 0]}; % Cyan, Blue, Yellow, Black
+    colors = {[0 1 1], [0 0 1], [1 0.9 0], [0 0 0]}; 
     tipLabels = {'Mel', 'S', 'LMS', 'LF'};
 
     figure('Color', 'w', 'Renderer', 'opengl');
@@ -41,13 +41,12 @@ function plot_photoreceptor_diffuse_lighting()
     patch([-boxPos boxPos boxPos -boxPos], [0 0 0 0], [-boxPos -boxPos boxPos boxPos], ...
           [0.5 0.5 0.5], 'FaceAlpha', planeAlpha, 'EdgeColor', 'none');
 
-    % --- CENTRAL GRAY SPHERE ---
+    % --- CENTRAL GRAY SPHERE (FLAT) ---
     [sx, sy, sz] = sphere(30);
     sphereRadius = 0.05;
-    s = surf(sx*sphereRadius, sy*sphereRadius, sz*sphereRadius, ...
-        'FaceColor', [0.6 0.6 0.6], 'EdgeColor', 'none', 'FaceAlpha', 1.0);
-    % Set material properties for diffuse look
-    set(s, 'AmbientStrength', 0.6, 'DiffuseStrength', 0.8, 'SpecularStrength', 0.1);
+    surf(sx*sphereRadius, sy*sphereRadius, sz*sphereRadius, ...
+        'FaceColor', [0.6 0.6 0.6], 'EdgeColor', 'none', ...
+        'FaceLighting', 'none', 'FaceAlpha', 1.0); % <-- Removed shading
 
     % --- VECTORS AND TIP LABELS ---
     for i = 1:length(vectors)
@@ -66,17 +65,7 @@ function plot_photoreceptor_diffuse_lighting()
 
     axis off; 
     view(60, 20);
-
-    % --- DIFFUSE LIGHTING SETUP ---
-    % 1. Use 'soft' material to reduce specular highlights
-    material shiny; 
-    
-    % 2. Use Gouraud lighting for smooth color transitions
-    lighting gouraud; 
-    
-    % 3. Add multiple light sources for more even (diffuse) coverage
-    camlight('headlight');   % Main light from camera
-    light('Position', [-1 -1 1], 'Style', 'infinite'); % Fill light from opposite side
+    % Lighting commands removed to prevent interference
 end
 
 function drawSingleConeVector(p1, p2, h, r, col, style, coneAlpha, lineAlpha)
@@ -98,7 +87,7 @@ function drawSingleConeVector(p1, p2, h, r, col, style, coneAlpha, lineAlpha)
     yc = reshape(pts(2,:), size(yc)) + stemEnd(2);
     zc = reshape(pts(3,:), size(zc)) + stemEnd(3);
     
-    c = surf(xc, yc, zc, 'FaceColor', col, 'EdgeColor', 'none', 'FaceAlpha', coneAlpha);
-    % Set material properties for diffuse look on cones
-    set(c, 'AmbientStrength', 0.6, 'DiffuseStrength', 0.8, 'SpecularStrength', 0.1);
+    % Render with 'FaceLighting' set to 'none'
+    surf(xc, yc, zc, 'FaceColor', col, 'EdgeColor', 'none', ...
+        'FaceAlpha', coneAlpha, 'FaceLighting', 'none'); 
 end
