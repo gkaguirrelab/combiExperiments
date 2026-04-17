@@ -10,61 +10,40 @@ function [squintSignal, sense] = calculateActionSpectrum(watts, lambda, options)
         options.w_s (1,1) double = -0.1
     end
     
-    S = [lambda(1) (lambda(2)-lambda(1)) length(lambda)];
+    % Orientation setup
+    lambdaCol = lambda(:); 
+    lambdaRow = lambda(:)'; 
+    S = [lambdaRow(1) (lambdaRow(2)-lambdaRow(1)) length(lambdaRow)];
 
-    %% 1. Get Intrinsic (Unfiltered) Photopigment Nomograms
-    % (Standard Stockman-Sharpe)
-    mel_raw = exp(-((log10(lambda) - log10(480)) / 0.09).^2);
-    L_raw = exp(-0.5 * ((lambda - 558.9) / 35.5).^2);
-    M_raw = exp(-0.5 * ((lambda - 530.3) / 32.2).^2);
-    S_raw = exp(-0.5 * ((lambda - 444.6) / 24.1).^2);
-    
-    sense.Intrinsic.Mel = mel_raw(:)';
-    sense.Intrinsic.LM  = ((L_raw + M_raw) ./ max(L_raw + M_raw))';
-    sense.Intrinsic.S   = S_raw(:)';
+    %% 1. INTRINSIC SENSITIVITY (Nomograms)
+    sense.Intrinsic.Mel = PhotopigmentNomogram(lambdaCol, 480, 'Govardovskii')';
+    absL = PhotopigmentNomogram(lambdaCol, 558.9, 'StockmanSharpe')';
+    absM = PhotopigmentNomogram(lambdaCol, 530.3, 'StockmanSharpe')';
+    absS = PhotopigmentNomogram(lambdaCol, 420.7, 'StockmanSharpe')';
+    sense.Intrinsic.LM = (absL + absM) ./ max(absL + absM);
+    sense.Intrinsic.S  = absS ./ max(absS);
 
-    %% 2. Get Retinal Fundamentals (Filtered)
-    % FIX: Ensure we call for 'Mel' specifically or handle the correct index.
-    % In most Aguirre Lab setups, Mel is a separate call or specific struct:
-    
-    % Attempting to pull Mel explicitly
-    try
-        [~, ~, T_mel_quantal] = ComputeCIEMelFundamental(S, options.fieldSize, ...
-            options.age, options.pupilSize);
-    catch
-        % Fallback if your toolbox uses a different wrapper
-        [~, ~, T_all_quantal] = ComputeCIEConeFundamentals(S, options.fieldSize, ...
-            options.age, options.pupilSize);
-        % If T_all_quantal is 3-rows (L,M,S), we need to ensure Mel isn't L!
-        % We will use the intrinsic Mel template filtered by the lens adj
-        [~, ~, ~, adj] = ComputeCIEConeFundamentals(S, options.fieldSize, options.age, options.pupilSize);
-        T_mel_quantal = mel_raw(:)' .* adj.lens(:)';
-    end
-    
-    % Get LMS
-    [~, ~, T_LMS_quantal] = ComputeCIEConeFundamentals(S, options.fieldSize, ...
-        options.age, options.pupilSize);
-    
-    % Convert to Energy (Watts) and Normalize
-    T_mel_energy = EnergyToQuanta(S, T_mel_quantal')';
-    T_LMS_energy = EnergyToQuanta(S, T_LMS_quantal')';
+    %% 2. RETINAL SENSITIVITY (Lens filtered)
+    [T_mel_quantal_norm] = ComputeCIEMelFundamental(S, options.fieldSize, options.age, options.pupilSize, []);
+    [T_lms_quantal_norm] = ComputeCIEConeFundamentals(S, options.fieldSize, options.age, options.pupilSize);
+
+    T_mel_energy = EnergyToQuanta(S, T_mel_quantal_norm')';
+    T_lms_energy = EnergyToQuanta(S, T_lms_quantal_norm')';
     
     sense.Mel = T_mel_energy(1,:) ./ max(T_mel_energy(1,:));
-    
-    tempLM = T_LMS_energy(1,:) + T_LMS_energy(2,:);
-    sense.LM_combined = tempLM ./ max(tempLM);
-    
-    sense.S = T_LMS_energy(3,:) ./ max(T_LMS_energy(3,:));
-    
-    % Force Row Vectors
-    sense.Mel = sense.Mel(:)';
-    sense.LM_combined = sense.LM_combined(:)';
-    sense.S = sense.S(:)';
-    
-    %% 3. Calculate Final Squint Signal
-    drive = (options.w_mel * (sense.Mel .* watts)) + ...
-            (options.w_lm  * (sense.LM_combined .* watts)) + ...
-            (options.w_s   * (sense.S .* watts));
+    tempLM_ret = T_lms_energy(1,:) + T_lms_energy(2,:);
+    sense.LM_combined = tempLM_ret ./ max(tempLM_ret);
+    sense.S = T_lms_energy(3,:) ./ max(T_lms_energy(3,:));
+
+    %% 3. FINAL SIGNAL CALCULATION
+    % The integrated iPRGC Action Spectrum (The sensitivity curve)
+    sense.iprgcActionSpectrum = (options.w_mel * sense.Mel) + ... 
+                                (options.w_lm  * sense.LM_combined) + ...
+                                (options.w_s   * sense.S);
             
-    squintSignal = log10(max(drive, 1e-4));
+    % Total Neural Drive (Integrated catch across the spectrum)
+    totalNeuralDrive = sum(sense.iprgcActionSpectrum .* watts);
+    
+    % The "Squint Signal" output (Scalar)
+    squintSignal = log10(max(totalNeuralDrive, 1e-4));
 end

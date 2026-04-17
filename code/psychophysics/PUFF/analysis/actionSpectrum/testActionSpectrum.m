@@ -1,75 +1,90 @@
-%% --- Configuration ---
+%% --- Configuration & Execution ---
 wavelengths = 380:1:780;
 target_age = 25;
-input_power = 100; % [Watts]
-test_watts = input_power * ones(size(wavelengths));
 
+% INPUT: Narrow-band Green LED
+% Peak at 530nm, Width (FWHM) approx 25nm, Peak Power 100
+test_watts = 100 * exp(-0.5 * ((wavelengths - 530) / 12).^2); 
+
+% Run the model
 [squint_signal_log, sense] = calculateActionSpectrum(test_watts, wavelengths, ...
     'age', target_age, 'fieldSize', 10);
 
-% Custom Colors for Visibility
-color_mel = [0, 0.8, 0.8];    % Bright Cyan
-color_lm  = [1, 0.82, 0];     % High-contrast Golden (Yellow with minimal red)
-color_s   = [0, 0.4, 1];      % Azure Blue
+% Define colors
+color_mel = [0, 0.8, 0.8];    
+color_lm  = [1, 0.82, 0];     
+color_s   = [0, 0.4, 1];      
+color_total = [0, 0.6, 0]; % Dark Green for the LED drive
 
-% Weighted Components for Plot 3
-mel_drive = sense.Mel .* test_watts * 1.0;
-lm_drive  = sense.LM_combined .* test_watts * 0.2;
-s_drive   = sense.S .* test_watts * -0.1;
-total_drive = mel_drive + lm_drive + s_drive;
+% Figure setup
+figure('Color', 'w', 'Units', 'normalized', 'Position', [0.05, 0.1, 0.85, 0.75]);
+tlo = tiledlayout(2,3, 'Padding', 'loose', 'TileSpacing', 'compact');
 
-% Extract lens for Plot 1
-[~, ~, ~, adj] = ComputeCIEConeFundamentals([380 1 401], 10, target_age, 3);
-transmittance = adj.lens(:)';
+%% PLOT: Input Light Power (The Green LED)
+nexttile;
+fill(wavelengths, test_watts(:), [0.8 1 0.8], 'EdgeColor', [0 0.5 0], 'LineWidth', 1.5);
+grid on; ylabel('Power (Watts/sr/m^2)');
+title('Green LED Input Spectrum');
 
-figure('Color', 'w', 'Position', [100, 100, 1100, 850]);
-
-%% PLOT 1: Lens
-subplot(2,2,1);
-plot(wavelengths, transmittance, 'k', 'LineWidth', 2);
+%% PLOT: Lens Transmittance
+nexttile;
+[~, ~, ~, adj] = ComputeCIEConeFundamentals([wavelengths(1) 1 length(wavelengths)], ...
+    10, target_age, 3);
+plot(wavelengths, adj.lens(:), 'k', 'LineWidth', 2);
 grid on; ylabel('Transmittance'); 
-title(['Lens Transmittance (Age ' num2str(target_age) ')']);
-ylim([0 1.1]); xlim([380 780]);
-
-%% PLOT 2: Intrinsic vs. Retinal Sensitivity
-subplot(2,2,2); hold on;
-% Intrinsic (Dashed)
-plot(wavelengths, sense.Intrinsic.Mel, '--', 'Color', color_mel, 'LineWidth', 1.5, 'DisplayName', 'Intrinsic Mel');
-plot(wavelengths, sense.Intrinsic.LM,  '--', 'Color', color_lm,  'LineWidth', 1.5, 'DisplayName', 'Intrinsic L+M');
-plot(wavelengths, sense.Intrinsic.S,   '--', 'Color', color_s,   'LineWidth', 1.5, 'DisplayName', 'Intrinsic S');
-
-% Retinal (Solid)
-plot(wavelengths, sense.Mel, 'Color', color_mel, 'LineWidth', 2.5, 'DisplayName', 'Retinal Mel');
-plot(wavelengths, sense.LM_combined, 'Color', color_lm, 'LineWidth', 2.5, 'DisplayName', 'Retinal L+M');
-plot(wavelengths, sense.S, 'Color', color_s, 'LineWidth', 2.5, 'DisplayName', 'Retinal S');
-
-grid on; ylabel('Relative Sensitivity');
-title('Intrinsic vs. Retinal Catch'); % Peak removed
-legend('Location', 'best', 'FontSize', 8); 
-xlim([380 780]);
+title('Lens Filtering');
 ylim([0 1.1]);
 
-%% PLOT 3: iPRGC Drive (Weighted Linear)
-subplot(2,2,3); hold on;
-plot(wavelengths, mel_drive, 'Color', color_mel, 'LineWidth', 1.2, 'DisplayName', 'Mel (w=1.0)');
-plot(wavelengths, lm_drive,  'Color', color_lm,  'LineWidth', 1.2, 'DisplayName', 'L+M (w=0.2)');
-plot(wavelengths, s_drive,   'Color', color_s,   'LineWidth', 1.2, 'DisplayName', 'S (w=-0.1)');
-plot(wavelengths, total_drive, 'k', 'LineWidth', 3, 'DisplayName', 'Total Drive');
+%% PLOT: Sensor Sensitivity
+nexttile; hold on;
+plot(wavelengths, sense.Intrinsic.Mel(:), '--', 'Color', color_mel, 'LineWidth', 1);
+plot(wavelengths, sense.Intrinsic.LM(:),  '--', 'Color', color_lm,  'LineWidth', 1);
+plot(wavelengths, sense.Intrinsic.S(:),   '--', 'Color', color_s,   'LineWidth', 1);
+plot(wavelengths, sense.Mel(:), 'Color', color_mel, 'LineWidth', 2.5, 'DisplayName', 'Mel');
+plot(wavelengths, sense.LM_combined(:), 'Color', color_lm, 'LineWidth', 2.5, 'DisplayName', 'L+M');
+plot(wavelengths, sense.S(:), 'Color', color_s, 'LineWidth', 2.5, 'DisplayName', 'S');
+grid on; ylabel('Relative Sensitivity');
+title('Retinal Fundamentals');
+ylim([0 1.1]);
+
+%% PLOT: Integrated Action Spectrum
+nexttile; hold on;
+mel_comp = sense.Mel(:) * 1.0;
+lm_comp  = sense.LM_combined(:) * 0.2;
+s_comp   = sense.S(:) * -0.1;
+total_as = mel_comp + lm_comp + s_comp;
+
+plot(wavelengths, mel_comp, 'Color', color_mel, 'LineWidth', 1.1, 'DisplayName', 'Mel');
+plot(wavelengths, lm_comp,  'Color', color_lm,  'LineWidth', 1.1, 'DisplayName', 'L+M');
+plot(wavelengths, s_comp,   'Color', color_s,   'LineWidth', 1.1, 'DisplayName', 'S');
+plot(wavelengths, total_as, 'k', 'LineWidth', 2.5, 'DisplayName', 'Combined AS');
 
 yline(0, 'k-', 'Alpha', 0.3, 'HandleVisibility', 'off'); 
-grid on; 
-ylabel('iPRGC Drive (Weighted Watts)');
-title(['Weighted Linear Signal (' num2str(input_power) ' Watts)']);
-legend('Location', 'best', 'FontSize', 8); 
-xlim([380 780]);
+grid on; ylabel('Sensitivity');
+title('Combined Action Spectrum');
 
-%% PLOT 4: Response (Log Transform)
-subplot(2,2,4);
-plot(wavelengths, squint_signal_log, 'k', 'LineWidth', 2.5);
-grid on; 
-ylabel('Response (log_{10} Drive)');
-title(['Final Squint Signal (' num2str(input_power) ' Watts)']);
-xlim([380 780]);
+%% PLOT: Spectral Neural Drive (The "Catch")
+nexttile; hold on;
+drive_curve = total_as(:) .* test_watts(:);
 
-% Sync X-axes
-linkaxes(findall(gcf, 'Type', 'axes'), 'x');
+fill(wavelengths, drive_curve, color_total, 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+plot(wavelengths, drive_curve, 'Color', color_total, 'LineWidth', 2.5);
+
+grid on; ylabel('Neural Catch (Linear)');
+title('Green LED Neural Drive');
+
+%% PLOT: Final Squint Signal
+nexttile;
+bar(1, squint_signal_log, 'FaceColor', [0 0.6 0]);
+grid on; ylabel('Log_{10} Signal');
+title(['Final Signal: ' num2str(squint_signal_log, '%.2f')]);
+set(gca, 'XTick', 1, 'XTickLabel', {'Green LED'});
+
+%% AXIS CALIBRATION
+allAxes = findall(gcf, 'Type', 'axes');
+for i = 1:length(allAxes)
+    if isempty(strfind(allAxes(i).Title.String, 'Final Signal'))
+        xlim(allAxes(i), [380 780]);
+    end
+end
+linkaxes(allAxes(2:end), 'x');
