@@ -4,7 +4,7 @@
 % composition of the sample, and number of hispanic individuals
 % Add BCVA and color blindness information, not sure how to summarize
 
-subjSummaryFile = '/Users/melanopsin/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_subject/FLIC_SubjectSummary.xlsx';
+subjSummaryFile = '/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_subject/FLIC_SubjectSummary.xlsx';
 
 % Detect the default options for this file
 opts = detectImportOptions(subjSummaryFile);
