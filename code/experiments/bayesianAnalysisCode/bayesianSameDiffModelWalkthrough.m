@@ -2,8 +2,8 @@
 % This code produces plots to explain the framework of our Bayesian same different model
 
 % Sigma values
-sigmaTest = 0.5; % sigma test
-sigmaRef = 0.5;  % sigma ref (aka sigma zero)
+sigmaTest = 0.75; % sigma test
+sigmaRef = 0.25;  % sigma ref (aka sigma zero)
 % Sigma ref is lower than sigma test to reflect adaptation to the reference
 
 % Priors
@@ -439,3 +439,8 @@ legend({'Reference Signal: p(m_{ref} | s_{1} = 0)', ...
 xlim([-5 8]);
 ylim([0 max([P_ref P_test P_diff])*1.2]);
 set(gca,'FontSize',14); box off;
+
+%% Elementary bar plot of the prior over trial types
+
+
+
