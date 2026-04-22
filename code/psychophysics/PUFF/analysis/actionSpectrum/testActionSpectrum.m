@@ -88,3 +88,295 @@ for i = 1:length(allAxes)
     end
 end
 linkaxes(allAxes(2:end), 'x');
+
+%% Single wavelength
+% --- Configuration & Sweep Setup ---
+wavelengths = 380:1:780;
+target_age = 25;
+test_power = 100; % Constant power for every monochromatic test
+
+% Pre-allocate the results vector
+final_signals = zeros(size(wavelengths));
+
+% Loop through every wavelength and test it individually
+for i = 1:length(wavelengths)
+    % Create a "monochromatic" input: 100 Watts at only one wavelength
+    mono_watts = zeros(size(wavelengths));
+    mono_watts(i) = test_power; 
+    
+    % Run the model for this specific wavelength
+    [squint_signal_log, ~] = calculateActionSpectrum(mono_watts, wavelengths, ...
+        'age', target_age);
+    
+    % Store the scalar result
+    final_signals(i) = squint_signal_log;
+end
+
+% --- Plotting the Sweep Results ---
+figure('Color', 'w', 'Units', 'normalized', 'Position', [0.2, 0.2, 0.5, 0.5]);
+
+% Plot the final signal vs wavelength
+plot(wavelengths, final_signals, 'k', 'LineWidth', 3);
+grid on; hold on;
+
+% Add the Zero line to see the S-cone "subtraction" clearly
+yline(0, 'r--', 'Alpha', 0.5, 'LineWidth', 1.5);
+
+% Labeling
+xlabel('Wavelength (nm)');
+ylabel('Predicted Squint Response (Log_{10} Drive)');
+title(['Model Action Spectrum (Monochromatic Sweep, Age ' num2str(target_age) ')']);
+xlim([380 780]);
+
+% Style the plot
+set(gca, 'TickDir', 'out', 'Box', 'off');
+
+% Optional: Highlight the peak
+[maxVal, maxIdx] = max(final_signals);
+plot(wavelengths(maxIdx), maxVal, 'ro', 'MarkerSize', 8, 'MarkerFaceColor', 'r');
+text(wavelengths(maxIdx)+10, maxVal, sprintf('Peak: %d nm', wavelengths(maxIdx)), ...
+    'FontWeight', 'bold');
+
+
+%% 1. Setup Paths and Load Digitized Data
+% Use gitpath to find the base directory of the project
+baseDir = gitpath('combiExperiments');
+filePath = fullfile(baseDir, 'code', 'psychophysics', 'PUFF', 'analysis', ...
+    'actionSpectrum', 'StringhamPhotophobiaActionSpectrum.csv');
+
+% Load the data, skipping the two-row header (Names and X,Y labels)
+data = readmatrix(filePath, 'NumHeaderLines', 2);
+
+% Identify the subjects based on the CSV structure
+subjects = {'AW2', 'AW1', 'JS1', 'JS2'};
+subjectColors = [0.8 0 0; 0.6 0 0.2; 0.4 0 0.4; 0.2 0 0.6]; % Shades of Red/Purple
+
+%% 2. Generate the Model Action Spectrum (Monochromatic Sweep)
+wavelengths = 380:1:780;
+target_age = 25;   % Adjust to match the paper's cohort if known
+test_power = 100;  % Constant power for monochromatic testing
+model_signals = zeros(size(wavelengths));
+
+fprintf('Running model sweep... ');
+for i = 1:length(wavelengths)
+    mono_watts = zeros(size(wavelengths));
+    mono_watts(i) = test_power; 
+    
+    % We only need the scalar output for the sweep
+    [sig, ~] = calculateActionSpectrum(mono_watts, wavelengths, 'age', target_age);
+    model_signals(i) = sig;
+end
+fprintf('Done.\n');
+
+% Normalize Model: Shift peak sensitivity to 0.0 (log scale) 
+% to match the relative sensitivity format of digitized papers.
+model_norm = model_signals - max(model_signals);
+
+%% --- 1. Configuration & Sweep Setup ---
+wavelengths = 380:1:780;
+target_age = 25;
+test_power = 100; % Constant power for monochromatic testing
+
+% Pre-allocate the results vector
+model_signals = zeros(size(wavelengths));
+
+% Use 'k' for the loop index to avoid shadowing the imaginary unit
+fprintf('Running model sweep... ');
+for k = 1:length(wavelengths)
+    % Create a "monochromatic" input: 100 Watts at only one wavelength
+    mono_watts = zeros(size(wavelengths));
+    mono_watts(k) = test_power; 
+    
+    % Run the model for this specific wavelength
+    % We only care about the first output (the log signal)
+    [sig, ~] = calculateActionSpectrum(mono_watts, wavelengths, 'age', target_age);
+    model_signals(k) = sig;
+end
+fprintf('Done.\n');
+
+% Normalize Model: Shift peak sensitivity to 0.0 (Log Relative Sensitivity)
+model_norm = model_signals - max(model_signals);
+
+%% --- 2. Load and Prepare Stringham Data ---
+% Use gitpath as requested to find the file
+baseDir = gitpath('combiExperiments');
+relPath = 'code/psychophysics/PUFF/analysis/actionSpectrum/StringhamPhotophobiaActionSpectrum.csv';
+filePath = fullfile(baseDir, relPath);
+
+% Check if file exists to prevent hard errors
+if ~exist(filePath, 'file')
+    error('CSV file not found at: %s', filePath);
+end
+
+% Load the data (skipping the 2-row header)
+data = readmatrix(filePath, 'NumHeaderLines', 2);
+
+% Define the subjects and their colors explicitly here
+subjects = {'AW2', 'AW1', 'JS1', 'JS2'};
+subjectColors = [
+    0.0, 0.45, 0.74; % Blue
+    0.85, 0.33, 0.1; % Orange
+    0.93, 0.69, 0.13; % Yellow
+    0.49, 0.18, 0.56  % Purple
+];
+
+%% --- 1. Configuration & Model Sweep ---
+wavelengths = 380:1:780;
+target_age = 25;
+test_power = 100; 
+
+model_signals = zeros(size(wavelengths));
+
+fprintf('Running model sweep... ');
+for k = 1:length(wavelengths)
+    mono_watts = zeros(size(wavelengths));
+    mono_watts(k) = test_power; 
+    
+    % Reverted to fieldSize 10 for Peripheral (10-degree) observer
+    [sig, ~] = calculateActionSpectrum(mono_watts, wavelengths, ...
+        'age', target_age, 'fieldSize', 10);
+    model_signals(k) = sig;
+end
+fprintf('Done.\n');
+
+% Normalize Model (Peak to 0.0)
+model_norm = model_signals - max(model_signals);
+
+%% --- 2. Load and Map Stringham Data ---
+filePath = '/Users/samanthamontoya/Documents/MATLAB/projects/combiExperiments/code/psychophysics/PUFF/analysis/actionSpectrum/StringhamPhotophobiaActionSpectrum.csv';
+
+if ~exist(filePath, 'file')
+    error('File not found at: %s', filePath);
+end
+
+data = readmatrix(filePath, 'NumHeaderLines', 2);
+
+% Reordered list: AW1 then AW2, followed by JS
+subDatasets = {'AW1', 'AW2', 'JS1', 'JS2'};
+
+% Map indices to CSV columns: AW1 (3-4), AW2 (1-2), JS1 (5-6), JS2 (7-8)
+colMapping = [3, 1, 5, 7]; 
+
+% Define grouped shades
+colors = [
+    0.30, 0.75, 0.93;  % AW1: Sky Blue
+    0.00, 0.25, 0.50;  % AW2: Navy Blue
+    0.60, 0.20, 0.00;  % JS1: Rust/Dark Orange
+    1.00, 0.60, 0.20   % JS2: Amber/Bright Orange
+];
+
+%% --- 3. Plotting the Comparison ---
+figure('Color', 'w', 'Units', 'normalized', 'Position', [0.1, 0.1, 0.6, 0.7]);
+hold on; grid on;
+
+% A. Plot Stringham Data Points with lines
+for k = 1:length(subDatasets)
+    colX = colMapping(k);
+    colY = colX + 1;
+    
+    rawX = data(:, colX);
+    rawY = data(:, colY);
+    
+    % Clean NaNs and Sort by wavelength
+    valid = ~isnan(rawX) & ~isnan(rawY);
+    xData = rawX(valid);
+    yData = rawY(valid);
+    
+    [xData, sortIdx] = sort(xData);
+    yData = yData(sortIdx);
+    
+    % Normalize individual peak to 0.0
+    yNorm = yData - max(yData);
+    
+    plot(xData, yNorm, '-o', 'LineWidth', 1.5, 'MarkerSize', 6, ...
+        'Color', colors(k,:), 'MarkerFaceColor', colors(k,:), ...
+        'MarkerEdgeColor', 'w', 'DisplayName', ['Stringham: ' subDatasets{k}]);
+end
+
+%% --- 1. Configuration & Model Sweep ---
+wavelengths = 380:1:780;
+target_age = 25;
+test_power = 100; 
+
+model_signals = zeros(size(wavelengths));
+
+fprintf('Running model sweep... ');
+for k = 1:length(wavelengths)
+    mono_watts = zeros(size(wavelengths));
+    mono_watts(k) = test_power; 
+    
+    % Model set to 10-degree (peripheral) observer as requested
+    [sig, ~] = calculateActionSpectrum(mono_watts, wavelengths, ...
+        'age', target_age, 'fieldSize', 2);
+    model_signals(k) = sig;
+end
+fprintf('Done.\n');
+
+% Normalize Model (Peak to 0.0)
+model_norm = model_signals - max(model_signals);
+
+%% --- 2. Load and Map Stringham Data ---
+filePath = '/Users/samanthamontoya/Documents/MATLAB/projects/combiExperiments/code/psychophysics/PUFF/analysis/actionSpectrum/StringhamPhotophobiaActionSpectrum.csv';
+
+if ~exist(filePath, 'file')
+    error('File not found at: %s', filePath);
+end
+
+data = readmatrix(filePath, 'NumHeaderLines', 2);
+
+% Reordered list: AW1 then AW2, followed by JS1 then JS2
+subDatasets = {'AW1', 'AW2', 'JS1', 'JS2'};
+
+% Map indices to CSV columns: AW1 (3-4), AW2 (1-2), JS1 (5-6), JS2 (7-8)
+colMapping = [3, 1, 5, 7]; 
+
+% Define grouped shades: 1s are Light, 2s are Dark
+colors = [
+    0.30, 0.75, 0.93;  % AW1: Light Blue
+    0.00, 0.25, 0.50;  % AW2: Dark Blue
+    1.00, 0.75, 0.25;  % JS1: Light Orange/Amber
+    0.60, 0.20, 0.00   % JS2: Dark Orange/Rust
+];
+
+%% --- 3. Plotting the Comparison ---
+figure('Color', 'w', 'Units', 'normalized', 'Position', [0.1, 0.1, 0.6, 0.7]);
+hold on; grid on;
+
+% A. Plot Stringham Data Points with lines
+for k = 1:length(subDatasets)
+    colX = colMapping(k);
+    colY = colX + 1;
+    
+    rawX = data(:, colX);
+    rawY = data(:, colY);
+    
+    % Clean NaNs and Sort by wavelength to ensure lines connect correctly
+    valid = ~isnan(rawX) & ~isnan(rawY);
+    xData = rawX(valid);
+    yData = rawY(valid);
+    
+    [xData, sortIdx] = sort(xData);
+    yData = yData(sortIdx);
+    
+    % Normalize individual peak to 0.0 for shape comparison
+    yNorm = yData - max(yData);
+    
+    plot(xData, yNorm, '-o', 'LineWidth', 1.5, 'MarkerSize', 6, ...
+        'Color', colors(k,:), 'MarkerFaceColor', colors(k,:), ...
+        'MarkerEdgeColor', 'w', 'DisplayName', ['Stringham: ' subDatasets{k}]);
+end
+
+% B. Plot GKA Model Sweep
+plot(wavelengths, model_norm, 'k', 'LineWidth', 4, 'DisplayName', 'GKA Model (10\circ)');
+
+% C. Formatting
+xlabel('Wavelength (nm)');
+ylabel('Relative Sensitivity (Log_{10})');
+title('Action Spectrum Comparison: GKA Model vs. Stringham Data');
+
+% Axis Limits
+xlim([380 650]); 
+ylim([-1.2 0.1]); % Y-limit extended to -1 as requested
+
+set(gca, 'XTick', 380:40:650, 'TickDir', 'out', 'Box', 'off', 'FontSize', 12);
+legend('Location', 'southoutside', 'NumColumns', 2);
