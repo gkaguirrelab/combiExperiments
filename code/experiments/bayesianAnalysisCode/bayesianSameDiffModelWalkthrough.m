@@ -2,8 +2,8 @@
 % This code produces plots to explain the framework of our Bayesian same different model
 
 % Sigma values
-sigmaTest = 0.75; % sigma test
-sigmaRef = 0.25;  % sigma ref (aka sigma zero)
+sigmaTest = 0.8; % sigma test
+sigmaRef = 0.3;  % sigma ref (aka sigma zero)
 % Sigma ref is lower than sigma test to reflect adaptation to the reference
 
 % Priors
@@ -59,27 +59,26 @@ axis tight;
 % Plot
 subplot(1,3,1); hold on;
 
-cinnabar  = [0.9373 0.2431 0.2118 ];   % cinnabar
-jungleTeal = [0.3569 0.5725 0.4745]; % jungle teal
+blue = [0.25, 0.4, 0.85];
+orange = [0.9, 0.4, 0.1];
 
 % Plot uniform prior (different trials)
-plot(thetaRange, p_theta_given_D1, 'Color', cinnabar, 'LineWidth', 1.5);
+plot(thetaRange, p_theta_given_D1, 'Color', orange, 'LineWidth', 1.5);
 
 % Plot delta function for same trials as a dotted vertical line
-% Could add an arrow for clarity
-maxHeight = max(p_theta_given_D1) * 1.5;
-plot([0 0], [0 maxHeight], '--', 'LineWidth', 1.5, 'Color',jungleTeal);
+plot([0 0], ylim, '--', 'LineWidth', 1.5, 'Color',blue);
 
 % Formatting
 xlabel('Physical stimulus difference \theta');
-ylabel('Probability');
+% ylabel('Probability');
 % legend('\it{D}\rm = 1 (different trials, uniform prior)', ...
 %        '\it{D}\rm = 0 (same trials, delta function prior)', ...
 %        'Location', 'Northeast', 'Interpreter', 'tex');
 legend(' \it{p}\rm(\theta | \it{D}\rm = 1)', ...
         ' \it{p}\rm(\theta | \it{D}\rm = 0) (delta function)');
 xlim([thetaMin thetaMax]);
-ylim([0 maxHeight]);
+ylim([0 1.05]);
+yticks([0 0.2 0.4 0.6 0.8 1]);
 set(gca, 'FontSize', 14);
 
 %% Plotting marginal and conditional likelihoods: second panel
@@ -89,69 +88,72 @@ exampleIdx = round(linspace(1, length(thetaRange), 10));  % 10 evenly spaced the
 subplot(1,3,2); hold on;
 
 % Plot example shifted Gaussians (light blue)
-mainBlue = [0 0.4470 0.7410];
-lightBlue = mainBlue + (1 - mainBlue)*0.88;
+mainOrange = [0.9, 0.4, 0.1];
+lightOrange = mainOrange + (1 - mainOrange)*0.82;
 for ii = 1:length(exampleIdx)
     theta_i = thetaRange(exampleIdx(ii));
     plot(mGrid, normpdf(mGrid, theta_i, sqrt(sigmaTest^2 + sigmaRef^2)), ...
-         'Color', lightBlue,'LineWidth', 1.5);
+         'Color', lightOrange,'LineWidth', 1.5);
 end
 
 % Marginal "different" likelihood (blue)
-plot(mGrid, P_m_given_D1, 'Color', cinnabar, 'LineWidth', 1.5);
+plot(mGrid, P_m_given_D1, 'Color', orange, 'LineWidth', 1.5);
 
 % Same trials Gaussian (black)
-plot(mGrid, P_m_given_D0, 'Color',jungleTeal, 'LineWidth', 1.5);
+plot(mGrid, P_m_given_D0, 'Color',blue, 'LineWidth', 1.5);
 
 % Labels and formatting
 ax = gca;
 ax.Layer = 'top';   % draws axes behind the data
 xlabel('Internal measurement difference \it{m}');
-ylabel('Likelihood \it{p}(\it{m} | \it{D})');
-title('Likelihood Functions');
+% ylabel('Probability');
 % Have to add spaces in the legend for each conditional likelihood graph
-legend({'Conditional likelihoods \it{p}\rm(\it{m}\rm | \theta)', '', '', '', '', '', '', '', '', '',  ...
-    'Marginal likelihood \it{p}\rm(\it{m}\rm | \it{D} = 1)', ...
-    'Marginal likelihood \it{p}\rm(\it{m}\rm | \it{D}\rm = 0)',});
+legend({'\it{p}\rm(\it{m}\rm | \theta)', '', '', '', '', '', '', '', '', '',  ...
+    '\it{p}\rm(\it{m}\rm | \it{D} = 1)', ...
+    '\it{p}\rm(\it{m}\rm | \it{D}\rm = 0)',});
 set(gca, 'FontSize', 14);
 xlim([thetaMin thetaMax]);
-ylim([0 max([P_m_given_D1; P_m_given_D0])*1.2]);
+ylim([0 1.05]);
+yticks([0 0.2 0.4 0.6 0.8 1]);
 box off;
 
 %% Plotting posteriors: third panel
 
 subplot(1,3,3); hold on;
 
-% Colors
-mainBlue  = [0 0.4470 0.7410];  % D=1
-black     = [0 0 0];            % D=0
+% Plot P(D=1 | m) → orange
+plot(mGrid, P_D1_given_m, 'Color', orange, 'LineWidth', 1.5);
 
-% Plot P(D=1 | m) → blue
-plot(mGrid, P_D1_given_m, 'Color', mainBlue, 'LineWidth', 1.5);
-
-% Plot P(D=0 | m) → black
-plot(mGrid, P_D0_given_m, 'Color', black, 'LineWidth', 1.5);
+% Plot P(D=0 | m) → blue
+plot(mGrid, P_D0_given_m, 'Color', blue, 'LineWidth', 1.5);
 
 % Optionally, show the decision boundary as a dashed gray line at 0.5
-yline(0.5, '-.', 'Color', [0.4 0.4 0.4], 'LineWidth', 1);
+yline(0.5, '-.', 'Color', [0.3 0.3 0.3], 'LineWidth', 1);
 
 % Labels
 xlabel('Internal measurement difference \it{m}');
-ylabel('Posterior \it{p}(\it{D} | \it{m})');
-title('Posteriors and Decision Threshold');
+% ylabel('Posterior probability');
+% title('Posteriors and Decision Threshold');
 lgd = legend({' \it{p}\rm(\it{D}\rm = 1 | \it{m}\rm)', ' \it{p}\rm(\it{D} = 0 | \it{m}\rm)', 'Decision threshold'}, ...
        'Location', 'Northeast');
 lgd.Position(2) = lgd.Position(2) - 0.1;  % move DOWN 
 
 % Axes limits
 xlim([thetaMin thetaMax]);
-ylim([-0.05 1.05]);  % small padding above/below 0/1
+ylim([0 1.05]);
+yticks([0 0.2 0.4 0.6 0.8 1]);
 set(gca, 'FontSize', 14);
 box off;
-set(findall(gcf,'type','axes'),'LooseInset',[0.06 0.06 0.06 0.06]);
-exportgraphics(gcf, '/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_analysis/dichopticFlicker/bayesianModelPlots/bayesianInferenceSteps.pdf', ...
-    'ContentType', 'vector');
+set(gcf, 'Units', 'inches');
+pos = get(gcf, 'Position');
 
+set(gcf, 'PaperUnits', 'inches');
+set(gcf, 'PaperSize', [pos(3) pos(4)]);
+set(gcf, 'PaperPosition', [0 0 pos(3) pos(4)]);
+
+set(gcf, 'InvertHardcopy', 'off');
+
+print(gcf, 'myfigure.pdf', '-dpdf', '-painters');
 %% Stimulus-specific integration: can be added as a fourth panel
 
 % Integrating under the likelihood of the measurement given this stimulus difference
@@ -203,8 +205,8 @@ box off;
 figure; hold on; 
 
 % Plot posteriors
-plot(mGrid, P_D1_given_m, 'Color', cinnabar, 'LineWidth', 1.5);
-plot(mGrid, P_D0_given_m, 'Color', jungleTeal, 'LineWidth', 1.5);
+plot(mGrid, P_D1_given_m, 'Color', orange, 'LineWidth', 1.5);
+plot(mGrid, P_D0_given_m, 'Color', blue, 'LineWidth', 1.5);
 yline(0.5, '--', 'Color', [0.4 0.4 0.4], 'LineWidth', 1);
 
 % Find boundaries where decision changes
@@ -423,9 +425,8 @@ P_diff = normpdf(m, delta, sqrt(sigmaTest^2 + sigmaRef^2));  % centered at 0 if 
 figure; hold on;
 
 % Define colors
-colRef  = [0.9373 0.2431 0.2118 ];   % cinnabar
-colTest = [0.9373 0.2431 0.2118 ]; % also cinnabar bc same trial type!
-% colTest = [0.3569 0.5725 0.4745]; % jungle teal
+colRef  = orange;   
+colTest = orange; 
 colDiff = 'k'; % black
 
 plot(m, P_ref, 'Color', colRef, 'LineWidth', 2, 'LineStyle', '-');
@@ -458,8 +459,8 @@ b = bar(priors, 0.6);
 % Colors
 b.FaceColor = 'flat';
 b.CData = [
-    jungleTeal;
-    cinnabar
+    blue;
+    orange
 ];
 b.EdgeColor = 'none';
 
