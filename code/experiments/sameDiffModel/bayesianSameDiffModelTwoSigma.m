@@ -94,7 +94,7 @@ for i = 1:length(stimDiffDb)
     % Add the if delta = 0 statement?
     P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaZero^2 + sigma^2));
 
-    % Normalize
+    % Normalize - is this step necessary? Maybe not. 
     P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm);
 
     % Probability of decision = integration (average) over measurements

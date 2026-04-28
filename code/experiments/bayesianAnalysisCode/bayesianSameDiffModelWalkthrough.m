@@ -59,18 +59,20 @@ axis tight;
 % Plot
 subplot(1,3,1); hold on;
 
+cinnabar  = [0.9373 0.2431 0.2118 ];   % cinnabar
+jungleTeal = [0.3569 0.5725 0.4745]; % jungle teal
+
 % Plot uniform prior (different trials)
-plot(thetaRange, p_theta_given_D1, 'Color', [0 0.4470 0.7410], 'LineWidth', 1.5);
+plot(thetaRange, p_theta_given_D1, 'Color', cinnabar, 'LineWidth', 1.5);
 
 % Plot delta function for same trials as a dotted vertical line
 % Could add an arrow for clarity
 maxHeight = max(p_theta_given_D1) * 1.5;
-plot([0 0], [0 maxHeight], '--', 'LineWidth', 1.5, 'Color','k');
+plot([0 0], [0 maxHeight], '--', 'LineWidth', 1.5, 'Color',jungleTeal);
 
 % Formatting
-xlabel('True stimulus difference \theta');
-ylabel('Prior \it{p}(\theta | \it{D})');
-title('Stimulus Priors');
+xlabel('Physical stimulus difference \theta');
+ylabel('Probability');
 % legend('\it{D}\rm = 1 (different trials, uniform prior)', ...
 %        '\it{D}\rm = 0 (same trials, delta function prior)', ...
 %        'Location', 'Northeast', 'Interpreter', 'tex');
@@ -96,10 +98,10 @@ for ii = 1:length(exampleIdx)
 end
 
 % Marginal "different" likelihood (blue)
-plot(mGrid, P_m_given_D1, 'Color', [0 0.4470 0.7410], 'LineWidth', 1.5);
+plot(mGrid, P_m_given_D1, 'Color', cinnabar, 'LineWidth', 1.5);
 
 % Same trials Gaussian (black)
-plot(mGrid, P_m_given_D0, 'k', 'LineWidth', 1.5);
+plot(mGrid, P_m_given_D0, 'Color',jungleTeal, 'LineWidth', 1.5);
 
 % Labels and formatting
 ax = gca;
@@ -201,8 +203,8 @@ box off;
 figure; hold on; 
 
 % Plot posteriors
-plot(mGrid, P_D1_given_m, 'b-', 'LineWidth', 1.5);
-plot(mGrid, P_D0_given_m, 'k-', 'LineWidth', 1.5);
+plot(mGrid, P_D1_given_m, 'Color', cinnabar, 'LineWidth', 1.5);
+plot(mGrid, P_D0_given_m, 'Color', jungleTeal, 'LineWidth', 1.5);
 yline(0.5, '--', 'Color', [0.4 0.4 0.4], 'LineWidth', 1);
 
 % Find boundaries where decision changes
@@ -421,26 +423,66 @@ P_diff = normpdf(m, delta, sqrt(sigmaTest^2 + sigmaRef^2));  % centered at 0 if 
 figure; hold on;
 
 % Define colors
-colRef  = 'k';   % black
-colTest = [0 0.4470 0.7410]; % blue
-colDiff = [0.85, 0.33, 0.1]; % orange
+colRef  = [0.9373 0.2431 0.2118 ];   % cinnabar
+colTest = [0.9373 0.2431 0.2118 ]; % also cinnabar bc same trial type!
+% colTest = [0.3569 0.5725 0.4745]; % jungle teal
+colDiff = 'k'; % black
 
-plot(m, P_ref, 'Color', colRef, 'LineWidth', 2);
-plot(m, P_test, 'Color', colTest, 'LineWidth', 2);
+plot(m, P_ref, 'Color', colRef, 'LineWidth', 2, 'LineStyle', '-');
+plot(m, P_test, 'Color', colTest, 'LineWidth', 2, 'LineStyle', '--');
 plot(m, P_diff, 'Color', colDiff, 'LineWidth', 2,'LineStyle', '-.');
 
-xlabel('Internal measurement m');
-ylabel('Probability density');
-title('Sensory Encoding: Individual Stimuli to Difference Signal');
-legend({'Reference Signal: p(m_{ref} | s_{1} = 0)', ...
-    'Test Signal: p(m_{test} | s_{2} = 3)', ...
-    'Difference Likelihood: p(m_{diff} | \theta = 3)' ...
-    }, 'Location', 'NorthEast');
+xlabel('Internal measurement value');
+ylabel('Probability');
+% title('Sensory Encoding: Individual Stimuli to Difference Signal');
+% legend({'Reference Signal: p(m_{ref} | s_{1} = 0)', ...
+%     'Test Signal: p(m_{test} | s_{2} = 3)', ...
+%     'Difference Likelihood: p(m_{diff} | \theta = 3)' ...
+%     }, 'Location', 'NorthEast');   % OLD legend with detail 
+legend({'\it{m_{ref}}', ...
+    '\it{m_{test}}', ...
+    '\it{m}' ...
+    }, 'Location', 'NorthEast'); 
 xlim([-5 8]);
-ylim([0 max([P_ref P_test P_diff])*1.2]);
+ylim([0 1]); % max([P_ref P_test P_diff])*1.2]);
 set(gca,'FontSize',14); box off;
 
 %% Elementary bar plot of the prior over trial types
 
+% Data
+priors = [0.4, 0.6];
 
+figure;
+b = bar(priors, 0.6);
+
+% Colors
+b.FaceColor = 'flat';
+b.CData = [
+    jungleTeal;
+    cinnabar
+];
+b.EdgeColor = 'none';
+
+hold on;
+
+% Dotted horizontal lines at prior values
+for i = 1:length(priors)
+    plot([0 i], [priors(i) priors(i)], '--', ...
+        'Color', [0.1 0.1 0.1], ...
+        'LineWidth', 1.5);
+end
+
+% Axis formatting
+xticks([1 2]);
+xticklabels({'Same (\itD\rm = 0)', 'Different (\itD\rm = 1)'});
+ylabel('Probability');
+
+ylim([0 1]);
+xlim([0.3 2.7]);
+
+% Emphasize 0.4 and 0.6 on y-axis
+yticks([0 0.4 0.6 1]);
+
+hold off;
+set(gca,'FontSize',14); box off;
 
