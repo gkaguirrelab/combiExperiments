@@ -1,9 +1,10 @@
 function output = individualFitsAnalysis(options)
 % Define the arguments block
 arguments
-    options.barPlot (1,1) logical = false
-    options.fVal (1,1) logical = true
+    options.barPlot (1,1) logical = true
+    options.fVal (1,1) logical = false
     options.anova (1,1) logical = true
+    options.superSubj (1,1) logical = true
 end
 
 %% load data
@@ -14,30 +15,74 @@ projectName = 'dichopticFlicker';
 experimentName = 'sigmaData';
 
 dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, experimentName);
-migraineFilePath = fullfile(dataDir, '15Migrainer_individualSigmaFitsConstrained.mat');
-controlFilePath  = fullfile(dataDir, '15Control_individualSigmaFitsConstrained.mat');
+if options.superSubj
+    filePath = fullfile(dataDir, '30_superSubjSigmaFitsConstrained.mat');
+else
+    migraineFilePath = fullfile(dataDir, '15Migrainer_individualSigmaFitsConstrained.mat');
+    controlFilePath  = fullfile(dataDir, '15Control_individualSigmaFitsConstrained.mat');
+end
 %load
-% data is subj x contrasts x lightLevels x freqs
-migraineFits = load(migraineFilePath);
-controlFits  = load(controlFilePath);
+if options.superSubj
+    fits = load(filePath);
+    % Extract pooled data (cell arrays)
+    controlCells  = squeeze(fits.sigmaPooled(1,:,:,:));
+    migraineCells = squeeze(fits.sigmaPooled(2,:,:,:));
 
-% pull out variables
-nSubjM = size(migraineFits.sigmaRefMatrix,1);
-nSubjC = size(controlFits.sigmaRefMatrix,1);
-nContrasts = size(migraineFits.sigmaRefMatrix,2);
-nLightLevels = size(migraineFits.sigmaRefMatrix,3);
-nFreqs = size(migraineFits.sigmaRefMatrix,4);
-sigmaRefM = migraineFits.sigmaRefMatrix;
-sigmaRefC = controlFits.sigmaRefMatrix;
-sigmaTestM = migraineFits.sigmaTestMatrix;
-sigmaTestC = controlFits.sigmaTestMatrix;
+    % Get dimensions
+    [nContrasts, nLightLevels, nFreqs] = size(controlCells);
+
+    % Preallocate numeric arrays (no subject dimension)
+    sigmaTestC = zeros(1,nContrasts,nLightLevels,nFreqs);
+    sigmaRefC  = zeros(1,nContrasts,nLightLevels,nFreqs);
+    sigmaTestM = zeros(1,nContrasts,nLightLevels,nFreqs);
+    sigmaRefM  = zeros(1,nContrasts,nLightLevels,nFreqs);
+
+    % Convert from cell to numeric
+    for c = 1:nContrasts
+        for l = 1:nLightLevels
+            for f = 1:nFreqs
+
+                valsC = controlCells{c,l,f};   % [sigmaTest sigmaRef]
+                valsM = migraineCells{c,l,f};
+
+                sigmaTestC(1,c,l,f) = valsC(1);
+                sigmaRefC(1,c,l,f)  = valsC(2);
+
+                sigmaTestM(1,c,l,f) = valsM(1);
+                sigmaRefM(1,c,l,f)  = valsM(2);
+
+            end
+        end
+    end
+
+    % Define pseudo subject count for super subjs
+    nSubjC = 1;
+    nSubjM = 1;
+
+else
+    % data is subj x contrasts x lightLevels x freqs
+    migraineFits = load(migraineFilePath);
+    controlFits  = load(controlFilePath);
+    % pull out variables
+    nSubjM = size(migraineFits.sigmaRefMatrix,1);
+    nSubjC = size(controlFits.sigmaRefMatrix,1);
+    nContrasts = size(migraineFits.sigmaRefMatrix,2);
+    nLightLevels = size(migraineFits.sigmaRefMatrix,3);
+    nFreqs = size(migraineFits.sigmaRefMatrix,4);
+    sigmaRefM = migraineFits.sigmaRefMatrix;
+    sigmaRefC = controlFits.sigmaRefMatrix;
+    sigmaTestM = migraineFits.sigmaTestMatrix;
+    sigmaTestC = controlFits.sigmaTestMatrix;
+end
 
 % define labels
 contrastLabels = {'lo', 'hi'};
 NDLabel = {'3.0', '0.5'};
-refFreqHz   = migraineFits.refFreqHz;
-
-
+if options.superSubj
+    refFreqHz = fits.refFreqHz;
+else
+    refFreqHz = migraineFits.refFreqHz;
+end
 
 %% Calculate Mean and SEM
 % calculate mean across ref freq and subj and SEM
@@ -68,10 +113,10 @@ for l = 1:2
     % Loop through Contrasts (1 = Low, 2 = High)
     for c = 1:2
         % Calculate Means and SEMs
-        mMean = squeeze(mean(migraineFits.sigmaTestMatrix(:,c,l,:), 1));
-        mSEM  = squeeze(std(migraineFits.sigmaTestMatrix(:,c,l,:), [], 1)) / sqrt(nSubjM);
-        cMean = squeeze(mean(controlFits.sigmaTestMatrix(:,c,l,:), 1));
-        cSEM  = squeeze(std(controlFits.sigmaTestMatrix(:,c,l,:), [], 1)) / sqrt(nSubjC);
+        mMean = squeeze(mean(sigmaTestM(:,c,l,:), 1));
+        mSEM  = squeeze(std(sigmaTestM(:,c,l,:), [], 1)) / sqrt(nSubjM);
+        cMean = squeeze(mean(sigmaTestC(:,c,l,:), 1));
+        cSEM  = squeeze(std(sigmaTestC(:,c,l,:), [], 1)) / sqrt(nSubjC);
 
         % Styling Logic
         % c=1: Low Contrast (White Fill, Dashed)
@@ -133,10 +178,10 @@ for l = 1:2
     % Loop through Contrasts (1 = Low, 2 = High)
     for c = 1:2
         % Calculate Means and SEMs
-        mMean = squeeze(mean(migraineFits.sigmaRefMatrix(:,c,l,:), 1));
-        mSEM  = squeeze(std(migraineFits.sigmaRefMatrix(:,c,l,:), [], 1)) / sqrt(15);
-        cMean = squeeze(mean(controlFits.sigmaRefMatrix(:,c,l,:), 1));
-        cSEM  = squeeze(std(controlFits.sigmaRefMatrix(:,c,l,:), [], 1)) / sqrt(15);
+        mMean = squeeze(mean(sigmaRefM(:,c,l,:), 1));
+        mSEM  = squeeze(std(sigmaRefM(:,c,l,:), [], 1)) / sqrt(15);
+        cMean = squeeze(mean(sigmaRefC(:,c,l,:), 1));
+        cSEM  = squeeze(std(sigmaRefC(:,c,l,:), [], 1)) / sqrt(15);
 
         % Styling Logic
         % c=1: Low Contrast (White Fill, Dashed)
@@ -188,12 +233,12 @@ end
 % Average Sigma across Contrast and Light, keep Group and Frequency
 
 % Pull data
-sigmaTestData = cat(1, migraineFits.sigmaTestMatrix, controlFits.sigmaTestMatrix);  % [Subjects × Contrast × Light × Freq]
-sigmaRefData  = cat(1, migraineFits.sigmaRefMatrix, controlFits.sigmaRefMatrix);
+sigmaTestData = cat(1, sigmaTestM, sigmaTestC);  % [Subjects × Contrast × Light × Freq]
+sigmaRefData  = cat(1, sigmaRefM, sigmaRefC);
 
 % Group labels
-nMigraine = size(migraineFits.sigmaTestMatrix,1);
-groupLabels = [ones(nMigraine,1); 2*ones(size(controlFits.sigmaTestMatrix,1),1)];
+nMigraine = size(sigmaTestM,1);
+groupLabels = [ones(nMigraine,1); 2*ones(size(sigmaTestC,1),1)];
 groups = unique(groupLabels);
 
 % Preallocate mean & SEM
@@ -273,9 +318,13 @@ if options.barPlot
     b(2).FaceColor = [0.8 0.3 0.3]; % Migraine
 
     % Error Bars
-    for i = 1:numel(b)
-        errorbar(b(i).XEndPoints, b(i).YData, errData(:,i), ...
-            'k', 'linestyle', 'none', 'LineWidth', 1.5);
+    if options.superSubj
+        errData(:) = NaN;
+    else
+        for i = 1:numel(b)
+            errorbar(b(i).XEndPoints, b(i).YData, errData(:,i), ...
+                'k', 'linestyle', 'none', 'LineWidth', 1.5);
+        end
     end
 
     % Formatting & Labels
@@ -328,9 +377,13 @@ if options.barPlot
     b(2).FaceColor = [0.8 0.3 0.3]; % Migraine
 
     % Error Bars
-    for i = 1:numel(b)
-        errorbar(b(i).XEndPoints, b(i).YData, errData(:,i), ...
-            'k', 'linestyle', 'none', 'LineWidth', 1.5);
+    if options.superSubj
+        errData(:) = NaN;
+    else
+        for i = 1:numel(b)
+            errorbar(b(i).XEndPoints, b(i).YData, errData(:,i), ...
+                'k', 'linestyle', 'none', 'LineWidth', 1.5);
+        end
     end
 
     % Formatting & Labels
@@ -475,8 +528,8 @@ end
 if options.anova
     % -------sigma test ------------------
     % Concatenate data
-    sigmaTestAll = cat(1, migraineFits.sigmaTestMatrix, controlFits.sigmaTestMatrix);
-    sigmaRefAll  = cat(1, migraineFits.sigmaRefMatrix, controlFits.sigmaRefMatrix);
+    sigmaTestAll = cat(1, sigmaTestM, sigmaTestC);
+    sigmaRefAll  = cat(1, sigmaRefM, sigmaRefC);
 
     [nS, nC, nL, nF] = size(sigmaTestAll); % Dimensions: Subjects, Contrasts, Light, Freqs
 
@@ -485,7 +538,7 @@ if options.anova
     [S_idx, C_idx, L_idx, F_idx] = ndgrid(1:nS, 1:nC, 1:nL, 1:nF);
  
     % Create Group Vector (1 = Migraine, 2 = Control)
-    nMigraine = size(migraineFits.sigmaTestMatrix, 1);
+    nMigraine = size(sigmaTestM, 1);
     G_idx = ones(nS, nC, nL, nF);
     G_idx((nMigraine+1):end, :, :, :) = 2;
 
@@ -532,12 +585,12 @@ end
 
 %Flatten Data
 % Combine all conditions for Sigma Test
-testM = migraineFits.sigmaTestMatrix(:);
-testC = controlFits.sigmaTestMatrix(:);
+testM = sigmaTestM(:);
+testC = sigmaTestC(:);
 
 % Combine all conditions for Sigma Ref 
-refM  = migraineFits.sigmaRefMatrix(:);
-refC  = controlFits.sigmaRefMatrix(:);
+refM  = sigmaRefM(:);
+refC  = sigmaRefC(:);
 
 % --- Define Shared Bin Edges ---
 allTest = [testM; testC];
@@ -565,7 +618,11 @@ histogram(refC, refEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeCol
 title('Distribution: Sigma Ref');
 xlabel('Sigma Value'); ylabel('Count');
 xlim([0 5]); % to match sigma test
-ylim([0 40]);
+if options.superSubj
+    ylim([0 5]);
+else
+    ylim([0 40]);
+end
 legend({'Migraine', 'Control'}, 'Box', 'off');
 box off; grid on;
 

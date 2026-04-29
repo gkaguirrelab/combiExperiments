@@ -2,7 +2,7 @@ function pDifferent = bayesianSameDiffModelTwoSigma( stimParamsDomainList, stimD
 % Probability of reporting "different" in a same different judgement
 %
 % Syntax:
-%   pDifferent = bayesianSameDiffModel( stimDiffDb, sigma )
+%   pDifferent = bayesianSameDiffModel( stimParamsDomainList, stimDiffDb, sigmaParams, priorSame )
 %
 % Description:
 %   Bayesian same–different discrimination model.
@@ -11,12 +11,19 @@ function pDifferent = bayesianSameDiffModelTwoSigma( stimParamsDomainList, stimD
 %   physical stimulus difference Δ in the vector stimDiffDb.
 %
 % Inputs:
-%   stimDiffDb  - Vector of numeric values. The difference
-%                 between the stimuli in units of decibels.
+%   stimParamsDomainList - Range of possible differences between the 
+%                stimuli in dB. 
 %
-%   sigma       - Scalar numeric value. Standard deviation of sensory noise
-%                 for internal measurements m1 and m2.
+%   stimDiffDb   - Vector of numeric values. The actual differences
+%                 between the stimuli in dB, presented to the participant
+%                 during the experiment.
 %
+%   sigmaParams   - Scalar numeric values. Standard deviation of sensory noise
+%                 for ref and test measurements.  
+%                 sigmaParams = [sigmaTest sigmaRef]  
+%   
+%   priorSame     - Prior probability of same based on the true proportion
+%                 of same trials in the experiment.  
 % Outputs:
 %   pDifferent  - Vector of same length as stimDiffDb that gives
 %                 the probability of reporting "different" for
@@ -24,10 +31,11 @@ function pDifferent = bayesianSameDiffModelTwoSigma( stimParamsDomainList, stimD
 %
 % Examples:
 %{
-    sigma = 0.3
-    stimDiffDb = -10:0.5:10;    
-    pDifferent = bayesianSameDiffModelTwoSigma(stimDiffDb, sigma );
-    plot(stimDiffDb, pDifferent,'*-r');
+    stimParamsDomainList = [0 logspace(log10(0.1),log10(5),30)];
+    stimDiffDb = -10:0.5:10;  
+    sigmaParams = [0.8 0.3]; 
+    priorSame = 0.4; 
+    pDifferent = bayesianSameDiffModelTwoSigma(stimParamsDomainList, stimDiffDb, sigmaParams, priorSame);
 %}
 
 % For the testing case where sigmaRef = sigmaTest
@@ -91,7 +99,6 @@ for i = 1:length(stimDiffDb)
     % Likelihood of measurement given this stimulus difference
     % This is the sensory encoding stage
     % Observer treats every trial as if it might be a different trial
-    % Add the if delta = 0 statement?
     P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaZero^2 + sigma^2));
 
     % Normalize - is this step necessary? Maybe not. 

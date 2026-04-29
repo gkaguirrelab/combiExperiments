@@ -1,3 +1,5 @@
+% The purpose of this code is to plot subject-level psychometric data
+% with Bayesian model fits (sigma ref and test parameters)
 % SETUP - defining variables and choosing subject IDs
 
 % VARIABLES TO CHANGE 
@@ -211,7 +213,7 @@ for subjIdx = 1:nSubj
 
 end
 
-
+% How often did the model fit equal sigma ref and test parameters?
 tolerance = 1e-6; % Default epsilon
 
 % Check for equality within the defined tolerance

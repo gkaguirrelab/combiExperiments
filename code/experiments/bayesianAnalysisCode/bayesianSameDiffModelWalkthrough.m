@@ -151,13 +151,11 @@ set(gcf, 'PaperUnits', 'inches');
 set(gcf, 'PaperSize', [pos(3) pos(4)]);
 set(gcf, 'PaperPosition', [0 0 pos(3) pos(4)]);
 
-set(gcf, 'InvertHardcopy', 'off');
-
-print(gcf, 'myfigure.pdf', '-dpdf', '-painters');
+% print(gcf, 'myfigure.pdf', '-dpdf', '-painters');
 %% Stimulus-specific integration: can be added as a fourth panel
 
 % Integrating under the likelihood of the measurement given this stimulus difference
-delta = 1.5; % choose stimulus (dB value)
+delta = 1; % choose stimulus (dB value)
 
 % Measurement distribution for this stimulus
 P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaRef^2 + sigmaTest^2));
@@ -168,17 +166,32 @@ pDifferent = sum(P_m_given_delta .* decisionDifferent) * dm;
 % subplot(1,4,4); hold on;
 figure; hold on; 
 
-% Create masked distribution for shading
-P_shade = P_m_given_delta;
-P_shade(~decisionDifferent) = 0;  % zero outside decision region
+% Mask for "different" region
+P_diff = P_m_given_delta;
+P_diff(~decisionDifferent) = 0;
 
-% Shade region where observer responds "different"
+% Mask for "same" region
+P_same = P_m_given_delta;
+P_same(decisionDifferent) = 0;
+
+lightOrange = orange + (1 - orange)*0.3;
+lightBlue = blue + (1 - blue)*0.3;
+
+% Shade "different" (light orange)
 area(mGrid, ...
-     P_shade, ...
-     'FaceColor', [0 0.4470 0.7410], ...
+     P_diff, ...
+     'FaceColor', lightOrange, ...
      'FaceAlpha', 0.2, ...
      'EdgeColor', 'none');
 
+hold on;
+
+% Shade "same" (light blue)
+area(mGrid, ...
+     P_same, ...
+     'FaceColor', lightBlue, ...
+     'FaceAlpha', 0.2, ...
+     'EdgeColor', 'none');
 % Plot measurement distribution
 plot(mGrid, P_m_given_delta, 'k', 'LineWidth', 1.5);
 
@@ -190,11 +203,12 @@ xline(mB1,'--','Color',[0.3 0.3 0.3]);
 xline(mB2,'--','Color',[0.3 0.3 0.3]);
 
 xlabel('Internal measurement difference \it{m}');
-ylabel('\it{p}(m | \theta)');
-title(['Stimulus-specific integration (\theta = ' num2str(delta) ')']);
+ylabel('Probability');
+% title(['Stimulus-specific integration (\theta = ' num2str(delta) ')']);
 
 legend({' Respond "different"', ...
-        ' \it{p}(m|\theta)'}, ...
+        ' Respond "same"', ...
+        ''}, ...
         'Location','Northeast');
 
 xlim([thetaMin thetaMax]);
