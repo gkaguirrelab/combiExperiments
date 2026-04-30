@@ -48,7 +48,7 @@ poemT = sortrows(poemT, {'Migraine','idNum'});
 poemT.idNum = []; % remove temp variable
 
 %% 
-% This subject makes a table with: 
+% This section makes a table with: 
 % Info stratified by group includes no of women, age, headache days/1 mo,
 % CHYPS score, MIDAS score, medication use last month
 
@@ -77,30 +77,28 @@ for i = 1:length(groups)
     sex_summary(i) = sprintf('%d/%d', n_women, n_total);
 end
 
-% Display percentages in each monthly migraine frequency bin
-% Define bin order explicitly
-binLabels = ["0 - 4 days", "5 - 9 days", "10 - 15 days", ...
-    "16 - 20 days", "More than 20 days"];
+% Display headache types
+% Define bins
+episodicBins = ["0 - 4 days", "5 - 9 days", "10 - 15 days"];
+chronicBins  = ["16 - 20 days", "More than 20 days"];
 migraine_freq_summary = strings(length(groups),1);
 for i = 1:length(groups)
-    idx = subjSummaryT.MigraineOrControl_ == groups{i}; % subjSumm table matches poemT order
+    idx = subjSummaryT.MigraineOrControl_ == groups{i};
     % Get data for this group
     grpData = string(poemT.MonthlyMigraineFrequency(idx));
-    % Remove missing
     grpData = grpData(~ismissing(grpData));
-    % Count each bin (force order using binLabels)
-    counts = zeros(length(binLabels),1);
-    for b = 1:length(binLabels)
-        counts(b) = sum(grpData == binLabels(b));
+    % ---- CASE 1: Controls ----
+    if groups{i} == "Control"
+        noHeadacheCount = sum(idx);
+        migraine_freq_summary(i) = sprintf('No headache: %d', noHeadacheCount);
+    % ---- CASE 2: Migraine participants ----
+    else
+        episodicCount = sum(ismember(grpData, episodicBins));
+        chronicCount  = sum(ismember(grpData, chronicBins));
+        migraine_freq_summary(i) = sprintf( ...
+            'Episodic: %d, Chronic: %d', ...
+            episodicCount, chronicCount);
     end
-    % Convert to percentages
-    perc = counts / sum(counts) * 100;
-    % Build formatted string
-    parts = strings(length(binLabels),1);
-    for b = 1:length(binLabels)
-        parts(b) = sprintf('%s (%.0f%%)', binLabels(b), perc(b));
-    end
-    migraine_freq_summary(i) = strjoin(parts, ', ');
 end
 
 % Numerical clinical variables to summarize (mean ± SD)
@@ -120,11 +118,16 @@ for v = 1:length(varNames)
     for i = 1:length(groups)
         idx = subjSummaryT.MigraineOrControl_ == groups{i};
 
-        data = poemT.(thisVar);
-        mean_val = mean(data(idx), 'omitnan');
-        std_val  = std(data(idx), 'omitnan');
+        % Leave MIDAS blank
+        if thisVar == "MIDAS_score"
+            var_summary(i,v) = "";
+        else
+            data = poemT.(thisVar);
+            mean_val = mean(data(idx), 'omitnan');
+            std_val  = std(data(idx), 'omitnan');
 
-        var_summary(i,v) = sprintf('%.1f ± %.1f', mean_val, std_val);
+            var_summary(i,v) = sprintf('%.1f ± %.1f', mean_val, std_val);
+        end
     end
 end
 
