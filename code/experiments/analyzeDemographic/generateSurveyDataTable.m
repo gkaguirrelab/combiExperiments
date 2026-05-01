@@ -1,0 +1,141 @@
+% This code generates tables of FLIC demographic and clinical characteristics. 
+
+% Subject IDs of participants who completed the experiment
+participantList = {'FLIC_0013','FLIC_1016',...
+'FLIC_0015',	'FLIC_1029', ...
+'FLIC_0017',	'FLIC_1030', ...
+'FLIC_0018',	'FLIC_1031', ...
+'FLIC_0019',	'FLIC_1032', ...
+'FLIC_0020',	'FLIC_1034', ...
+'FLIC_0021',	'FLIC_1035', ...
+'FLIC_0022',	'FLIC_1036', ...
+'FLIC_0027',	'FLIC_1038', ...
+'FLIC_0028',	'FLIC_1041', ...
+'FLIC_0039',	'FLIC_1043', ...
+'FLIC_0042',	'FLIC_1044', ...
+'FLIC_0049',	'FLIC_1046', ...
+'FLIC_0050',	'FLIC_1047', ...
+'FLIC_0051',	'FLIC_1048'};
+
+% Define directories
+dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+dropBoxSubDir = 'FLIC_analysis';
+projectName = 'dichopticFlicker';
+experimentName = 'surveyData';
+dropBoxSummaryDir = 'FLIC_subject'; % for subjSummary spreadsheet only
+
+subjSummaryDataDir = fullfile(dropBoxBaseDir, dropBoxSummaryDir);
+dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, experimentName);
+
+%% This section makes a control vs migrainers table with info about:
+% no of women, age, headache days/1 mo, CHYPS score, MIDAS score, ...
+
+% Call functions to obtain summary values
+[ageSummary, sexSummary] = analyzeSubjSummary(participantList, subjSummaryDataDir);
+[monthlyMigraineFreq, CHYPS, MIDAS] = analyzePOEM(participantList, dataDir);
+gssSummary = analyzeSPAQ(participantList, dataDir);
+vssSummary = analyzeVSQ(participantList, dataDir);
+
+% Convert variables to strings for the table
+% MIDAS string summary 
+MIDAS_summary = strings(2,1);
+MIDAS_summary(1) = "";
+MIDAS_summary(2) = sprintf('%.2f ± %.2f', MIDAS(2,1), MIDAS(2,2));
+% CHYPS string summary
+CHYPS_total = CHYPS(:,:,1);
+CHYPS_total_summary = strings(2,1);
+for ii = 1:2
+    CHYPS_total_summary(ii) = sprintf('%.2f ± %.2f', CHYPS_total(ii,1), CHYPS_total(ii,2));
+end
+
+% Combine into table
+tableGroups = {'Control', 'Migraine with aura'}; % group names for table
+summaryTable = table( ...
+    tableGroups', ...
+    ageSummary, ...
+    sexSummary, ...
+    monthlyMigraineFreq,...
+    MIDAS_summary, ...
+    CHYPS_total_summary(:,:,1), ... % include total CHYPS score only
+    gssSummary, ... % Global Seasonality Score
+    vssSummary, ...
+    'VariableNames', { ...
+        'Group', ...
+        'Age (y)', ...
+        'No. of women', ...
+        'Headache type', ...
+        'MIDAS', ...
+        'CHYPS', ...
+        'SPAQ (GSS)' ...
+        'Visual Snow'});
+
+disp(summaryTable);
+
+f = uifigure('Name','Summary Table','Position',[100 100 900 200]);
+
+uitable(f, ...
+    'Data', summaryTable{:,:}, ...
+    'ColumnName', summaryTable.Properties.VariableNames, ...
+    'Position', [0 0 900 200], ...
+    'ColumnWidth','auto', ...
+    'FontSize', 14);
+
+%% This section makes a control vs migrainers table with info about:
+% age, number of women, race composition of the sample, and number of hispanic individuals
+
+groups = {'Control','Migraine with aura'};
+
+[ageSummary, sexSummary, ethnicitySummary, raceSummary] = analyzeSubjSummary(participantList, subjSummaryDataDir);
+
+% Combine into a table
+demographics_table = table();
+demographics_table.Group = groups';
+demographics_table.Age = ageSummary;
+demographics_table.NumberWomen = sexSummary;
+demographics_table.RaceComposition = raceSummary;
+demographics_table.NumberHispanic = ethnicitySummary;
+
+disp(demographics_table)
+
+%% Code specifically to make a table of the ages of all FLIC participants 
+% (including Fall 2024 data collection)
+% This was to report age information to the NIH
+
+% File name
+roundOneFilename = fullfile(subjSummaryDataDir, '/Fall 2024/FLIC_SubjectSummary_24.xlsx'); 
+roundTwoFilename = fullfile(subjSummaryDataDir, '/FLIC_SubjectSummary.xlsx');
+
+% Detect the default options for this file (the file from 2024)
+optsOld = detectImportOptions(roundOneFilename);
+% Set where the Variable Names (titles) and Data start
+% Headers are in Row 1 and data starts in Row 2:
+optsOld.VariableNamesRange = 'A1'; 
+optsOld.DataRange = 'A2';
+
+% Repeat the process for the newer file
+opts = detectImportOptions(roundTwoFilename);
+% Set where the Variable Names (titles) and Data start
+% Headers are in Row 1 and data starts in Row 2:
+opts.VariableNamesRange = 'A1'; 
+opts.DataRange = 'A2';
+
+% Read the Excel files into tables
+TOld = readtable(roundOneFilename, optsOld);
+subjSummaryT = readtable(roundTwoFilename, opts);
+
+% Extract the Age column
+ages = [TOld.Age; subjSummaryT.Age];
+
+% Define bin edges
+edges = [0 2 6 13 18 26 46 65 76 inf];
+
+% Count individuals in each bin
+[counts, ~] = histcounts(ages, edges);
+
+% Labels (for display)
+labels = {'0-1', '2-5', '6-12', '13-17', '18-25', '26-45', '46-64', '65-75', '76+'};
+
+% Display results
+result_table = table(labels', counts', 'VariableNames', {'AgeGroup','Count'});
+
+disp(result_table);
