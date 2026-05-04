@@ -37,11 +37,16 @@ monthlyMigraineFreq(2) = sprintf( ...
     episodicCount, chronicCount);
 
 % Summarize MIDAS scores
-MIDAS = zeros(2,2);
-MIDAS(1,1) = NaN; % leave controls blank
-MIDAS(1,2) = NaN;
-MIDAS(2,1) = mean(poemT.MIDAS_score(poemT.Migraine == 1), 'omitnan');
-MIDAS(2,2) = std(poemT.MIDAS_score(poemT.Migraine == 1), 'omitnan');
+MIDAS_table = zeros(2,2);
+MIDAS_table(1,1) = NaN; % leave controls blank
+MIDAS_table(1,2) = NaN;
+MIDAS_table(2,1) = mean(poemT.MIDAS_score(poemT.Migraine == 1), 'omitnan');
+MIDAS_table(2,2) = std(poemT.MIDAS_score(poemT.Migraine == 1), 'omitnan');
+
+% Convert to strings for table
+MIDAS = strings(2,1);
+MIDAS(1) = "";
+MIDAS(2) = sprintf('%.2f ± %.2f', MIDAS_table(2,1), MIDAS_table(2,2));
 
 % Summarize CHYPS score and subscores
 vars = { ...
@@ -51,7 +56,7 @@ vars = { ...
     'CHYPS_Strobing', ...
     'CHYPS_IntenseVisEnviro'};
 
-CHYPS = nan(2,2,length(vars));
+CHYPS_matrix = nan(2,2,length(vars));
 
 ctrlIdx = (poemT.Migraine == 0);
 migIdx  = (poemT.Migraine == 1);
@@ -60,12 +65,19 @@ for vv = 1:length(vars)
     ff = vars{vv};
 
     % Control
-    CHYPS(1,1,vv) = mean(poemT.(ff)(ctrlIdx), 'omitnan');
-    CHYPS(1,2,vv) = std( poemT.(ff)(ctrlIdx), 'omitnan');
+    CHYPS_matrix(1,1,vv) = mean(poemT.(ff)(ctrlIdx), 'omitnan');
+    CHYPS_matrix(1,2,vv) = std( poemT.(ff)(ctrlIdx), 'omitnan');
 
     % Migraine
-    CHYPS(2,1,vv) = mean(poemT.(ff)(migIdx), 'omitnan');
-    CHYPS(2,2,vv) = std( poemT.(ff)(migIdx), 'omitnan');
+    CHYPS_matrix(2,1,vv) = mean(poemT.(ff)(migIdx), 'omitnan');
+    CHYPS_matrix(2,2,vv) = std( poemT.(ff)(migIdx), 'omitnan');
+end
+
+% Convert to strings for table
+CHYPS_total = CHYPS_matrix(:,:,1);
+CHYPS = strings(2,1);
+for ii = 1:2
+    CHYPS(ii) = sprintf('%.2f ± %.2f', CHYPS_total(ii,1), CHYPS_total(ii,2));
 end
 
 end
