@@ -2,8 +2,8 @@
 % This code produces plots to explain the framework of our Bayesian same different model
 
 % Sigma values
-sigmaTest = 0.8; % sigma test
-sigmaRef = 0.3;  % sigma ref (aka sigma zero)
+sigmaTest = 0.75; % sigma test
+sigmaRef = 0.5;  % sigma ref (aka sigma zero)
 % Sigma ref is lower than sigma test to reflect adaptation to the reference
 
 % Priors
@@ -460,6 +460,117 @@ legend({'\it{m_{ref}}', ...
     }, 'Location', 'NorthEast'); 
 xlim([-5 8]);
 ylim([0 1]); % max([P_ref P_test P_diff])*1.2]);
+set(gca,'FontSize',14); box off;
+
+%% FOR POSTER: 
+% Elementary plot of the likelihood as a difference of Gaussians
+
+sigmaRef = 0.5;
+sigmaTest = 0.75;
+delta = 2;
+
+m = linspace(-5, 8, 1000)';
+dm = m(2) - m(1);
+
+% Likelihoods for illustration
+P_ref  = normpdf(m, 0, sigmaRef);
+P_test = normpdf(m, delta, sigmaTest);
+P_diff = normpdf(m, delta, sqrt(sigmaTest^2 + sigmaRef^2));
+
+% Recompute Bayesian decision rule on THIS grid 
+% Priors (reuse or redefine explicitly for clarity)
+pSame = 0.4;
+pDiff = 0.6;
+
+% p(m | D = 0)
+P_m_given_D0 = normpdf(m, 0, sqrt(2)*sigmaRef);
+
+% theta prior (uniform, excluding 0)
+thetaRange = linspace(-5,5,1000);
+thetaRange(thetaRange==0) = [];
+p_theta_given_D1 = ones(size(thetaRange)) / (max(thetaRange)-min(thetaRange));
+dtheta = thetaRange(2) - thetaRange(1);
+
+% p(m | D = 1)
+likelihood = normpdf(m, thetaRange, sqrt(sigmaTest^2 + sigmaRef^2));
+P_m_given_D1 = sum(likelihood .* p_theta_given_D1, 2) * dtheta;
+
+% Posterior
+P_D1_given_m = (P_m_given_D1 * pDiff) ./ ...
+    (P_m_given_D0 * pSame + P_m_given_D1 * pDiff);
+
+decisionDifferent = (P_D1_given_m > 0.5);
+
+% Boundaries
+idx = find(diff(decisionDifferent));
+mB1 = m(idx(1));
+mB2 = m(idx(2));
+
+% Height of the "m" curve (difference likelihood)
+yB1 = P_diff(idx(1));
+yB2 = P_diff(idx(2));
+
+% Stimulus-conditioned probability
+P_m_given_delta = normpdf(m, delta, sqrt(sigmaRef^2 + sigmaTest^2));
+P_m_given_delta = P_m_given_delta / sum(P_m_given_delta * dm);
+pDifferent = sum(P_m_given_delta .* decisionDifferent) * dm;
+
+% Plot
+figure; hold on;
+
+colRef  = [0.6 0.6 0.6];    
+colTest = [0.6 0.6 0.6]; 
+colDiff = 'k';
+
+% Likelihoods
+hRef = plot(m, P_ref,  'Color', colRef,  'LineWidth', 1.5, 'LineStyle', '-');
+hTest = plot(m, P_test, 'Color', colTest, 'LineWidth', 1.5, 'LineStyle', '--');
+hDiff = plot(m, P_diff, 'Color', colDiff, 'LineWidth', 2.5, 'LineStyle', '-.');
+
+% Decision boundaries
+hB = plot([mB1 mB1], [0 yB1], '--', 'Color', 'k', 'LineWidth', 1.5);
+% plot([mB2 mB2], [0 yB2], '--', 'Color', 'k', 'LineWidth', 1.5);
+
+% Mask for "different" region
+P_diff = P_m_given_delta;
+P_diff(~decisionDifferent) = 0;
+
+% Mask for "same" region
+P_same = P_m_given_delta;
+P_same(decisionDifferent) = 0;
+
+lightOrange = orange + (1 - orange)*0.3;
+lightBlue = blue + (1 - blue)*0.3;
+
+% Shade "different" (light orange)
+hDiffArea = area(m, ...
+     P_diff, ...
+     'FaceColor', lightOrange, ...
+     'FaceAlpha', 0.2, ...
+     'EdgeColor', 'none');
+
+hold on;
+
+% Shade "same" (light blue)
+hSameArea = area(m, ...
+     P_same, ...
+     'FaceColor', lightBlue, ...
+     'FaceAlpha', 0.2, ...
+     'EdgeColor', 'none');
+
+xlabel('Internal measurement value');
+ylabel('Probability');
+
+legend([hRef, hTest, hDiff, hSameArea, hDiffArea], ...
+    {'\it{m_{ref}}', ...
+     '\it{m_{test}}', ...
+     '\it{m}', ...
+     'Respond "same"', ...
+     'Respond "different"'}, ...
+    'Location', 'NorthEast');
+
+xlim([-5 8]);
+ylim([0 1]);
 set(gca,'FontSize',14); box off;
 
 %% Elementary bar plot of the prior over trial types

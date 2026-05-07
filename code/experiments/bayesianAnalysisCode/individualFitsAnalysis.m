@@ -4,7 +4,7 @@ arguments
     options.barPlot (1,1) logical = true
     options.fVal (1,1) logical = false
     options.anova (1,1) logical = true
-    options.superSubj (1,1) logical = true
+    options.superSubj (1,1) logical = false
 end
 
 %% load data
@@ -104,6 +104,7 @@ colControl  = [0.3 0.3 0.8];
 % Loop through light levels (1 = Low, 2 = High)
 for l = 1:2
     f = figure('Color', 'w', 'Name', ['Light Level ' num2str(l)]);
+    set(gca, 'FontSize', 16);
     hold on;
 
     % Store handles for the legend
@@ -133,13 +134,17 @@ for l = 1:2
         hM = errorbar(refFreqHz, mMean, mSEM, ['o' lStyle], 'Color', colMigraine, ...
             'MarkerFaceColor', fColM, 'LineWidth', 1.5, 'MarkerSize', 7);
 
+        hM.DisplayName = ['Migraine (' cName ')'];
+
         % Plot Control
         hC = errorbar(refFreqHz, cMean, cSEM, ['o' lStyle], 'Color', colControl, ...
             'MarkerFaceColor', fColC, 'LineWidth', 1.5, 'MarkerSize', 7);
 
+        hC.DisplayName = ['Control (' cName ')', ''];
+
         % Add to legend lists
-        hHandles = [hHandles, hM, hC];
-        hNames   = [hNames, {['Migraine (' cName ')'], ['Control (' cName ')']}];
+        % hHandles = [hHandles, hM, hC];
+        % hNames   = [hNames, {['Migraine (' cName ')'], ['Control (' cName ')']}];
     end
 
     % Styling
@@ -152,16 +157,17 @@ for l = 1:2
     grid on;
     set(gca, 'XScale', 'log');
 
-    % Add Legend
-    legend(hHandles, hNames, 'Location', 'northeast', 'Box', 'off');
-
     % --- Add Grey Background (Only for Low Light, l=1) ---
     if l == 1
         xl = xlim; yl = ylim;
         p = patch([xl(1) xl(2) xl(2) xl(1)], [yl(1) yl(1) yl(2) yl(2)], ...
             [0.9 0.9 0.9], 'EdgeColor', 'none', 'FaceAlpha', 0.5, 'Clipping', 'off');
         uistack(p, 'bottom'); % Ensure it stays behind the data
+        p.Annotation.LegendInformation.IconDisplayStyle = 'off';
     end
+
+    % Add Legend
+    legend('show', 'Location', 'northwest', 'Box', 'off');
 end
 
 % again for sigma ref
@@ -169,6 +175,7 @@ end
 % Loop through light levels (1 = Low, 2 = High)
 for l = 1:2
     f = figure('Color', 'w', 'Name', ['Light Level ' num2str(l)]);
+    set(gca, 'FontSize', 16);
     hold on;
 
     % Store handles for the legend
@@ -229,11 +236,71 @@ for l = 1:2
     end
 end
 
+% For the poster: Plot of the sigma test value across frequencies at 
+% high light level, high contrast, averaged over migraine and control.
+
+% Conditions
+lightLevel    = 2; % High Light
+contrastLevel = 2; % High Contrast
+
+% Combine groups
+
+% Get subject means
+mData = squeeze(sigmaTestM(:,contrastLevel,lightLevel,:)); % subj x freq
+cData = squeeze(sigmaTestC(:,contrastLevel,lightLevel,:));
+
+allData = [mData; cData];
+
+% Mean + SEM across all subjects
+muSigma = mean(allData,1);
+semSigma = std(allData,[],1) ./ sqrt(size(allData,1));
+
+figure('Color','w');
+hold on;
+set(gca,'FontSize',16);
+
+% Main line
+h = errorbar(refFreqHz, muSigma, semSigma, ...
+    '-', ...
+    'Color', [0.45 0.25 0.65], ...
+    'LineWidth', 2.5);
+
+h.Marker = 'o';
+h.MarkerSize = 7;
+h.MarkerFaceColor = [0.45 0.25 0.65];
+h.MarkerEdgeColor = [0.45 0.25 0.65];
+set(gcf, 'Renderer', 'painters')
+
+% Styling
+
+xlabel('Reference Frequency (Hz)');
+ylabel('$\sigma_{test}$', 'Interpreter', 'latex', 'FontSize',25);
+
+% title('Sigma Test Across Frequencies');
+
+xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
+
+ylim([0 2.5]);
+
+set(gca,'XScale','log');
+grid on;
+set(gca,'XMinorGrid','off','YMinorGrid','off'); 
+box off;
+
+% Optional: make ticks prettier
+set(gca,'XTickMode','manual');
+set(gca,'XTick',[10 13 17 23 30]);
+
+set(gcf, 'InvertHardcopy', 'off');
+% saveas(gcf, ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/' ...
+%     'Ruby Bouhassira/FLIC_admin/Presentations/VSS 2026/dichopticFlicker/' ...
+%     'parts/sigmaTestAcrossFreq_highChighL.pdf']);
+
 %% Plots to examine main effect of frequency  
 % Average Sigma across Contrast and Light, keep Group and Frequency
 
 % Pull data
-sigmaTestData = cat(1, sigmaTestM, sigmaTestC);  % [Subjects × Contrast × Light × Freq]
+sigmaTestData = cat(1, sigmaTestM, sigmaTestC);  % [Subjects × Contrast × Light × Freq] OR [Group x ... ]
 sigmaRefData  = cat(1, sigmaRefM, sigmaRefC);
 
 % Group labels
@@ -252,14 +319,23 @@ for g = 1:length(groups)
     idx = groupLabels == groups(g);
     
     % Average across Contrast x Light
-    dataTest = squeeze(mean(mean(sigmaTestData(idx,:,:,:),3),2)); % [Subjects × Freq]
+    dataTest = squeeze(mean(mean(sigmaTestData(idx,:,:,:),3),2)); % [Subjects × Freq] OR [Group x Freq]
     dataRef  = squeeze(mean(mean(sigmaRefData(idx,:,:,:),3),2));
     
-    meanSigmaTest(g,:) = mean(dataTest,1);
-    semSigmaTest(g,:)  = std(dataTest,0,1)/sqrt(sum(idx));
-    
-    meanSigmaRef(g,:) = mean(dataRef,1);
-    semSigmaRef(g,:)  = std(dataRef,0,1)/sqrt(sum(idx));
+    if options.superSubj
+        meanSigmaTest(g,:) = dataTest;   % already [1 × freq]
+        semSigmaTest(g,:)  = nan;        % no SEM
+
+        meanSigmaRef(g,:) = dataRef;   % already [1 × freq]
+        semSigmaRef(g,:)  = nan;        % no SEM
+    else
+        meanSigmaTest(g,:) = mean(dataTest,1); % average across subjects
+        semSigmaTest(g,:)  = std(dataTest,0,1)/sqrt(sum(idx));
+
+        meanSigmaRef(g,:) = mean(dataRef,1);
+        semSigmaRef(g,:)  = std(dataRef,0,1)/sqrt(sum(idx));
+    end
+
 end
 
 % Plot Sigma Test
@@ -267,16 +343,32 @@ figure('Color','w'); hold on;
 colMigraine = [0.8 0.3 0.3];
 colControl  = [0.3 0.3 0.8];
 
-% Migraine
-errorbar(refFreqHz, meanSigmaTest(1,:), semSigmaTest(1,:), '-o', ...
-    'Color', colMigraine, 'MarkerFaceColor', colMigraine, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Migraine');
-% Control
-errorbar(refFreqHz, meanSigmaTest(2,:), semSigmaTest(2,:), '-s', ...
-    'Color', colControl, 'MarkerFaceColor', colControl, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Control');
+if options.superSubj
+    % Plot mean ONLY
+    % Migraine
+    plot(refFreqHz, meanSigmaTest(1,:), '-o', ...
+        'Color', colMigraine, 'MarkerFaceColor', colMigraine, ...
+        'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Migraine');
+    % Control
+    plot(refFreqHz, meanSigmaTest(2,:), '-s', ...
+        'Color', colControl, 'MarkerFaceColor', colControl, ...
+        'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Control');
+else
+    % Migraine
+    errorbar(refFreqHz, meanSigmaTest(1,:), semSigmaTest(1,:), '-o', ...
+        'Color', colMigraine, 'MarkerFaceColor', colMigraine, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Migraine');
+    % Control
+    errorbar(refFreqHz, meanSigmaTest(2,:), semSigmaTest(2,:), '-s', ...
+        'Color', colControl, 'MarkerFaceColor', colControl, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Control');
+end
 
-set(gca,'XScale','log'); 
+set(gca,'XScale','log');
 xlabel('Reference Frequency (Hz)'); ylabel('Sigma Test');
-ylim([0 2]); 
+if options.superSubj
+    ylim([0 2.5]);
+else
+    ylim([0 2]);
+end
 title('Frequency vs Sigma Test');
 legend('Location','northwest'); grid on; box off;
 xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
@@ -284,32 +376,66 @@ xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
 % Plot Sigma Ref
 figure('Color','w'); hold on;
 
-% Migraine
-errorbar(refFreqHz, meanSigmaRef(1,:), semSigmaRef(1,:), '-o', ...
-    'Color', colMigraine, 'MarkerFaceColor', colMigraine, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Migraine');
-% Control
-errorbar(refFreqHz, meanSigmaRef(2,:), semSigmaRef(2,:), '-s', ...
-    'Color', colControl, 'MarkerFaceColor', colControl, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Control');
+if options.superSubj
+    % Plot mean ONLY
+    % Migraine
+    plot(refFreqHz, meanSigmaRef(1,:), '-o', ...
+        'Color', colMigraine, 'MarkerFaceColor', colMigraine, ...
+        'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Migraine');
+    % Control
+    plot(refFreqHz, meanSigmaRef(2,:), '-s', ...
+        'Color', colControl, 'MarkerFaceColor', colControl, ...
+        'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Control');
+else
+    % Migraine
+    errorbar(refFreqHz, meanSigmaRef(1,:), semSigmaRef(1,:), '-o', ...
+        'Color', colMigraine, 'MarkerFaceColor', colMigraine, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Migraine');
+    % Control
+    errorbar(refFreqHz, meanSigmaRef(2,:), semSigmaRef(2,:), '-s', ...
+        'Color', colControl, 'MarkerFaceColor', colControl, 'LineWidth', 1.5, 'MarkerSize', 7, 'DisplayName','Control');
+end
 
 set(gca,'XScale','log'); 
 xlabel('Reference Frequency (Hz)'); ylabel('Sigma Ref');
-ylim([0 2]); 
+if options.superSubj
+    ylim([0 2.5]);
+else
+    ylim([0 2]);
+end 
 title('Frequency vs Sigma Ref');
 legend('Location','northwest'); grid on; box off;
 xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
 %% Bar plot: Plotting sigma parameters for each contrast x light level condition
 if options.barPlot
-    %Prepare Data
+
+    % Original order assumed:
+    % (1)=LowContrast-LowLight
+    % (2)=HighContrast-LowLight
+    % (3)=LowContrast-HighLight
+    % (4)=HighContrast-HighLight
+    reorderIdx = [4 3 2 1];
+
+    % For line style
+    highLightGroups = [1 2];
+    lowLightGroups  = [3 4];
+    highContrastGroups = [1 3];
+    lowContrastGroups  = [2 4];
+
+    % Plot sigma test bar plot
     barData = [muSigmaTestC(:), muSigmaTestM(:)];
     errData = [semSigmaTestC(:), semSigmaTestM(:)];
 
+    barData = barData(reorderIdx, :);
+    errData = errData(reorderIdx, :);
+
     % Initialize Figure
     figure('Color', 'w');
+    set(gca, 'FontSize', 16);
     hold on;
 
     % Darkness Patch
-    % Spans x=0.5 to 2.5 (covering the first 2 groups: Low Light)
-    patch([0.5, 2.5, 2.5, 0.5], [0, 0, 2.5, 2.5], [0.9 0.9 0.9], ...
+    % Spans x=0.5 to 2.5 (covering the last 2 groups: Low Light)
+    patch([2.5 4.5 4.5 2.5], [0 0 2.5 2.5], [0.9 0.9 0.9], ...
         'EdgeColor', 'none', 'FaceAlpha', 0.5);
 
     % Plot Bars
@@ -317,46 +443,131 @@ if options.barPlot
     b(1).FaceColor = [0.3 0.3 0.8]; % Control
     b(2).FaceColor = [0.8 0.3 0.3]; % Migraine
 
+    % Remove solid outlines from all bars
+    b(1).EdgeColor = 'none';
+    b(2).EdgeColor = 'none';
+
+    % Add outlines
+    for iBar = 1:2   % Control and Migraine
+
+        % Choose base color
+        if iBar == 1
+            baseColor = [0.3 0.3 0.8];
+        else
+            baseColor = [0.8 0.3 0.3];
+        end
+
+        edgeColor = baseColor * 0.55;
+
+        for g = 1:4
+
+            if g == 1 % glow behind high light high contrast bars
+
+                xCenter = b(iBar).XEndPoints(g);
+
+                nBars = size(barData,2);
+                groupWidth = min(0.8, nBars/(nBars + 1.5));
+                width = groupWidth / nBars - 0.06;
+
+                y = barData(g,iBar);
+
+                glowColor = [0.55 0.25 0.75];
+
+                % 2-layer soft glow 
+                h1 = rectangle('Position', [xCenter - width/2, 0, width, y], ...
+                    'EdgeColor', glowColor, ...
+                    'LineWidth', 8, ...
+                    'LineStyle', '-', ...
+                    'FaceColor', 'none', ...
+                    'Clipping', 'on');
+
+                h2 = rectangle('Position', [xCenter - width/2, 0, width, y], ...
+                    'EdgeColor', glowColor, ...
+                    'LineWidth', 5, ...
+                    'LineStyle', '-', ...
+                    'FaceColor', 'none', ...
+                    'Clipping', 'on');
+
+                % FORCE glow behind everything
+                uistack(h1,'bottom');
+                uistack(h2,'bottom');
+            end
+
+            xCenter = b(iBar).XEndPoints(g);
+
+            nBars = size(barData,2);
+            groupWidth = min(0.8, nBars/(nBars + 1.5));
+            width = groupWidth / nBars - 0.06;
+
+            y = barData(g,iBar);
+
+            % --- LOW CONTRAST = dashed ---
+            if ismember(g, lowContrastGroups)
+
+                rectangle('Position', ...
+                    [xCenter - width/2, 0, width, y], ...
+                    'EdgeColor', edgeColor, ...
+                    'LineStyle', '--', ...
+                    'LineWidth', 2.5, ...
+                    'FaceColor', 'none');
+
+                % --- HIGH CONTRAST = solid ---
+            elseif ismember(g, highContrastGroups)
+
+                rectangle('Position', ...
+                    [xCenter - width/2, 0, width, y], ...
+                    'EdgeColor', edgeColor, ...
+                    'LineStyle', '-', ...
+                    'LineWidth', 2.5, ...
+                    'FaceColor', 'none');
+            end
+        end
+    end
+
     % Error Bars
     if options.superSubj
         errData(:) = NaN;
     else
         for i = 1:numel(b)
             errorbar(b(i).XEndPoints, b(i).YData, errData(:,i), ...
-                'k', 'linestyle', 'none', 'LineWidth', 1.5);
+                'k', 'linestyle', 'none', 'LineWidth', 2.5);
         end
     end
 
     % Formatting & Labels
     set(gca, 'Layer', 'top', 'Box', 'off');
-    ylabel('Sigma Test');
+    ylabel('$\sigma_{test}$', 'Interpreter', 'latex', 'FontSize',25);
     ylim([0 2.5]);
     xlim([0.5, 4.5]);
     xticks([]); % Turn off default ticks to make room for custom labels
     legend([b(1), b(2)], {'Control', 'Migraine'}, 'Location', 'Northwest');
-    title('Sigma Test by Contrast × Light');
+    % title('Sigma Test by Contrast × Light');
 
     % "Contrast" Labels (Centered between the two bars) ---
-    contrastNames = {'Low Contrast', 'High Contrast', 'Low Contrast', 'High Contrast'};
+    contrastNames = {'High Contrast', 'Low Contrast', 'High Contrast', 'Low Contrast'};
     yContrast = -0.15;
     for i = 1:4
         % Calculate the midpoint between the Control and Migraine bars
         midPoint = (b(1).XEndPoints(i) + b(2).XEndPoints(i)) / 2;
         text(midPoint, yContrast, contrastNames{i}, ...
-            'HorizontalAlignment', 'center', 'FontSize', 9, 'Rotation', 0);
+            'HorizontalAlignment', 'center', 'FontSize', 14, 'Rotation', 0);
     end
 
     % "Light" Labels (Across bars) ---
     yLight = -0.45; % Lower down to avoid collision
-    text(1.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 11, 'Clipping', 'off');
-    text(3.5, yLight, 'High Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 11, 'Clipping', 'off');
+    text(1.5, yLight, 'High Light', 'HorizontalAlignment', 'center', ...
+        'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
+    text(3.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
+        'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
 
     % Expand the bottom margin (the 0.3) so labels aren't cut off
     set(gca, 'Position', [0.15 0.3 0.75 0.6]);
+    set(gcf, 'InvertHardcopy', 'off');
+    % saveas(gcf, ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/' ...
+    % 'Ruby Bouhassira/FLIC_admin/Presentations/VSS 2026/dichopticFlicker/' ...
+    % 'parts/sigmaTestBar.pdf']);
 
-    %------ Plot sigma ref bar plot----
+    % ------ Plot sigma ref bar plot, NOT changed 
 
     %Prepare Data
     barData = [muSigmaRefC(:), muSigmaRefM(:)];
@@ -364,6 +575,7 @@ if options.barPlot
 
     % Initialize Figure
     figure('Color', 'w');
+    set(gca, 'FontSize', 16);
     hold on;
 
     % Darkness Patch
@@ -376,13 +588,73 @@ if options.barPlot
     b(1).FaceColor = [0.3 0.3 0.8]; % Control
     b(2).FaceColor = [0.8 0.3 0.3]; % Migraine
 
+    % Remove solid outlines from all bars
+    b(1).EdgeColor = 'none';
+    b(2).EdgeColor = 'none';
+
+    % Low contrast groups
+    lowContrastGroups = [1 3];
+    highContrastGroups = [2 4];
+
+    % Add outlines
+    for iBar = 1:2   % Control and Migraine
+
+        % Choose base color
+        if iBar == 1
+            baseColor = [0.3 0.3 0.8]; % control
+        else
+            baseColor = [0.8 0.3 0.3]; % migraine
+        end
+
+        % Make darker version
+        edgeColor = baseColor * 0.55;
+
+        % LOW CONTRAST - dashed
+        for g = lowContrastGroups
+
+            % Bar center and width
+            xCenter = b(iBar).XEndPoints(g);
+
+            nBars = size(barData,2);
+            groupWidth = min(0.8, nBars/(nBars + 1.5));
+            width = groupWidth / nBars - 0.06;
+
+            % Bar height
+            y = barData(g,iBar);
+
+            % Draw dashed outline
+            rectangle('Position', ...
+                [xCenter - width/2, 0, width, y], ...
+                'EdgeColor', edgeColor, ...
+                'LineStyle', '--', ...
+                'LineWidth', 2.5, ...
+                'FaceColor', 'none');
+
+        end
+
+        % HIGH CONTRAST - solid
+        for g = highContrastGroups
+
+            xCenter = b(iBar).XEndPoints(g);
+            y = barData(g,iBar);
+
+            rectangle('Position', ...
+                [xCenter - width/2, 0, width, y], ...
+                'EdgeColor', edgeColor, ...
+                'LineStyle', '-', ...
+                'LineWidth', 2.5, ...
+                'FaceColor', 'none');
+        end
+
+    end
+
     % Error Bars
     if options.superSubj
         errData(:) = NaN;
     else
         for i = 1:numel(b)
             errorbar(b(i).XEndPoints, b(i).YData, errData(:,i), ...
-                'k', 'linestyle', 'none', 'LineWidth', 1.5);
+                'k', 'linestyle', 'none', 'LineWidth', 2.5);
         end
     end
 
@@ -393,7 +665,7 @@ if options.barPlot
     xlim([0.5, 4.5]);
     xticks([]); % Turn off default ticks to make room for custom labels
     legend([b(1), b(2)], {'Control', 'Migraine'}, 'Location', 'Northwest');
-    title('Sigma Ref by Contrast × Light');
+    % title('Sigma Ref by Contrast × Light');
 
     % "Contrast" Labels (Centered between the two bars) ---
     contrastNames = {'Low Contrast', 'High Contrast', 'Low Contrast', 'High Contrast'};
@@ -402,19 +674,65 @@ if options.barPlot
         % Calculate the midpoint between the Control and Migraine bars
         midPoint = (b(1).XEndPoints(i) + b(2).XEndPoints(i)) / 2;
         text(midPoint, yContrast, contrastNames{i}, ...
-            'HorizontalAlignment', 'center', 'FontSize', 9, 'Rotation', 0);
+            'HorizontalAlignment', 'center', 'FontSize', 14, 'Rotation', 0);
     end
 
     % "Light" Labels (Across bars) ---
     yLight = -0.45; % Lower down to avoid collision
     text(1.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 11, 'Clipping', 'off');
+        'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
     text(3.5, yLight, 'High Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 11, 'Clipping', 'off');
+        'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
 
     % Expand the bottom margin (the 0.3) so labels aren't cut off
     set(gca, 'Position', [0.15 0.3 0.75 0.6]);
 end
+
+%% Bar plot for interaction: High vs Low light effect on sigma test (per group)
+
+% --- Collapse across contrast and frequency ---
+% result: subj × lightLevel
+
+mLight = squeeze(mean(mean(sigmaTestM, 4), 2)); % migraine: subj × light
+cLight = squeeze(mean(mean(sigmaTestC, 4), 2)); % control: subj × light
+
+% --- Compute difference score: High - Low ---
+% light index: 1 = low, 2 = high 
+
+mDiff = mLight(:,2) - mLight(:,1);
+cDiff = cLight(:,2) - cLight(:,1);
+
+% --- Combine for plotting ---
+groupMean = [mean(cDiff), mean(mDiff)];
+groupSEM  = [std(cDiff)/sqrt(numel(cDiff)), std(mDiff)/sqrt(numel(mDiff))];
+
+figure('Color','w'); hold on;
+set(gca,'FontSize',16);
+
+x = 1:2;
+
+b = bar(x, groupMean, 'FaceColor','flat','BarWidth', 0.5);
+
+% Colors (match your scheme)
+colControl  = [0.3 0.3 0.8];
+colMigraine = [0.8 0.3 0.3];
+
+b.CData(1,:) = colControl;
+b.CData(2,:) = colMigraine;
+
+% Error bars
+errorbar(x, groupMean, groupSEM, 'k', ...
+    'LineStyle','none', ...
+    'LineWidth',2);
+
+% Styling
+set(gca,'XTick',x,'XTickLabel',{'Control','Migraine'});
+ylabel('\Delta \sigma_{test} (High − Low Light)');
+% title('Light-Level Interaction on Sigma Test');
+
+box off;
+ylim padded;
+
 %% Plotting the F values from fitting the migraine and control subjects
 % Using the entire sets of nSubj x 4 F values, from migrainers and controls
 if options.fVal

@@ -1,7 +1,20 @@
 % SETUP
 
 % Choose whether you want to save the sigma data in a .mat file
-saveData = true;
+saveData = false;
+
+% Choose whether you want to plot the data from pre-existing fits
+plotExisting = true; 
+% directory for existing file
+dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+dropBoxSubDir = 'FLIC_analysis';
+projectName = 'dichopticFlicker';
+experimentName = 'sigmaData';
+dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, experimentName);
+existingFile = fullfile(dataDir, '30_superSubjSigmaFitsConstrained.mat');
+if plotExisting
+    load(existingFile, 'fValMatrix', 'sigmaPooled');
+end
 
 % Defining the directory
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
@@ -121,8 +134,10 @@ for groupIdx = 1:nGroups
 end
 
 % Fit one sigma per each of the contrasts, light levels, groups, and frequencies
-sigmaPooled = cell(nGroups, nContrasts, nLightLevels, nFreqs);
-fValMatrix = cell(nGroups, nContrasts, nLightLevels, nFreqs);
+if ~plotExisting
+    sigmaPooled = cell(nGroups, nContrasts, nLightLevels, nFreqs);
+    fValMatrix = cell(nGroups, nContrasts, nLightLevels, nFreqs);
+end
 
 % First load in the data
 for groupIdx = 1:nGroups
@@ -178,18 +193,20 @@ for groupIdx = 1:nGroups
                 pRespondDifferent = pooledData(groupIdx, contrastIdx, lightIdx, refFreqIdx).pRespondDifferent;
                 nTrials = pooledData(groupIdx, contrastIdx, lightIdx, refFreqIdx).nTrials;
 
-                initialSigmas = [0.5 0.5];
-                lb = [0.001 0.001];
-                ub = [5 5];
+                if ~plotExisting
+                    initialSigmas = [0.5 0.5];
+                    lb = [0.001 0.001];
+                    ub = [5 5];
 
-                options = bads('defaults');
-                options.MaxIter = 100;
+                    options = bads('defaults');
+                    options.MaxIter = 100;
 
-                [fit, fbest] = bads(@(p) negLogLikelihood(p, stimParamsDomainList, uniqueDb, pRespondDifferent, nTrials, priorSame(groupIdx)), ...
-                    initialSigmas, lb, ub, lb, ub, [], options);
+                    [fit, fbest] = bads(@(p) negLogLikelihood(p, stimParamsDomainList, uniqueDb, pRespondDifferent, nTrials, priorSame(groupIdx)), ...
+                        initialSigmas, lb, ub, lb, ub, [], options);
 
-                sigmaPooled{groupIdx, contrastIdx, lightIdx, refFreqIdx} = fit;
-                fValMatrix{groupIdx, contrastIdx, lightIdx, refFreqIdx} = fbest;
+                    sigmaPooled{groupIdx, contrastIdx, lightIdx, refFreqIdx} = fit;
+                    fValMatrix{groupIdx, contrastIdx, lightIdx, refFreqIdx} = fbest;
+                end
 
             end
         end
@@ -202,7 +219,7 @@ for groupIdx = 1:nGroups
 
         % Create figure per contrast
         fig = figure;
-        tLayout = tiledlayout(fig, nLightLevels, nFreqs, 'TileSpacing','compact','Padding','compact');
+        tLayout = tiledlayout(fig, nLightLevels, nFreqs); %  'TileSpacing','compact','Padding','compact');
         title(tLayout, sprintf('%s | %s contrast', groupNames{groupIdx}, stimParamLabels{contrastIdx}), 'FontWeight','bold');
 
         for lightIdx = 1:nLightLevels
@@ -248,6 +265,7 @@ for groupIdx = 1:nGroups
                 plot(x, bayesianSameDiffModelTwoSigma(stimParamsDomainList,x,fit,priorSame(groupIdx)), 'k-', 'LineWidth',2);
 
                 ylim([-0.05 1.05]);
+                yticks([0 0.2 0.4 0.6 0.8 1]); 
                 xlim([-6 6]);
                 xlabel('stimulus difference [dB]');
                 if lightIdx == 1 && refFreqIdx == 1
