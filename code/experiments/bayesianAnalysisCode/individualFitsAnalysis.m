@@ -3,7 +3,7 @@ function output = individualFitsAnalysis(options)
 arguments
     options.barPlot (1,1) logical = true
     options.fVal (1,1) logical = false
-    options.anova (1,1) logical = true
+    options.anova (1,1) logical = false
     options.superSubj (1,1) logical = false
 end
 
@@ -257,7 +257,6 @@ semSigma = std(allData,[],1) ./ sqrt(size(allData,1));
 
 figure('Color','w');
 hold on;
-set(gca,'FontSize',16);
 
 % Main line
 h = errorbar(refFreqHz, muSigma, semSigma, ...
@@ -274,7 +273,8 @@ set(gcf, 'Renderer', 'painters')
 % Styling
 
 xlabel('Reference Frequency (Hz)');
-ylabel('$\sigma_{test}$', 'Interpreter', 'latex', 'FontSize',25);
+set(gca,'FontSize',20);
+ylabel('$\sigma_{test}$', 'Interpreter', 'latex', 'FontSize',40);
 
 % title('Sigma Test Across Frequencies');
 
@@ -430,7 +430,7 @@ if options.barPlot
 
     % Initialize Figure
     figure('Color', 'w');
-    set(gca, 'FontSize', 16);
+    set(gca, 'FontSize', 18);
     hold on;
 
     % Darkness Patch
@@ -460,38 +460,6 @@ if options.barPlot
         edgeColor = baseColor * 0.55;
 
         for g = 1:4
-
-            if g == 1 % glow behind high light high contrast bars
-
-                xCenter = b(iBar).XEndPoints(g);
-
-                nBars = size(barData,2);
-                groupWidth = min(0.8, nBars/(nBars + 1.5));
-                width = groupWidth / nBars - 0.06;
-
-                y = barData(g,iBar);
-
-                glowColor = [0.55 0.25 0.75];
-
-                % 2-layer soft glow 
-                h1 = rectangle('Position', [xCenter - width/2, 0, width, y], ...
-                    'EdgeColor', glowColor, ...
-                    'LineWidth', 8, ...
-                    'LineStyle', '-', ...
-                    'FaceColor', 'none', ...
-                    'Clipping', 'on');
-
-                h2 = rectangle('Position', [xCenter - width/2, 0, width, y], ...
-                    'EdgeColor', glowColor, ...
-                    'LineWidth', 5, ...
-                    'LineStyle', '-', ...
-                    'FaceColor', 'none', ...
-                    'Clipping', 'on');
-
-                % FORCE glow behind everything
-                uistack(h1,'bottom');
-                uistack(h2,'bottom');
-            end
 
             xCenter = b(iBar).XEndPoints(g);
 
@@ -545,27 +513,27 @@ if options.barPlot
 
     % "Contrast" Labels (Centered between the two bars) ---
     contrastNames = {'High Contrast', 'Low Contrast', 'High Contrast', 'Low Contrast'};
-    yContrast = -0.15;
+    yContrast = -0.20;
     for i = 1:4
         % Calculate the midpoint between the Control and Migraine bars
         midPoint = (b(1).XEndPoints(i) + b(2).XEndPoints(i)) / 2;
         text(midPoint, yContrast, contrastNames{i}, ...
-            'HorizontalAlignment', 'center', 'FontSize', 14, 'Rotation', 0);
+            'HorizontalAlignment', 'center', 'FontSize', 16, 'Rotation', 0);
     end
 
     % "Light" Labels (Across bars) ---
     yLight = -0.45; % Lower down to avoid collision
     text(1.5, yLight, 'High Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
+        'FontWeight', 'bold', 'FontSize', 18, 'Clipping', 'off');
     text(3.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
+        'FontWeight', 'bold', 'FontSize', 18, 'Clipping', 'off');
 
     % Expand the bottom margin (the 0.3) so labels aren't cut off
     set(gca, 'Position', [0.15 0.3 0.75 0.6]);
     set(gcf, 'InvertHardcopy', 'off');
-    % saveas(gcf, ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/' ...
-    % 'Ruby Bouhassira/FLIC_admin/Presentations/VSS 2026/dichopticFlicker/' ...
-    % 'parts/sigmaTestBar.pdf']);
+    saveas(gcf, ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/' ...
+    'Ruby Bouhassira/FLIC_admin/Presentations/VSS 2026/dichopticFlicker/' ...
+    'parts/sigmaTestBar.pdf']);
 
     % ------ Plot sigma ref bar plot, NOT changed 
 
@@ -707,7 +675,7 @@ groupMean = [mean(cDiff), mean(mDiff)];
 groupSEM  = [std(cDiff)/sqrt(numel(cDiff)), std(mDiff)/sqrt(numel(mDiff))];
 
 figure('Color','w'); hold on;
-set(gca,'FontSize',16);
+set(gca,'FontSize',20);
 
 x = 1:2;
 
@@ -727,7 +695,8 @@ errorbar(x, groupMean, groupSEM, 'k', ...
 
 % Styling
 set(gca,'XTick',x,'XTickLabel',{'Control','Migraine'});
-ylabel('\Delta \sigma_{test} (High − Low Light)');
+ylabel('$\Delta \sigma_{\mathrm{\it{test}}}$', ...
+    'Interpreter', 'latex', 'FontSize', 40);
 % title('Light-Level Interaction on Sigma Test');
 
 box off;

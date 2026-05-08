@@ -2,8 +2,8 @@
 % This code produces plots to explain the framework of our Bayesian same different model
 
 % Sigma values
-sigmaTest = 0.75; % sigma test
-sigmaRef = 0.5;  % sigma ref (aka sigma zero)
+sigmaTest = 0.8; % sigma test
+sigmaRef = 0.3;  % sigma ref (aka sigma zero)
 % Sigma ref is lower than sigma test to reflect adaptation to the reference
 
 % Priors
@@ -78,8 +78,9 @@ legend(' \it{p}\rm(\theta | \it{D}\rm = 1)', ...
         ' \it{p}\rm(\theta | \it{D}\rm = 0) (delta function)');
 xlim([thetaMin thetaMax]);
 ylim([0 1.05]);
+ylabel('Probability'); 
 yticks([0 0.2 0.4 0.6 0.8 1]);
-set(gca, 'FontSize', 14);
+set(gca, 'FontSize', 30);
 
 %% Plotting marginal and conditional likelihoods: second panel
 
@@ -111,9 +112,10 @@ xlabel('Internal measurement difference \it{m}');
 legend({'\it{p}\rm(\it{m}\rm | \theta)', '', '', '', '', '', '', '', '', '',  ...
     '\it{p}\rm(\it{m}\rm | \it{D} = 1)', ...
     '\it{p}\rm(\it{m}\rm | \it{D}\rm = 0)',});
-set(gca, 'FontSize', 14);
+set(gca, 'FontSize', 30);
 xlim([thetaMin thetaMax]);
 ylim([0 1.05]);
+ylabel('Probability'); 
 yticks([0 0.2 0.4 0.6 0.8 1]);
 box off;
 
@@ -134,7 +136,7 @@ yline(0.5, '-.', 'Color', [0.3 0.3 0.3], 'LineWidth', 1);
 xlabel('Internal measurement difference \it{m}');
 % ylabel('Posterior probability');
 % title('Posteriors and Decision Threshold');
-lgd = legend({' \it{p}\rm(\it{D}\rm = 1 | \it{m}\rm)', ' \it{p}\rm(\it{D} = 0 | \it{m}\rm)', 'Decision threshold'}, ...
+lgd = legend({' \it{p}\rm(\it{D}\rm = 1 | \it{m}\rm)', ' \it{p}\rm(\it{D} = 0 | \it{m}\rm)', 'Decision rule'}, ...
        'Location', 'Northeast');
 lgd.Position(2) = lgd.Position(2) - 0.1;  % move DOWN 
 
@@ -142,7 +144,7 @@ lgd.Position(2) = lgd.Position(2) - 0.1;  % move DOWN
 xlim([thetaMin thetaMax]);
 ylim([0 1.05]);
 yticks([0 0.2 0.4 0.6 0.8 1]);
-set(gca, 'FontSize', 14);
+set(gca, 'FontSize', 30);
 box off;
 set(gcf, 'Units', 'inches');
 pos = get(gcf, 'Position');
@@ -203,16 +205,17 @@ xline(mB1,'--','Color',[0.3 0.3 0.3]);
 xline(mB2,'--','Color',[0.3 0.3 0.3]);
 
 xlabel('Internal measurement difference \it{m}');
-ylabel('Probability');
 % title(['Stimulus-specific integration (\theta = ' num2str(delta) ')']);
 
-legend({' Respond "different"', ...
-        ' Respond "same"', ...
+legend({' Different', ...
+        ' Same', ...
         ''}, ...
         'Location','Northeast');
 
 xlim([thetaMin thetaMax]);
-set(gca, 'FontSize', 14);
+set(gca, 'FontSize', 25);
+ylim([0 1.05]);
+yticks([0 0.2 0.4 0.6 0.8 1]);
 box off;
 
 % SHADING ON POSTERIOR
@@ -236,10 +239,11 @@ patch([mB2 max(mGrid) max(mGrid) mB2], [0 0 1 1], [0 0.4470 0.7410], 'FaceAlpha'
 
 xlabel('Internal measurement difference \it{m}');
 ylabel('Posterior \it{p}(\it{D} | \it{m})');
+
 title('Posteriors and Decision Threshold with Decision Regions');
 legend({'\it{p}(\it{D}=1|\it{m})', '\it{p}(\it{D}=0|\it{m})', 'Decision threshold', 'Decision "different" region'}, ...
        'Location', 'Northeast');
-set(gca, 'FontSize', 14);
+set(gca, 'FontSize', 30);
 box off;
 
 %% Posteriors for different sigma test and ref values
