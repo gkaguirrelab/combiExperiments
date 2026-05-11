@@ -1,9 +1,9 @@
 function output = individualFitsAnalysis(options)
 % Define the arguments block
 arguments
-    options.barPlot (1,1) logical = true
+    options.barPlot (1,1) logical = false
     options.fVal (1,1) logical = false
-    options.anova (1,1) logical = false
+    options.anova (1,1) logical = true
     options.superSubj (1,1) logical = false
 end
 
@@ -255,26 +255,46 @@ allData = [mData; cData];
 muSigma = mean(allData,1);
 semSigma = std(allData,[],1) ./ sqrt(size(allData,1));
 
-figure('Color','w');
+fig = figure('Color','w');
+% CONSISTENT EXPORT SIZE
+fig.Units = 'pixels';
+fig.Position = [100 100 1400 450];
+% White background
+set(fig,'InvertHardcopy','off');
+ax = gca;
+% GLOBAL FONT SETTINGS
+ax.FontName = 'Helvetica';
+ax.FontSize = 35;
+ax.LineWidth = 1.5;
 hold on;
 
 % Main line
-h = errorbar(refFreqHz, muSigma, semSigma, ...
+h1 = errorbar(refFreqHz, muSigma, semSigma, ...
     '-', ...
-    'Color', [0.45 0.25 0.65], ...
-    'LineWidth', 2.5);
+    'Color', 'k', ...
+    'LineWidth', 2, ...
+    'CapSize', 12, ...
+    'Marker', 'o', ...
+    'MarkerSize', 18, ...
+    'MarkerFaceColor', 'k', ...
+    'MarkerEdgeColor', 'w');
 
-h.Marker = 'o';
-h.MarkerSize = 7;
-h.MarkerFaceColor = [0.45 0.25 0.65];
-h.MarkerEdgeColor = [0.45 0.25 0.65];
-set(gcf, 'Renderer', 'painters')
+hold on;
+
+% Overlay thicker error bars ONLY (no markers)
+h2 = errorbar(refFreqHz, muSigma, semSigma, ...
+    'LineStyle', 'none', ...
+    'Color', 'k', ...
+    'LineWidth', 4, ...
+    'CapSize', 14);
+
+% push markers to front
+uistack(h1,'top');
 
 % Styling
 
-xlabel('Reference Frequency (Hz)');
-set(gca,'FontSize',20);
-ylabel('$\sigma_{test}$', 'Interpreter', 'latex', 'FontSize',40);
+xlabel('Reference Frequency (Hz)', 'FontSize',35);
+ylabel('$\sigma_{test}$', 'Interpreter', 'latex', 'FontSize',45);
 
 % title('Sigma Test Across Frequencies');
 
@@ -284,17 +304,21 @@ ylim([0 2.5]);
 
 set(gca,'XScale','log');
 grid on;
-set(gca,'XMinorGrid','off','YMinorGrid','off'); 
+set(gca,'XMinorGrid','off','YMinorGrid','off');
 box off;
 
 % Optional: make ticks prettier
 set(gca,'XTickMode','manual');
 set(gca,'XTick',[10 13 17 23 30]);
 
-set(gcf, 'InvertHardcopy', 'off');
-% saveas(gcf, ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/' ...
-%     'Ruby Bouhassira/FLIC_admin/Presentations/VSS 2026/dichopticFlicker/' ...
-%     'parts/sigmaTestAcrossFreq_highChighL.pdf']);
+filePath = ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/' ...
+    'Ruby Bouhassira/FLIC_admin/Presentations/VSS 2026/dichopticFlicker/' ...
+    'parts/effectOfFreq.pdf'];
+exportgraphics(fig, ...
+    filePath, ...
+    'ContentType','vector', ...
+    'BackgroundColor','white');
+
 
 %% Plots to examine main effect of frequency  
 % Average Sigma across Contrast and Light, keep Group and Frequency
@@ -428,9 +452,17 @@ if options.barPlot
     barData = barData(reorderIdx, :);
     errData = errData(reorderIdx, :);
 
-    % Initialize Figure
-    figure('Color', 'w');
-    set(gca, 'FontSize', 18);
+    fig = figure('Color','w');
+    % CONSISTENT EXPORT SIZE
+    fig.Units = 'pixels';
+    fig.Position = [100 100 1800 600];
+    % White background
+    set(fig,'InvertHardcopy','off');
+    ax = gca;
+    % GLOBAL FONT SETTINGS
+    ax.FontName = 'Helvetica';
+    ax.FontSize = 35;
+    ax.LineWidth = 1.5;
     hold on;
 
     % Darkness Patch
@@ -440,8 +472,9 @@ if options.barPlot
 
     % Plot Bars
     b = bar(barData, 'grouped');
-    b(1).FaceColor = [0.3 0.3 0.8]; % Control
-    b(2).FaceColor = [0.8 0.3 0.3]; % Migraine
+    b(1).FaceColor = [0.77 0.77 0.80]; % Control
+    b(2).FaceColor = [0.72 0.50 0.50];
+    % b(2).FaceColor = [0.72 0.50 0.54]; % Migraine
 
     % Remove solid outlines from all bars
     b(1).EdgeColor = 'none';
@@ -452,9 +485,9 @@ if options.barPlot
 
         % Choose base color
         if iBar == 1
-            baseColor = [0.3 0.3 0.8];
+            baseColor = [0.55 0.55 0.60];   % soft gray-blue
         else
-            baseColor = [0.8 0.3 0.3];
+            baseColor = [0.78 0.52 0.56];   % muted dusty rose
         end
 
         edgeColor = baseColor * 0.55;
@@ -504,157 +537,167 @@ if options.barPlot
 
     % Formatting & Labels
     set(gca, 'Layer', 'top', 'Box', 'off');
-    ylabel('$\sigma_{test}$', 'Interpreter', 'latex', 'FontSize',25);
+    ylabel('$\sigma_{test}$', ...
+        'Interpreter','latex', ...
+        'FontSize',45, ...
+        'FontName','Helvetica');
     ylim([0 2.5]);
     xlim([0.5, 4.5]);
     xticks([]); % Turn off default ticks to make room for custom labels
-    legend([b(1), b(2)], {'Control', 'Migraine'}, 'Location', 'Northwest');
-    % title('Sigma Test by Contrast × Light');
+    lgd = legend([b(1), b(2)], {'Control', 'Migraine'}, ...
+        'Location', 'Northwest');
+    lgd.FontSize = 32;
+    lgd.FontName = 'Helvetica';
+    lgd.Box = 'off';
 
     % "Contrast" Labels (Centered between the two bars) ---
     contrastNames = {'High Contrast', 'Low Contrast', 'High Contrast', 'Low Contrast'};
-    yContrast = -0.20;
-    for i = 1:4
-        % Calculate the midpoint between the Control and Migraine bars
-        midPoint = (b(1).XEndPoints(i) + b(2).XEndPoints(i)) / 2;
-        text(midPoint, yContrast, contrastNames{i}, ...
-            'HorizontalAlignment', 'center', 'FontSize', 16, 'Rotation', 0);
-    end
-
-    % "Light" Labels (Across bars) ---
-    yLight = -0.45; % Lower down to avoid collision
-    text(1.5, yLight, 'High Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 18, 'Clipping', 'off');
-    text(3.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 18, 'Clipping', 'off');
-
-    % Expand the bottom margin (the 0.3) so labels aren't cut off
-    set(gca, 'Position', [0.15 0.3 0.75 0.6]);
-    set(gcf, 'InvertHardcopy', 'off');
-    saveas(gcf, ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/' ...
-    'Ruby Bouhassira/FLIC_admin/Presentations/VSS 2026/dichopticFlicker/' ...
-    'parts/sigmaTestBar.pdf']);
-
-    % ------ Plot sigma ref bar plot, NOT changed 
-
-    %Prepare Data
-    barData = [muSigmaRefC(:), muSigmaRefM(:)];
-    errData = [semSigmaRefC(:), semSigmaRefM(:)];
-
-    % Initialize Figure
-    figure('Color', 'w');
-    set(gca, 'FontSize', 16);
-    hold on;
-
-    % Darkness Patch
-    % Spans x=0.5 to 2.5 (covering the first 2 groups: Low Light)
-    patch([0.5, 2.5, 2.5, 0.5], [0, 0, 2.5, 2.5], [0.9 0.9 0.9], ...
-        'EdgeColor', 'none', 'FaceAlpha', 0.5);
-
-    % Plot Bars
-    b = bar(barData, 'grouped');
-    b(1).FaceColor = [0.3 0.3 0.8]; % Control
-    b(2).FaceColor = [0.8 0.3 0.3]; % Migraine
-
-    % Remove solid outlines from all bars
-    b(1).EdgeColor = 'none';
-    b(2).EdgeColor = 'none';
-
-    % Low contrast groups
-    lowContrastGroups = [1 3];
-    highContrastGroups = [2 4];
-
-    % Add outlines
-    for iBar = 1:2   % Control and Migraine
-
-        % Choose base color
-        if iBar == 1
-            baseColor = [0.3 0.3 0.8]; % control
-        else
-            baseColor = [0.8 0.3 0.3]; % migraine
-        end
-
-        % Make darker version
-        edgeColor = baseColor * 0.55;
-
-        % LOW CONTRAST - dashed
-        for g = lowContrastGroups
-
-            % Bar center and width
-            xCenter = b(iBar).XEndPoints(g);
-
-            nBars = size(barData,2);
-            groupWidth = min(0.8, nBars/(nBars + 1.5));
-            width = groupWidth / nBars - 0.06;
-
-            % Bar height
-            y = barData(g,iBar);
-
-            % Draw dashed outline
-            rectangle('Position', ...
-                [xCenter - width/2, 0, width, y], ...
-                'EdgeColor', edgeColor, ...
-                'LineStyle', '--', ...
-                'LineWidth', 2.5, ...
-                'FaceColor', 'none');
-
-        end
-
-        % HIGH CONTRAST - solid
-        for g = highContrastGroups
-
-            xCenter = b(iBar).XEndPoints(g);
-            y = barData(g,iBar);
-
-            rectangle('Position', ...
-                [xCenter - width/2, 0, width, y], ...
-                'EdgeColor', edgeColor, ...
-                'LineStyle', '-', ...
-                'LineWidth', 2.5, ...
-                'FaceColor', 'none');
-        end
-
-    end
-
-    % Error Bars
-    if options.superSubj
-        errData(:) = NaN;
-    else
-        for i = 1:numel(b)
-            errorbar(b(i).XEndPoints, b(i).YData, errData(:,i), ...
-                'k', 'linestyle', 'none', 'LineWidth', 2.5);
-        end
-    end
-
-    % Formatting & Labels
-    set(gca, 'Layer', 'top', 'Box', 'off');
-    ylabel('Sigma Ref');
-    ylim([0 2.5]);
-    xlim([0.5, 4.5]);
-    xticks([]); % Turn off default ticks to make room for custom labels
-    legend([b(1), b(2)], {'Control', 'Migraine'}, 'Location', 'Northwest');
-    % title('Sigma Ref by Contrast × Light');
-
-    % "Contrast" Labels (Centered between the two bars) ---
-    contrastNames = {'Low Contrast', 'High Contrast', 'Low Contrast', 'High Contrast'};
     yContrast = -0.15;
     for i = 1:4
         % Calculate the midpoint between the Control and Migraine bars
         midPoint = (b(1).XEndPoints(i) + b(2).XEndPoints(i)) / 2;
         text(midPoint, yContrast, contrastNames{i}, ...
-            'HorizontalAlignment', 'center', 'FontSize', 14, 'Rotation', 0);
+            'HorizontalAlignment', 'center', 'FontSize', 32, 'Rotation', 0);
     end
 
     % "Light" Labels (Across bars) ---
-    yLight = -0.45; % Lower down to avoid collision
-    text(1.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
-    text(3.5, yLight, 'High Light', 'HorizontalAlignment', 'center', ...
-        'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
+    yLight = -0.35; % Lower down to avoid collision
+    text(1.5, yLight, 'High Light', 'HorizontalAlignment', 'center', ...
+        'FontWeight', 'bold', 'FontSize', 35, 'Clipping', 'off');
+    text(3.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
+        'FontWeight', 'bold', 'FontSize', 35, 'Clipping', 'off');
 
-    % Expand the bottom margin (the 0.3) so labels aren't cut off
-    set(gca, 'Position', [0.15 0.3 0.75 0.6]);
+    % Save the file
+    filePath = ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/' ...
+        'Ruby Bouhassira/FLIC_admin/Presentations/VSS 2026/dichopticFlicker/' ...
+        'parts/sigmaTestBar.pdf'];
+    exportgraphics(fig, ...
+        filePath, ...
+        'ContentType','vector', ...
+        'BackgroundColor','white');
+
 end
+
+% ------ Plot sigma ref bar plot, NOT changed
+%
+%     %Prepare Data
+%     barData = [muSigmaRefC(:), muSigmaRefM(:)];
+%     errData = [semSigmaRefC(:), semSigmaRefM(:)];
+%
+%     % Initialize Figure
+%     figure('Color', 'w');
+%     set(gca, 'FontSize', 16);
+%     hold on;
+% 
+%     % Darkness Patch
+%     % Spans x=0.5 to 2.5 (covering the first 2 groups: Low Light)
+%     patch([0.5, 2.5, 2.5, 0.5], [0, 0, 2.5, 2.5], [0.9 0.9 0.9], ...
+%         'EdgeColor', 'none', 'FaceAlpha', 0.5);
+% 
+%     % Plot Bars
+%     b = bar(barData, 'grouped');
+%     b(1).FaceColor = [0.3 0.3 0.8]; % Control
+%     b(2).FaceColor = [0.8 0.3 0.3]; % Migraine
+% 
+%     % Remove solid outlines from all bars
+%     b(1).EdgeColor = 'none';
+%     b(2).EdgeColor = 'none';
+% 
+%     % Low contrast groups
+%     lowContrastGroups = [1 3];
+%     highContrastGroups = [2 4];
+% 
+%     % Add outlines
+%     for iBar = 1:2   % Control and Migraine
+% 
+%         % Choose base color
+%         if iBar == 1
+%             baseColor = [0.3 0.3 0.8]; % control
+%         else
+%             baseColor = [0.8 0.3 0.3]; % migraine
+%         end
+% 
+%         % Make darker version
+%         edgeColor = baseColor * 0.55;
+% 
+%         % LOW CONTRAST - dashed
+%         for g = lowContrastGroups
+% 
+%             % Bar center and width
+%             xCenter = b(iBar).XEndPoints(g);
+% 
+%             nBars = size(barData,2);
+%             groupWidth = min(0.8, nBars/(nBars + 1.5));
+%             width = groupWidth / nBars - 0.06;
+% 
+%             % Bar height
+%             y = barData(g,iBar);
+% 
+%             % Draw dashed outline
+%             rectangle('Position', ...
+%                 [xCenter - width/2, 0, width, y], ...
+%                 'EdgeColor', edgeColor, ...
+%                 'LineStyle', '--', ...
+%                 'LineWidth', 2.5, ...
+%                 'FaceColor', 'none');
+% 
+%         end
+% 
+%         % HIGH CONTRAST - solid
+%         for g = highContrastGroups
+% 
+%             xCenter = b(iBar).XEndPoints(g);
+%             y = barData(g,iBar);
+% 
+%             rectangle('Position', ...
+%                 [xCenter - width/2, 0, width, y], ...
+%                 'EdgeColor', edgeColor, ...
+%                 'LineStyle', '-', ...
+%                 'LineWidth', 2.5, ...
+%                 'FaceColor', 'none');
+%         end
+% 
+%     end
+% 
+%     % Error Bars
+%     if options.superSubj
+%         errData(:) = NaN;
+%     else
+%         for i = 1:numel(b)
+%             errorbar(b(i).XEndPoints, b(i).YData, errData(:,i), ...
+%                 'k', 'linestyle', 'none', 'LineWidth', 2.5);
+%         end
+%     end
+% 
+%     % Formatting & Labels
+%     set(gca, 'Layer', 'top', 'Box', 'off');
+%     ylabel('Sigma Ref');
+%     ylim([0 2.5]);
+%     xlim([0.5, 4.5]);
+%     xticks([]); % Turn off default ticks to make room for custom labels
+%     legend([b(1), b(2)], {'Control', 'Migraine'}, 'Location', 'Northwest');
+%     % title('Sigma Ref by Contrast × Light');
+% 
+%     % "Contrast" Labels (Centered between the two bars) ---
+%     contrastNames = {'Low Contrast', 'High Contrast', 'Low Contrast', 'High Contrast'};
+%     yContrast = -0.15;
+%     for i = 1:4
+%         % Calculate the midpoint between the Control and Migraine bars
+%         midPoint = (b(1).XEndPoints(i) + b(2).XEndPoints(i)) / 2;
+%         text(midPoint, yContrast, contrastNames{i}, ...
+%             'HorizontalAlignment', 'center', 'FontSize', 14, 'Rotation', 0);
+%     end
+% 
+%     % "Light" Labels (Across bars) ---
+%     yLight = -0.45; % Lower down to avoid collision
+%     text(1.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
+%         'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
+%     text(3.5, yLight, 'High Light', 'HorizontalAlignment', 'center', ...
+%         'FontWeight', 'bold', 'FontSize', 16, 'Clipping', 'off');
+% 
+%     % Expand the bottom margin (the 0.3) so labels aren't cut off
+%     set(gca, 'Position', [0.15 0.3 0.75 0.6]);
+% end
 
 %% Bar plot for interaction: High vs Low light effect on sigma test (per group)
 
@@ -674,16 +717,26 @@ cDiff = cLight(:,2) - cLight(:,1);
 groupMean = [mean(cDiff), mean(mDiff)];
 groupSEM  = [std(cDiff)/sqrt(numel(cDiff)), std(mDiff)/sqrt(numel(mDiff))];
 
-figure('Color','w'); hold on;
-set(gca,'FontSize',20);
+fig = figure('Color','w');
+% CONSISTENT EXPORT SIZE
+fig.Units = 'pixels';
+fig.Position = [100 100 800 600];
+% White background
+set(fig,'InvertHardcopy','off');
+ax = gca;
+% GLOBAL FONT SETTINGS
+ax.FontName = 'Helvetica';
+ax.FontSize = 35;
+ax.LineWidth = 1.5;
+hold on;
 
 x = 1:2;
 
 b = bar(x, groupMean, 'FaceColor','flat','BarWidth', 0.5);
 
-% Colors (match your scheme)
-colControl  = [0.3 0.3 0.8];
-colMigraine = [0.8 0.3 0.3];
+% Colors
+colControl  = [0.77 0.77 0.80];
+colMigraine = [0.72 0.50 0.50];
 
 b.CData(1,:) = colControl;
 b.CData(2,:) = colMigraine;
@@ -696,11 +749,20 @@ errorbar(x, groupMean, groupSEM, 'k', ...
 % Styling
 set(gca,'XTick',x,'XTickLabel',{'Control','Migraine'});
 ylabel('$\Delta \sigma_{\mathrm{\it{test}}}$', ...
-    'Interpreter', 'latex', 'FontSize', 40);
+    'Interpreter', 'latex', 'FontSize', 45);
 % title('Light-Level Interaction on Sigma Test');
 
 box off;
 ylim padded;
+
+% Save the file
+filePath = ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/' ...
+    'Ruby Bouhassira/FLIC_admin/Presentations/VSS 2026/dichopticFlicker/' ...
+    'parts/sigmaTestInteraction.pdf'];
+exportgraphics(fig, ...
+    filePath, ...
+    'ContentType','vector', ...
+    'BackgroundColor','white');
 
 %% Plotting the F values from fitting the migraine and control subjects
 % Using the entire sets of nSubj x 4 F values, from migrainers and controls

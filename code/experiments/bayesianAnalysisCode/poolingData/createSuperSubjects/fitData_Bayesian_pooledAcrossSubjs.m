@@ -268,16 +268,16 @@ for groupIdx = 1:nGroups
                 yticks([0 0.2 0.4 0.6 0.8 1]); 
                 xlim([-6 6]);
                 set(gca, 'FontSize', 16);
-                xlabel('stimulus difference [dB]');
+                xlabel('stimulus difference [dB]', 'FontName','Helvetica','FontSize',35);
                 if lightIdx == 1 && refFreqIdx == 1
                     ylabel({'LOW LIGHT', 'proportion respond different'});
                 else
-                    ylabel({'proportion respond different'});
+                    ylabel('proportion respond different', 'FontName','Helvetica','FontSize',35);
                 end
                 if lightIdx == 2 && refFreqIdx == 1
                     ylabel({'HIGH LIGHT', 'proportion respond different'});
                 else
-                    ylabel({'proportion respond different'});
+                    ylabel('proportion respond different', 'FontName','Helvetica','FontSize',35);
                 end
               %  title(sprintf('%s light | ref %.1f Hz', stimParamLabels{lightIdx}, refFreqHz(refFreqIdx)));
             end
