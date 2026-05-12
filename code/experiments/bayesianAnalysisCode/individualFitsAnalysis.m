@@ -1,9 +1,9 @@
 function output = individualFitsAnalysis(options)
 % Define the arguments block
 arguments
-    options.barPlot (1,1) logical = false
+    options.barPlot (1,1) logical = true
     options.fVal (1,1) logical = false
-    options.anova (1,1) logical = true
+    options.anova (1,1) logical = false
     options.superSubj (1,1) logical = false
 end
 
@@ -476,21 +476,59 @@ if options.barPlot
     b(2).FaceColor = [0.72 0.50 0.50];
     % b(2).FaceColor = [0.72 0.50 0.54]; % Migraine
 
-    % Remove solid outlines from all bars
+    % --- COLORS ---
+
+    % Base fill colors
+    controlColor  = [0.55 0.55 0.60]; % soft gray-blue
+    migraineColor = [0.78 0.52 0.56]; % muted dusty rose
+
+    % Make low-contrast versions by blending toward white
+    blendAmount = 0.3;
+
+    controlLow  = controlColor  + (1 - controlColor)  * blendAmount;
+    migraineLow = migraineColor + (1 - migraineColor) * blendAmount;
+
+    % Darker edge colors
+    controlEdge  = controlColor * 0.8;
+    migraineEdge = migraineColor * 0.7;
+
+    % Enable per-bar coloring
+    b(1).FaceColor = 'flat';
+    b(2).FaceColor = 'flat';
+
+    % Assign colors bar-by-bar
+    for g = 1:4
+
+        % ----- CONTROL -----
+        if ismember(g, lowContrastGroups)
+            b(1).CData(g,:) = controlLow;
+        else
+            b(1).CData(g,:) = controlColor;
+        end
+
+        % ----- MIGRAINE -----
+        if ismember(g, lowContrastGroups)
+            b(2).CData(g,:) = migraineLow;
+        else
+            b(2).CData(g,:) = migraineColor;
+        end
+    end
+
+    % Remove default edges
     b(1).EdgeColor = 'none';
     b(2).EdgeColor = 'none';
 
-    % Add outlines
-    for iBar = 1:2   % Control and Migraine
+    % ----- CUSTOM SOLID OUTLINES -----
 
-        % Choose base color
+    for iBar = 1:2
+
         if iBar == 1
-            baseColor = [0.55 0.55 0.60];   % soft gray-blue
+            darkEdge  = controlColor * 0.8;
+            lightEdge = controlLow * 0.9;
         else
-            baseColor = [0.78 0.52 0.56];   % muted dusty rose
+            darkEdge  = migraineColor * 0.7;
+            lightEdge = migraineLow * 0.9;
         end
-
-        edgeColor = baseColor * 0.55;
 
         for g = 1:4
 
@@ -502,26 +540,19 @@ if options.barPlot
 
             y = barData(g,iBar);
 
-            % --- LOW CONTRAST = dashed ---
+            % Use lighter edge for low contrast
             if ismember(g, lowContrastGroups)
-
-                rectangle('Position', ...
-                    [xCenter - width/2, 0, width, y], ...
-                    'EdgeColor', edgeColor, ...
-                    'LineStyle', '--', ...
-                    'LineWidth', 2.5, ...
-                    'FaceColor', 'none');
-
-                % --- HIGH CONTRAST = solid ---
-            elseif ismember(g, highContrastGroups)
-
-                rectangle('Position', ...
-                    [xCenter - width/2, 0, width, y], ...
-                    'EdgeColor', edgeColor, ...
-                    'LineStyle', '-', ...
-                    'LineWidth', 2.5, ...
-                    'FaceColor', 'none');
+                edgeColor = lightEdge;
+            else
+                edgeColor = darkEdge;
             end
+
+            rectangle('Position', ...
+                [xCenter - width/2, 0, width, y], ...
+                'EdgeColor', edgeColor, ...
+                'LineStyle', '-', ...
+                'LineWidth', 2, ...
+                'FaceColor', 'none');
         end
     end
 
@@ -744,7 +775,7 @@ b.CData(2,:) = colMigraine;
 % Error bars
 errorbar(x, groupMean, groupSEM, 'k', ...
     'LineStyle','none', ...
-    'LineWidth',2);
+    'LineWidth',2.5);
 
 % Styling
 set(gca,'XTick',x,'XTickLabel',{'Control','Migraine'});

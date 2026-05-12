@@ -220,7 +220,7 @@ for groupIdx = 1:nGroups
         % Create figure per contrast
         fig = figure;
         tLayout = tiledlayout(fig, nLightLevels, nFreqs); %  'TileSpacing','compact','Padding','compact');
-      %  title(tLayout, sprintf('%s | %s contrast', groupNames{groupIdx}, stimParamLabels{contrastIdx}), 'FontWeight','bold');
+        title(tLayout, sprintf('%s | %s contrast', groupNames{groupIdx}, stimParamLabels{contrastIdx}), 'FontWeight','bold');
 
         for lightIdx = 1:nLightLevels
             for refFreqIdx = 1:nFreqs
@@ -268,18 +268,18 @@ for groupIdx = 1:nGroups
                 yticks([0 0.2 0.4 0.6 0.8 1]); 
                 xlim([-6 6]);
                 set(gca, 'FontSize', 16);
-                xlabel('stimulus difference [dB]', 'FontName','Helvetica','FontSize',35);
+                xlabel('stimulus difference [dB]');
                 if lightIdx == 1 && refFreqIdx == 1
                     ylabel({'LOW LIGHT', 'proportion respond different'});
                 else
-                    ylabel('proportion respond different', 'FontName','Helvetica','FontSize',35);
+                    ylabel('proportion respond different');
                 end
                 if lightIdx == 2 && refFreqIdx == 1
                     ylabel({'HIGH LIGHT', 'proportion respond different'});
                 else
-                    ylabel('proportion respond different', 'FontName','Helvetica','FontSize',35);
+                    ylabel('proportion respond different');
                 end
-              %  title(sprintf('%s light | ref %.1f Hz', stimParamLabels{lightIdx}, refFreqHz(refFreqIdx)));
+                title(sprintf('%s light | ref %.1f Hz', stimParamLabels{lightIdx}, refFreqHz(refFreqIdx)));
             end
         end
     end
