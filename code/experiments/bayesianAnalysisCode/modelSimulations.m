@@ -16,7 +16,7 @@ for ii = 1:numel(priorSames)
     t = (ii-1)/(numel(priorSames)-1);
     color = (1-t)*lightGreen + t*darkGreen; % going from light to dark green
 
-    y = bayesianSameDiffModelTwoSigma(x, [0.5 0.5], priorSames(ii));
+    y = bayesianSameDiffModelTwoSigma(x, x, [0.5 0.5], priorSames(ii));
 
     plot(ax, x, y, ...
         'LineWidth', 2, ...
@@ -47,7 +47,7 @@ for ii = 1:numel(sigmas)
     t = (ii-1)/(numel(sigmas)-1);
     color = (1-t)*lightBlue + t*darkBlue;
 
-    y = bayesianSameDiffModelTwoSigma(x, sigmas{ii}, priorSame);
+    y = bayesianSameDiffModelTwoSigma(x, x, sigmas{ii}, priorSame);
 
     plot(ax, x, y, ...
         'LineWidth', 2, ...
@@ -79,7 +79,7 @@ for ii = 1:numel(sigmas)
     t = (ii-1)/(numel(sigmas)-1);
     color = (1-t)*lightRed + t*darkRed;
 
-    y = bayesianSameDiffModelTwoSigma(x, sigmas{ii}, priorSame);
+    y = bayesianSameDiffModelTwoSigma(x, x, sigmas{ii}, priorSame);
 
     plot(ax, x, y, ...
         'LineWidth', 2, ...
@@ -117,7 +117,7 @@ for ii = 1:nLevels
     t = (ii-1)/(nLevels-1);
     color = (1-t)*lightPurple + t*darkPurple;
 
-    y = bayesianSameDiffModelTwoSigma(x, sigmas, priorSame);
+    y = bayesianSameDiffModelTwoSigma(x, x, sigmas, priorSame);
 
     plot(ax, x, y, ...
         'LineWidth', 2, ...

@@ -1,5 +1,5 @@
 function pDifferent = bayesianSameDiffModelTwoSigma( stimParamsDomainList, stimDiffDb, sigmaParams, priorSame )
-% Probability of reporting "different" in a same different judgement
+% Probability of reporting "different" in a same-different judgement
 %
 % Syntax:
 %   pDifferent = bayesianSameDiffModel( stimParamsDomainList, stimDiffDb, sigmaParams, priorSame )
@@ -44,8 +44,8 @@ if numel(sigmaParams) == 1
 end
 
 % Unpack two sigma values
-sigma = sigmaParams(1); % sigma test
-sigmaZero = sigmaParams(2);  % sigma ref
+sigmaTest = sigmaParams(1); % sigma test
+sigmaRef = sigmaParams(2);  % sigma ref
 
 % Priors
 pSame = priorSame;
@@ -61,19 +61,19 @@ priorTheta = ones(size(thetaRange)) / ...
              (thetaRange(end) - thetaRange(1));
 
 % Measurement grid for numerical integration
-% The variable that the observer actually sees, possible measurement values 
+% Internal sensory measurement available to the observer 
 mGrid = linspace(min(stimParamsDomainList), max(stimParamsDomainList), 1000)';  % column vector
 dm = mGrid(2) - mGrid(1);
 
 % Likelihood = marginal likelihood for same trials (D = 0)
 % m represents the difference between the measurements
-P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigmaZero); % std dev is sqrt(2)*sigmaZero
+P_m_given_D0 = normpdf(mGrid, 0, sqrt(2)*sigmaRef); % std dev is sqrt(2)*sigmaZero
 
 % Marginal likelihood for different trials (D = 1) as integral of Gaussians (box shape)
 dtheta = thetaRange(2) - thetaRange(1);
 % normpdf() produces a matrix, with rows = m values and columns = theta values
 % each column is p(m | theta_j)
-likelihood = normpdf(mGrid, thetaRange, sqrt(sigma^2 + sigmaZero^2));
+likelihood = normpdf(mGrid, thetaRange, sqrt(sigmaTest^2 + sigmaRef^2));
 % taking the sum(..., 2) is an integral: averages across theta values for each fixed m
 P_m_given_D1 = sum(likelihood .* priorTheta, 2) * dtheta;
 
@@ -99,9 +99,10 @@ for i = 1:length(stimDiffDb)
     % Likelihood of measurement given this stimulus difference
     % This is the sensory encoding stage
     % Observer treats every trial as if it might be a different trial
-    P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaZero^2 + sigma^2));
+    P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaRef^2 + sigmaTest^2));
 
-    % Normalize - is this step necessary? Maybe not. 
+    % Normalize numerical density to integrate to 1 over mGrid
+    % This compensates for discretization error
     P_m_given_delta = P_m_given_delta / sum(P_m_given_delta*dm);
 
     % Probability of decision = integration (average) over measurements

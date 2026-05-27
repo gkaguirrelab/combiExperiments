@@ -1,3 +1,6 @@
+% Here we fit a Bayesian same-different model to data
+% from our flicker discrimimation task 
+
 % SETUP - defining variables and choosing subject IDs
 
 % VARIABLES TO CHANGE
@@ -190,7 +193,8 @@ for subjIdx = 1:nSubj
                     uniqueDbValues, ...
                     probData, ...
                     nTrials, ...
-                    priorSame), ...
+                    priorSame, ...
+                    nonLinearConstraint), ...
                     initialParams, lb, ub, lb, ub, [], options);
 
 
@@ -275,7 +279,7 @@ end
 
 %% Objective function %%%
 
-function nll = negLogLikelihood(sigma, stimParamsDomainList, uniqueDbValues, probData, nTrials, priorSame)
+function nll = negLogLikelihood(sigma, stimParamsDomainList, uniqueDbValues, probData, nTrials, priorSame, nonLinearConstraint)
 
     sigmaTest = sigma(1);
     sigmaRef = sigma(2);
@@ -288,14 +292,16 @@ function nll = negLogLikelihood(sigma, stimParamsDomainList, uniqueDbValues, pro
     % Finding the count of different responses (aka the number of
     % "successes")
     k = probData .* nTrials; % prop observed diff multiplied by total number of trials at that dB
-    
+
     % Finding the binomial negative log-likelihood
     nll = -sum(k .* log(P_diff) + (nTrials - k) .* log(1 - P_diff));
 
     % Penalty constraint so that sigmaRef <= sigmaTest
-    if sigmaRef > sigmaTest
-        penalty = (sigmaRef - sigmaTest) * 1e3;
-        nll = nll + penalty;
+    if nonLinearConstraint
+        if sigmaRef > sigmaTest
+            penalty = (sigmaRef - sigmaTest) * 1e3;
+            nll = nll + penalty;
+        end
     end
 
 end

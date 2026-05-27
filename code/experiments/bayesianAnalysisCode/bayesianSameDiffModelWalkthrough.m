@@ -50,11 +50,11 @@ P_D0_given_m = (P_m_given_D0 * pSame) ./ (P_m_given_D0 * pSame + P_m_given_D1 * 
 decisionDifferent = (P_D1_given_m > 0.5);
 dm = mGrid(2) - mGrid(1);
 
+%% Plot of stimulus priors: first panel
+
 % Create figure with three panels
 figure('Position',[100 100 2200 500]);
 axis tight; 
-
-%% Plot of stimulus priors: first panel
 
 % Plot
 subplot(1,3,1); hold on;
@@ -249,7 +249,7 @@ box off;
 %% Posteriors for different sigma test and ref values
 
 % Change this variable to change sigmaTest values instead of sigmaRef
-changeSigmaRef = false;
+changeSigmaRef = true;
 
 if changeSigmaRef
     sigmaTest = 0.5;                   % keep sigmaTest constant
@@ -616,3 +616,58 @@ yticks([0 0.4 0.6 1]);
 hold off;
 set(gca,'FontSize',14); box off;
 
+%% Psychometric curve + stimulus-specific integration highlight (delta = 1 dB)
+
+% Stimulus range (psychometric function axis)
+deltaRange = linspace(-5, 5, 200);
+
+% Preallocate psychometric function
+pDifferentCurve = zeros(size(deltaRange));
+
+% Loop over stimulus differences
+for ii = 1:length(deltaRange)
+
+    delta = deltaRange(ii);
+
+    % Measurement distribution for this stimulus
+    P_m_given_delta = normpdf(mGrid, delta, sqrt(sigmaRef^2 + sigmaTest^2));
+    P_m_given_delta = P_m_given_delta / sum(P_m_given_delta * dm);
+
+    % Psychometric function: probability of responding "different"
+    pDifferentCurve(ii) = sum(P_m_given_delta .* decisionDifferent) * dm;
+
+end
+
+% Find value at delta = 1 dB
+deltaTarget = 1;
+[~, idxTarget] = min(abs(deltaRange - deltaTarget));
+pAtTarget = pDifferentCurve(idxTarget);
+
+% Plot psychometric curve
+figure; hold on;
+
+plot(deltaRange, pDifferentCurve, 'k-', 'LineWidth', 2);
+
+% Highlight point at delta = 1
+scatter(deltaRange(idxTarget), pAtTarget, 120, 'filled', ...
+    'MarkerFaceColor', orange, ...
+    'MarkerEdgeColor', 'k');
+
+% "Area under curve contribution" visualization:
+% vertical fill at the chosen stimulus showing full probability mass
+patch([deltaTarget deltaTarget+0.02 deltaTarget+0.02 deltaTarget], ...
+      [0 0 pAtTarget pAtTarget], ...
+      orange, ...
+      'FaceAlpha', 0.25, ...
+      'EdgeColor', 'none');
+
+% Optional reference line
+yline(pAtTarget, '--', 'Color', [0.3 0.3 0.3]);
+
+xlabel('Stimulus difference \delta (dB)');
+ylabel('P(respond "different")');
+title('Psychometric function with stimulus-specific integration (1 dB)');
+set(gca,'FontSize',14);
+xlim([-5 5]);
+ylim([0 1]);
+box off;
