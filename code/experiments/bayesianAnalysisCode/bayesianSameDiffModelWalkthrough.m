@@ -205,15 +205,16 @@ xline(mB1,'--','Color',[0.3 0.3 0.3]);
 xline(mB2,'--','Color',[0.3 0.3 0.3]);
 
 xlabel('Internal measurement difference \it{m}');
+ylabel('Probability');
 % title(['Stimulus-specific integration (\theta = ' num2str(delta) ')']);
 
-legend({' Different', ...
-        ' Same', ...
+legend({' Respond "different"', ...
+        ' Respond "same"', ...
         ''}, ...
         'Location','Northeast');
 
 xlim([thetaMin thetaMax]);
-set(gca, 'FontSize', 25);
+set(gca, 'FontSize', 18);
 ylim([0 1.05]);
 yticks([0 0.2 0.4 0.6 0.8 1]);
 box off;
@@ -619,7 +620,7 @@ set(gca,'FontSize',14); box off;
 %% Psychometric curve + stimulus-specific integration highlight (delta = 1 dB)
 
 % Stimulus range (psychometric function axis)
-deltaRange = linspace(-5, 5, 200);
+deltaRange = -5:0.05:5;
 
 % Preallocate psychometric function
 pDifferentCurve = zeros(size(deltaRange));
@@ -640,34 +641,38 @@ end
 
 % Find value at delta = 1 dB
 deltaTarget = 1;
-[~, idxTarget] = min(abs(deltaRange - deltaTarget));
+idxTarget = find(deltaRange == deltaTarget);
 pAtTarget = pDifferentCurve(idxTarget);
 
 % Plot psychometric curve
 figure; hold on;
 
 plot(deltaRange, pDifferentCurve, 'k-', 'LineWidth', 2);
+% define color to match stim specific integration panel
+orange = [0.9, 0.4, 0.1];
+lightOrange = orange + (1 - orange)*0.3; 
 
 % Highlight point at delta = 1
 scatter(deltaRange(idxTarget), pAtTarget, 120, 'filled', ...
-    'MarkerFaceColor', orange, ...
-    'MarkerEdgeColor', 'k');
+    'MarkerFaceColor', lightOrange, ...
+    'MarkerFaceAlpha', 0.5, ...
+    'MarkerEdgeColor', lightOrange);
 
-% "Area under curve contribution" visualization:
-% vertical fill at the chosen stimulus showing full probability mass
-patch([deltaTarget deltaTarget+0.02 deltaTarget+0.02 deltaTarget], ...
+% vertical fill at the chosen stimulus 
+patch([deltaRange(idxTarget)-0.01 deltaRange(idxTarget)+0.01 deltaRange(idxTarget)+0.01 deltaRange(idxTarget)-0.01], ...
       [0 0 pAtTarget pAtTarget], ...
-      orange, ...
-      'FaceAlpha', 0.25, ...
+      lightOrange, ...
+      'FaceAlpha', 0.5, ...
       'EdgeColor', 'none');
 
-% Optional reference line
+% reference line
 yline(pAtTarget, '--', 'Color', [0.3 0.3 0.3]);
 
-xlabel('Stimulus difference \delta (dB)');
-ylabel('P(respond "different")');
-title('Psychometric function with stimulus-specific integration (1 dB)');
+xlabel('stimulus difference [dB]');
+ylabel('P(respond different)');
 set(gca,'FontSize',14);
 xlim([-5 5]);
 ylim([0 1]);
+yticks([0 0.2 0.4 0.6 0.8 1]);
+set(gca, 'FontSize', 18);
 box off;
