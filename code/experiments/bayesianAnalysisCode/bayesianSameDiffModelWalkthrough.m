@@ -1,6 +1,12 @@
 %% SETUP: Bayesian inference and probability of different calculation
 % This code produces plots to explain the framework of our Bayesian same different model
 
+% Defining the directory to save plots
+dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+dropBoxSubDir = 'FLIC_analysis';
+projectName = 'dichopticFlicker';
+plotFolderName = 'bayesianModelPlots';
+
 % Sigma values
 sigmaTest = 0.8; % sigma test
 sigmaRef = 0.3;  % sigma ref (aka sigma zero)
@@ -313,7 +319,7 @@ legend({' \it{p}\rm(\it{D}\rm = 1 | \it{m}\rm)', ' \it{p}\rm(\it{D}\rm = 0 | \it
 %% ANIMATION of changing posterior with different sigmaRef and sigmaTest vals
 
 % Change this variable to change sigmaTest values instead of sigmaRef
-changeSigmaRef = true;
+changeSigmaRef = false;
 
 if changeSigmaRef
     sigmaTest = 0.5;                   % keep sigmaTest constant
@@ -339,11 +345,11 @@ set(gca,'FontSize',14); xlim([-5 5]); ylim([0 1]); box off;
 % Prepare GIF
 % the gif is saved in this directory
 if changeSigmaRef
-    filename = ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/' ...
-        'FLIC_analysis/dichopticFlicker/bayesianModelPlots/posterior_animation_sigmaRef.gif'];
+    dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, plotFolderName);
+    filename = fullfile(dataDir, '/posterior_animation_sigmaRef.gif');
 else
-    filename = ['/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/' ...
-        'FLIC_analysis/dichopticFlicker/bayesianModelPlots/posterior_animation_SigmaTest.gif'];
+    dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, plotFolderName);
+    filename = fullfile(dataDir, '/posterior_animation_SigmaTest.gif');
 end
 totalTime = 4;            % target total duration (seconds)
 delayPerFrame = totalTime / nFrames;

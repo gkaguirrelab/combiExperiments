@@ -30,6 +30,9 @@ dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, experimentName);
 %% This section makes a control vs migrainers table with info about:
 % no of women, age, headache days/1 mo, CHYPS score, MIDAS score, ...
 
+% Display table of medications
+medSummary = analyzeMeds(participantList, subjSummaryDataDir);
+
 % Call functions to obtain summary values
 [ageSummary, sexSummary] = analyzeSubjSummary(participantList, subjSummaryDataDir);
 [monthlyMigraineFreq, CHYPS, MIDAS] = analyzePOEM(participantList, dataDir);
@@ -75,6 +78,7 @@ uitable(f, ...
     'Position', [0 0 900 200], ...
     'ColumnWidth','auto', ...
     'FontSize', 14);
+
 
 %% This section makes a control vs migrainers table with info about:
 % age, number of women, race composition of the sample, and number of hispanic individuals

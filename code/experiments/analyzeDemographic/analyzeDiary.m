@@ -40,17 +40,23 @@ isMigraineGroup = idNum >= 1000;
 subjectDiaryT = table( ...
     participantList(:), ...
     isMigraineGroup(:), ...
-    nan(nSubjects,1), ...
-    nan(nSubjects,1), ...
-    nan(nSubjects,1), ...
-    nan(nSubjects,1), ...
+    nan(nSubjects,1), ... % ExpectedDiaryDays
+    nan(nSubjects,1), ... % CompletedDiaryDays
+    nan(nSubjects,1), ... % MissingDiaryDays
+    nan(nSubjects,1), ... % PercentMissingDays
+    nan(nSubjects,1), ... % MigraineDays
+    nan(nSubjects,1), ... % MigrainesPerWeek
+    nan(nSubjects,1), ... % MeanMigrainePain
     'VariableNames', { ...
-        'SubjectID', ...
-        'IsMigraineGroup', ...
-        'DiaryDays', ...
-        'MigraineDays', ...
-        'MigrainesPerWeek', ...
-        'MeanMigrainePain'});
+    'SubjectID', ...
+    'IsMigraineGroup', ...
+    'ExpectedDiaryDays', ...
+    'CompletedDiaryDays', ...
+    'MissingDiaryDays', ...
+    'PercentMissingDays', ...
+    'MigraineDays', ...
+    'MigrainesPerWeek', ...
+    'MeanMigrainePain'});
 
 for ss = 1:nSubjects
     idx = subjectID == participantList(ss);
@@ -72,10 +78,34 @@ for ss = 1:nSubjects
         continue
     end
 
-    subjectDiaryT.DiaryDays(ss) = days(max(subjDates) - min(subjDates)) + 1;
-    subjectDiaryT.MigraineDays(ss) = sum(subjMigraine);
-    subjectDiaryT.MigrainesPerWeek(ss) = subjectDiaryT.MigraineDays(ss) ./ subjectDiaryT.DiaryDays(ss) .* 7;
+    % Expected study days between first and last diary entry
+    expectedDays = days(max(subjDates) - min(subjDates)) + 1;
+
+    % Number of unique dates actually completed
+    completedDays = numel(unique(dateshift(subjDates,'start','day')));
+
+    % Missing days
+    missingDays = expectedDays - completedDays;
+
+    % Percent missing
+    percentMissing = 100 * missingDays / expectedDays;
+
+    % Migraine days
+    migraineDays = sum(subjMigraine);
+
+    subjectDiaryT.ExpectedDiaryDays(ss) = expectedDays;
+    subjectDiaryT.CompletedDiaryDays(ss) = completedDays;
+    subjectDiaryT.MissingDiaryDays(ss) = missingDays;
+    subjectDiaryT.PercentMissingDays(ss) = percentMissing;
+    subjectDiaryT.MigraineDays(ss) = migraineDays;
+
+    % Normalize to completed days only
+    subjectDiaryT.MigrainesPerWeek(ss) = migraineDays / completedDays * 7;
+
+    % Calculate mean migraine pain across all subjects
     subjectDiaryT.MeanMigrainePain(ss) = mean(subjPain(subjMigraine), 'omitnan');
+    
+    % DISPLAY PERCENTAGE OF MISSING DAYS
 end
 
 % Summarize by group. Rows are 1 = Control, 2 = Migraine with aura.

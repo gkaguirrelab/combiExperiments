@@ -1,26 +1,26 @@
 % Code to compare the sigma values from the model with the SDT
 % framework and the model with the Bayesian framework (one sigma version)
 
-% Load SDT sigma data for controls
-SDTSigmaControl = load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_analysis/dichopticFlicker/sigmaData/12ControlSDTSigmaData.mat', ...
-    'sigmaMatrix');
-% Load SDT sigma data for migrainers
-SDTSigmaMigraine = load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_analysis/dichopticFlicker/sigmaData/11MigraineSDTSigmaData.mat', ...
-    'sigmaMatrix');
+% Defining the directory 
+dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+dropBoxSubDir = 'FLIC_analysis';
+projectName = 'dichopticFlicker';
+experimentName = 'sigmaData';
+dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, experimentName); 
 
-% Load Bayesian sigma data for controls
-% bayesianSigmaControl = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/sigma data for different models/12ControlBayesianSigmaData.mat', ...
-%    'sigmaMatrix');
-% Load Bayesian sigma data for migrainers
-%bayesianSigmaMigraine = load('/Users/rubybouh/Documents/MATLAB/projects/combiExperiments/code/psychophysics/DCPT/sameDiffModel/sigma data for different models/11MigraineBayesianSigmaData', ...
-%    'sigmaMatrix');
+% Load SDT sigma data for controls
+SDTSigmaControlFile = fullfile(dataDir, '/12ControlSDTSigmaData.mat');
+SDTSigmaControl = load(SDTSigmaControlFile, 'sigmaMatrix');
+% Load SDT sigma data for migrainers
+SDTSigmaMigraineFile = fullfile(dataDir, '/11MigraineSDTSigmaData.mat');
+SDTSigmaMigraine = load(SDTSigmaControlFile, 'sigmaMatrix');
 
 % Load Bayesian TWO sigma data for controls
-bayesianSigmaControl = load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_analysis/dichopticFlicker/sigmaData/14ControlBayesianTwoSigmaData.mat', ...
-    'sigmaMatrix1');
+bayesianSigmaControlFile = fullfile(dataDir, '/14ControlBayesianTwoSigmaData.mat');
+bayesianSigmaControl = load(bayesianSigmaControlFile, 'sigmaMatrix1'); 
 % Load Bayesian TWO sigma data for migrainers
-bayesianSigmaMigraine = load('/Users/rubybouh/Aguirre-Brainard Lab Dropbox/Ruby Bouhassira/FLIC_analysis/dichopticFlicker/sigmaData/12MigraineBayesianTwoSigmaData.mat', ...
-    'sigmaMatrix1');
+bayesianSigmaMigraineFile = fullfile(dataDir, '/12MigraineBayesianTwoSigmaData.mat');
+bayesianSigmaMigraine = load(bayesianSigmaMigraineFile, 'sigmaMatrix1'); 
 
 % Collapsing matrices into vectors
 SDTSigmaControl = SDTSigmaControl.sigmaMatrix(:);

@@ -1,6 +1,5 @@
 %% Code to plot the Bayesian two sigma model with various levels of
 % prior probability of same
-% Note you may have to edit the model code to make this work
 
 figure;
 ax = axes;

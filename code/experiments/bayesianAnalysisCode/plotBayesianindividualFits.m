@@ -221,7 +221,7 @@ tolerance = 1e-6; % Default epsilon
 isEqual = abs(sigmaTestMatrix - sigmaRefMatrix) < tolerance;
 
 % Calculate the proportion
-proportion = mean(isEqual(:))
+proportion = mean(isEqual(:));
 
 % Return the mask in case you want to see which indices matched
 equalityMask = isEqual;
