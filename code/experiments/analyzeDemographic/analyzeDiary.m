@@ -102,23 +102,26 @@ for ss = 1:nSubjects
     % Normalize to completed days only
     subjectDiaryT.MigrainesPerWeek(ss) = migraineDays / completedDays * 7;
 
-    % Calculate mean migraine pain across all subjects
+    % Calculate mean migraine pain across migraine days per subject
     subjectDiaryT.MeanMigrainePain(ss) = mean(subjPain(subjMigraine), 'omitnan');
     
-    % DISPLAY PERCENTAGE OF MISSING DAYS
 end
 
-% Summarize by group. Rows are 1 = Control, 2 = Migraine with aura.
+% Summarize by group so that controls are blank. Rows are 1 = Control, 2 = Migraine with aura.
 weeklyMigraineSummary = strings(2,1);
 migrainePainSummary = strings(2,1);
+percentMigraineMissingSummary = strings(2,1); 
 
 groupIdx = {~subjectDiaryT.IsMigraineGroup, subjectDiaryT.IsMigraineGroup};
 for gg = 1:2
     weeklyRates = subjectDiaryT.MigrainesPerWeek(groupIdx{gg});
     meanPain = subjectDiaryT.MeanMigrainePain(groupIdx{gg});
+    percentMissingSummary = subjectDiaryT.PercentMissingDays(groupIdx{gg});
 
     weeklyMigraineSummary(gg) = formatMeanSD(weeklyRates);
     migrainePainSummary(gg) = formatMeanSD(meanPain);
+    percentMigraineMissingSummary(gg) = formatMeanSD(percentMissingSummary);
+    disp("Percent missing diary days: " + percentMissingSummary)
 end
 
 end
