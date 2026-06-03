@@ -1,18 +1,33 @@
-function [weeklyMigraineSummary, migrainePainSummary, subjectDiaryT] = analyzeDiary(participantList, dataDir)
+function [weeklyMigraineSummary, ...
+    migrainePainSummary, ...
+    percentMigraineMissingSummary, ...
+    baselineWeeklyMigraineSummary,...
+    baselinePainSummary,...
+    baselinePercentMissingSummary, ...
+    taskWeeklyMigraineSummary,...
+    taskPainSummary,...
+    taskPercentMissingSummary, ...
+    subjectDiaryT] = analyzeDiary(participantList, dataDir, subjSummaryDataDir)
 
+% Load FLIC sessions data
+sessionsFile = fullfile(subjSummaryDataDir, 'FLIC_Sessions.xlsx');
 % Load headache diary data
 diaryFile = fullfile(dataDir, 'FLIC Headache Diary (Responses).xlsx');
 
-% Detect the default options for this file
-opts = detectImportOptions(diaryFile);
+% Detect the default options for these files
+optsDiary = detectImportOptions(diaryFile);
+optsSessions = detectImportOptions(sessionsFile);
 
 % Set where the Variable Names (titles) and Data start
 % Headers are in Row 1 and data starts in Row 2:
-opts.VariableNamesRange = 'A1';
-opts.DataRange = 'A2';
+optsDiary.VariableNamesRange = 'A1';
+optsDiary.DataRange = 'A2';
+optsSessions.VariableNamesRange = 'A1';
+optsSessions.DataRange = 'A2';
 
 % Read the Excel file into a table
-diaryT = readtable(diaryFile, opts);
+diaryT = readtable(diaryFile, optsDiary);
+sessionsT = readtable(sessionsFile, optsSessions);
 
 % Extract the diary columns by position. This avoids depending on the long
 % Google Forms question text after MATLAB sanitizes variable names.
@@ -23,7 +38,6 @@ migraineResponse = lower(strtrim(string(diaryT{:,5})));
 isMigraineDay = startsWith(migraineResponse, "yes");
 isMigraineDay(ismissing(migraineResponse)) = false;
 painRating = convertNumeric(diaryT{:,6});
-
 % Filter to completed subjects only
 participantList = normalizeSubjectID(participantList);
 idx_keep = ismember(subjectID, participantList);
@@ -31,7 +45,6 @@ subjectID = subjectID(idx_keep);
 diaryDate = diaryDate(idx_keep);
 isMigraineDay = isMigraineDay(idx_keep);
 painRating = painRating(idx_keep);
-
 % Build a subject-level table in participantList order
 nSubjects = numel(participantList);
 idNum = str2double(extractAfter(participantList(:), "FLIC_"));
@@ -47,6 +60,14 @@ subjectDiaryT = table( ...
     nan(nSubjects,1), ... % MigraineDays
     nan(nSubjects,1), ... % MigrainesPerWeek
     nan(nSubjects,1), ... % MeanMigrainePain
+    nan(nSubjects,1), ... % BaselineMigraineDays
+    nan(nSubjects,1), ... % BaselinePercentMissingDays
+    nan(nSubjects,1), ... % BaselineMigrainesPerWeek
+    nan(nSubjects,1), ... % BaselineMeanMigrainePain
+    nan(nSubjects,1), ... % TaskMigraineDays
+    nan(nSubjects,1), ... % TaskPercentMissingDays
+    nan(nSubjects,1), ... % TaskMigrainesPerWeek
+    nan(nSubjects,1), ... % TaskMeanMigrainePain
     'VariableNames', { ...
     'SubjectID', ...
     'IsMigraineGroup', ...
@@ -56,7 +77,18 @@ subjectDiaryT = table( ...
     'PercentMissingDays', ...
     'MigraineDays', ...
     'MigrainesPerWeek', ...
-    'MeanMigrainePain'});
+    'MeanMigrainePain', ...
+    'BaselineMigraineDays', ...
+    'BaselinePercentMissingDays', ...
+    'BaselineMigrainesPerWeek', ...
+    'BaselineMeanMigrainePain', ...
+    'TaskMigraineDays', ...
+    'TaskPercentMissingDays', ...
+    'TaskMigrainesPerWeek', ...
+    'TaskMeanMigrainePain'});
+
+% Get task start dates
+[intakeDates, taskStartDates, taskEndDates] = getTaskStartDates(participantList, sessionsT);
 
 for ss = 1:nSubjects
     idx = subjectID == participantList(ss);
@@ -69,15 +101,18 @@ for ss = 1:nSubjects
     subjMigraine = isMigraineDay(idx);
     subjPain = painRating(idx);
 
-    validDate = ~isnat(subjDates);
-    subjDates = subjDates(validDate);
-    subjMigraine = subjMigraine(validDate);
-    subjPain = subjPain(validDate);
+    % Remove duplicate days, keep first occurrence
+    [~, keepIdx] = unique(dateshift(subjDates,'start','day'), 'stable');
+
+    subjDates = subjDates(keepIdx);
+    subjMigraine = subjMigraine(keepIdx);
+    subjPain = subjPain(keepIdx);
 
     if isempty(subjDates)
         continue
     end
 
+    %% Overall diary analysis
     % Expected study days between first and last diary entry
     expectedDays = days(max(subjDates) - min(subjDates)) + 1;
 
@@ -104,27 +139,146 @@ for ss = 1:nSubjects
 
     % Calculate mean migraine pain across migraine days per subject
     subjectDiaryT.MeanMigrainePain(ss) = mean(subjPain(subjMigraine), 'omitnan');
-    
+
+    %% Baseline and task-period analyses
+
+    taskStart = taskStartDates(ss);
+    baselineStart = intakeDates(ss); 
+    endDate = taskEndDates(ss); 
+
+    if ~isnat(taskStart) && ~isnat(baselineStart)
+
+        baselineIdx = ...
+            subjDates >= baselineStart & ...
+            subjDates < taskStart;
+
+        taskIdx = subjDates >= taskStart;
+
+        % Baseline
+        baselineDaysCompleted = ...
+            numel(unique(dateshift(subjDates(baselineIdx), ...
+            'start','day')));
+
+        baselineMigraineDays = ...
+            sum(subjMigraine(baselineIdx));
+
+        subjectDiaryT.BaselineMigraineDays(ss) = ...
+            baselineMigraineDays;
+
+        if baselineDaysCompleted > 0
+
+            subjectDiaryT.BaselineMigrainesPerWeek(ss) = ...
+                baselineMigraineDays / baselineDaysCompleted * 7;
+
+        end
+
+        subjectDiaryT.BaselineMeanMigrainePain(ss) = ...
+            mean(subjPain(baselineIdx & subjMigraine), ...
+            'omitnan');
+
+        % Finding percentage of missing days
+        baselineExpectedDays = ...
+            days(taskStart - baselineStart);
+
+        baselineMissingDays = ...
+            baselineExpectedDays - baselineDaysCompleted;
+
+        baselinePercentMissing = ...
+            100 * baselineMissingDays / baselineExpectedDays;
+
+        subjectDiaryT.BaselinePercentMissingDays(ss) = ...
+            baselinePercentMissing;
+
+        % Task period
+        taskDaysCompleted = ...
+            numel(unique(dateshift(subjDates(taskIdx), ...
+            'start','day')));
+
+        taskMigraineDays = ...
+            sum(subjMigraine(taskIdx));
+
+        subjectDiaryT.TaskMigraineDays(ss) = ...
+            taskMigraineDays;
+
+        if taskDaysCompleted > 0
+
+            subjectDiaryT.TaskMigrainesPerWeek(ss) = ...
+                taskMigraineDays / taskDaysCompleted * 7;
+
+        end
+
+        subjectDiaryT.TaskMeanMigrainePain(ss) = ...
+            mean(subjPain(taskIdx & subjMigraine), ...
+            'omitnan');
+
+        % Finding percentage of missing days
+        taskExpectedDays = ...
+            days(endDate - taskStart) + 1;
+
+        taskMissingDays = ...
+            taskExpectedDays - taskDaysCompleted;
+
+        taskPercentMissing = ...
+            100 * taskMissingDays / taskExpectedDays;
+
+        subjectDiaryT.TaskPercentMissingDays(ss) = ...
+            taskPercentMissing;
+
+    end
+
 end
 
 % Summarize by group so that controls are blank. Rows are 1 = Control, 2 = Migraine with aura.
+% Initialize outputs
 weeklyMigraineSummary = strings(2,1);
 migrainePainSummary = strings(2,1);
-percentMigraineMissingSummary = strings(2,1); 
+percentMigraineMissingSummary = strings(2,1);
+
+baselineWeeklyMigraineSummary = strings(2,1);
+baselinePainSummary = strings(2,1);
+baselinePercentMissingSummary = strings(2,1);
+
+taskWeeklyMigraineSummary = strings(2,1);
+taskPainSummary = strings(2,1);
+taskPercentMissingSummary = strings(2,1);
 
 groupIdx = {~subjectDiaryT.IsMigraineGroup, subjectDiaryT.IsMigraineGroup};
+
 for gg = 1:2
-    weeklyRates = subjectDiaryT.MigrainesPerWeek(groupIdx{gg});
-    meanPain = subjectDiaryT.MeanMigrainePain(groupIdx{gg});
-    percentMissingSummary = subjectDiaryT.PercentMissingDays(groupIdx{gg});
 
-    weeklyMigraineSummary(gg) = formatMeanSD(weeklyRates);
-    migrainePainSummary(gg) = formatMeanSD(meanPain);
-    percentMigraineMissingSummary(gg) = formatMeanSD(percentMissingSummary);
-    disp("Percent missing diary days: " + percentMissingSummary)
+    % Overall analysis
+    weeklyMigraineSummary(gg) = formatMeanSD( ...
+        subjectDiaryT.MigrainesPerWeek(groupIdx{gg}));
+
+    migrainePainSummary(gg) = formatMeanSD( ...
+        subjectDiaryT.MeanMigrainePain(groupIdx{gg}));
+
+    percentMigraineMissingSummary(gg) = formatMeanSD( ...
+        subjectDiaryT.PercentMissingDays(groupIdx{gg}));
+
+    % Baseline period
+    baselineWeeklyMigraineSummary(gg) = formatMeanSD( ...
+        subjectDiaryT.BaselineMigrainesPerWeek(groupIdx{gg}));
+
+    baselinePainSummary(gg) = formatMeanSD( ...
+        subjectDiaryT.BaselineMeanMigrainePain(groupIdx{gg}));
+
+    baselinePercentMissingSummary(gg) = formatMeanSD( ...
+        subjectDiaryT.BaselinePercentMissingDays(groupIdx{gg}));
+
+    % Task period
+    taskWeeklyMigraineSummary(gg) = formatMeanSD( ...
+        subjectDiaryT.TaskMigrainesPerWeek(groupIdx{gg}));
+
+    taskPainSummary(gg) = formatMeanSD( ...
+        subjectDiaryT.TaskMeanMigrainePain(groupIdx{gg}));
+
+    taskPercentMissingSummary(gg) = formatMeanSD( ...
+        subjectDiaryT.TaskPercentMissingDays(groupIdx{gg}));
+
 end
 
-end
+% Functions for extracting & organizing subject IDs, dates, and summary vals from diary
 
 function subjectID = normalizeSubjectID(subjectID)
 
@@ -147,22 +301,22 @@ else
         "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd", "dd-MMM-uuuu", "dd-MMM-yyyy"];
 
     for ff = 1:numel(dateFormats)
-        idx = isnat(diaryDate) & ~ismissing(dateStrings);
+        dateIdx = isnat(diaryDate) & ~ismissing(dateStrings);
 
-        if ~any(idx)
+        if ~any(dateIdx)
             break
         end
 
         try
-            diaryDate(idx) = datetime(dateStrings(idx), 'InputFormat', dateFormats(ff));
+            diaryDate(dateIdx) = datetime(dateStrings(dateIdx), 'InputFormat', dateFormats(ff));
         catch
         end
     end
 
-    idx = isnat(diaryDate) & ~ismissing(dateStrings);
-    if any(idx)
+    dateIdx = isnat(diaryDate) & ~ismissing(dateStrings);
+    if any(dateIdx)
         try
-            diaryDate(idx) = datetime(dateStrings(idx));
+            diaryDate(dateIdx) = datetime(dateStrings(dateIdx));
         catch
         end
     end
@@ -201,6 +355,106 @@ if isempty(values)
     summaryString = "";
 else
     summaryString = sprintf('%.2f ± %.2f', mean(values, 'omitnan'), std(values, 'omitnan'));
+end
+
+end
+
+function [intakeDates, taskStartDates, taskEndDates] = ...
+    getTaskStartDates(participantList, sessionsT)
+
+nSubjs = numel(participantList);
+
+intakeDates = NaT(nSubjs,1);
+taskStartDates = NaT(nSubjs,1);
+taskEndDates = NaT(nSubjs,1);
+
+% Extract subject ID
+sessionSubjectID = normalizeSubjectID(sessionsT.SubjectID);
+sessionNumber = sessionsT.SessionNumber;
+studyDate = convertDiaryDate(sessionsT.DateOfStudy);
+
+for sub = 1:nSubjs
+
+    % Skip controls (IDs < 1000)
+    idNumSkip = str2double(extractAfter(participantList(sub),"FLIC_"));
+    if idNumSkip < 1000
+        continue
+    end
+
+    intakeIdx = sessionSubjectID == participantList(sub) & ...
+        sessionNumber == 0;
+
+    taskStartIdx = sessionSubjectID == participantList(sub) & ...
+        sessionNumber == 1;
+
+    lastSessionIdx = sessionSubjectID == participantList(sub) & ...
+        sessionNumber == 4;
+
+    % Intake date (Session 0)
+
+    if sum(intakeIdx) == 1
+
+        intakeDates(sub) = studyDate(intakeIdx);
+
+    elseif sum(intakeIdx) > 1
+
+        warning('Multiple Session 0 rows found for %s', ...
+            participantList(sub));
+
+        intakeDates(sub) = ...
+            studyDate(find(intakeIdx,1,'first'));
+
+    else
+
+        warning('No Session 0 row found for %s', ...
+            participantList(sub));
+
+    end
+
+    % Task start date (Session 1)
+
+    if sum(taskStartIdx) == 1
+
+        taskStartDates(sub) = studyDate(taskStartIdx);
+
+    elseif sum(taskStartIdx) > 1
+
+        warning('Multiple Session 1 rows found for %s', ...
+            participantList(sub));
+
+        taskStartDates(sub) = ...
+            studyDate(find(taskStartIdx,1,'first'));
+
+    else
+
+        warning('No Session 1 row found for %s', ...
+            participantList(sub));
+
+    end
+
+    % Task end date (Session 4)
+
+    if sum(lastSessionIdx) == 1
+
+        taskEndDates(sub) = studyDate(lastSessionIdx);
+
+    elseif sum(lastSessionIdx) > 1
+
+        warning('Multiple Session 4 rows found for %s', ...
+            participantList(sub));
+
+        taskEndDates(sub) = ...
+            studyDate(find(lastSessionIdx,1,'first'));
+
+    else
+
+        warning('No Session 4 row found for %s', ...
+            participantList(sub));
+
+    end
+
+end
+
 end
 
 end
