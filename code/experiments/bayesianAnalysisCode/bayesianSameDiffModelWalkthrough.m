@@ -473,7 +473,7 @@ xlim([-5 8]);
 ylim([0 1]); % max([P_ref P_test P_diff])*1.2]);
 set(gca,'FontSize',14); box off;
 
-%% FOR POSTER: 
+%% FOR POSTER, did not end up using
 % Elementary plot of the likelihood as a difference of Gaussians
 
 sigmaRef = 0.5;

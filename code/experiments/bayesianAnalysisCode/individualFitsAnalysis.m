@@ -3,9 +3,9 @@ function output = individualFitsAnalysis(options)
 arguments
     options.barPlot (1,1) logical = false
     options.fVal (1,1) logical = false
-    options.anova (1,1) logical = false
+    options.anova (1,1) logical = true
     options.superSubj (1,1) logical = false
-    options.effectOfFreq (1,1) logical = true
+    options.effectOfFreq (1,1) logical = false
 end
 
 %% load data
