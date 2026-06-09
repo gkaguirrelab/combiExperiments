@@ -1,10 +1,11 @@
-function [resultsAll, resultsEndorsed, data, closedEyesFreqTable] = analyzeVSQ(filePath, saveFigures)
+function [resultsAll, resultsEndorsed, data, closedEyesFreqTable] = analyzeVSQ(filePath, saveFigures, vssOnlyFig1)
 % ANALYZEVSQ Analyzes visual snow symptom questionnaire data and plots results.
-%   [resultsAll, resultsEndorsed, data, closedEyesFreqTable] = analyzeVSQ(filePath, saveFigures)
+%   [resultsAll, resultsEndorsed, data, closedEyesFreqTable] = analyzeVSQ(filePath, saveFigures, vssOnlyFig1)
 %
 %   Inputs:
-%       filePath    - Path to the CSV data file (Optional)
-%       saveFigures - Boolean (true/false) to save figures to individual PDFs (Default: true)
+%       filePath     - Path to the CSV data file (Optional)
+%       saveFigures  - Boolean (true/false) to save figures to individual PDFs (Default: true)
+%       vssOnlyFig1  - Boolean (true/false) to only plot VSS cohort in Figure 1 (Default: false)
 %
 %   Outputs tables formatted with Mean ± SEM (n=X) to match the plots, 
 %   plus a frequency breakdown for closed-eye colorful clouds/waves.
@@ -16,6 +17,10 @@ function [resultsAll, resultsEndorsed, data, closedEyesFreqTable] = analyzeVSQ(f
     
     if nargin < 2 || isempty(saveFigures)
         saveFigures = true; 
+    end
+
+    if nargin < 3 || isempty(vssOnlyFig1)
+        vssOnlyFig1 = true;
     end
     
     if ~exist(filePath, 'file')
@@ -221,19 +226,39 @@ function [resultsAll, resultsEndorsed, data, closedEyesFreqTable] = analyzeVSQ(f
 
     % --- FIGURE 1: Bar Chart of Symptom Percentages ---
     figHandles(1) = figure('Name', 'Symptom Endorsement Percentages', 'Position', [100, 100, 750, 450], 'Color', 'w');
-    barData = [resultsAll.Controls.Pct_Endorsed, resultsAll.VSS.Pct_Endorsed];
-    hBar = bar(barData, 'grouped');
-    hBar(1).FaceColor = cControl; hBar(2).FaceColor = cVSS;
-    set(gca, 'XTickLabel', symptomNames, 'TickLabelInterpreter', 'none', 'FontSize', 11, 'Color', 'w', ...
-             'XColor', [0 0 0], 'YColor', [0 0 0]);
+    
+    if vssOnlyFig1
+        % Extract VSS data and sort from most to least frequent
+        vssPercentages = resultsAll.VSS.Pct_Endorsed;
+        [sortedPct, sortIdx] = sort(vssPercentages, 'descend');
+        sortedNames = symptomNames(sortIdx);
+        
+        % Plot single series
+        hBar = bar(sortedPct);
+        hBar.BarWidth = 0.6;
+        hBar.FaceColor = cVSS;
+        
+        % Set labels and title (No legend, "cohort" removed)
+        set(gca, 'XTickLabel', sortedNames, 'TickLabelInterpreter', 'none', 'FontSize', 11, 'Color', 'w', ...
+                 'XColor', [0 0 0], 'YColor', [0 0 0]);
+        title(sprintf('Symptom Endorsement Rates (VSS, n = %d)', nVSS), 'FontSize', 14, 'FontWeight', 'bold', 'Color', [0 0 0]);
+    else
+        % Grouped layout matching original behavior (unsorted)
+        barData = [resultsAll.Controls.Pct_Endorsed, resultsAll.VSS.Pct_Endorsed];
+        hBar = bar(barData, 'grouped');
+        hBar(1).FaceColor = cControl; hBar(2).FaceColor = cVSS;
+        
+        set(gca, 'XTickLabel', symptomNames, 'TickLabelInterpreter', 'none', 'FontSize', 11, 'Color', 'w', ...
+                 'XColor', [0 0 0], 'YColor', [0 0 0]);
+        hLegend1 = legend({sprintf('Controls (n = %d)', nControls), sprintf('VSS (n = %d)', nVSS)}, 'Location', 'NorthEast', 'TextColor', [0 0 0]);
+        set(hLegend1, 'EdgeColor', 'none'); 
+        title('Symptom Endorsement Rates Across Groups', 'FontSize', 14, 'FontWeight', 'bold', 'Color', [0 0 0]);
+    end
+    
     xtickangle(25); 
     ylabel('Percent of Participants', 'FontSize', 11, 'FontWeight', 'bold', 'Color', [0 0 0]); 
-    title('Symptom Endorsement Rates Across Groups', 'FontSize', 14, 'FontWeight', 'bold', 'Color', [0 0 0]);
-    
-    hLegend1 = legend({sprintf('Controls (n = %d)', nControls), sprintf('VSS (n = %d)', nVSS)}, 'Location', 'NorthEast', 'TextColor', [0 0 0]);
-    set(hLegend1, 'EdgeColor', 'none'); 
     set(gca, 'YGrid', 'on', 'XGrid', 'off', 'YTick', 0:10:100); box off;
-
+    
     % --- FIGURE 2: Multi-panel Histograms (Symptom-Averaged Scores) ---
     figHandles(2) = figure('Name', 'VSS Symptom Impact Distributions (Symptom Averages)', 'Position', [100, 100, 1250, 600], 'Color', 'w');
     subplotIndices = [1, 2, 3, 5, 6, 7];
