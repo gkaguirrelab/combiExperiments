@@ -36,17 +36,29 @@ monthlyMigraineFreq(2) = sprintf( ...
     'Episodic: %d, Chronic: %d', ...
     episodicCount, chronicCount);
 
-% Summarize MIDAS scores
-MIDAS_table = zeros(2,2);
-MIDAS_table(1,1) = NaN; % leave controls blank
-MIDAS_table(1,2) = NaN;
-MIDAS_table(2,1) = mean(poemT.MIDAS_score(poemT.Migraine == 1), 'omitnan');
-MIDAS_table(2,2) = std(poemT.MIDAS_score(poemT.Migraine == 1), 'omitnan');
-
-% Convert to strings for table
+% Summarize MIDAS categories for migraine participants
 MIDAS = strings(2,1);
-MIDAS(1) = "";
-MIDAS(2) = sprintf('%.2f ± %.2f', MIDAS_table(2,1), MIDAS_table(2,2));
+MIDAS(1) = ""; % controls blank
+
+midasScores = poemT.MIDAS_score(poemT.Migraine == 1);
+midasScores = midasScores(~isnan(midasScores));
+
+nMig = numel(midasScores);
+
+little = sum(midasScores >= 0  & midasScores <= 5);
+mild = sum(midasScores >= 6  & midasScores <= 10);
+moderate = sum(midasScores >= 11 & midasScores <= 20);
+severe = sum(midasScores >= 21);
+
+MIDAS(2) = sprintf([ ...
+    'Little/no disability: %d (%.0f%%), ' ...
+    'Mild: %d (%.0f%%), ' ...
+    'Moderate: %d (%.0f%%), ' ...
+    'Severe: %d (%.0f%%)'], ...
+    little, 100*little/nMig, ...
+    mild, 100*mild/nMig, ...
+    moderate, 100*moderate/nMig, ...
+    severe, 100*severe/nMig);
 
 % Summarize CHYPS score and subscores
 vars = { ...
@@ -56,7 +68,11 @@ vars = { ...
     'CHYPS_Strobing', ...
     'CHYPS_IntenseVisEnviro'};
 
-CHYPS_matrix = nan(2,2,length(vars));
+% Dimensions:
+% (:,1,:) = median
+% (:,2,:) = Q1
+% (:,3,:) = Q3
+CHYPS_matrix = nan(2,3,length(vars));
 
 ctrlIdx = (poemT.Migraine == 0);
 migIdx  = (poemT.Migraine == 1);
@@ -65,19 +81,30 @@ for vv = 1:length(vars)
     ff = vars{vv};
 
     % Control
-    CHYPS_matrix(1,1,vv) = mean(poemT.(ff)(ctrlIdx), 'omitnan');
-    CHYPS_matrix(1,2,vv) = std( poemT.(ff)(ctrlIdx), 'omitnan');
+    ctrlVals = poemT.(ff)(ctrlIdx);
+    ctrlVals = ctrlVals(~isnan(ctrlVals));
+
+    CHYPS_matrix(1,1,vv) = median(ctrlVals);
+    CHYPS_matrix(1,2,vv) = prctile(ctrlVals,25);
+    CHYPS_matrix(1,3,vv) = prctile(ctrlVals,75);
 
     % Migraine
-    CHYPS_matrix(2,1,vv) = mean(poemT.(ff)(migIdx), 'omitnan');
-    CHYPS_matrix(2,2,vv) = std( poemT.(ff)(migIdx), 'omitnan');
+    migVals = poemT.(ff)(migIdx);
+    migVals = migVals(~isnan(migVals));
+
+    CHYPS_matrix(2,1,vv) = median(migVals);
+    CHYPS_matrix(2,2,vv) = prctile(migVals,25);
+    CHYPS_matrix(2,3,vv) = prctile(migVals,75);
 end
 
-% Convert to strings for table
+% Convert total CHYPS score to strings for table
 CHYPS_total = CHYPS_matrix(:,:,1);
-CHYPS = strings(2,1);
-for ii = 1:2
-    CHYPS(ii) = sprintf('%.2f ± %.2f', CHYPS_total(ii,1), CHYPS_total(ii,2));
-end
 
+CHYPS = strings(2,1);
+
+for ii = 1:2
+    CHYPS(ii) = sprintf('%.2f (%.2f–%.2f)', ...
+        CHYPS_total(ii,1), ... % median
+        CHYPS_total(ii,2), ... % Q1
+        CHYPS_total(ii,3));    % Q3
 end

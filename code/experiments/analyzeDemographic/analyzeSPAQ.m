@@ -46,20 +46,44 @@ idNum = str2double(extractAfter(seasonT.SubjectID, "FLIC_"));
 isMigraine = idNum >= 1000;
 isControl  = idNum < 1000;
 
-% Mean ± SD
-mean_control = mean(seasonT.GSS(isControl), 'omitnan');
-std_control  = std(seasonT.GSS(isControl), 'omitnan');
-mean_migraine = mean(seasonT.GSS(isMigraine), 'omitnan');
-std_migraine  = std(seasonT.GSS(isMigraine), 'omitnan');
+% Define categories
+lowIdx  = seasonT.GSS <= 7;
+modIdx  = seasonT.GSS >= 8 & seasonT.GSS <= 10;
+highIdx = seasonT.GSS >= 11;
 
-% Format 
+cats = ["Low","Moderate","High"];
+
 gssSummary = strings(2,1);
-gssSummary(1) = sprintf('%.1f ± %.1f', mean_control, std_control);
-gssSummary(2) = sprintf('%.1f ± %.1f', mean_migraine, std_migraine);
 
-% Sanity check
-if any(isnan(seasonItems_num), 'all')
-    warning('Some SPAQ responses were not converted to numeric.');
+for g = 1:2
+
+    if g == 1
+        idx = isControl;
+    else
+        idx = isMigraine;
+    end
+
+    total = sum(idx);
+
+    if total == 0
+        gssSummary(g) = "";
+        continue;
+    end
+
+    % Counts
+    lowN  = sum(lowIdx & idx);
+    modN  = sum(modIdx & idx);
+    highN = sum(highIdx & idx);
+
+    % Percentages
+    lowPct  = 100 * lowN  / total;
+    modPct  = 100 * modN  / total;
+    highPct = 100 * highN / total;
+
+    % Format: n (%)
+    gssSummary(g) = sprintf( ...
+        'Low: %d (%.1f%%), Moderate: %d (%.1f%%), High: %d (%.1f%%)', ...
+        lowN, lowPct, modN, modPct, highN, highPct);
 end
 
 end

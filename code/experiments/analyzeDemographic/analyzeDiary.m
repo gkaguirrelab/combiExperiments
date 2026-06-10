@@ -1,10 +1,13 @@
 function [weeklyMigraineSummary, ...
+    weeklyHeadacheSummary, ...
     migrainePainSummary, ...
     percentMigraineMissingSummary, ...
     baselineWeeklyMigraineSummary,...
+    baselineWeeklyHeadacheSummary,...
     baselinePainSummary,...
     baselinePercentMissingSummary, ...
     taskWeeklyMigraineSummary,...
+    taskWeeklyHeadacheSummary, ...
     taskPainSummary,...
     taskPercentMissingSummary, ...
     subjectDiaryT] = analyzeDiary(participantList, dataDir, subjSummaryDataDir)
@@ -34,6 +37,9 @@ sessionsT = readtable(sessionsFile, optsSessions);
 subjectID = normalizeSubjectID(diaryT{:,2});
 timestampDate = convertDiaryDate(diaryT{:,1});
 diaryDate = repairDiaryDate(convertDiaryDate(diaryT{:,3}), timestampDate);
+headacheResponse = lower(strtrim(string(diaryT{:,4})));
+isHeadacheDay = startsWith(headacheResponse, "yes");
+isHeadacheDay(ismissing(headacheResponse)) = false;
 migraineResponse = lower(strtrim(string(diaryT{:,5})));
 isMigraineDay = startsWith(migraineResponse, "yes");
 isMigraineDay(ismissing(migraineResponse)) = false;
@@ -43,6 +49,7 @@ participantList = normalizeSubjectID(participantList);
 idx_keep = ismember(subjectID, participantList);
 subjectID = subjectID(idx_keep);
 diaryDate = diaryDate(idx_keep);
+isHeadacheDay = isHeadacheDay(idx_keep);
 isMigraineDay = isMigraineDay(idx_keep);
 painRating = painRating(idx_keep);
 % Build a subject-level table in participantList order
@@ -57,17 +64,23 @@ subjectDiaryT = table( ...
     nan(nSubjects,1), ... % CompletedDiaryDays
     nan(nSubjects,1), ... % MissingDiaryDays
     nan(nSubjects,1), ... % PercentMissingDays
+    nan(nSubjects,1), ... % HeadacheDays
+    nan(nSubjects,1), ... % HeadachesPerWeek
     nan(nSubjects,1), ... % MigraineDays
     nan(nSubjects,1), ... % MigrainesPerWeek
-    nan(nSubjects,1), ... % MeanMigrainePain
+    nan(nSubjects,1), ... % MedianMigrainePain
     nan(nSubjects,1), ... % BaselineMigraineDays
+    nan(nSubjects,1), ... % BaselineHeadacheDays
     nan(nSubjects,1), ... % BaselinePercentMissingDays
     nan(nSubjects,1), ... % BaselineMigrainesPerWeek
-    nan(nSubjects,1), ... % BaselineMeanMigrainePain
+    nan(nSubjects,1), ... % BaselineHeadachesPerWeek
+    nan(nSubjects,1), ... % BaselineMedianMigrainePain
     nan(nSubjects,1), ... % TaskMigraineDays
+    nan(nSubjects,1), ... % TaskHeadacheDays
     nan(nSubjects,1), ... % TaskPercentMissingDays
     nan(nSubjects,1), ... % TaskMigrainesPerWeek
-    nan(nSubjects,1), ... % TaskMeanMigrainePain
+    nan(nSubjects,1), ... % TaskHeadachesPerWeek
+    nan(nSubjects,1), ... % TaskMedianMigrainePain
     'VariableNames', { ...
     'SubjectID', ...
     'IsMigraineGroup', ...
@@ -75,17 +88,23 @@ subjectDiaryT = table( ...
     'CompletedDiaryDays', ...
     'MissingDiaryDays', ...
     'PercentMissingDays', ...
+    'HeadacheDays', ...
+    'HeadachesPerWeek', ...
     'MigraineDays', ...
     'MigrainesPerWeek', ...
-    'MeanMigrainePain', ...
+    'MeadianMigrainePain', ...
     'BaselineMigraineDays', ...
+    'BaselineHeadacheDays', ...
     'BaselinePercentMissingDays', ...
     'BaselineMigrainesPerWeek', ...
-    'BaselineMeanMigrainePain', ...
+    'BaselineHeadachesPerWeek', ...
+    'BaselineMedianMigrainePain', ...
     'TaskMigraineDays', ...
+    'TaskHeadacheDays', ...
     'TaskPercentMissingDays', ...
     'TaskMigrainesPerWeek', ...
-    'TaskMeanMigrainePain'});
+    'TaskHeadachesPerWeek', ...
+    'TaskMedianMigrainePain'});
 
 % Get task start dates
 [intakeDates, taskStartDates, taskEndDates] = getTaskStartDates(participantList, sessionsT);
@@ -99,6 +118,7 @@ for ss = 1:nSubjects
 
     subjDates = diaryDate(idx);
     subjMigraine = isMigraineDay(idx);
+    subjHeadache = isHeadacheDay(idx);
     subjPain = painRating(idx);
 
     % Remove duplicate days, keep first occurrence
@@ -106,6 +126,7 @@ for ss = 1:nSubjects
 
     subjDates = subjDates(keepIdx);
     subjMigraine = subjMigraine(keepIdx);
+    subjHeadache = subjHeadache(keepIdx);
     subjPain = subjPain(keepIdx);
 
     if isempty(subjDates)
@@ -125,6 +146,9 @@ for ss = 1:nSubjects
     % Percent missing
     percentMissing = 100 * missingDays / expectedDays;
 
+    % Headache days
+    headacheDays = sum(subjHeadache); 
+
     % Migraine days
     migraineDays = sum(subjMigraine);
 
@@ -133,12 +157,16 @@ for ss = 1:nSubjects
     subjectDiaryT.MissingDiaryDays(ss) = missingDays;
     subjectDiaryT.PercentMissingDays(ss) = percentMissing;
     subjectDiaryT.MigraineDays(ss) = migraineDays;
+    subjectDiaryT.HeadacheDays(ss) = headacheDays;
+
+    % Normalize to completed days only
+    subjectDiaryT.HeadachesPerWeek(ss) = headacheDays / completedDays * 7;
 
     % Normalize to completed days only
     subjectDiaryT.MigrainesPerWeek(ss) = migraineDays / completedDays * 7;
 
-    % Calculate mean migraine pain across migraine days per subject
-    subjectDiaryT.MeanMigrainePain(ss) = mean(subjPain(subjMigraine), 'omitnan');
+    % Calculate median migraine pain across migraine days per subject
+    subjectDiaryT.MedianMigrainePain(ss) = median(subjPain(subjMigraine), 'omitnan');
 
     %% Baseline and task-period analyses
 
@@ -159,21 +187,29 @@ for ss = 1:nSubjects
             numel(unique(dateshift(subjDates(baselineIdx), ...
             'start','day')));
 
+        % Migraines
         baselineMigraineDays = ...
             sum(subjMigraine(baselineIdx));
-
         subjectDiaryT.BaselineMigraineDays(ss) = ...
             baselineMigraineDays;
+        % Headaches
+        baselineHeadacheDays = ...
+            sum(subjHeadache(baselineIdx));
+        subjectDiaryT.BaselineHeadacheDays(ss) = ...
+            baselineHeadacheDays;
 
         if baselineDaysCompleted > 0
 
             subjectDiaryT.BaselineMigrainesPerWeek(ss) = ...
                 baselineMigraineDays / baselineDaysCompleted * 7;
 
+            subjectDiaryT.BaselineHeadachesPerWeek(ss) = ...
+                baselineHeadacheDays / baselineDaysCompleted * 7;
+
         end
 
-        subjectDiaryT.BaselineMeanMigrainePain(ss) = ...
-            mean(subjPain(baselineIdx & subjMigraine), ...
+        subjectDiaryT.BaselineMedianMigrainePain(ss) = ...
+            median(subjPain(baselineIdx & subjMigraine), ...
             'omitnan');
 
         % Finding percentage of missing days
@@ -196,19 +232,26 @@ for ss = 1:nSubjects
 
         taskMigraineDays = ...
             sum(subjMigraine(taskIdx));
+        taskHeadacheDays = ...
+            sum(subjHeadache(taskIdx));
 
         subjectDiaryT.TaskMigraineDays(ss) = ...
             taskMigraineDays;
+         subjectDiaryT.TaskHeadacheDays(ss) = ...
+             taskHeadacheDays;
 
-        if taskDaysCompleted > 0
+         if taskDaysCompleted > 0
 
-            subjectDiaryT.TaskMigrainesPerWeek(ss) = ...
-                taskMigraineDays / taskDaysCompleted * 7;
+             subjectDiaryT.TaskMigrainesPerWeek(ss) = ...
+                 taskMigraineDays / taskDaysCompleted * 7;
 
-        end
+             subjectDiaryT.TaskHeadachesPerWeek(ss) = ...
+                 taskHeadacheDays / taskDaysCompleted * 7;
 
-        subjectDiaryT.TaskMeanMigrainePain(ss) = ...
-            mean(subjPain(taskIdx & subjMigraine), ...
+         end
+
+         subjectDiaryT.TaskMedianMigrainePain(ss) = ...
+            median(subjPain(taskIdx & subjMigraine), ...
             'omitnan');
 
         % Finding percentage of missing days
@@ -231,6 +274,7 @@ end
 % Summarize by group so that controls are blank. Rows are 1 = Control, 2 = Migraine with aura.
 % Initialize outputs
 weeklyMigraineSummary = strings(2,1);
+weeklyHeadacheSummary = strings(2,1);
 migrainePainSummary = strings(2,1);
 percentMigraineMissingSummary = strings(2,1);
 
@@ -247,33 +291,42 @@ groupIdx = {~subjectDiaryT.IsMigraineGroup, subjectDiaryT.IsMigraineGroup};
 for gg = 1:2
 
     % Overall analysis
-    weeklyMigraineSummary(gg) = formatMeanSD( ...
+    weeklyMigraineSummary(gg) = formatMedianIQR( ...
         subjectDiaryT.MigrainesPerWeek(groupIdx{gg}));
 
-    migrainePainSummary(gg) = formatMeanSD( ...
-        subjectDiaryT.MeanMigrainePain(groupIdx{gg}));
+    weeklyHeadacheSummary(gg) = formatMedianIQR( ...
+        subjectDiaryT.HeadachesPerWeek(groupIdx{gg}));
 
-    percentMigraineMissingSummary(gg) = formatMeanSD( ...
+    migrainePainSummary(gg) = formatMedianIQR( ...
+        subjectDiaryT.MedianMigrainePain(groupIdx{gg}));
+
+    percentMigraineMissingSummary(gg) = formatMedianIQR( ...
         subjectDiaryT.PercentMissingDays(groupIdx{gg}));
 
     % Baseline period
-    baselineWeeklyMigraineSummary(gg) = formatMeanSD( ...
+    baselineWeeklyMigraineSummary(gg) = formatMedianIQR( ...
         subjectDiaryT.BaselineMigrainesPerWeek(groupIdx{gg}));
 
-    baselinePainSummary(gg) = formatMeanSD( ...
-        subjectDiaryT.BaselineMeanMigrainePain(groupIdx{gg}));
+    baselineWeeklyHeadacheSummary(gg) = formatMedianIQR( ...
+        subjectDiaryT.BaselineHeadachesPerWeek(groupIdx{gg}));
 
-    baselinePercentMissingSummary(gg) = formatMeanSD( ...
+    baselinePainSummary(gg) = formatMedianIQR( ...
+        subjectDiaryT.BaselineMedianMigrainePain(groupIdx{gg}));
+
+    baselinePercentMissingSummary(gg) = formatMedianIQR( ...
         subjectDiaryT.BaselinePercentMissingDays(groupIdx{gg}));
 
     % Task period
-    taskWeeklyMigraineSummary(gg) = formatMeanSD( ...
+    taskWeeklyMigraineSummary(gg) = formatMedianIQR( ...
         subjectDiaryT.TaskMigrainesPerWeek(groupIdx{gg}));
 
-    taskPainSummary(gg) = formatMeanSD( ...
-        subjectDiaryT.TaskMeanMigrainePain(groupIdx{gg}));
+    taskWeeklyHeadacheSummary(gg) = formatMedianIQR( ...
+        subjectDiaryT.TaskHeadachesPerWeek(groupIdx{gg}));
 
-    taskPercentMissingSummary(gg) = formatMeanSD( ...
+    taskPainSummary(gg) = formatMedianIQR( ...
+        subjectDiaryT.TaskMedianMigrainePain(groupIdx{gg}));
+
+    taskPercentMissingSummary(gg) = formatMedianIQR( ...
         subjectDiaryT.TaskPercentMissingDays(groupIdx{gg}));
 
 end
@@ -340,27 +393,31 @@ end
 function numericValues = convertNumeric(values)
 
 if isnumeric(values)
-    numericValues = double(values);
+numericValues = double(values);
 else
-    numericValues = str2double(string(values));
+numericValues = str2double(string(values));
 end
 
 end
 
-function summaryString = formatMeanSD(values)
+function summaryString = formatMedianIQR(values)
 
-values = values(~isnan(values));
+    values = values(~isnan(values));
 
-if isempty(values)
-    summaryString = "";
-else
-    summaryString = sprintf('%.2f ± %.2f', mean(values, 'omitnan'), std(values, 'omitnan'));
-end
+    if isempty(values)
+        summaryString = "";
+    else
+        med = median(values);
+        q1 = prctile(values, 25);
+        q3 = prctile(values, 75);
+
+        summaryString = sprintf('%.2f (%.2f–%.2f)', med, q1, q3);
+    end
 
 end
 
 function [intakeDates, taskStartDates, taskEndDates] = ...
-    getTaskStartDates(participantList, sessionsT)
+getTaskStartDates(participantList, sessionsT)
 
 nSubjs = numel(participantList);
 

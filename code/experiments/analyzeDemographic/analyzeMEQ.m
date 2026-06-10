@@ -58,21 +58,29 @@ idNum = str2double(extractAfter(string(participantList(:)), "FLIC_"));
 isMigrainer = idNum >= 1000;   % e.g., 1016 → migrainer
 isControl   = idNum < 1000;    % e.g., 0013 → control
 
-% Compute stats
-ctrl_mean = mean(totalScores(isControl), 'omitnan');
-ctrl_std  = std(totalScores(isControl), 'omitnan');
-mig_mean = mean(totalScores(isMigrainer), 'omitnan');
-mig_std  = std(totalScores(isMigrainer), 'omitnan');
+% Summarize chronotype categories
+% Using 3 categories instead of the 5 above for simplicity
+morningnessSummary = strings(2,1);
 
-% Format strings
-ctrl_str = sprintf('%.2f ± %.2f', ctrl_mean, ctrl_std);
-mig_str  = sprintf('%.2f ± %.2f', mig_mean, mig_std);
+groupIdx = {isControl, isMigrainer};
 
-% Output
-morningnessSummary = {
-    ctrl_str;
-    mig_str
-};
+for gg = 1:2
+
+    scores = totalScores(groupIdx{gg});
+    scores = scores(~isnan(scores));
+
+    n = numel(scores);
+
+    evening = sum(scores <= 41);
+    intermediate = sum(scores >= 42 & scores <= 58);
+    morning = sum(scores >= 59);
+
+    morningnessSummary(gg) = sprintf( ...
+        'Evening: %d (%.0f%%), Intermediate: %d (%.0f%%), Morning: %d (%.0f%%)', ...
+        evening, 100*evening/n, ...
+        intermediate, 100*intermediate/n, ...
+        morning, 100*morning/n);
+end
 
 end
 

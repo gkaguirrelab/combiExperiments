@@ -61,6 +61,7 @@ dm = mGrid(2) - mGrid(1);
 % Create figure with three panels
 figure('Position',[100 100 2200 500]);
 axis tight; 
+set(gca, 'LooseInset', [0, 0, 0, 0]);
 
 % Plot
 subplot(1,3,1); hold on;
@@ -81,10 +82,10 @@ xlabel('Physical stimulus difference \theta');
 %        '\it{D}\rm = 0 (same trials, delta function prior)', ...
 %        'Location', 'Northeast', 'Interpreter', 'tex');
 legend(' \it{p}\rm(\theta | \it{D}\rm = 1)', ...
-        ' \it{p}\rm(\theta | \it{D}\rm = 0) (delta function)');
+        ' \it{p}\rm(\theta | \it{D}\rm = 0)', ...
+        'Location','Northeast');
 xlim([thetaMin thetaMax]);
 ylim([0 1.05]);
-ylabel('Probability'); 
 yticks([0 0.2 0.4 0.6 0.8 1]);
 set(gca, 'FontSize', 30);
 
@@ -121,7 +122,6 @@ legend({'\it{p}\rm(\it{m}\rm | \theta)', '', '', '', '', '', '', '', '', '',  ..
 set(gca, 'FontSize', 30);
 xlim([thetaMin thetaMax]);
 ylim([0 1.05]);
-ylabel('Probability'); 
 yticks([0 0.2 0.4 0.6 0.8 1]);
 box off;
 
@@ -214,8 +214,8 @@ xlabel('Internal measurement difference \it{m}');
 ylabel('Probability');
 % title(['Stimulus-specific integration (\theta = ' num2str(delta) ')']);
 
-legend({' Respond "different"', ...
-        ' Respond "same"', ...
+legend({' Different', ...
+        ' Same', ...
         ''}, ...
         'Location','Northeast');
 
@@ -223,6 +223,7 @@ xlim([thetaMin thetaMax]);
 set(gca, 'FontSize', 18);
 ylim([0 1.05]);
 yticks([0 0.2 0.4 0.6 0.8 1]);
+set(gca, 'FontSize', 30);
 box off;
 
 % SHADING ON POSTERIOR
@@ -458,21 +459,20 @@ plot(m, P_ref, 'Color', colRef, 'LineWidth', 2, 'LineStyle', '-');
 plot(m, P_test, 'Color', colTest, 'LineWidth', 2, 'LineStyle', '--');
 plot(m, P_diff, 'Color', colDiff, 'LineWidth', 2,'LineStyle', '-.');
 
-xlabel('Internal measurement value');
-ylabel('Probability');
-% title('Sensory Encoding: Individual Stimuli to Difference Signal');
-% legend({'Reference Signal: p(m_{ref} | s_{1} = 0)', ...
-%     'Test Signal: p(m_{test} | s_{2} = 3)', ...
-%     'Difference Likelihood: p(m_{diff} | \theta = 3)' ...
-%     }, 'Location', 'NorthEast');   % OLD legend with detail 
-legend({'\it{m_{ref}}', ...
-    '\it{m_{test}}', ...
-    '\it{m}' ...
-    }, 'Location', 'NorthEast'); 
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca, 'FontSize', 30);
+xticks([-5 0 5]);
+yticks([0 0.2 0.4 0.6 0.8 1]);
+legend({'$m_{\mathrm{ref}}$', ...
+        '$m_{\mathrm{test}}$', ...
+        '$m$'}, ...
+       'Location', 'NorthEast', ...
+       'Interpreter', 'latex', ...
+       'FontSize', 30);
 xlim([-5 8]);
 ylim([0 1]); % max([P_ref P_test P_diff])*1.2]);
-set(gca,'FontSize',14); box off;
-
+xlabel('Internal measurement value', 'Interpreter', 'latex');
+ylabel('Probability', 'Interpreter', 'latex');
 %% FOR POSTER, did not end up using
 % Elementary plot of the likelihood as a difference of Gaussians
 
@@ -611,7 +611,7 @@ end
 
 % Axis formatting
 xticks([1 2]);
-xticklabels({'Same (\itD\rm = 0)', 'Different (\itD\rm = 1)'});
+xticklabels({'\itD\rm = 0', '\itD\rm = 1'});
 ylabel('Probability');
 
 ylim([0 1]);
@@ -621,7 +621,7 @@ xlim([0.3 2.7]);
 yticks([0 0.4 0.6 1]);
 
 hold off;
-set(gca,'FontSize',14); box off;
+set(gca,'FontSize',30); box off;
 
 %% Psychometric curve + stimulus-specific integration highlight (delta = 1 dB)
 
@@ -674,11 +674,10 @@ patch([deltaRange(idxTarget)-0.01 deltaRange(idxTarget)+0.01 deltaRange(idxTarge
 % reference line
 yline(pAtTarget, '--', 'Color', [0.3 0.3 0.3]);
 
-xlabel('stimulus difference [dB]');
+xlabel('Stimulus difference [dB]');
 ylabel('P(respond different)');
-set(gca,'FontSize',14);
 xlim([-5 5]);
 ylim([0 1]);
 yticks([0 0.2 0.4 0.6 0.8 1]);
-set(gca, 'FontSize', 18);
+set(gca,'FontSize',30);
 box off;

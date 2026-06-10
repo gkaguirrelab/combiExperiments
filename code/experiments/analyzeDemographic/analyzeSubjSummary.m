@@ -42,9 +42,11 @@ tableGroups = {'Control', 'Migraine with aura'}; % longer names for table
 ageSummary = strings(length(groups),1);
 for i = 1:length(groups)
     idx = subjSummaryT.MigraineOrControl_ == groups{i};
-    mean_age = mean(subjSummaryT.Age(idx));
-    std_age = std(subjSummaryT.Age(idx));
-    ageSummary(i) = sprintf('%.1f ± %.1f', mean_age, std_age);
+    med_age = median(subjSummaryT.Age(idx));
+    q1_age = prctile(subjSummaryT.Age(idx),25);
+    q3_age = prctile(subjSummaryT.Age(idx),75);
+    ageSummary(i) = sprintf('%.1f (%.1f–%.1f)', ...
+        med_age, q1_age, q3_age);
 end
 
 % Compute number of women
