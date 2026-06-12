@@ -6,11 +6,14 @@ projectName = 'combiLED';
 EOGCalibrationDir = 'EOGCalibration';
 
 % Define subjects + parameters
+%
 % Control subject IDs: {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 % 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027', 
 % 'FLIC_0028','FLIC_0039', 'FLIC_0042'};
+%
 % Migraine subject IDs: {'FLIC_1016','FLIC_1029','FLIC_1030','FLIC_1031','FLIC_1032', ...
 %        'FLIC_1034','FLIC_1035','FLIC_1036','FLIC_1038', 'FLIC_1041', 'FLIC_1044'};  
+% 
 % Had to take out 'FLIC_0028' for controls bc haven't done the fitting with her
 subjectID = {'FLIC_0013', 'FLIC_0015', 'FLIC_0017', ...
 'FLIC_0018', 'FLIC_0019','FLIC_0020', 'FLIC_0021', 'FLIC_0022', 'FLIC_0027',... 
@@ -20,6 +23,12 @@ nSessions = 4;
 
 % Initialize matrix of beta parameters
 betaMatrix = zeros(nSubj,nSessions); 
+
+% Initialize matrix of volts/degree parameters
+voltsPerDegMatrix = zeros(nSubj,nSessions);
+
+% Calibration target geometryS
+degreesOfSaccade = 27.5 / 2;
 
 % Extract timing of "left" "right" "center" commands from audio file
 % This is the same for all subjects
@@ -70,14 +79,51 @@ for subjIdx = 1:nSubj
         betaMatrix(subjIdx, sessionIdx) = beta;
 
         % Convert the values in the matrix to volts (amplitude) per degree of visual angle
-        % degreesOfSaccade = 30;
-        % betaMatrix(subjIdx, sessionIdx) = beta/degreesOfSaccade; 
+        voltsPerDegMatrix(subjIdx, sessionIdx) = beta / degreesOfSaccade;
 
         clear sessionData
         clear beta
 
     end
 end
+
+%% Display results 
+% (row = participant; col = calibration session)
+
+% Each beta value in this matrix represents how much to scale the model to
+% match the recorded EOG for that session. 
+disp('Beta values:')
+disp(betaMatrix)
+
+% Each value in this matrix represents the approximate volts of EOG signal 
+% per degree of eye movement for each session according to the model fit.
+disp('Volts/degree visual angle:')
+disp(voltsPerDegMatrix)
+
+% Compute the mean volts/degree for each subject across the 4 calibration
+% sessions. It is important to keep in mind that EOG  signal is quite 
+% variable from session to session because the electrode placement isn't 
+% always the same. One overall calibration estimate per subject is
+% not exactly reliable. 
+meanVoltsPerDeg = mean(voltsPerDegMatrix, 2);
+
+% Compute the standard deviation of volts/degree across sessions for each
+% subject. This tells us how stable the calibration estimate is across the
+% 4 sessions.
+stdVoltsPerDeg = std(voltsPerDegMatrix, 0, 2);
+
+disp('Mean volts/degree for each subject across sessions:')
+disp(meanVoltsPerDeg)
+
+disp('Standard deviation of volts/degree across sessions for each subject:')
+disp(stdVoltsPerDeg)
+
+% TABLE (MEAN & STD)
+calibrationSummaryTable = table(subjectID(:), meanVoltsPerDeg, stdVoltsPerDeg, ...
+    'VariableNames', {'SubjectID', 'MeanVoltsPerDeg', 'StdAcrossSessions'});
+
+disp('Subject-level calibration summary:')
+disp(calibrationSummaryTable)
 
 
 %%
