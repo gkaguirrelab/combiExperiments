@@ -60,8 +60,6 @@ dm = mGrid(2) - mGrid(1);
 
 % Create figure with three panels
 figure('Position',[100 100 2200 500]);
-axis tight; 
-set(gca, 'LooseInset', [0, 0, 0, 0]);
 
 % Plot
 subplot(1,3,1); hold on;
@@ -76,18 +74,21 @@ plot(thetaRange, p_theta_given_D1, 'Color', orange, 'LineWidth', 1.5);
 plot([0 0], ylim, '--', 'LineWidth', 1.5, 'Color',blue);
 
 % Formatting
-xlabel('Physical stimulus difference \theta');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca, 'FontSize', 30);
+xlabel('Physical stimulus difference $\theta$', 'Interpreter', 'latex');
 % ylabel('Probability');
 % legend('\it{D}\rm = 1 (different trials, uniform prior)', ...
 %        '\it{D}\rm = 0 (same trials, delta function prior)', ...
 %        'Location', 'Northeast', 'Interpreter', 'tex');
-legend(' \it{p}\rm(\theta | \it{D}\rm = 1)', ...
-        ' \it{p}\rm(\theta | \it{D}\rm = 0)', ...
-        'Location','Northeast');
+legend({'$p(\theta \mid D=1)$', ...
+        '$p(\theta \mid D=0)$'}, ...
+       'Location','northeast', ...
+       'Interpreter','latex', ...
+       'FontSize',30);
 xlim([thetaMin thetaMax]);
 ylim([0 1.05]);
 yticks([0 0.2 0.4 0.6 0.8 1]);
-set(gca, 'FontSize', 30);
 
 %% Plotting marginal and conditional likelihoods: second panel
 
@@ -113,13 +114,16 @@ plot(mGrid, P_m_given_D0, 'Color',blue, 'LineWidth', 1.5);
 % Labels and formatting
 ax = gca;
 ax.Layer = 'top';   % draws axes behind the data
-xlabel('Internal measurement difference \it{m}');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca, 'FontSize', 30);
+xlabel('Internal measurement difference $m$','Interpreter', 'latex');
 % ylabel('Probability');
 % Have to add spaces in the legend for each conditional likelihood graph
-legend({'\it{p}\rm(\it{m}\rm | \theta)', '', '', '', '', '', '', '', '', '',  ...
-    '\it{p}\rm(\it{m}\rm | \it{D} = 1)', ...
-    '\it{p}\rm(\it{m}\rm | \it{D}\rm = 0)',});
-set(gca, 'FontSize', 30);
+legend({'$p(m \mid \theta)$', '', '', '', '', '', '', '', '', '', ...
+        '$p(m \mid D=1)$', ...
+        '$p(m \mid D=0)$'}, ...
+       'Interpreter','latex', ...
+       'FontSize',30);
 xlim([thetaMin thetaMax]);
 ylim([0 1.05]);
 yticks([0 0.2 0.4 0.6 0.8 1]);
@@ -139,14 +143,20 @@ plot(mGrid, P_D0_given_m, 'Color', blue, 'LineWidth', 1.5);
 yline(0.5, '-.', 'Color', [0.3 0.3 0.3], 'LineWidth', 1);
 
 % Labels
-xlabel('Internal measurement difference \it{m}');
+xlabel('Internal measurement difference \it{m}', 'Interpreter','latex');
 % ylabel('Posterior probability');
 % title('Posteriors and Decision Threshold');
-lgd = legend({' \it{p}\rm(\it{D}\rm = 1 | \it{m}\rm)', ' \it{p}\rm(\it{D} = 0 | \it{m}\rm)', 'Decision rule'}, ...
-       'Location', 'Northeast');
+lgd = legend({'$p(D=1 \mid m)$', ...
+              '$p(D=0 \mid m)$', ...
+              'Decision rule'}, ...
+             'Location','northeast', ...
+             'Interpreter','latex', ...
+             'FontSize', 30);
 lgd.Position(2) = lgd.Position(2) - 0.1;  % move DOWN 
 
 % Axes limits
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca, 'FontSize', 30);
 xlim([thetaMin thetaMax]);
 ylim([0 1.05]);
 yticks([0 0.2 0.4 0.6 0.8 1]);
@@ -210,14 +220,16 @@ mB2 = mGrid(idx(2));
 xline(mB1,'--','Color',[0.3 0.3 0.3]);
 xline(mB2,'--','Color',[0.3 0.3 0.3]);
 
-xlabel('Internal measurement difference \it{m}');
-ylabel('Probability');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+xlabel('Internal measurement difference \it{m}', 'Interpreter', 'latex');
+ylabel('Probability', 'Interpreter', 'latex');
 % title(['Stimulus-specific integration (\theta = ' num2str(delta) ')']);
 
 legend({' Different', ...
         ' Same', ...
         ''}, ...
-        'Location','Northeast');
+        'Location','Northeast', ...
+        'Interpreter', 'latex');
 
 xlim([thetaMin thetaMax]);
 set(gca, 'FontSize', 18);
@@ -610,10 +622,25 @@ for i = 1:length(priors)
 end
 
 % Axis formatting
-xticks([1 2]);
-xticklabels({'\itD\rm = 0', '\itD\rm = 1'});
-ylabel('Probability');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca, 'FontSize', 30);
+% xticks([1 2]);
+% xticklabels({'$D=0$', '$D=1$'});
+ylabel('Probability', 'Interpreter', 'latex');
+xticks([1 2])
+xticklabels([])   % remove default labels
+% Trying to move the tick labels lower to match in LaTeX
+text(1, -0.08, '$D=0$', ...
+    'Interpreter','latex', ...
+    'HorizontalAlignment','center', ...
+    'FontSize',30, ...
+    'Clipping','off');
 
+text(2, -0.08, '$D=1$', ...
+    'Interpreter','latex', ...
+    'HorizontalAlignment','center', ...
+    'FontSize',30, ...
+    'Clipping','off');
 ylim([0 1]);
 xlim([0.3 2.7]);
 
@@ -674,8 +701,9 @@ patch([deltaRange(idxTarget)-0.01 deltaRange(idxTarget)+0.01 deltaRange(idxTarge
 % reference line
 yline(pAtTarget, '--', 'Color', [0.3 0.3 0.3]);
 
-xlabel('Stimulus difference [dB]');
-ylabel('P(respond different)');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+xlabel('Stimulus difference [dB]', 'Interpreter', 'latex');
+ylabel('P(respond different)', 'Interpreter', 'latex');
 xlim([-5 5]);
 ylim([0 1]);
 yticks([0 0.2 0.4 0.6 0.8 1]);

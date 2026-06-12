@@ -70,13 +70,19 @@ scatter(controlUnconTinyfVals, controlConTinyfVals, 60, colControl, 'filled', 'L
     'MarkerFaceAlpha', 1);
 
 % Identity line for reference
+xlim([10 70]);
+ylim([10 70]);
 xl = xlim; yl = ylim;
 lims = [min([xl yl]) max([xl yl])];
 plot(lims, lims, 'k--', 'LineWidth', 1.2);
 
 % Labels and styling
-xlabel('Unconstrained negative log-likelihood (fVal)');
-ylabel('Constrained negative log-likelihood (fVal)');
-title('Comparison of unconstrained vs constrained fVals for sigmaTest < sigmaRef');
-legend({'Migraine', 'Migraine < 0.1', 'Control', 'Control < 0.1'}, 'Location', 'best');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca,'FontSize',45);
+xlabel('Unconstrained negative log-likelihood (fVal)', 'Interpreter', 'Latex');
+ylabel('Constrained negative log-likelihood (fVal)', 'Interpreter', 'Latex');
+xticks([10 20 30 40 50 60 70]);
+yticks([10 20 30 40 50 60 70]);
+% title('Comparison of unconstrained vs constrained fVals for sigmaTest < sigmaRef', 'Interpreter', 'Latex');
+legend({'Migraine', 'Migraine $<$ 0.1', 'Control', 'Control $<$ 0.1'}, 'Location', 'best', 'Interpreter', 'Latex');
 axis square; grid on;

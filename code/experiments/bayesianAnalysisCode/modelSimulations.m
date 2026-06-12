@@ -22,11 +22,15 @@ for ii = 1:numel(priorSames)
         'Color', color);
 end
 
-xlabel('stimulus difference [dB]');
-ylabel('P(respond different)');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca,'FontSize',25);
+xlabel('Stimulus difference [dB]', 'Interpreter','latex');
+ylabel('P(respond different)', 'Interpreter','latex');
 ylim([0 1]);
 xlim([-6 6]);
-title('Bayesian two sigma model: varying prior probability of same');
+yticks([0 0.2 0.4 0.6 0.8 1])
+xticks([-6 -4 -2 0 2 4 6])
+% title('Bayesian two sigma model: varying prior probability of same');
 box on;
 
 %% Code to plot the Bayesian two sigma model with various levels of sigma ref
@@ -53,13 +57,16 @@ for ii = 1:numel(sigmas)
         'Color', color);
 end
 
-xlabel('stimulus difference [dB]');
-ylabel('P(respond different)');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca,'FontSize',25);
+xlabel('Stimulus difference [dB]', 'Interpreter','latex');
+ylabel('P(respond different)', 'Interpreter','latex');
 ylim([0 1]);
 xlim([-6 6]);
-title('Bayesian two sigma model: varying sigma ref level');
+yticks([0 0.2 0.4 0.6 0.8 1])
+xticks([-6 -4 -2 0 2 4 6])
+% title('Bayesian two sigma model: varying sigma ref level');
 box on;
-
 
 %% Code to plot the Bayesian two sigma model with various levels of sigma test
 figure;
@@ -85,11 +92,15 @@ for ii = 1:numel(sigmas)
         'Color', color);
 end
 
-xlabel('stimulus difference [dB]');
-ylabel('P(respond different)');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca,'FontSize',25);
+xlabel('Stimulus difference [dB]', 'Interpreter','latex');
+ylabel('P(respond different)', 'Interpreter','latex');
 ylim([0 1]);
 xlim([-6 6]);
-title('Bayesian two sigma model: varying sigma test level');
+yticks([0 0.2 0.4 0.6 0.8 1])
+xticks([-6 -4 -2 0 2 4 6])
+% title('Bayesian two sigma model: varying sigma test level');
 box on;
 
 %% Varying sigma test AND sigma ref
@@ -102,7 +113,7 @@ priorSame = 0.5;
 
 % Linearly varying sigmas
 nLevels = 6;
-sigmaRefs = linspace(0.5, 0.2, nLevels);  
+sigmaRefs = linspace(0.5, 0.8, nLevels);  
 sigmaTests  = linspace(0.5, 0.8, nLevels);  
 
 lightPurple = [0.85 0.75 0.95];
@@ -123,9 +134,13 @@ for ii = 1:nLevels
         'Color', color);
 end
 
-xlabel('stimulus difference [dB]');
-ylabel('P(respond different)');
+set(gca, 'TickLabelInterpreter', 'latex'); box off;
+set(gca,'FontSize',25);
+xlabel('Stimulus difference [dB]', 'Interpreter','latex');
+ylabel('P(respond different)', 'Interpreter','latex');
 ylim([0 1]);
 xlim([-6 6]);
-title('Bayesian two sigma model: increasing both sigmas');
+yticks([0 0.2 0.4 0.6 0.8 1])
+xticks([-6 -4 -2 0 2 4 6])
+% title('Bayesian two sigma model: increasing both sigmas');
 box on;

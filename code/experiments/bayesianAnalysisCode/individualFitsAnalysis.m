@@ -19,8 +19,8 @@ dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, experimentName);
 if options.superSubj
     filePath = fullfile(dataDir, '30_superSubjSigmaFitsConstrained.mat');
 else
-    migraineFilePath = fullfile(dataDir, '15Migrainer_individualSigmaFitsConstrained.mat');
-    controlFilePath  = fullfile(dataDir, '15Control_individualSigmaFitsConstrained.mat');
+    migraineFilePath = fullfile(dataDir, '15Migrainer_individualSigmaFits.mat');
+    controlFilePath  = fullfile(dataDir, '15Control_individualSigmaFits.mat');
 end
 %load
 if options.superSubj
@@ -854,32 +854,39 @@ testEdges = linspace(min(allTest), max(allTest), 40);
 refEdges  = linspace(min(allRef), max(allRef), 40);
 
 % Plot
-figure('Color', 'w', 'Position', [100 100 900 400]);
-t = tiledlayout(1, 2, 'TileSpacing', 'compact');
+figure;
+% figure('Color', 'w', 'Position', [100 100 900 400]);
+% t = tiledlayout(1, 2, 'TileSpacing', 'compact');
 
 % Panel 1: Sigma Test
 nexttile; hold on;
+set(gca,'FontSize',30);
+set(gca,'TickLabelInterpreter','latex');
 histogram(testM, testEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
 histogram(testC, testEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-title('Distribution: Sigma Test');
-xlabel('Sigma Value'); ylabel('Count');
-legend({'Migraine', 'Control'}, 'Box', 'off');
+% title('Distribution: Sigma Test', 'Interpreter', 'latex');
+xlabel('$\sigma$ value', 'Interpreter', 'latex');  ylabel('');
+xticks([0 1 2 3 4 5]);
+yticks([0 10 20 30 40]);
+legend({'Migraine', 'Control'}, 'Box', 'off', 'Interpreter', 'latex');
 box off; grid on;
 
 % Panel 2: Sigma Ref
-nexttile; hold on;
-histogram(refM, refEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-histogram(refC, refEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-title('Distribution: Sigma Ref');
-xlabel('Sigma Value'); ylabel('Count');
-xlim([0 5]); % to match sigma test
-if options.superSubj
-    ylim([0 5]);
-else
-    ylim([0 40]);
-end
-legend({'Migraine', 'Control'}, 'Box', 'off');
-box off; grid on;
+% nexttile; hold on;
+% set(gca,'FontSize',30);
+% set(gca,'TickLabelInterpreter','latex');
+% histogram(refM, refEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+% histogram(refC, refEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+% % title('Distribution: Sigma Ref', 'Interpreter', 'latex');
+% xlabel('Sigma Value', 'Interpreter', 'latex'); ylabel('Count', 'Interpreter', 'latex');
+% xlim([0 5]); % to match sigma test
+% if options.superSubj
+%     ylim([0 5]);
+% else
+%     ylim([0 40]);
+% end
+% legend({'Migraine', 'Control'}, 'Box', 'off', 'Interpreter', 'latex');
+% box off; grid on;
 
 end
 
