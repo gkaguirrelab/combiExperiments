@@ -22,6 +22,10 @@ d = diff([0; speech; 0]);
 onsets = find(d == 1) / fs;
 offsets = find(d == -1) / fs;
 
+% TOGGLE analysis sections on/off
+doModelFit = false;
+doTrialAverage = true;
+
 %%
 close all;
 
@@ -51,6 +55,11 @@ RMSEMatrix = zeros(nSubj, nSessions);
 plotDir = fullfile(pwd, 'EOGModelFitPlots');
 if ~exist(plotDir, 'dir')
     mkdir(plotDir);
+end
+
+avgPlotDir = fullfile(pwd, 'EOGAverageTrialPlots');
+if ~exist(avgPlotDir, 'dir')
+    mkdir(avgPlotDir);
 end
 
 for subjIdx = 1:nSubj
@@ -83,68 +92,130 @@ for subjIdx = 1:nSubj
 
         % Detect actual saccade times from large changes in EOG amplitude
         detectedSaccadeTimes = detectSaccadeTimes(timebase, EOGSignal, onsets, cmdValues);
-        
-        % Generate model using detected saccade times instead of fixed reaction time
-        [x, y] = generateEOGModelDetected(timebase, detectedSaccadeTimes, cmdValues, fc);
-        
-        % Define censoring window based on detected saccade timing
-        tStart = detectedSaccadeTimes(1);
-        tEnd   = detectedSaccadeTimes(end);
-        validIdx = timebase >= tStart & timebase <= tEnd;
-        
-        EOGSignalValid = EOGSignal(validIdx);
-        yValid = y(validIdx);
-        
-        % Force column vectors
-        yValid = yValid(:);
-        EOGSignalValid = EOGSignalValid(:);
-        y = y(:);
-        EOGSignal = EOGSignal(:);
-        
-        % Fit beta using model based on detected saccade timing
-        beta = yValid \ EOGSignalValid;
-        
-        % Scaled model
-        y_scaled = beta * y;
 
-        % Calculate fit error for this subject/session
-        RMSE = sqrt(mean((EOGSignalValid - y_scaled(validIdx)).^2));
-
-        % Store RMSE in matrix
-        RMSEMatrix(subjIdx, sessionIdx) = RMSE;
+        % FIT THE DATA W/ MODEL
+        if doModelFit
         
-        % Visualization of scaled model that fits the data
-        figure;
-        clf;
-        hold on;
+            % Generate model using detected saccade times
+            [x, y] = generateEOGModelDetected(timebase, detectedSaccadeTimes, cmdValues, fc);
+                
+            % Define censoring window based on detected saccade timing
+            tStart = detectedSaccadeTimes(1);
+            tEnd   = detectedSaccadeTimes(end);
+            validIdx = timebase >= tStart & timebase <= tEnd;
+        
+            EOGSignalValid = EOGSignal(validIdx);
+            yValid = y(validIdx);
+            
+            % Force column vectors
+            yValid = yValid(:);
+            EOGSignalValid = EOGSignalValid(:);
+            y = y(:);
+            EOGSignal = EOGSignal(:);
+        
+            % Fit beta using model based on detected saccade timing
+            beta = yValid \ EOGSignalValid;
+            
+            % Scaled model
+            y_scaled = beta * y;
+    
+            % Calculate fit error for this subject/session
+            RMSE = sqrt(mean((EOGSignalValid - y_scaled(validIdx)).^2));
+    
+            % Store RMSE in matrix
+            RMSEMatrix(subjIdx, sessionIdx) = RMSE;
+            
+            % Visualization of scaled model that fits the data
+            figure;
+            clf;
+            hold on;
 
-        % Plot in gray first, indicating data that has been censored out 
-        plot(timebase, EOGSignal, 'Color', [0.7 0.7 0.7], 'LineWidth', 1.5); hold on;
-        plot(timebase, y_scaled,  'Color', [0.7 0.7 0.7], 'LineWidth', 1.7);
+            % Plot in gray first, indicating data that has been censored out 
+            plot(timebase, EOGSignal, 'Color', [0.7 0.7 0.7], 'LineWidth', 1.5); hold on;
+            plot(timebase, y_scaled,  'Color', [0.7 0.7 0.7], 'LineWidth', 1.7);
+    
+            % Plot valid data on top
+            plot(timebase(validIdx), EOGSignalValid, 'b', 'LineWidth', 1.5);
+            plot(timebase(validIdx), y_scaled(validIdx), 'r', 'LineWidth', 1.7);
 
-        % Plot valid data on top
-        plot(timebase(validIdx), EOGSignalValid, 'b', 'LineWidth', 1.5);
-        plot(timebase(validIdx), y_scaled(validIdx), 'r', 'LineWidth', 1.7);
-        xlabel('Time (s)');
-        ylabel('Amplitude');
-        title(sprintf('%s Session %d: EOG Model Fit, detected saccades', thisSubj, sessionIdx)); 
+            xlabel('Time (s)');
+            ylabel('Amplitude');
+            title(sprintf('%s Session %d: EOG Model Fit, detected saccades', thisSubj, sessionIdx)); 
 
-        % Mark detected saccade times
-        for k = 1:length(detectedSaccadeTimes)
-            xline(detectedSaccadeTimes(k), 'm--');
+            % Mark detected saccade times
+            for k = 1:length(detectedSaccadeTimes)
+                xline(detectedSaccadeTimes(k), 'm--');
+            end
+    
+            legend('','','EOG Data', 'Scaled Model');
+            xlim([0 25]);
+    
+            % Save plot for this subject/session
+            saveName = fullfile(plotDir, sprintf('%s_Session%d_EOGModelFit.png', thisSubj, sessionIdx));
+            saveas(gcf, saveName);
+    
+            hold off;
+            close(gcf);
         end
 
-        legend('','','EOG Data', 'Scaled Model');
-        xlim([0 25]);
+        % AVERAGE ACROSS TRIALS FOR EACH SESSION
+        % 
+        % This section averages repeated saccade trials within a single 
+        % calibration session. Each trial is baseline-subtracted using the 
+        % mean EOG signal immediately before the saccade so that all trials begin
+        % from a common reference value near zero. 
+        % 
+        % Trials are grouped by movement type (center→left, left→center,
+        % center→right, right→center) and averaged separately. The resulting plot
+        % shows the average EOG response for each saccade type within a
+        % session, where t = 0 corresponds to the detected saccade onset. 
+        % 
+        % The plot reflects how the EOG signal changes relative to
+        % the start of each movement rather than the absolute eye position.
+        if doTrialAverage
 
-        % Save plot for this subject/session
-        saveName = fullfile(plotDir, sprintf('%s_Session%d_EOGModelFit.png', thisSubj, sessionIdx));
-        saveas(gcf, saveName);
+            % Extract and average repeated saccade trials within this session
+            % Each trial becomes a short segment lasting 2.25 sec total
+            tBefore = 0.25;
+            tAfter = 2.00;
 
-        hold off;
-        close(gcf);
+            [eventTimebase, meanByType, trialsByType] = averageSaccadeTrials( ...
+                timebase, EOGSignal, detectedSaccadeTimes, cmdValues, tBefore, tAfter);
 
-        clear sessionData
+            figure;
+            clf;
+            hold on;
+
+            % Plot four average traces, one for each movement type 
+            plot(eventTimebase, meanByType.centerToLeft, 'LineWidth', 2);
+            plot(eventTimebase, meanByType.leftToCenter, 'LineWidth', 2);
+            plot(eventTimebase, meanByType.centerToRight, 'LineWidth', 2);
+            plot(eventTimebase, meanByType.rightToCenter, 'LineWidth', 2);
+
+            % Detected saccade onset
+            xline(0, 'w--', 'LineWidth', 1.5);
+
+            xlabel('Time from detected saccade onset (s)');
+            ylabel('Baseline-subtracted EOG amplitude');
+            title(sprintf('%s Session %d: Average EOG by Saccade Type', thisSubj, sessionIdx));
+
+            legend( ...
+                sprintf('Center to Left (n=%d)', size(trialsByType.centerToLeft,2)), ...
+                sprintf('Left to Center (n=%d)', size(trialsByType.leftToCenter,2)), ...
+                sprintf('Center to Right (n=%d)', size(trialsByType.centerToRight,2)), ...
+                sprintf('Right to Center (n=%d)', size(trialsByType.rightToCenter,2)), ...
+                'Location', 'best');
+
+            xlim([-tBefore tAfter]);
+
+            saveName = fullfile(avgPlotDir, sprintf('%s_Session%d_AverageSaccades.png', thisSubj, sessionIdx));
+            saveas(gcf, saveName);
+
+            hold off;
+            close(gcf);
+
+        end
+
     end
 end
 
@@ -228,4 +299,84 @@ function [x, y] = generateEOGModelDetected(timebase, detectedSaccadeTimes, cmdVa
 
     % Simulate system response
     y = lsim(H, x, timebase);
+end
+
+
+function [eventTimebase, meanByType, trialsByType] = averageSaccadeTrials(timebase, EOGSignal, detectedSaccadeTimes, cmdValues, tBefore, tAfter)
+% eventTimeBase :   x-axis for the trial plot (-0.25 to 2.00 sec approx, 
+%                   where 0 is the detected saccade time)
+% meanByType    :   stores the average waveform for each of the trial 
+%                   groups.
+% trialsByType  :   stores the individual trial snippets, separated into
+%                   groups (centerToLeft, leftToCenter, centerToRight,
+%                   RightToCenter)
+
+    % Estimate the sampling rate from EOG timebase
+    fsEstimate = 1 / mean(diff(timebase));
+    
+    % Convert seconds into number of samples
+    nBefore = round(tBefore * fsEstimate);
+    nAfter  = round(tAfter  * fsEstimate);
+    
+    % Create the x-axis for every extracted trial
+    eventTimebase = (-nBefore:nAfter) / fsEstimate;
+    
+    % Initialize containers for extracted trial snippets
+    trialsByType.centerToLeft = [];
+    trialsByType.leftToCenter = [];
+    trialsByType.centerToRight = [];
+    trialsByType.rightToCenter = [];
+    
+    % Loop through each command transition
+    for k = 2:length(cmdValues)
+    
+        prevCmd = cmdValues(k-1);
+        thisCmd = cmdValues(k);
+    
+        % Find sample index closest to the detected saccade time
+        [~, eventIdx] = min(abs(timebase - detectedSaccadeTimes(k)));
+    
+        % Create window around the saccade
+        idxRange = eventIdx - nBefore : eventIdx + nAfter;
+    
+        if idxRange(1) < 1 || idxRange(end) > length(EOGSignal)
+            continue
+        end
+    
+        % Extract trial
+        trialWave = EOGSignal(idxRange);
+        trialWave = trialWave(:);
+    
+        % Baseline-subtract each trial
+        baseline = mean(trialWave(1:nBefore));
+        trialWave = trialWave - baseline;
+    
+        % Sort trial into correct group
+        if prevCmd == 0 && thisCmd == -1
+            trialsByType.centerToLeft(:,end+1) = trialWave;
+    
+        elseif prevCmd == -1 && thisCmd == 0
+            trialsByType.leftToCenter(:,end+1) = trialWave;
+    
+        elseif prevCmd == 0 && thisCmd == 1
+            trialsByType.centerToRight(:,end+1) = trialWave;
+    
+        elseif prevCmd == 1 && thisCmd == 0
+            trialsByType.rightToCenter(:,end+1) = trialWave;
+        end
+    end
+    
+    % Average the trials in each group
+    meanByType.centerToLeft = safeMean(trialsByType.centerToLeft);
+    meanByType.leftToCenter = safeMean(trialsByType.leftToCenter);
+    meanByType.centerToRight = safeMean(trialsByType.centerToRight);
+    meanByType.rightToCenter = safeMean(trialsByType.rightToCenter);
+    end
+    
+    function m = safeMean(trials)
+    if isempty(trials)
+        m = nan;
+    else
+        m = mean(trials, 2, 'omitnan');
+    end
 end
