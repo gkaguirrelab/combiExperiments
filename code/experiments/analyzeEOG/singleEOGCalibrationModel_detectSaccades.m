@@ -177,7 +177,7 @@ for subjIdx = 1:nSubj
             % Extract and average repeated saccade trials within this session
             % Each trial becomes a short segment lasting 2.25 sec total
             tBefore = 0.25;
-            tAfter = 2.00;
+            tAfter = 1.00;
 
             [eventTimebase, meanByType, trialsByType] = averageSaccadeTrials( ...
                 timebase, EOGSignal, detectedSaccadeTimes, cmdValues, tBefore, tAfter);
@@ -185,35 +185,62 @@ for subjIdx = 1:nSubj
             figure;
             clf;
             hold on;
-
-            % Plot four average traces, one for each movement type 
-            plot(eventTimebase, meanByType.centerToLeft, 'LineWidth', 2);
-            plot(eventTimebase, meanByType.leftToCenter, 'LineWidth', 2);
-            plot(eventTimebase, meanByType.centerToRight, 'LineWidth', 2);
-            plot(eventTimebase, meanByType.rightToCenter, 'LineWidth', 2);
-
-            % Detected saccade onset
+            
+            % Center -> Left: individual trials faint, average bold
+            for i = 1:size(trialsByType.centerToLeft,2)
+                plot(eventTimebase, trialsByType.centerToLeft(:,i), ...
+                    'Color', [0.6 0.8 1], 'LineWidth', 0.75);
+            end
+            h1 = plot(eventTimebase, meanByType.centerToLeft, ...
+                'Color', [0 0.45 0.74], 'LineWidth', 3);
+            
+            % Left -> Center
+            for i = 1:size(trialsByType.leftToCenter,2)
+                plot(eventTimebase, trialsByType.leftToCenter(:,i), ...
+                    'Color', [0.7 1 0.7], 'LineWidth', 0.75);
+            end
+            h2 = plot(eventTimebase, meanByType.leftToCenter, ...
+                'Color', [0 0.6 0], 'LineWidth', 3);
+            
+            % Center -> Right
+            for i = 1:size(trialsByType.centerToRight,2)
+                plot(eventTimebase, trialsByType.centerToRight(:,i), ...
+                    'Color', [1 0.7 0.7], 'LineWidth', 0.75);
+            end
+            h3 = plot(eventTimebase, meanByType.centerToRight, ...
+                'Color', [0.85 0.1 0.1], 'LineWidth', 3);
+            
+            % Right -> Center
+            for i = 1:size(trialsByType.rightToCenter,2)
+                plot(eventTimebase, trialsByType.rightToCenter(:,i), ...
+                    'Color', [1 0.85 0.6], 'LineWidth', 0.75);
+            end
+            h4 = plot(eventTimebase, meanByType.rightToCenter, ...
+                'Color', [0.9 0.5 0], 'LineWidth', 3);
+            
+            % Reference lines
             xline(0, 'w--', 'LineWidth', 1.5);
-
+            yline(0, 'w:', 'LineWidth', 1);
+            
             xlabel('Time from detected saccade onset (s)');
             ylabel('Baseline-subtracted EOG amplitude');
             title(sprintf('%s Session %d: Average EOG by Saccade Type', thisSubj, sessionIdx));
-
-            legend( ...
-                sprintf('Center to Left (n=%d)', size(trialsByType.centerToLeft,2)), ...
-                sprintf('Left to Center (n=%d)', size(trialsByType.leftToCenter,2)), ...
-                sprintf('Center to Right (n=%d)', size(trialsByType.centerToRight,2)), ...
-                sprintf('Right to Center (n=%d)', size(trialsByType.rightToCenter,2)), ...
+            
+            legend([h1 h2 h3 h4], ...
+                sprintf('Center to Left mean (n=%d)', size(trialsByType.centerToLeft,2)), ...
+                sprintf('Left to Center mean (n=%d)', size(trialsByType.leftToCenter,2)), ...
+                sprintf('Center to Right mean (n=%d)', size(trialsByType.centerToRight,2)), ...
+                sprintf('Right to Center mean (n=%d)', size(trialsByType.rightToCenter,2)), ...
                 'Location', 'best');
-
+            
             xlim([-tBefore tAfter]);
-
+            
             saveName = fullfile(avgPlotDir, sprintf('%s_Session%d_AverageSaccades.png', thisSubj, sessionIdx));
             saveas(gcf, saveName);
-
+            
             hold off;
             close(gcf);
-
+            
         end
 
     end
@@ -267,7 +294,17 @@ function detectedSaccadeTimes = detectSaccadeTimes(timebase, EOGSignal, onsets, 
         end
 
         if ~isempty(candidateIdx)
-            detectedSaccadeTimes(k) = timebase(candidateIdx);
+            % Backtrack from threshold crossing to estimate movement onset
+            onsetThreshold = 0.15 * ampThreshold;
+        
+            backIdx = candidateIdx;
+        
+            while backIdx > 1 && abs(deltaEOG(backIdx)) > onsetThreshold
+                backIdx = backIdx - 1;
+            end
+        
+            detectedSaccadeTimes(k) = timebase(backIdx);
+    
         else
             detectedSaccadeTimes(k) = onsets(k) + 0.5;
         end
@@ -327,7 +364,7 @@ function [eventTimebase, meanByType, trialsByType] = averageSaccadeTrials(timeba
     trialsByType.centerToRight = [];
     trialsByType.rightToCenter = [];
     
-    % Loop through each command transition
+    % Loop through each command transition 
     for k = 2:length(cmdValues)
     
         prevCmd = cmdValues(k-1);
@@ -348,7 +385,8 @@ function [eventTimebase, meanByType, trialsByType] = averageSaccadeTrials(timeba
         trialWave = trialWave(:);
     
         % Baseline-subtract each trial
-        baseline = mean(trialWave(1:nBefore));
+        baselineWindow = round(0.10 * fsEstimate);
+        baseline = mean(trialWave(nBefore-baselineWindow+1:nBefore));
         trialWave = trialWave - baseline;
     
         % Sort trial into correct group
