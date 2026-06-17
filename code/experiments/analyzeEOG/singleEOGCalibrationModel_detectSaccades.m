@@ -265,46 +265,103 @@ function detectedSaccadeTimes = detectSaccadeTimes(timebase, EOGSignal, onsets, 
     nCmd = length(onsets);
     detectedSaccadeTimes = nan(size(onsets));
 
-    % Minimum EOG change required to count as a command-related movement
-    ampThreshold = 3.0;  % adjust based on plots
+    ampThreshold = 3.0;          % total change from local baseline
+    windowChangeThreshold = 2.0; % change over short window
+    changeWindow = 0.10;         % 100 ms window for sustained change
+
+    fsEstimate = 1 / mean(diff(timebase));
+    windowSamples = round(changeWindow * fsEstimate);
+
+    % Smooth EOG slightly before computing windowed change
+    smoothWindow = round(0.02 * fsEstimate);
+    EOGSmooth = movmedian(EOGSignal, smoothWindow);
 
     for k = 1:nCmd
 
         % Search after command onset
         searchIdx = timebase >= onsets(k) + 0.1 & timebase <= onsets(k) + 1.2;
 
-        % Baseline just before command onset
+        % Local baseline just before command onset
         baseIdx = timebase >= onsets(k) - 0.1 & timebase <= onsets(k);
-        baseline = median(EOGSignal(baseIdx));
+        baseline = median(EOGSmooth(baseIdx));
 
-        % Signal change relative to command-time baseline
-        deltaEOG = EOGSignal - baseline;
+        % Signal change relative to local baseline
+        deltaEOG = EOGSmooth - baseline;
+
+        % Windowed change: how much signal changes over 100 ms
+        windowChange = nan(size(EOGSmooth));
+        windowChange(1:end-windowSamples) = ...
+            EOGSmooth(1+windowSamples:end) - EOGSmooth(1:end-windowSamples);
 
         if cmdValues(k) > 0
             % Expected rightward / positive movement
-            candidateIdx = find(searchIdx & deltaEOG > ampThreshold, 1, 'first');
+            candidateIdx = find(searchIdx & ...
+                deltaEOG > ampThreshold & ...
+                windowChange > windowChangeThreshold, ...
+                1, 'first');
 
         elseif cmdValues(k) < 0
             % Expected leftward / negative movement
-            candidateIdx = find(searchIdx & deltaEOG < -ampThreshold, 1, 'first');
+            candidateIdx = find(searchIdx & ...
+                deltaEOG < -ampThreshold & ...
+                windowChange < -windowChangeThreshold, ...
+                1, 'first');
 
         else
-            % Expected return toward center; direction depends on current baseline
-            candidateIdx = find(searchIdx & abs(deltaEOG) > ampThreshold, 1, 'first');
+            % Return to center: direction depends on prior position
+            if k == 1
+                candidateIdx = [];
+                detectedSaccadeTimes(k) = onsets(k) + 0.5;
+                continue
+            end
+        
+            prevCmd = cmdValues(k-1);
+
+            if prevCmd < 0
+                % Returning from left to center should move positive
+                candidateIdx = find(searchIdx & ...
+                    windowChange > windowChangeThreshold & ...
+                    abs(deltaEOG) > ampThreshold, ...
+                    1, 'first');
+
+            elseif prevCmd > 0
+                % Returning from right to center should move negative
+                candidateIdx = find(searchIdx & ...
+                    windowChange < -windowChangeThreshold & ...
+                    abs(deltaEOG) > ampThreshold, ...
+                    1, 'first');
+
+            else
+                candidateIdx = [];
+            end
         end
 
         if ~isempty(candidateIdx)
-            % Backtrack from threshold crossing to estimate movement onset
-            onsetThreshold = 0.15 * ampThreshold;
-        
+
+            % Step back to earliest point where sustained movement begins
             backIdx = candidateIdx;
-        
-            while backIdx > 1 && abs(deltaEOG(backIdx)) > onsetThreshold
+
+            while backIdx > 1
+
+                if cmdValues(k) > 0 || (cmdValues(k) == 0 && k > 1 && cmdValues(k-1) < 0)
+                    stillMoving = windowChange(backIdx) > 0.25 * windowChangeThreshold;
+
+                elseif cmdValues(k) < 0 || (cmdValues(k) == 0 && k > 1 && cmdValues(k-1) > 0)
+                    stillMoving = windowChange(backIdx) < -0.25 * windowChangeThreshold;
+
+                else
+                    stillMoving = false;
+                end
+
+                if ~stillMoving
+                    break
+                end
+
                 backIdx = backIdx - 1;
             end
-        
+
             detectedSaccadeTimes(k) = timebase(backIdx);
-    
+
         else
             detectedSaccadeTimes(k) = onsets(k) + 0.5;
         end
