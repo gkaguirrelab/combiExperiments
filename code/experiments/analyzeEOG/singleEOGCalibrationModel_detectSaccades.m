@@ -25,6 +25,7 @@ offsets = find(d == -1) / fs;
 % TOGGLE analysis sections on/off
 doModelFit = false;
 doTrialAverage = true;
+plotIndividualTrials = false;
 
 %%
 close all;
@@ -174,51 +175,42 @@ for subjIdx = 1:nSubj
         % the start of each movement rather than the absolute eye position.
         if doTrialAverage
 
-            % Extract and average repeated saccade trials within this session
-            % Each trial becomes a short segment lasting 2.25 sec total
+            % Extract and average repeated saccade trials for THIS subject/session
             tBefore = 0.25;
             tAfter = 1.00;
 
             [eventTimebase, meanByType, trialsByType] = averageSaccadeTrials( ...
                 timebase, EOGSignal, detectedSaccadeTimes, cmdValues, tBefore, tAfter);
-
+            
             figure;
             clf;
             hold on;
             
-            % Center -> Left: individual trials faint, average bold
-            for i = 1:size(trialsByType.centerToLeft,2)
-                plot(eventTimebase, trialsByType.centerToLeft(:,i), ...
-                    'Color', [0.6 0.8 1], 'LineWidth', 0.75);
-            end
-            h1 = plot(eventTimebase, meanByType.centerToLeft, ...
-                'Color', [0 0.45 0.74], 'LineWidth', 3);
+            % Plot individual trials only if toggle is on
+            if plotIndividualTrials
+                for i = 1:size(trialsByType.centerToLeft,2)
+                    plot(eventTimebase, trialsByType.centerToLeft(:,i), 'Color', [0.6 0.8 1], 'LineWidth', 0.75);
+                end
             
-            % Left -> Center
-            for i = 1:size(trialsByType.leftToCenter,2)
-                plot(eventTimebase, trialsByType.leftToCenter(:,i), ...
-                    'Color', [0.7 1 0.7], 'LineWidth', 0.75);
-            end
-            h2 = plot(eventTimebase, meanByType.leftToCenter, ...
-                'Color', [0 0.6 0], 'LineWidth', 3);
+                for i = 1:size(trialsByType.leftToCenter,2)
+                    plot(eventTimebase, trialsByType.leftToCenter(:,i), 'Color', [0.7 1 0.7], 'LineWidth', 0.75);
+                end
             
-            % Center -> Right
-            for i = 1:size(trialsByType.centerToRight,2)
-                plot(eventTimebase, trialsByType.centerToRight(:,i), ...
-                    'Color', [1 0.7 0.7], 'LineWidth', 0.75);
-            end
-            h3 = plot(eventTimebase, meanByType.centerToRight, ...
-                'Color', [0.85 0.1 0.1], 'LineWidth', 3);
+                for i = 1:size(trialsByType.centerToRight,2)
+                    plot(eventTimebase, trialsByType.centerToRight(:,i), 'Color', [1 0.7 0.7], 'LineWidth', 0.75);
+                end
             
-            % Right -> Center
-            for i = 1:size(trialsByType.rightToCenter,2)
-                plot(eventTimebase, trialsByType.rightToCenter(:,i), ...
-                    'Color', [1 0.85 0.6], 'LineWidth', 0.75);
+                for i = 1:size(trialsByType.rightToCenter,2)
+                    plot(eventTimebase, trialsByType.rightToCenter(:,i), 'Color', [1 0.85 0.6], 'LineWidth', 0.75);
+                end
             end
-            h4 = plot(eventTimebase, meanByType.rightToCenter, ...
-                'Color', [0.9 0.5 0], 'LineWidth', 3);
             
-            % Reference lines
+            % Always plot averages
+            h1 = plot(eventTimebase, meanByType.centerToLeft, 'Color', [0 0.45 0.74], 'LineWidth', 1);
+            h2 = plot(eventTimebase, meanByType.leftToCenter, 'Color', [0 0.6 0], 'LineWidth', 1);
+            h3 = plot(eventTimebase, meanByType.centerToRight, 'Color', [0.85 0.1 0.1], 'LineWidth', 1);
+            h4 = plot(eventTimebase, meanByType.rightToCenter, 'Color', [0.9 0.5 0], 'LineWidth', 1);
+            
             xline(0, 'w--', 'LineWidth', 1.5);
             yline(0, 'w:', 'LineWidth', 1);
             
@@ -242,7 +234,6 @@ for subjIdx = 1:nSubj
             close(gcf);
             
         end
-
     end
 end
 
