@@ -25,6 +25,7 @@ offsets = find(d == -1) / fs;
 % TOGGLE analysis sections on/off
 doModelFit = false;
 doTrialAverage = true;
+plotIndividualTrials = false;
 
 %%
 close all;
@@ -174,51 +175,42 @@ for subjIdx = 1:nSubj
         % the start of each movement rather than the absolute eye position.
         if doTrialAverage
 
-            % Extract and average repeated saccade trials within this session
-            % Each trial becomes a short segment lasting 2.25 sec total
+            % Extract and average repeated saccade trials for THIS subject/session
             tBefore = 0.25;
             tAfter = 1.00;
 
             [eventTimebase, meanByType, trialsByType] = averageSaccadeTrials( ...
                 timebase, EOGSignal, detectedSaccadeTimes, cmdValues, tBefore, tAfter);
-
+            
             figure;
             clf;
             hold on;
             
-            % Center -> Left: individual trials faint, average bold
-            for i = 1:size(trialsByType.centerToLeft,2)
-                plot(eventTimebase, trialsByType.centerToLeft(:,i), ...
-                    'Color', [0.6 0.8 1], 'LineWidth', 0.75);
-            end
-            h1 = plot(eventTimebase, meanByType.centerToLeft, ...
-                'Color', [0 0.45 0.74], 'LineWidth', 3);
+            % Plot individual trials only if toggle is on
+            if plotIndividualTrials
+                for i = 1:size(trialsByType.centerToLeft,2)
+                    plot(eventTimebase, trialsByType.centerToLeft(:,i), 'Color', [0.6 0.8 1], 'LineWidth', 0.75);
+                end
             
-            % Left -> Center
-            for i = 1:size(trialsByType.leftToCenter,2)
-                plot(eventTimebase, trialsByType.leftToCenter(:,i), ...
-                    'Color', [0.7 1 0.7], 'LineWidth', 0.75);
-            end
-            h2 = plot(eventTimebase, meanByType.leftToCenter, ...
-                'Color', [0 0.6 0], 'LineWidth', 3);
+                for i = 1:size(trialsByType.leftToCenter,2)
+                    plot(eventTimebase, trialsByType.leftToCenter(:,i), 'Color', [0.7 1 0.7], 'LineWidth', 0.75);
+                end
             
-            % Center -> Right
-            for i = 1:size(trialsByType.centerToRight,2)
-                plot(eventTimebase, trialsByType.centerToRight(:,i), ...
-                    'Color', [1 0.7 0.7], 'LineWidth', 0.75);
-            end
-            h3 = plot(eventTimebase, meanByType.centerToRight, ...
-                'Color', [0.85 0.1 0.1], 'LineWidth', 3);
+                for i = 1:size(trialsByType.centerToRight,2)
+                    plot(eventTimebase, trialsByType.centerToRight(:,i), 'Color', [1 0.7 0.7], 'LineWidth', 0.75);
+                end
             
-            % Right -> Center
-            for i = 1:size(trialsByType.rightToCenter,2)
-                plot(eventTimebase, trialsByType.rightToCenter(:,i), ...
-                    'Color', [1 0.85 0.6], 'LineWidth', 0.75);
+                for i = 1:size(trialsByType.rightToCenter,2)
+                    plot(eventTimebase, trialsByType.rightToCenter(:,i), 'Color', [1 0.85 0.6], 'LineWidth', 0.75);
+                end
             end
-            h4 = plot(eventTimebase, meanByType.rightToCenter, ...
-                'Color', [0.9 0.5 0], 'LineWidth', 3);
             
-            % Reference lines
+            % Always plot averages
+            h1 = plot(eventTimebase, meanByType.centerToLeft, 'Color', [0 0.45 0.74], 'LineWidth', 1);
+            h2 = plot(eventTimebase, meanByType.leftToCenter, 'Color', [0 0.6 0], 'LineWidth', 1);
+            h3 = plot(eventTimebase, meanByType.centerToRight, 'Color', [0.85 0.1 0.1], 'LineWidth', 1);
+            h4 = plot(eventTimebase, meanByType.rightToCenter, 'Color', [0.9 0.5 0], 'LineWidth', 1);
+            
             xline(0, 'w--', 'LineWidth', 1.5);
             yline(0, 'w:', 'LineWidth', 1);
             
@@ -242,7 +234,6 @@ for subjIdx = 1:nSubj
             close(gcf);
             
         end
-
     end
 end
 
@@ -265,46 +256,103 @@ function detectedSaccadeTimes = detectSaccadeTimes(timebase, EOGSignal, onsets, 
     nCmd = length(onsets);
     detectedSaccadeTimes = nan(size(onsets));
 
-    % Minimum EOG change required to count as a command-related movement
-    ampThreshold = 3.0;  % adjust based on plots
+    ampThreshold = 3.0;          % total change from local baseline
+    windowChangeThreshold = 2.0; % change over short window
+    changeWindow = 0.10;         % 100 ms window for sustained change
+
+    fsEstimate = 1 / mean(diff(timebase));
+    windowSamples = round(changeWindow * fsEstimate);
+
+    % Smooth EOG slightly before computing windowed change
+    smoothWindow = round(0.02 * fsEstimate);
+    EOGSmooth = movmedian(EOGSignal, smoothWindow);
 
     for k = 1:nCmd
 
         % Search after command onset
         searchIdx = timebase >= onsets(k) + 0.1 & timebase <= onsets(k) + 1.2;
 
-        % Baseline just before command onset
+        % Local baseline just before command onset
         baseIdx = timebase >= onsets(k) - 0.1 & timebase <= onsets(k);
-        baseline = median(EOGSignal(baseIdx));
+        baseline = median(EOGSmooth(baseIdx));
 
-        % Signal change relative to command-time baseline
-        deltaEOG = EOGSignal - baseline;
+        % Signal change relative to local baseline
+        deltaEOG = EOGSmooth - baseline;
+
+        % Windowed change: how much signal changes over 100 ms
+        windowChange = nan(size(EOGSmooth));
+        windowChange(1:end-windowSamples) = ...
+            EOGSmooth(1+windowSamples:end) - EOGSmooth(1:end-windowSamples);
 
         if cmdValues(k) > 0
             % Expected rightward / positive movement
-            candidateIdx = find(searchIdx & deltaEOG > ampThreshold, 1, 'first');
+            candidateIdx = find(searchIdx & ...
+                deltaEOG > ampThreshold & ...
+                windowChange > windowChangeThreshold, ...
+                1, 'first');
 
         elseif cmdValues(k) < 0
             % Expected leftward / negative movement
-            candidateIdx = find(searchIdx & deltaEOG < -ampThreshold, 1, 'first');
+            candidateIdx = find(searchIdx & ...
+                deltaEOG < -ampThreshold & ...
+                windowChange < -windowChangeThreshold, ...
+                1, 'first');
 
         else
-            % Expected return toward center; direction depends on current baseline
-            candidateIdx = find(searchIdx & abs(deltaEOG) > ampThreshold, 1, 'first');
+            % Return to center: direction depends on prior position
+            if k == 1
+                candidateIdx = [];
+                detectedSaccadeTimes(k) = onsets(k) + 0.5;
+                continue
+            end
+        
+            prevCmd = cmdValues(k-1);
+
+            if prevCmd < 0
+                % Returning from left to center should move positive
+                candidateIdx = find(searchIdx & ...
+                    windowChange > windowChangeThreshold & ...
+                    abs(deltaEOG) > ampThreshold, ...
+                    1, 'first');
+
+            elseif prevCmd > 0
+                % Returning from right to center should move negative
+                candidateIdx = find(searchIdx & ...
+                    windowChange < -windowChangeThreshold & ...
+                    abs(deltaEOG) > ampThreshold, ...
+                    1, 'first');
+
+            else
+                candidateIdx = [];
+            end
         end
 
         if ~isempty(candidateIdx)
-            % Backtrack from threshold crossing to estimate movement onset
-            onsetThreshold = 0.15 * ampThreshold;
-        
+
+            % Step back to earliest point where sustained movement begins
             backIdx = candidateIdx;
-        
-            while backIdx > 1 && abs(deltaEOG(backIdx)) > onsetThreshold
+
+            while backIdx > 1
+
+                if cmdValues(k) > 0 || (cmdValues(k) == 0 && k > 1 && cmdValues(k-1) < 0)
+                    stillMoving = windowChange(backIdx) > 0.25 * windowChangeThreshold;
+
+                elseif cmdValues(k) < 0 || (cmdValues(k) == 0 && k > 1 && cmdValues(k-1) > 0)
+                    stillMoving = windowChange(backIdx) < -0.25 * windowChangeThreshold;
+
+                else
+                    stillMoving = false;
+                end
+
+                if ~stillMoving
+                    break
+                end
+
                 backIdx = backIdx - 1;
             end
-        
+
             detectedSaccadeTimes(k) = timebase(backIdx);
-    
+
         else
             detectedSaccadeTimes(k) = onsets(k) + 0.5;
         end
