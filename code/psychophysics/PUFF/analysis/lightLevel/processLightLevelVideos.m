@@ -106,6 +106,8 @@ fprintf('    with a range of %2.2f to %2.2f\n',min(proportionDetectBySub),max(pr
 %% LOAD AND PROCESS %%
 %%%%%%%%%%%%%%%%%%%%%%
 
+% Pre-allocate the parameter tracking matrix
+subjectFitParams = nan(length(subjectIDs), 2);
 
 % Loop over the data files
 for subIdx = 1:length(subjectIDs)
@@ -192,7 +194,7 @@ for subIdx = 1:length(subjectIDs)
 
         % Loop over the time points and extract palpebral fissure size and
         % pupil diameter
-       for pp = 1:nTimePoints
+        for pp = 1:nTimePoints
             xVals = eye_features{pp}.eyelids.eyelid_x;
             lidUpper = eye_features{pp}.eyelids.eyelid_up_y;
             lidLower = eye_features{pp}.eyelids.eyelid_lo_y;
@@ -238,21 +240,31 @@ for subIdx = 1:length(subjectIDs)
     end
 
     if plotSubjectTimeSeriesFlag
-    figure
-    for ll = 1:5
-        subplot(2,3,ll)
-        % Plot the trial with the closest to the mean eye closure
-        plot(t(allFrameRange),1-squeeze(dataVecsAdj(subIdx,ll,exampleTrialIdx(subIdx,ll),allFrameRange)),'-','Color',[0.5 0.5 0.5])
-        hold on
-        %plot line showing where dark baseline ended.
-        xline(200/fps, '--r');
-        ylim([0,1]);
-        ylabel('Proportion open');
-        xlabel('time [secs]');
-    end
+        figure
+        for ll = 1:5
+            subplot(2,3,ll)
+            % Plot the trial with the closest to the mean eye closure
+            plot(t(allFrameRange),1-squeeze(dataVecsAdj(subIdx,ll,exampleTrialIdx(subIdx,ll),allFrameRange)),'-','Color',[0.5 0.5 0.5])
+            hold on
+            %plot line showing where dark baseline ended.
+            xline(200/fps, '--r');
+            ylim([0,1]);
+            ylabel('Proportion open');
+            xlabel('time [secs]');
+        end
 
-    drawnow
+        drawnow
     end
+    % Use this subject's specific maxLux to compute temporary illuminance levels for the fit
+    subIlluminanceLevels = contrastLevels * maxLuxBySub_lightLevel(subIdx);
+    
+    myObjRecalc = @(p_temp) norm(palpCloseMean(subIdx,~isnan(palpCloseMean(subIdx,:))) - ...
+        mySigFit(log10(subIlluminanceLevels(~isnan(palpCloseMean(subIdx,:)))), p_temp));
+    p_recalc = fmincon(myObjRecalc,[1 3],[],[],[],[],[],[],[],optsFmincon);
+    
+    % Store it in a persistent variable that won't be cleared at the end
+    subjectFitParams(subIdx,1) = p_recalc(1); % 50% Threshold
+    subjectFitParams(subIdx,2) = p_recalc(2); % Slope
 
 end
 
@@ -281,6 +293,8 @@ semData = std(palpCloseMean)/sqrt(size(palpCloseMean,1));
 % Fit the sigmoid function
 myObj = @(p) norm(meanData - mySigFit(log10(illuminanceLevels),p));
 p = fmincon(myObj,[1 3],[],[],[],[],[],[],[],optsFmincon);
+
+fprintf('Group 50%% Threshold: %.4f log10 lux (%.2f lux)\n\n', p(1), 10^p(1));
 
 % plot the error bars
 for ii = 1:length(illuminanceLevels)
@@ -424,5 +438,13 @@ xlabel('Time [s]');
 ylabel('Proportion eye open');
 set(gca,'TickDir','out');
 set(gca,'YTick',[0 0.5 1]);
-p=[];
+%p=[];
+
+fprintf('\n--- Individual Participant Sigmoid Parameters ---\n');
+fprintf('%-12s | %-15s | %-10s\n', 'Subject ID', '50% Threshold', 'Slope');
+fprintf('-------------------------------------------------\n');
+for ss = 1:length(subjectIDs)
+    fprintf('%-12s | %-15.4f | %-10.4f\n', subjectIDs{ss}, subjectFitParams(ss,1), subjectFitParams(ss,2));
+end
+fprintf('-------------------------------------------------\n');
 

@@ -12,7 +12,7 @@ function [resultsAll, resultsEndorsed, data, closedEyesFreqTable] = analyzeVSQ(f
 
     %% 1. Handle Default Arguments and Import Data
     if nargin < 1 || isempty(filePath)
-        filePath = '/Users/samanthamontoya/Aguirre-Brainard Lab Dropbox/Sam Montoya/BLNK_analysis/VSQ/vpvss_VSQ2_data_20260220.csv';
+        filePath = '/Users/samanthamontoya/Aguirre-Brainard Lab Dropbox/Sam Montoya/BLNK_analysis/VSQ/vpvss_VSQ2_data_20260611.csv';
     end
     
     if nargin < 2 || isempty(saveFigures)
@@ -236,7 +236,17 @@ function [resultsAll, resultsEndorsed, data, closedEyesFreqTable] = analyzeVSQ(f
         % Plot single series
         hBar = bar(sortedPct);
         hBar.BarWidth = 0.6;
-        hBar.FaceColor = cVSS;
+        hBar.FaceColor = 'flat'; % Enable per-bar coloring
+        
+        % Find where 'Visual Snow' ended up after sorting and lighten it
+        for idx = 1:length(sortedNames)
+            if strcmp(sortedNames{idx}, 'Visual Snow')
+                % Blend original cVSS with white to make a lighter version (70% tint)
+                hBar.CData(idx, :) = cVSS + (1 - cVSS) * 0.5; 
+            else
+                hBar.CData(idx, :) = cVSS; % Normal baseline VSS red
+            end
+        end
         
         % Set labels and title (No legend, "cohort" removed)
         set(gca, 'XTickLabel', sortedNames, 'TickLabelInterpreter', 'none', 'FontSize', 11, 'Color', 'w', ...
