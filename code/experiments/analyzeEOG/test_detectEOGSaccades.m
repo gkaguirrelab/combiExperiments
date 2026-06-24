@@ -10,8 +10,8 @@ dropBoxSubDir = 'FLIC_data';
 projectName = 'combiLED';
 EOGCalibrationDir = 'EOGCalibration';
 
-thisSubj = 'FLIC_1016';
-sessionIdx = 4;
+thisSubj = 'FLIC_0013';
+sessionIdx = 3;
 
 fileName = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, ...
     thisSubj, EOGCalibrationDir, ...
@@ -23,10 +23,11 @@ EOGSignal = sessionData.EOGData.response(1,:);
 timebase = sessionData.EOGData.timebase;
 
 params = struct;
-params.velocityThresholdFactor = 12;
-params.onsetThresholdFactor = 4;
-params.minAmplitude = 1.5;
-params.minSaccadeSeparationSec = 0.25;
+params.velocityThresholdFactor = 8;
+params.onsetThresholdFactor = 3;
+params.minAmplitude = 0.75;
+params.minSaccadeSeparationSec = 0.18;
+params.smoothWindowSec = 0.025;
 
 [events, debug] = detectEOGSaccades(timebase, EOGSignal, params);
 
