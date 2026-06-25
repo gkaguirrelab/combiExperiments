@@ -8,6 +8,7 @@ clear detectEOGSaccades
 addpath('/Users/sophiamirabal/Documents/MATLAB/projects/combiExperiments/code/experiments/analyzeEOG/functions')
 which detectEOGSaccades
 
+tbUseProject('combiExperiments')
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
 dropBoxSubDir = 'FLIC_data';
 projectName = 'combiLED';
@@ -211,20 +212,18 @@ close all; clc
 
 thisSubj = 'FLIC_1048';
 
-hLightLevelFolder = 'LightFlux_ND0x5_shifted';  % high light
-lLightLevelFolder = 'LightFlux_ND3x0_shifted';  % low light
+lightLevelFolder = 'LightFlux_ND0x5_shifted';  % high light
+% lightLevelFolder = 'LightFlux_ND3x0_shifted';  % low light
 
 experimentName = 'DCPT_SDT';
 
-contrastLabel = '0x3';
-refFreqHz = 10;
-sideLabel = 'low';
+contrastLabel = '0x1';
+refFreqHz = 30;
+sideLabel = 'hi';
 trialIdx = 1;
 
-% CHANGE hLightLevelFolder OR lLightLevelFolder IN fileName TO SELECT HIGH 
-% OR LOW LIGHT DATA 
 fileName = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, ...
-    thisSubj, hLightLevelFolder, experimentName, ...
+    thisSubj, lightLevelFolder, experimentName, ...
     sprintf('%s_LightFlux_%s_cont-%s_refFreq-%gHz_%s.mat', ...
     thisSubj, experimentName, contrastLabel, refFreqHz, sideLabel));
 
@@ -248,21 +247,76 @@ else
     error('Could not find timebase or Fs inside trial EOGdata.')
 end
 
+% -----------------------------
+% Inspect trial EOG
+% -----------------------------
+disp(fieldnames(trialEOG))
+
+whos EOGSignal
+
+fprintf('Signal range: %.3f to %.3f\n', ...
+    min(EOGSignal), max(EOGSignal));
+
+% RAW EOG SIGNAL PLOT
+figure;
+plot(timebase,EOGSignal,'r')
+xlabel('Time (s)')
+ylabel('Raw EOG')
+title(sprintf('%s Trial %d Raw EOG', thisSubj, trialIdx))
+
+% -----------------------------
+% Run detector
+% -----------------------------
+
+% PARAMS TO MANIPULATE
+params = struct;
+params.velocityThresholdFactor = 1.5;
+params.onsetThresholdFactor = 0.75;
+params.minAmplitude = 0.01;
+params.minSaccadeSeparationSec = 0.02;
+params.smoothWindowSec = 0.010;
+params.minDurationSec = 0.003;
+params.maxDurationSec = 0.200;ri
+
 [events, debug] = detectEOGSaccades(timebase, EOGSignal, params);
 
-T = struct2table(events);
-T.eventNumber = (1:height(T))';
-T = movevars(T, 'eventNumber', 'Before', 1);
-T.absAmplitude = abs(T.amplitude);
-T.absPeakVelocity = abs(T.peakVelocity);
-T.timeSincePrevious = [NaN; diff(T.onsetTime)];
+fprintf('Velocity noise estimate = %.3f\n',debug.velocityNoise);
+fprintf('Peak threshold = %.3f\n',debug.peakThreshold);
+fprintf('Maximum velocity = %.3f\n',max(abs(debug.velocity)));
 
-disp(T(:, {'eventNumber','onsetTime','duration', ...
-    'amplitude','absAmplitude','peakVelocity','absPeakVelocity', ...
-    'strength','timeSincePrevious'}))
+% Print potential saccades (velocity peaks) 
+fprintf('Candidate velocity peaks before rejection = %d\n', length(debug.peakIdx));
 
+% Print detected saccades
+fprintf('Detected %d events\n', length(events));
+
+% VELOCITY PLOT
 figure;
-plot(debug.timebase, debug.EOGSmooth, 'k');
+
+plot(debug.timebase,debug.velocity)
+hold on
+
+yline(debug.peakThreshold,'r--')
+yline(-debug.peakThreshold,'r--')
+
+xlabel('Time (s)')
+ylabel('Velocity')
+title('Velocity Used For Detection')
+
+% T = struct2table(events);
+% T.eventNumber = (1:height(T))';
+% T = movevars(T, 'eventNumber', 'Before', 1);
+% T.absAmplitude = abs(T.amplitude);
+% T.absPeakVelocity = abs(T.peakVelocity);
+% T.timeSincePrevious = [NaN; diff(T.onsetTime)];
+% 
+% disp(T(:, {'eventNumber','onsetTime','duration', ...
+%     'amplitude','absAmplitude','peakVelocity','absPeakVelocity', ...
+%     'strength','timeSincePrevious'}))
+
+% DETECTED SACCADES PLOT
+figure;
+plot(debug.timebase, debug.EOGSmooth, 'r');
 hold on
 
 for i = 1:length(events)
@@ -275,4 +329,8 @@ xlabel('Time (s)');
 ylabel('EOG amplitude');
 title(sprintf('%s %s %s %sHz %s trial %d: detected saccades', ...
     thisSubj, lightLevelFolder, contrastLabel, num2str(refFreqHz), sideLabel, trialIdx));
-legend('Smoothed EOG', 'Onset', 'Peak', 'Offset');
+if isempty(events)
+    legend('Smoothed EOG');
+else
+    legend('Smoothed EOG', 'Onset', 'Peak', 'Offset');
+end
