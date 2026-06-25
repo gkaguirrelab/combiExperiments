@@ -22,15 +22,15 @@ function [events, debug] = detectEOGSaccades(timebase, EOGSignal, params)
     % -----------------------------
     % Default parameters
     % -----------------------------
-    params = setDefault(params, 'smoothWindowSec', 0.015);      % 15 ms smoothing
-    params = setDefault(params, 'velocityThresholdFactor', 12); % main detection threshold
-    params = setDefault(params, 'onsetThresholdFactor', 4);     % lower threshold for onset/offset
-    params = setDefault(params, 'quietWindowSec', 0.020);       % velocity must be quiet for 20 ms
+    params = setDefault(params, 'smoothWindowSec', 0.02);       % X ms smoothing
+    params = setDefault(params, 'velocityThresholdFactor', 8);  % main detection threshold
+    params = setDefault(params, 'onsetThresholdFactor', 3);     % lower threshold for onset/offset
+    params = setDefault(params, 'quietWindowSec', 0.020);       % velocity must be quiet for X ms
     params = setDefault(params, 'minSaccadeSeparationSec', 0.25);
     params = setDefault(params, 'preBaselineSec', 0.050);
     params = setDefault(params, 'postBaselineSec', 0.080);
     params = setDefault(params, 'postDelaySec', 0.050);
-    params = setDefault(params, 'minAmplitude', 1.5);
+    params = setDefault(params, 'minAmplitude', 0.8);
     params = setDefault(params, 'maxDurationSec', 0.20);
     params = setDefault(params, 'minDurationSec', 0.010);
 
