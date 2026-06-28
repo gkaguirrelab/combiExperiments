@@ -16,6 +16,7 @@ nTrials = 8;
 % Define plot properties
 directionColors = {[0 0 1],[1 0 0]};
 directionLineColors = {'b','r'};
+directionPhaseFlip = {true,false};
 
 % Get the results from disk
 for ss = 1:length(subjects)
@@ -50,7 +51,8 @@ fourierFitResults = obtainFourierResults(results);
 % Plot a summary of the Fourier fits
 plotSummaryPolar(fourierFitResults,...
     'directionColors',directionColors,...
-    'directionLineColors',directionLineColors);
+    'directionLineColors',directionLineColors,...
+    'directionPhaseFlip',directionPhaseFlip);
 
 % Plot correlated individual variation in photoreceptor responses
 plotIndividVariation(fourierFitResults,...
