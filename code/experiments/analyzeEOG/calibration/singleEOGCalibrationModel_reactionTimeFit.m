@@ -1,3 +1,5 @@
+%% singleEOGCalibrationModel_reactionTimeFit.m
+
 %% Extract timing of "left" "right" "center" commands from audio file
 
 [y, fs] = audioread('EOGCalInstructions.mp3');

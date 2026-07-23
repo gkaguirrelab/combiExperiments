@@ -1,3 +1,5 @@
+%% singleEOGCalibrationModel_detectSaccades.m (should prob rename)
+
 %% Extract timing of "left" "right" "center" commands from audio file
 
 [y, fs] = audioread('EOGCalInstructions.mp3');

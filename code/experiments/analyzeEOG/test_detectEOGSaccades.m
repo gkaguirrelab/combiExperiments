@@ -1,4 +1,4 @@
-%% test_detectEOGSaccades_MASTER.m
+%% test_detectEOGSaccades.m
 
 % Master script to test detectEOGSaccades.m function. 
 
@@ -276,7 +276,7 @@ params.minAmplitude = 0.01;
 params.minSaccadeSeparationSec = 0.02;
 params.smoothWindowSec = 0.010;
 params.minDurationSec = 0.003;
-params.maxDurationSec = 0.200;ri
+params.maxDurationSec = 0.200;
 
 [events, debug] = detectEOGSaccades(timebase, EOGSignal, params);
 

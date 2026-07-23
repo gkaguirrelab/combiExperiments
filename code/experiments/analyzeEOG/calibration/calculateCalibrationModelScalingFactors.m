@@ -1,3 +1,5 @@
+%% calculateCalibrationModelScalingFactors.m
+
 % SETUP
 % Defining the directory
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
