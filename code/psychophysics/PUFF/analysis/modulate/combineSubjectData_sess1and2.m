@@ -247,3 +247,42 @@ fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'LMS Low Contrast', lms
 fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'S High Contrast', s_high_pct, s_high_sem_pct, s_high_deg);
 fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'S Low Contrast', s_low_pct, s_low_sem_pct, s_low_deg);
 fprintf('========================================================================================\n\n');
+
+%% VECTOR ADDITION: LMS + Mel
+% 1. Convert polar representations (Amplitude, Phase) to Complex Vectors
+z_lms_high = lms_high_amp * exp(1i * lms_high_phase);
+z_mel_high = mel_high_amp * exp(1i * mel_high_phase);
+
+z_lms_low  = lms_low_amp  * exp(1i * lms_low_phase);
+z_mel_low  = mel_low_amp  * exp(1i * mel_low_phase);
+
+% 2. Vector Addition
+z_sum_high = z_lms_high + z_mel_high;
+z_sum_low  = z_lms_low  + z_mel_low;
+
+% 3. Extract Resulting Amplitude and Phase
+sum_high_amp   = abs(z_sum_high);
+sum_high_phase = angle(z_sum_high); % Radians [-pi, pi]
+
+sum_low_amp    = abs(z_sum_low);
+sum_low_phase  = angle(z_sum_low);  % Radians [-pi, pi]
+
+% 4. Sign and Normalize to LF High Baseline (Matching existing table logic)
+sum_high_signed  = sum_high_amp * sign(cos(sum_high_phase));
+sum_low_signed   = sum_low_amp  * sign(cos(sum_low_phase));
+
+sum_high_pct     = (sum_high_signed / baseline_mag) * 100;
+sum_low_pct      = (sum_low_signed / baseline_mag) * 100;
+
+sum_high_deg     = rad2deg(sum_high_phase);
+sum_low_deg      = rad2deg(sum_low_phase);
+
+% 5. Print Vector Addition Results
+fprintf('\n========================================================================================\n');
+fprintf('                     VECTOR ADDITION: LMS + Mel SUMMARY\n');
+fprintf('========================================================================================\n');
+fprintf('%-28s | %-12s | %-12s | %-14s\n', 'Condition', 'Raw Amp', 'Rel Amp (%)', 'Phase (deg)');
+fprintf('----------------------------------------------------------------------------------------\n');
+fprintf('%-28s | %12.4f | %6.1f%%       | %6.1f°\n', 'LMS + Mel (High Contrast)', sum_high_amp, sum_high_pct, sum_high_deg);
+fprintf('%-28s | %12.4f | %6.1f%%       | %6.1f°\n', 'LMS + Mel (Low Contrast)',  sum_low_amp,  sum_low_pct,  sum_low_deg);
+fprintf('========================================================================================\n\n');
