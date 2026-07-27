@@ -30,26 +30,44 @@ nMisses = sum(cell2mat(cellfun(@(x) sum(x),trialIdxWithMissedDetections(:),'Unif
 fprintf('On average, each participant was presented with a total of %2.0f trials across all conditions.\n',sum(nDetectTrials(:),'omitmissing')/sum(goodSubs));
 fprintf('Out of the total of %d trials across all subjects, only %d trials were missed.\n',sum(nDetectTrials(:),'omitmissing'),nMisses);
 
-% Get the results from disk
-% To check the results for each subject, set makePlotFlag to true, and
-% then uncomment the pause and close all steps below
-for ss = 1:length(subjects)
-    results{ss} = processModulateVideos(subjects{ss},...
-        'directions',directions,...
-        'directionLabels',directionLabels,...
-        'phaseLabels',phaseLabels,...
-        'phases',phases,...
-        'contrastLabels',contrastLabels,...
-        'contrasts',contrasts,...
-        'nTrials',nTrials,...
-        'directionColors',directionColors,...
-        'makePlotFlag',false);
-    %{
-    pause
-    close all
-    %}
+% Set up file paths for saving/caching
+dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+projectName = 'PuffLight';
+experimentName = 'modulate';
+saveDir = fullfile(dropboxBaseDir,'BLNK_analysis',projectName,experimentName,'FitData');
+
+% Ensure directory exists
+if ~exist(saveDir, 'dir')
+    mkdir(saveDir);
 end
 
+cacheFile = fullfile(saveDir, 'processedResults.mat');
+
+% --- CACHING CHECK ---
+if exist(cacheFile, 'file')
+    fprintf('Loading pre-processed video results from cache...\n');
+    load(cacheFile, 'results');
+else
+    fprintf('Cache not found. Processing video files across subjects (this may take a while)...\n');
+    results = cell(1, length(subjects));
+    for ss = 1:length(subjects)
+        fprintf('Processing subject %s (%d/%d)...\n', subjects{ss}, ss, length(subjects));
+        results{ss} = processModulateVideos(subjects{ss},...
+            'directions',directions,...
+            'directionLabels',directionLabels,...
+            'phaseLabels',phaseLabels,...
+            'phases',phases,...
+            'contrastLabels',contrastLabels,...
+            'contrasts',contrasts,...
+            'nTrials',nTrials,...
+            'directionColors',directionColors,...
+            'makePlotFlag',false);
+    end
+    
+    % Save processed results to cache
+    save(cacheFile, 'results', '-v7.3');
+    fprintf('Results saved to cache: %s\n', cacheFile);
+end
 
 % Get the across-subject average results
 avgResults = acrossSubjectAverage(results);
@@ -76,6 +94,50 @@ plotIndividVariation(fourierFitResults,...
 
 % Get the photoreceptor integration model fits (and create a figure)
 [p,fVals] = fitWeightModel(fourierFitResults);
+
+%% Derive Background Illuminance Across Subjects
+% Load standard CIE 1931 CMFs (provides S_xyz1931 and T_xyz1931)
+load('T_xyz1931.mat', 'S_xyz1931', 'T_xyz1931');
+% Preallocate array for background illuminance values
+bgLuxBySub = zeros(1, length(subjects));
+
+% Define some experiment properties
+projectName = 'PuffLight';
+experimentName = 'modulate';
+
+% Get the path to the data files
+dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
+
+
+% Set up CMFs and spectral sampling properties using standard 1931 CMFs
+% (Assuming S_xyz1931 and T_xyz1931 are loaded in workspace, e.g., via Brainard Lab / Silent Substitution Toolboxes)
+for subIdx = 1:length(subjects)
+    % Skip subject if excluded/missing data
+    if strcmp(subjects{subIdx}, 'BLNK_1011')
+        bgLuxBySub(subIdx) = NaN;
+        continue;
+    end
+    
+    % Load modResult for the current subject
+    dataDir = fullfile(dropboxBaseDir, 'BLNK_data', projectName, experimentName, subjects{subIdx});
+    load(fullfile(dataDir, 'modResult_LightFlux.mat'), 'modResult');
+    
+    % Extract background SPD and wavelength axis
+    bgSPD = modResult.backgroundSPD;
+    wavelengthsNm = modResult.wavelengthsNm;
+    
+    % Convert wavelength vector to S format and spline CMFs to target grid
+    S = WlsToS(wavelengthsNm);
+    T_xyz = SplineCmf(S_xyz1931, 683 * T_xyz1931, S);
+    
+    % Calculate luminance (cd/m²) and scale by pi for hemispherical illuminance (lux)
+    bgLuxBySub(subIdx) = T_xyz(2, :) * bgSPD * pi;
+end
+
+% Report average and individual results
+fprintf('\n--- Background Illuminance ---\n');
+fprintf('Mean Background Illuminance: %.2f lux (± %.2f SD)\n', ...
+    mean(bgLuxBySub, 'omitnan'), std(bgLuxBySub, 'omitnan'));
 
 % Save results
 dropboxBaseDir = getpref('combiExperiments','dropboxBaseDir');
