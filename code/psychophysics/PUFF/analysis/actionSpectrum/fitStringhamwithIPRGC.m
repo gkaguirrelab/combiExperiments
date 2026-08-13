@@ -47,10 +47,8 @@ end
 addpath(badsRoot);
 
 w0  = [1.0, 0.2, -0.1];  
-lb  = [-3, -3, -3];      
-ub  = [3, 3, 3];        
-plb = [-1, 0, -1];      
-pub = [2, 1, 0];        
+lb  = [-inf, -inf, -inf];      
+ub  = [inf, inf, inf];        
 
 fprintf('Fitting ipRGC weights to Stringham 2° data via BADS...\n');
 
@@ -80,7 +78,7 @@ logFitNorm = logFitNorm - max(logFitNorm);
 targetNorm = targetLogSens - max(targetLogSens);
 
 figure('Color', 'w', 'Position', [100 100 800 450]); % Made slightly wider for right-hand legend
-hold on; grid on;
+hold on; grid off;
 
 % 1. Stringham Data (Markers)
 plot(targetWl, targetNorm, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 7, ...
@@ -97,6 +95,7 @@ plot(plotWl, logFitNorm, '--', 'Color', [0.0, 0.45, 0.74], 'LineWidth', 2.5, ...
 xlabel('Wavelength (nm)');
 ylabel('Log_{10} Relative Sensitivity');
 title('Action Spectrum Comparison');
+yticks([-1.2:0.2:0.2])
 xlim([380 650]); ylim([-1.2 0.1]);
 
 set(gca, 'TickDir', 'out', 'Box', 'off', 'FontSize', 12);
@@ -118,7 +117,7 @@ mpScales = [0.0, 0.5, 1.0, 1.5, 2.0];
 mpColors = parula(length(mpScales) + 1);
 
 figure('Color', 'w', 'Position', [820 100 700 550]);
-hold on; grid on;
+hold on; grid off;
 
 plot(targetWl, targetNorm, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 7, ...
     'DisplayName', sprintf('Stringham Data (2%s)', char(176)));
@@ -141,6 +140,8 @@ xlabel('Wavelength (nm)');
 ylabel('Log_{10} Relative Sensitivity');
 title(sprintf('Macular Pigment Density Sweep on Our 10%s Action Spectrum', char(176)));
 xlim([380 650]); ylim([-1.2 0.1]);
+yticks([-1.2:0.2:0.2])
+
 set(gca, 'TickDir', 'out', 'Box', 'off', 'FontSize', 12);
 legend('Location', 'southoutside', 'NumColumns', 2);
 
