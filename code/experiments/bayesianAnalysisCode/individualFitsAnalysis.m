@@ -1,11 +1,35 @@
 function output = individualFitsAnalysis(options)
+%Performs statistical analysis and visualization of
+% sigma fit parameters (sigmaTest and sigmaRef) from dichoptic flicker experiments.
+%
+%   INDIVIDUALFITSANALYSIS(OPTIONS) loads model fit parameters across experimental
+%   conditions (Contrasts x Light Levels x Frequencies) for Migraine and Control
+%   groups (or super-subjects), generates comparative figures, and conducts
+%   omnibus ANOVAs.
+%
+%   INPUT OPTIONS (Name-Value Pairs):
+%     barPlot      - (Logical) Generate bar charts comparing sigma values across
+%                    contrast/light conditions and group difference interactions.
+%                    Default: false
+%     fVal         - (Logical) Plot negative log-likelihood (fit quality) distributions
+%                    and condition-wise comparisons. Default: false
+%     anova        - (Logical) Run 5-way nested mixed-effects ANOVAs (Subject nested
+%                    in Group) for both sigmaTest and sigmaRef, and plot fit
+%                    parameter distributions. Default: true
+%     superSubj    - (Logical) Flag to load pooled "super-subject" data instead
+%                    of individual subject fit files. Default: false
+%     effectOfFreq - (Logical) Plot main effect of reference frequency on sigma
+%                    parameters averaged across groups or conditions. Default: false
+
 % Define the arguments block
 arguments
-    options.barPlot (1,1) logical = false
-    options.fVal (1,1) logical = false
+    options.barPlot (1,1) logical = true
+    options.beeSwarm (1,1) logical = true
+    options.fVal (1,1) logical = true
     options.anova (1,1) logical = true
     options.superSubj (1,1) logical = false
-    options.effectOfFreq (1,1) logical = false
+    options.effectOfFreq (1,1) logical = true
+    options.sigmaTest (1,1) logical = true
 end
 
 %% load data
@@ -238,7 +262,7 @@ for l = 1:2
 end
 
 %%
-% For the poster: Plot of the sigma test value across frequencies at 
+% For the poster: Plot of the sigma test value across frequencies at
 % high light level, high contrast, averaged over migraine and control.
 
 if options.effectOfFreq
@@ -315,7 +339,7 @@ if options.effectOfFreq
     set(gca,'XTick',[10 13 17 23 30]);
 end
 
-%% Plots to examine main effect of frequency  
+%% Plots to examine main effect of frequency
 % Average Sigma across Contrast and Light, keep Group and Frequency
 
 if options.effectOfFreq
@@ -429,7 +453,7 @@ end
 %% Bar plot: Plotting sigma parameters for each contrast x light level condition
 
 % Choose sigma test or sigma ref
-sigmaTest = false;
+sigmaTest = options.sigmaTest;
 
 if options.barPlot
 
@@ -471,9 +495,12 @@ if options.barPlot
     ax.LineWidth = 1.5;
     hold on;
 
+    % Set dynamic y-limit maximum depending on beeSwarm option
+    yMaxLimit = if_then(options.beeSwarm, 3, 2.5);
+
     % Darkness Patch
     % Spans x=0.5 to 2.5 (covering the last 2 groups: Low Light)
-    patch([2.5 4.5 4.5 2.5], [0 0 2.5 2.5], [0.9 0.9 0.9], ...
+    patch([2.5 4.5 4.5 2.5], [0 0 3 3], [0.9 0.9 0.9], ...
         'EdgeColor', 'none', 'FaceAlpha', 0.5);
 
     % Plot Bars
@@ -611,7 +638,99 @@ if options.barPlot
     text(3.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
         'FontWeight', 'bold', 'FontSize', 35, 'Clipping', 'off');
 
+
+    % ------------------------- OPTIONAL BEE SWARM OVERLAY -------------------------
+    if options.beeSwarm
+        if sigmaTest
+            cDataAvg = squeeze(mean(sigmaTestC, 4));
+            mDataAvg = squeeze(mean(sigmaTestM, 4));
+        else
+            cDataAvg = squeeze(mean(sigmaRefC, 4));
+            mDataAvg = squeeze(mean(sigmaRefM, 4));
+        end
+
+        rawControl  = cDataAvg(:, reorderIdx);
+        rawMigraine = mDataAvg(:, reorderIdx);
+
+        xControlCenters  = b(1).XEndPoints;
+        xMigraineCenters = b(2).XEndPoints;
+
+        lineWidthHalf = 0.12;
+
+        for g = 1:4
+            if ismember(g, lowContrastGroups)
+                cColor = controlLow;
+                mColor = migraineLow;
+            else
+                cColor = controlColor;
+                mColor = migraineColor;
+            end
+
+            % Control Swarm
+            yValC = rawControl(:, g);
+            xC = xControlCenters(g);
+            xValC = repmat(xC, size(yValC));
+
+            swarmchart(xValC, yValC, 60, ...
+                'MarkerFaceColor', controlEdge, ...
+                'MarkerEdgeColor', controlEdge * 0.6, ...
+                'MarkerFaceAlpha', 0.8, ...
+                'XJitter', 'density', ...
+                'XJitterWidth', 0.2);
+
+            % Migraine Swarm
+            yValM = rawMigraine(:, g);
+            xM = xMigraineCenters(g);
+            xValM = repmat(xM, size(yValM));
+
+            swarmchart(xValM, yValM, 60, ...
+                'MarkerFaceColor', migraineEdge, ...
+                'MarkerEdgeColor', migraineEdge * 0.6, ...
+                'MarkerFaceAlpha', 0.8, ...
+                'XJitter', 'density', ...
+                'XJitterWidth', 0.2);
+        end
+    end
+
+    % Formatting & Labels
+    set(gca, 'Layer', 'top', 'Box', 'off');
+    if sigmaTest
+        ylabel('$\sigma_{test}$', ...
+            'Interpreter','latex', ...
+            'FontSize',45, ...
+            'FontName','Helvetica');
+    else
+        ylabel('$\sigma_{ref}$', ...
+            'Interpreter','latex', ...
+            'FontSize',45, ...
+            'FontName','Helvetica');
+    end
+    ylim([0 yMaxLimit]);
+    xlim([0.5, 4.5]);
+    xticks([]);
+    lgd = legend([b(1), b(2)], {'Control', 'Migraine'}, ...
+        'Location', 'Northwest');
+    lgd.FontSize = 32;
+    lgd.FontName = 'Helvetica';
+    lgd.Box = 'off';
+
+    % "Contrast" Labels
+    contrastNames = {'High Contrast', 'Low Contrast', 'High Contrast', 'Low Contrast'};
+    yContrast = -0.15;
+    for i = 1:4
+        midPoint = (b(1).XEndPoints(i) + b(2).XEndPoints(i)) / 2;
+        text(midPoint, yContrast, contrastNames{i}, ...
+            'HorizontalAlignment', 'center', 'FontSize', 32, 'Rotation', 0);
+    end
+
+    % "Light" Labels
+    yLight = -0.35;
+    text(1.5, yLight, 'High Light', 'HorizontalAlignment', 'center', ...
+        'FontWeight', 'bold', 'FontSize', 35, 'Clipping', 'off');
+    text(3.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
+        'FontWeight', 'bold', 'FontSize', 35, 'Clipping', 'off');
 end
+
 
 %% Bar plot for interaction: High vs Low light effect on sigma test (per group)
 
@@ -661,12 +780,29 @@ if options.barPlot
         'LineStyle','none', ...
         'LineWidth',2.5);
 
-    % Styling
+    % --- BEE SWARM OVERLAY FOR INTERACTION ---
+    if options.beeSwarm && ~options.superSubj
+        % Control Swarm (x = 1)
+        swarmchart(repmat(1, size(cDiff)), cDiff, 60, ...
+            'MarkerFaceColor', colControl * 0.8, ...
+            'MarkerEdgeColor', colControl * 0.5, ...
+            'MarkerFaceAlpha', 0.8, ...
+            'XJitter', 'density', ...
+            'XJitterWidth', 0.15);
+
+        % Migraine Swarm (x = 2)
+        swarmchart(repmat(2, size(mDiff)), mDiff, 60, ...
+            'MarkerFaceColor', colMigraine * 0.7, ...
+            'MarkerEdgeColor', colMigraine * 0.5, ...
+            'MarkerFaceAlpha', 0.8, ...
+            'XJitter', 'density', ...
+            'XJitterWidth', 0.15);
+    end
+    
+    %Styling
     set(gca,'XTick',x,'XTickLabel',{'Control','Migraine'});
     ylabel('$\Delta \sigma_{\mathrm{\it{test}}}$', ...
         'Interpreter', 'latex', 'FontSize', 45);
-    % title('Light-Level Interaction on Sigma Test');
-
     box off;
     ylim padded;
 end
@@ -792,7 +928,7 @@ if options.anova
     % Create Factor Indices
     % Use ndgrid to create a coordinate grid for the 4 data dimensions
     [S_idx, C_idx, L_idx, F_idx] = ndgrid(1:nS, 1:nC, 1:nL, 1:nF);
- 
+
     % Create Group Vector (1 = Migraine, 2 = Control)
     nMigraine = size(sigmaTestM, 1);
     G_idx = ones(nS, nC, nL, nF);
@@ -838,55 +974,55 @@ if options.anova
     % Group by all factors
     grpstats(T_sigma, {'Group', 'Contrast', 'Light', 'Freq'}, 'mean')
 
-%Flatten Data
-% Combine all conditions for Sigma Test
-testM = sigmaTestM(:);
-testC = sigmaTestC(:);
+    %Flatten Data
+    % Combine all conditions for Sigma Test
+    testM = sigmaTestM(:);
+    testC = sigmaTestC(:);
 
-% Combine all conditions for Sigma Ref 
-refM  = sigmaRefM(:);
-refC  = sigmaRefC(:);
+    % Combine all conditions for Sigma Ref
+    refM  = sigmaRefM(:);
+    refC  = sigmaRefC(:);
 
-% --- Define Shared Bin Edges ---
-allTest = [testM; testC];
-allRef  = [refM; refC];
-testEdges = linspace(min(allTest), max(allTest), 40);
-refEdges  = linspace(min(allRef), max(allRef), 40);
+    % --- Define Shared Bin Edges ---
+    allTest = [testM; testC];
+    allRef  = [refM; refC];
+    testEdges = linspace(min(allTest), max(allTest), 40);
+    refEdges  = linspace(min(allRef), max(allRef), 40);
 
-% Plot
-figure;
-% figure('Color', 'w', 'Position', [100 100 900 400]);
-% t = tiledlayout(1, 2, 'TileSpacing', 'compact');
+    % Plot
+    figure;
+    % figure('Color', 'w', 'Position', [100 100 900 400]);
+    % t = tiledlayout(1, 2, 'TileSpacing', 'compact');
 
-% Panel 1: Sigma Test
-nexttile; hold on;
-set(gca,'FontSize',30);
-set(gca,'TickLabelInterpreter','latex');
-histogram(testM, testEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-histogram(testC, testEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-% title('Distribution: Sigma Test', 'Interpreter', 'latex');
-xlabel('$\sigma$ value', 'Interpreter', 'latex');  ylabel('');
-xticks([0 1 2 3 4 5]);
-yticks([0 10 20 30 40]);
-legend({'Migraine', 'Control'}, 'Box', 'off', 'Interpreter', 'latex');
-box off; grid on;
+    % Panel 1: Sigma Test
+    nexttile; hold on;
+    set(gca,'FontSize',30);
+    set(gca,'TickLabelInterpreter','latex');
+    histogram(testM, testEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+    histogram(testC, testEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+    % title('Distribution: Sigma Test', 'Interpreter', 'latex');
+    xlabel('$\sigma$ value', 'Interpreter', 'latex');  ylabel('');
+    xticks([0 1 2 3 4 5]);
+    yticks([0 10 20 30 40]);
+    legend({'Migraine', 'Control'}, 'Box', 'off', 'Interpreter', 'latex');
+    box off; grid on;
 
-% Panel 2: Sigma Ref
-% nexttile; hold on;
-% set(gca,'FontSize',30);
-% set(gca,'TickLabelInterpreter','latex');
-% histogram(refM, refEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-% histogram(refC, refEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-% % title('Distribution: Sigma Ref', 'Interpreter', 'latex');
-% xlabel('Sigma Value', 'Interpreter', 'latex'); ylabel('Count', 'Interpreter', 'latex');
-% xlim([0 5]); % to match sigma test
-% if options.superSubj
-%     ylim([0 5]);
-% else
-%     ylim([0 40]);
-% end
-% legend({'Migraine', 'Control'}, 'Box', 'off', 'Interpreter', 'latex');
-% box off; grid on;
+    % Panel 2: Sigma Ref
+    % nexttile; hold on;
+    % set(gca,'FontSize',30);
+    % set(gca,'TickLabelInterpreter','latex');
+    % histogram(refM, refEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+    % histogram(refC, refEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
+    % % title('Distribution: Sigma Ref', 'Interpreter', 'latex');
+    % xlabel('Sigma Value', 'Interpreter', 'latex'); ylabel('Count', 'Interpreter', 'latex');
+    % xlim([0 5]); % to match sigma test
+    % if options.superSubj
+    %     ylim([0 5]);
+    % else
+    %     ylim([0 40]);
+    % end
+    % legend({'Migraine', 'Control'}, 'Box', 'off', 'Interpreter', 'latex');
+    % box off; grid on;
 
 end
 

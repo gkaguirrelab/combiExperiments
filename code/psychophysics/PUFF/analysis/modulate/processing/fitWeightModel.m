@@ -1,5 +1,20 @@
 function [p,fVals] = fitWeightModel(fourierFitResults)
-
+% Fits a 5-parameter non-linear photoreceptor weight model to individual subject 
+% Fourier amplitude data across stimulus directions (Mel, LMS, S, LF) and contrasts.
+% Model parameters estimate cone extrinsic weights relative to a fixed Melanopsin weight (wMel = 1).
+%
+% [p, fVals] = fitWeightModel(fourierFitResults)
+%
+% Fits a non-linear photoreceptor combination model to individual-subject response amplitudes.
+% Phase-adjusted Fourier amplitudes are fitted across 4 isolation directions (Mel, LMS, S, LF)
+% and 2 contrast levels (High, Low) using weighted L2-norm optimization (fmincon).
+%
+% Parameters estimated per subject in p:
+%   p(1): wConeAvg  - Average absolute cone extrinsic weight (relative to wMel = 1)
+%   p(2): wConeDiff - Difference in cone extrinsic weights (relative to wMel = 1)
+%   p(3): beta      - Combination exponent for multi-receptor interactions
+%   p(4): slope     - Sensitivity gain factor
+%   p(5): offset    - Baseline response offset
 % Data properties
 nSubjects = length(fourierFitResults.Mel.High.amplitude);
 
