@@ -97,7 +97,7 @@ for groupIdx = 1:nGroups
                             thisTrialData = psychObj.questData.trialData;
 
                             % Flip the sign for the low side values
-                            if contains(fileName, 'lo')
+                            if contains(fileName, 'low')
                                 for trial = 1:numel(thisTrialData)
                                     thisTrialData(trial).stim = -thisTrialData(trial).stim;
                                 end
