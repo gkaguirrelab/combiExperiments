@@ -219,6 +219,7 @@ for groupIdx = 1:nGroups
 
         % Create figure per contrast
         fig = figure;
+        fig.Position = [5 204 1470 649];
         tLayout = tiledlayout(fig, nLightLevels, nFreqs); %  'TileSpacing','compact','Padding','compact');
         title(tLayout, sprintf('%s | %s contrast', groupNames{groupIdx}, stimParamLabels{contrastIdx}), 'FontWeight','bold');
 
@@ -267,7 +268,7 @@ for groupIdx = 1:nGroups
                 ylim([-0.05 1.05]);
                 yticks([0 0.2 0.4 0.6 0.8 1]); 
                 xlim([-6 6]);
-                set(gca, 'FontSize', 16);
+                set(gca, 'FontSize', 10);
                 xlabel('stimulus difference [dB]');
                 if lightIdx == 1 && refFreqIdx == 1
                     ylabel({'LOW LIGHT', 'proportion respond different'});
