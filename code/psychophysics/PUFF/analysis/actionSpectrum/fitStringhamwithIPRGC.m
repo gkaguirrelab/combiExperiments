@@ -51,12 +51,14 @@ fprintf('Optimal 2° Weights: Mel = %.2f, ipRGC L+M = %.2f, ipRGC S = %.2f, Oppo
     bestW2(1), bestW2(2), bestW2(3), bestW2(4));
 
 %% 4. Define Empirical Weights & Generate Base Signals
-w_emp = [1.0, 0.2, -0.1, 0.0]; % [w_mel, w_lm, w_s, w_l_m]
+w_emp = [1.0, 0.2, -0.1, 0.0, 0.0]; % [w_mel, w_lm, w_s, w_l_m, w_m_s]
 plotWl = (380:1:700)';
 [~, senseEmp] = calculateActionSpectrum(ones(size(plotWl)), plotWl, ...
-    'fieldSize', 10, 'w_mel', w_emp(1), 'w_lm', w_emp(2), 'w_s', w_emp(3), 'w_l_m', w_emp(4));
+    'fieldSize', 10, 'w_mel', w_emp(1), 'w_lm', w_emp(2), 'w_s', w_emp(3), ...
+    'w_l_m', w_emp(4), 'w_m_s', w_emp(5));
 [~, senseFit] = calculateActionSpectrum(ones(size(plotWl)), plotWl, ...
-    'fieldSize', 2, 'w_mel', bestW2(1), 'w_lm', bestW2(2), 'w_s', bestW2(3), 'w_l_m', bestW2(4));
+    'fieldSize', 2, 'w_mel', bestW2(1), 'w_lm', bestW2(2), 'w_s', bestW2(3), ...
+    'w_l_m', bestW2(4), 'w_m_s', 0.0);
 
 % Log normalized spectra for overall fit comparison
 logEmpNorm = log10(max(senseEmp.combinedActionSpectrum(:), 1e-6));
@@ -65,26 +67,54 @@ logFitNorm = log10(max(senseFit.combinedActionSpectrum(:), 1e-6));
 logFitNorm = logFitNorm - max(logFitNorm);
 targetNorm = targetLogSens - max(targetLogSens);
 
-%% 5. Multi-Panel Visualizations (4x2 Layout)
-figure('Color', 'w', 'Position', [100 20 1100 1300]);
+%% 5. Multi-Panel Visualizations (3x3 Layout)
+fig = figure('Color', 'w', 'Position', [50 50 1650 1100]);
 
 % --- Subplot 1: Action Spectrum Comparison (Log Scale) ---
-subplot(4, 2, 1);
+ax1 = subplot(3, 3, 1);
 hold on; grid off;
 plot(targetWl, targetNorm, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 6, ...
-    'DisplayName', sprintf('Stringham 2003 (2%s Foveal)', char(176)));
+    'DisplayName', sprintf('Stringham (2%s)', char(176)));
 plot(plotWl, logEmpNorm, '-', 'Color', [0.00, 0.50, 0.50], 'LineWidth', 2, ...
-    'DisplayName', sprintf('Empirical Model (10%s)', char(176)));
+    'DisplayName', sprintf('Empirical (10%s)', char(176)));
 plot(plotWl, logFitNorm, '--', 'Color', [0.00, 0.25, 0.50], 'LineWidth', 2.5, ...
-    'DisplayName', sprintf('Best BADS Fit (2%s)', char(176)));
+    'DisplayName', sprintf('BADS Fit (2%s)', char(176)));
 xlabel('Wavelength (nm)'); ylabel('Log_{10} Relative Sensitivity');
 title('Action Spectrum Comparison');
 xlim([380 650]); ylim([-1.2 0.1]); yticks(-1.2:0.2:0.2);
-set(gca, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10);
-legend('Location', 'southwest', 'Box', 'off');
+set(ax1, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10, 'ActivePositionProperty', 'position');
+lgd1 = legend('Location', 'eastoutside', 'Box', 'off');
 
-% --- Subplot 2: Individual Normalized Components ---
-subplot(4, 2, 2);
+% --- Subplot 2: Model Weights Printout ---
+ax2 = subplot(3, 3, 2);
+axis off;
+
+weightSummaryStr = sprintf([ ...
+    '\\bfEmpirical Model Weights (10\\circ):\\rm\n' ...
+    '  \\bullet w_{mel} (Melanopsin) = %.2f\n' ...
+    '  \\bullet w_{lm}  (ipRGC L+M)  = %.2f\n' ...
+    '  \\bullet w_s   (ipRGC -S)   = %.2f\n' ...
+    '  \\bullet w_{l-m} (Opponent)   = %.2f\n' ...
+    '  \\bullet w_{m-s} (Opponent)   = %.2f\n\n' ...
+    '\\bfBest BADS Fit Weights (2\\circ):\\rm\n' ...
+    '  \\bullet w_{mel} (Melanopsin) = %.2f\n' ...
+    '  \\bullet w_{lm}  (ipRGC L+M)  = %.2f\n' ...
+    '  \\bullet w_s   (ipRGC -S)   = %.2f\n' ...
+    '  \\bullet w_{l-m} (Opponent)   = %.2f'], ...
+    w_emp(1), w_emp(2), w_emp(3), w_emp(4), w_emp(5), ...
+    bestW2(1), bestW2(2), bestW2(3), bestW2(4));
+
+text(0.1, 0.5, weightSummaryStr, ...
+    'Units', 'normalized', ...
+    'FontSize', 9.5, ...
+    'FontName', 'Helvetica', ...
+    'VerticalAlignment', 'middle', ...
+    'BackgroundColor', [0.96 0.96 0.96], ...
+    'EdgeColor', [0.7 0.7 0.7], ...
+    'Margin', 10);
+
+% --- Subplot 3: Individual Normalized Components ---
+ax3 = subplot(3, 3, 3);
 hold on; grid off;
 melNorm     = senseFit.Mel(:) ./ max(senseFit.Mel(:));
 lNorm       = senseFit.L(:) ./ max(senseFit.L(:));
@@ -94,21 +124,21 @@ lmNorm      = senseFit.LM_combined(:) ./ max(senseFit.LM_combined(:));
 lMinusMNorm = senseFit.LM_opponent(:) ./ max(senseFit.LM_opponent(:));
 mMinusSNorm = senseFit.MS_opponent(:) ./ max(senseFit.MS_opponent(:));
 plot(plotWl, melNorm, '-', 'Color', [0.00, 0.80, 0.80], 'LineWidth', 2, 'DisplayName', 'Melanopsin');
-plot(plotWl, lNorm, '-', 'Color', [0.85, 0.10, 0.10], 'LineWidth', 2, 'DisplayName', 'L Cone Fundamental');
-plot(plotWl, mNorm, '-', 'Color', [0.10, 0.70, 0.20], 'LineWidth', 2, 'DisplayName', 'M Cone Fundamental');
-plot(plotWl, sNorm, '-', 'Color', [0.00, 0.45, 0.85], 'LineWidth', 2, 'DisplayName', 'S Cone Fundamental');
-plot(plotWl, lmNorm, '-', 'Color', [0.90, 0.70, 0.00], 'LineWidth', 2, 'DisplayName', 'L+M Cone Fundamental');
+plot(plotWl, lNorm, '-', 'Color', [0.85, 0.10, 0.10], 'LineWidth', 2, 'DisplayName', 'L Cone');
+plot(plotWl, mNorm, '-', 'Color', [0.10, 0.70, 0.20], 'LineWidth', 2, 'DisplayName', 'M Cone');
+plot(plotWl, sNorm, '-', 'Color', [0.00, 0.45, 0.85], 'LineWidth', 2, 'DisplayName', 'S Cone');
+plot(plotWl, lmNorm, '-', 'Color', [0.90, 0.70, 0.00], 'LineWidth', 2, 'DisplayName', 'L+M Cone');
 plot(plotWl, lMinusMNorm, '-', 'Color', [0.60, 0.30, 0.10], 'LineWidth', 2, 'DisplayName', 'L-M Chromatic');
 plot(plotWl, mMinusSNorm, '-', 'Color', [0.50, 0.20, 0.60], 'LineWidth', 2, 'DisplayName', 'M-S Chromatic');
 yline(0, 'k:', 'HandleVisibility', 'off');
-xlabel('Wavelength (nm)'); ylabel('Normalized Sensitivity (Max = 1)');
+xlabel('Wavelength (nm)'); ylabel('Normalized Sensitivity');
 title('Normalized Pathway Components (2°)');
-xlim([380 650]); ylim([-0.5 1.1]);
-set(gca, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10);
-legend('Location', 'northeast', 'Box', 'off');
+xlim([380 650]); ylim([-1.0 1.1]); yticks(-1.0:0.5:1.0);
+set(ax3, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10, 'ActivePositionProperty', 'position');
+lgd3 = legend('Location', 'eastoutside', 'Box', 'off');
 
-% --- Subplot 3: Moderate L-M Weight Sweep on Empirical Base ---
-subplot(4, 2, 3);
+% --- Subplot 4: Moderate L-M Weight Sweep on Empirical Base ---
+ax4 = subplot(3, 3, 4);
 hold on; grid off;
 plot(targetWl, targetNorm, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 6, ...
     'HandleVisibility', 'off');
@@ -124,13 +154,13 @@ for i = 1:length(w_lm_vals)
         'DisplayName', sprintf('w_{L-M} = %.2f', w_lm_curr));
 end
 xlabel('Wavelength (nm)'); ylabel('Log_{10} Relative Sensitivity');
-title('Effect of Moderate L-M Addition on Shape (2°)');
+title('Effect of Moderate L-M Addition (2°)');
 xlim([380 650]); ylim([-1.2 0.1]); yticks(-1.2:0.2:0.2);
-set(gca, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10);
-legend('Location', 'southeast', 'Box', 'off');
+set(ax4, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10, 'ActivePositionProperty', 'position');
+lgd4 = legend('Location', 'eastoutside', 'Box', 'off');
 
-% --- Subplot 4: Moderate M-S Weight Sweep on Empirical Base ---
-subplot(4, 2, 4);
+% --- Subplot 5: Moderate M-S Weight Sweep on Empirical Base ---
+ax5 = subplot(3, 3, 5);
 hold on; grid off;
 plot(targetWl, targetNorm, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 6, ...
     'HandleVisibility', 'off');
@@ -146,13 +176,13 @@ for i = 1:length(w_ms_vals)
         'DisplayName', sprintf('w_{M-S} = %.2f', w_ms_curr));
 end
 xlabel('Wavelength (nm)'); ylabel('Log_{10} Relative Sensitivity');
-title('Effect of Moderate M-S Addition on Shape (2°)');
+title('Effect of Moderate M-S Addition (2°)');
 xlim([380 650]); ylim([-1.2 0.1]); yticks(-1.2:0.2:0.2);
-set(gca, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10);
-legend('Location', 'southeast', 'Box', 'off');
+set(ax5, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10, 'ActivePositionProperty', 'position');
+lgd5 = legend('Location', 'eastoutside', 'Box', 'off');
 
-% --- Subplot 5: ipRGC Cone Weight Sweep (L+M vs -S) ---
-subplot(4, 2, 5);
+% --- Subplot 6: ipRGC Cone Weight Sweep (L+M vs -S) ---
+ax6 = subplot(3, 3, 6);
 hold on; grid off;
 plot(targetWl, targetNorm, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 6, ...
     'HandleVisibility', 'off');
@@ -165,16 +195,16 @@ for i = 1:length(w_s_sweep)
     logSweep = log10(max(senseSweep.combinedActionSpectrum(:), 1e-6));
     logSweep = logSweep - max(logSweep);
     plot(plotWl, logSweep, 'LineWidth', 1.8, 'Color', iprgcColors(i,:), ...
-        'DisplayName', sprintf('w_{L+M}=0.2, w_S=%.2f', ws_curr));
+        'DisplayName', sprintf('w_S = %.2f', ws_curr));
 end
 xlabel('Wavelength (nm)'); ylabel('Log_{10} Relative Sensitivity');
-title('ipRGC Pathway: (L+M) - S Cone Weight Sweep (2°)');
+title('ipRGC Pathway: (L+M) - S Sweep (2°)');
 xlim([380 650]); ylim([-1.2 0.1]); yticks(-1.2:0.2:0.2);
-set(gca, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10);
-legend('Location', 'southeast', 'Box', 'off');
+set(ax6, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10, 'ActivePositionProperty', 'position');
+lgd6 = legend('Location', 'eastoutside', 'Box', 'off');
 
-% --- Subplot 6: Cone-Specific Macular Pigment Density Sweep via CIE Fundamentals ---
-subplot(4, 2, 6);
+% --- Subplot 7: Cone-Specific Macular Pigment Density Sweep via CIE Fundamentals ---
+ax7 = subplot(3, 3, 7);
 hold on; grid off;
 plot(targetWl, targetNorm, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 6, ...
     'HandleVisibility', 'off');
@@ -188,16 +218,16 @@ for i = 1:length(dmac_vals)
     logMPSweep = log10(max(senseMPSweep.combinedActionSpectrum(:), 1e-6));
     logMPSweep = logMPSweep - max(logMPSweep);
     plot(plotWl, logMPSweep, 'LineWidth', 1.8, 'Color', mpodColors(i,:), ...
-        'DisplayName', sprintf('\\Delta Macular Density = %+d%%', dmac_curr));
+        'DisplayName', sprintf('\\Delta Macular = %+d%%', dmac_curr));
 end
 xlabel('Wavelength (nm)'); ylabel('Log_{10} Relative Sensitivity');
-title('Cone-Only Macular Density Sweep via CIE Fundamentals');
+title('Cone-Only Macular Density Sweep');
 xlim([380 650]); ylim([-1.2 0.1]); yticks(-1.2:0.2:0.2);
-set(gca, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10);
-legend('Location', 'southeast', 'Box', 'off');
+set(ax7, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10, 'ActivePositionProperty', 'position');
+lgd7 = legend('Location', 'eastoutside', 'Box', 'off');
 
-% --- Subplot 7: Total Lens Density Sweep (Cones + Melanopsin) ---
-subplot(4, 2, 7);
+% --- Subplot 8: Total Lens Density Sweep (Cones + Melanopsin) ---
+ax8 = subplot(3, 3, 8);
 hold on; grid off;
 plot(targetWl, targetNorm, 'ko', 'MarkerFaceColor', 'k', 'MarkerSize', 6, ...
     'HandleVisibility', 'off');
@@ -211,17 +241,25 @@ for i = 1:length(dlens_vals)
     logLensSweep = log10(max(senseLensSweep.combinedActionSpectrum(:), 1e-6));
     logLensSweep = logLensSweep - max(logLensSweep);
     plot(plotWl, logLensSweep, 'LineWidth', 1.8, 'Color', lensColors(i,:), ...
-        'DisplayName', sprintf('\\Delta Lens Density = %+d%%', dlens_curr));
+        'DisplayName', sprintf('\\Delta Lens = %+d%%', dlens_curr));
 end
 xlabel('Wavelength (nm)'); ylabel('Log_{10} Relative Sensitivity');
-title('Total Lens Density Sweep (Cones + Melanopsin)');
+title('Total Lens Density Sweep');
 xlim([380 650]); ylim([-1.2 0.1]); yticks(-1.2:0.2:0.2);
-set(gca, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10);
-legend('Location', 'southeast', 'Box', 'off');
+set(ax8, 'TickDir', 'out', 'Box', 'off', 'FontSize', 10, 'ActivePositionProperty', 'position');
+lgd8 = legend('Location', 'eastoutside', 'Box', 'off');
 
-% --- Subplot 8: Placeholder / Empty Grid Tile ---
-subplot(4, 2, 8);
+% --- Subplot 9: Empty Grid Tile ---
+ax9 = subplot(3, 3, 9);
 axis off;
+
+% --- Standardize Subplot Axes Width across all 7 Spectrum Panels ---
+allAxes = [ax1, ax3, ax4, ax5, ax6, ax7, ax8];
+for i = 1:length(allAxes)
+    pos = get(allAxes(i), 'Position');
+    pos(3) = 0.18; % Fixed width so external legends do not compress plot axes
+    set(allAxes(i), 'Position', pos);
+end
 
 %% --- Support Functions ---
 function rmse = stringhamObjective(w, targetWl, targetLogSens, fieldSize)
