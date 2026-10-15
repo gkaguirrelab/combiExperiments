@@ -334,6 +334,99 @@ legend({'Migrainers', 'Controls'});
 title('Model fit quality across conditions when sigmaTest = sigmaRef');
 box off;
 
+%% PLOTTING: Combined across all conditions with separate group subpanels (Large Vector Markers)
+fig = figure('Color', 'w');
+fig.Position = [100, 200, 1200, 520];
+
+tLayout = tiledlayout(fig, 1, nGroups, 'TileSpacing', 'compact', 'Padding', 'compact');
+title(tLayout, 'All Conditions Combined Fit', 'FontWeight', 'bold', 'FontSize', 18);
+
+for groupIdx = 1:nGroups
+    ax = nexttile(tLayout);
+    set(ax, 'Color', 'w'); 
+    hold on;
+    
+    % Combine data across all light levels, ref frequencies, and contrast levels for this group
+    combinedDb = [];
+    combinedRespondYes = [];
+    for contrastIdx = 1:nContrasts
+        for lightIdx = 1:nLightLevels
+            for refFreqIdx = 1:nFreqs
+                combinedDb = [combinedDb, pooledData(groupIdx, contrastIdx, lightIdx, refFreqIdx).stim];
+                combinedRespondYes = [combinedRespondYes, pooledData(groupIdx, contrastIdx, lightIdx, refFreqIdx).respondYes];
+            end
+        end
+    end
+    
+    % Calculate unique dB, proportion different, and trial counts for combined data
+    uniqueDb = unique(combinedDb);
+    pRespondDifferent = zeros(size(uniqueDb));
+    nTrials = zeros(size(uniqueDb));
+    for ii = 1:length(uniqueDb)
+        pRespondDifferent(ii) = mean(combinedRespondYes(combinedDb == uniqueDb(ii)));
+        nTrials(ii) = sum(combinedDb == uniqueDb(ii));
+    end
+    
+    % Calculate prior probability of same for the combined dataset
+    sameIdx = find(uniqueDb == 0);
+    nDiffTrials = sum(nTrials(1:(sameIdx-1))) + sum(nTrials((sameIdx+1):end));
+    nSameTrials = nTrials(sameIdx);
+    combinedPrior = nSameTrials / (nSameTrials + nDiffTrials);
+    
+    % DRAMATICALLY INCREASED MARKER SIZES for vector export
+    markerSizeIdx = zeros(size(nTrials));
+    markerSizeIdx((1:end) ~= sameIdx) = discretize(nTrials((1:end) ~= sameIdx), 3);
+    markerSizeIdx(sameIdx) = 4;
+    markerSizeSet = [150, 300, 450, 600]; % Much larger point-squared area values
+    maxTrials = max(nTrials);
+    
+    for ii = 1:length(uniqueDb)
+        alphaVal = nTrials(ii) / maxTrials;
+        markerShape = 'o';
+        if uniqueDb(ii) == 0
+            markerShape = 'diamond'; 
+            currentSize = markerSizeSet(markerSizeIdx(ii)) * 1.5; % Boost diamond size further
+        else
+            currentSize = markerSizeSet(markerSizeIdx(ii));
+        end
+        
+        scatter(uniqueDb(ii), pRespondDifferent(ii), ...
+            currentSize, ...
+            [pRespondDifferent(ii) 0 1-pRespondDifferent(ii)], 'filled', ...
+            'MarkerEdgeColor', 'k', 'LineWidth', 1.5, 'MarkerFaceAlpha', alphaVal, 'Marker', markerShape);
+    end
+    
+    % Fit model to the combined dataset using BADS
+    initialSigmas = [0.5 0.5];
+    lb = [0.001 0.001];
+    ub = [5 5];
+    options = bads('defaults');
+    options.MaxIter = 100;
+    [fitCombined, ~] = bads(@(p) negLogLikelihood(p, stimParamsDomainList, uniqueDb, pRespondDifferent, nTrials, combinedPrior), ...
+        initialSigmas, lb, ub, lb, ub, [], options);
+    
+    % Plot model fit curve with a thick line
+    x = -6:0.1:6;
+    plot(x, bayesianSameDiffModelTwoSigma(stimParamsDomainList, x, fitCombined, combinedPrior), 'k-', 'LineWidth', 3);
+    
+    % Plot formatting
+    ylim([-0.05 1.05]);
+    yticks([0 0.2 0.4 0.6 0.8 1]); 
+    xlim([-6 6]);
+    
+    set(gca, 'FontSize', 14, 'FontName', 'Helvetica', 'LineWidth', 1.5); 
+    xlabel('stimulus difference [dB]', 'FontSize', 16, 'FontWeight', 'bold');
+    ylabel('proportion respond different', 'FontSize', 16, 'FontWeight', 'bold');
+    title(sprintf('%s Group', groupNames{groupIdx}), 'FontSize', 16, 'FontWeight', 'bold');
+    
+    box off;
+end
+
+% Export cleanly via code instead of the GUI menu to enforce true vector properties
+exportgraphics(fig, 'AllConditionsCombinedFit.pdf', 'ContentType', 'vector');
+
+%% Recommended way to save as a clean vector PDF in MATLAB:
+% exportgraphics(fig, 'AllConditionsCombinedFit.pdf', 'ContentType', 'vector');
 %% Objective function %%
 function nll = negLogLikelihood(sigma, stimParamsDomainList, uniqueDbValues, probData, nTrials, priorSame)
 

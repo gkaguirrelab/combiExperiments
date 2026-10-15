@@ -20,7 +20,6 @@ function output = individualFitsAnalysis(options)
 %                    of individual subject fit files. Default: false
 %     effectOfFreq - (Logical) Plot main effect of reference frequency on sigma
 %                    parameters averaged across groups or conditions. Default: false
-
 % Define the arguments block
 arguments
     options.barPlot (1,1) logical = true
@@ -31,7 +30,6 @@ arguments
     options.effectOfFreq (1,1) logical = true
     options.sigmaTest (1,1) logical = true
 end
-
 %% load data
 %set up paths
 dropBoxBaseDir = getpref('combiExperiments','dropboxBaseDir');
@@ -39,14 +37,12 @@ dropBoxSubDir = 'FLIC_analysis';
 projectName = 'dichopticFlicker';
 experimentName = 'sigmaData';
 dataDir = fullfile(dropBoxBaseDir, dropBoxSubDir, projectName, experimentName);
-
 if options.superSubj
     filePath = fullfile(dataDir, '30_superSubjSigmaFitsConstrained.mat');
 else
     migraineFilePath = fullfile(dataDir, '15Migrainer_individualSigmaFits.mat');
     controlFilePath  = fullfile(dataDir, '15Control_individualSigmaFits.mat');
 end
-
 %load
 if options.superSubj
     fits = load(filePath);
@@ -97,46 +93,38 @@ else
     sigmaTestM = migraineFits.sigmaTestMatrix;
     sigmaTestC = controlFits.sigmaTestMatrix;
 end
-
 % define labels
 contrastLabels = {'lo', 'hi'};
 NDLabel = {'3.0', '0.5'};
-
 if options.superSubj
     refFreqHz = fits.refFreqHz;
 else
     refFreqHz = migraineFits.refFreqHz;
 end
-
 %% Global Color Palette Definitions (Magenta/Plum & Slate-Teal Blue)
 colMigraineHigh = [0.72 0.22 0.48]; % Muted Deep Magenta / Plum (High Contrast / Main)
 colMigraineLow  = [0.88 0.55 0.72]; % Soft Dusty Pink-Magenta (Low Contrast)
-
 colControlHigh  = [0.18 0.48 0.62]; % Slate / Deep Teal-Blue (High Contrast / Main)
 colControlLow   = [0.55 0.76 0.85]; % Soft Sky-Teal Blue (Low Contrast)
-
 %% Calculate Mean and SEM
 muSigmaTestC  = squeeze(mean(mean(sigmaTestC,  4),1));
 muSigmaTestM   = squeeze(mean(mean(sigmaTestM,  4),1));
 semSigmaTestC = squeeze(std(mean(sigmaTestC,  4),  [], 1) ./ sqrt(nSubjC));
 semSigmaTestM  = squeeze(std(mean(sigmaTestM,  4), [], 1) ./ sqrt(nSubjM));
-
 muSigmaRefC  = squeeze(mean(mean(sigmaRefC,  4),1));
 muSigmaRefM   = squeeze(mean(mean(sigmaRefM,  4),1));
 semSigmaRefC = squeeze(std(mean(sigmaRefC,  4),  [], 1) ./ sqrt(nSubjC));
 semSigmaRefM  = squeeze(std(mean(sigmaRefM,  4), [], 1) ./ sqrt(nSubjM));
-
-%% Plot all data
-% Loop through light levels (1 = Low, 2 = High)
+%% Plot all data (Sigma Test) - Vectorized to prevent "Data 1" legends & with uniform freq ticks
 for l = 1:2
     f = figure('Color', 'w', 'Name', ['Light Level ' num2str(l)]);
-    set(gca, 'FontSize', 16);
+    ax = gca;
+    set(ax, 'FontSize', 16);
     hold on;
     
     hHandles = [];
     hNames   = {};
     
-    % Loop through Contrasts (1 = Low, 2 = High)
     for c = 1:2
         mMean = squeeze(mean(sigmaTestM(:,c,l,:), 1));
         mSEM  = squeeze(std(sigmaTestM(:,c,l,:), [], 1)) / sqrt(nSubjM);
@@ -153,15 +141,18 @@ for l = 1:2
             cColorM = colMigraineHigh; cColorC = colControlHigh;
         end
         
-        % Plot Migraine
+        % Plot Migraine & Control with LegendInformation turned off to prevent Data 1 bugs
         hM = errorbar(refFreqHz, mMean, mSEM, ['o' lStyle], 'Color', cColorM, ...
             'MarkerFaceColor', fColM, 'LineWidth', 1.5, 'MarkerSize', 7);
-        hM.DisplayName = ['Migraine (' cName ')'];
+        hM.Annotation.LegendInformation.IconDisplayStyle = 'off';
         
-        % Plot Control
         hC = errorbar(refFreqHz, cMean, cSEM, ['o' lStyle], 'Color', cColorC, ...
             'MarkerFaceColor', fColC, 'LineWidth', 1.5, 'MarkerSize', 7);
-        hC.DisplayName = ['Control (' cName ')'];
+        hC.Annotation.LegendInformation.IconDisplayStyle = 'off';
+        
+        % Store handles for manual legend creation
+        hHandles = [hHandles, hM, hC];
+        hNames   = [hNames, {['Migraine (' cName ')'], ['Control (' cName ')']}];
     end
     
     xlabel('Reference Frequency (Hz)');
@@ -169,8 +160,10 @@ for l = 1:2
     title(['Light Level: ' char(if_then(l==1, "Low", "High"))]);
     ylim([0 4]);
     xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
-    box off; grid on;
-    set(gca, 'XScale', 'log');
+    xticks([10 13 17 23 30]);
+    yticks([1:4]);
+    box off; grid off;
+    set(ax, 'XScale', 'log');
     
     if l == 1
         xl = xlim; yl = ylim;
@@ -180,9 +173,8 @@ for l = 1:2
         p.Annotation.LegendInformation.IconDisplayStyle = 'off';
     end
     
-    legend('show', 'Location', 'northwest', 'Box', 'off');
+    legend(hHandles, hNames, 'Location', 'northwest', 'Box', 'off');
 end
-
 % Loop through light levels for sigma ref
 for l = 1:2
     f = figure('Color', 'w', 'Name', ['Light Level ' num2str(l)]);
@@ -210,8 +202,11 @@ for l = 1:2
         
         hM = errorbar(refFreqHz, mMean, mSEM, ['o' lStyle], 'Color', cColorM, ...
             'MarkerFaceColor', fColM, 'LineWidth', 1.5, 'MarkerSize', 7);
+        hM.Annotation.LegendInformation.IconDisplayStyle = 'off';
+        
         hC = errorbar(refFreqHz, cMean, cSEM, ['o' lStyle], 'Color', cColorC, ...
             'MarkerFaceColor', fColC, 'LineWidth', 1.5, 'MarkerSize', 7);
+        hC.Annotation.LegendInformation.IconDisplayStyle = 'off';
         
         hHandles = [hHandles, hM, hC];
         hNames   = [hNames, {['Migraine (' cName ')'], ['Control (' cName ')']}];
@@ -221,8 +216,9 @@ for l = 1:2
     ylabel('Sigma Ref');
     title(['Light Level: ' char(if_then(l==1, "Low", "High"))]);
     ylim([0 4]);
+    xticks([10 13 17 23 30]);
     xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
-    box off; grid on;
+    box off; grid off;
     set(gca, 'XScale', 'log');
     
     legend(hHandles, hNames, 'Location', 'northeast', 'Box', 'off');
@@ -234,7 +230,6 @@ for l = 1:2
         uistack(p, 'bottom');
     end
 end
-
 %% Poster Plot: Effect of Frequency across combined groups
 if options.effectOfFreq
     lightLevel    = 2; % High Light
@@ -288,14 +283,13 @@ if options.effectOfFreq
     xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
     ylim([0 3]);
     set(gca,'XScale','log');
-    grid on;
+    grid off;
     set(gca,'XMinorGrid','off','YMinorGrid','off');
     box off;
     
     set(gca,'XTickMode','manual');
     set(gca,'XTick',[10 13 17 23 30]);
 end
-
 %% Plots to examine main effect of frequency by group
 if options.effectOfFreq
     sigmaTestData = cat(1, sigmaTestM, sigmaTestC);
@@ -345,7 +339,8 @@ if options.effectOfFreq
     set(gca,'XScale','log');
     xlabel('Reference Frequency (Hz)'); ylabel('Sigma Test');
     ylim([0 3]); title('Frequency vs Sigma Test');
-    legend('Location','northwest'); grid on; box off;
+    xticks([10 13 17 23 30]);
+    legend('Location','northwest'); grid off; box off;
     xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
     
     % Plot Sigma Ref
@@ -367,10 +362,10 @@ if options.effectOfFreq
     xlabel('Reference Frequency (Hz)'); ylabel('Sigma Ref');
     ylim([0 if_then(options.superSubj, 2.5, 2)]);
     title('Frequency vs Sigma Ref');
-    legend('Location','northwest'); grid on; box off;
+    xticks([10 13 17 23 30]);
+    legend('Location','northwest'); grid off; box off;
     xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
 end
-
 %% Bar plot: Plotting sigma parameters for each contrast x light level condition
 sigmaTest = options.sigmaTest;
 if options.barPlot
@@ -528,7 +523,6 @@ if options.barPlot
     text(3.5, yLight, 'Low Light', 'HorizontalAlignment', 'center', ...
         'FontWeight', 'bold', 'FontSize', 35, 'Clipping', 'off');
 end
-
 %% Bar plot for interaction: High vs Low light effect on sigma test (per group)
 if options.barPlot
     mLight = squeeze(mean(mean(sigmaTestM, 4), 2));
@@ -551,6 +545,13 @@ if options.barPlot
     ax.LineWidth = 1.5;
     hold on;
     
+    % FULL-AXIS GRAY PATCH FOR UPPER REGION OF DELTA SIGMA PLOT
+    ylLimFull = ylim;
+    xlLimFull = xlim;
+    patch([xlLimFull(1) xlLimFull(2) xlLimFull(2) xlLimFull(1)], [0 0 ylLimFull(2) ylLimFull(2)], [0.9 0.9 0.9], ...
+        'EdgeColor', 'none', 'FaceAlpha', 0.4, 'Clipping', 'off');
+    uistack(findobj(ax, 'Type', 'patch'), 'bottom'); % Send patch to background
+
     x = 1:2;
     b = bar(x, groupMean, 'FaceColor','flat','BarWidth', 0.5);
     
@@ -583,7 +584,6 @@ if options.barPlot
     box off;
     ylim padded;
 end
-
 %% Quality Control Histograms (fVal)
 if options.fVal
     fValsMigraine = migraineFits.fValMatrix(:);
@@ -609,7 +609,7 @@ if options.fVal
     ylabel('Count');
     legend({'Migrainers', 'Controls'}, 'Box', 'off', 'Location', 'northeast');
     title('Model fit quality across groups');
-    box off; grid on;
+    box off; grid off;
     
     for l = 1:2
         f = figure('Color', 'w', 'Name', ['Light Level ' num2str(l)]);
@@ -635,8 +635,11 @@ if options.fVal
             
             hM = errorbar(refFreqHz, mMeanfVal, mSEMfVal, ['o' lStyle], 'Color', cColorM, ...
                 'MarkerFaceColor', fColM, 'LineWidth', 1.5, 'MarkerSize', 7);
+            hM.Annotation.LegendInformation.IconDisplayStyle = 'off';
+            
             hC = errorbar(refFreqHz, cMeanfVal, cSEMfVal, ['o' lStyle], 'Color', cColorC, ...
                 'MarkerFaceColor', fColC, 'LineWidth', 1.5, 'MarkerSize', 7);
+            hC.Annotation.LegendInformation.IconDisplayStyle = 'off';
             
             hHandles = [hHandles, hM, hC];
             hNames   = [hNames, {['Migraine (' cName ')'], ['Control (' cName ')']}];
@@ -646,7 +649,8 @@ if options.fVal
         ylabel('Negative log-likelihood (fVal)');
         title(['Light Level: ' char(if_then(l==1, "Low", "High"))]);
         xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
-        box off; grid on;
+        xticks([10 13 17 23 30]);
+        box off; grid off;
         set(gca, 'XScale', 'log');
         legend(hHandles, hNames, 'Location', 'northeast', 'Box', 'off');
         
@@ -676,119 +680,68 @@ if options.fVal
     xlabel('Reference Frequency (Hz)'); 
     ylabel('Negative log-likelihood (fVal)');
     title('Frequency vs Fit Quality');
+    xticks([10 13 17 23 30]);
     legend('Location','northwest', 'Box', 'off'); 
-    grid on; box off;
+    grid off; box off;
     xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
 end
-
 %% Omnibus ANOVAS
 if options.anova
-    % -------sigma test ------------------
-    % Concatenate data
     sigmaTestAll = cat(1, sigmaTestM, sigmaTestC);
     sigmaRefAll  = cat(1, sigmaRefM, sigmaRefC);
-
-    [nS, nC, nL, nF] = size(sigmaTestAll); % Dimensions: Subjects, Contrasts, Light, Freqs
-
-    % Create Factor Indices
-    % Use ndgrid to create a coordinate grid for the 4 data dimensions
+    [nS, nC, nL, nF] = size(sigmaTestAll);
     [S_idx, C_idx, L_idx, F_idx] = ndgrid(1:nS, 1:nC, 1:nL, 1:nF);
-
-    % Create Group Vector (1 = Migraine, 2 = Control)
     nMigraine = size(sigmaTestM, 1);
     G_idx = ones(nS, nC, nL, nF);
     G_idx((nMigraine+1):end, :, :, :) = 2;
-
-    % Set up Nesting and Random Factors
-    % Factors: {Subject, Group, Contrast, Light, Frequency}
-    % Subject (1) is nested within Group (2)
     nest = zeros(5, 5);
     nest(1, 2) = 1;
-
-    % Prepare the inputs for anovan
     factors = {S_idx(:), G_idx(:), C_idx(:), L_idx(:), F_idx(:)};
     varnames = {'Subject', 'Group', 'Contrast', 'LightLevel', 'Frequency'};
-
-    % Run ANOVA
-    % Note: 'full' model with 5 factors can be very large.
-    % If it crashes or takes too long, change 'model' to 'interaction'
-    % to exclude 4-way/5-way interactions.
+    
     fprintf('Running ANOVA for Sigma Test...\n');
     [p, tbl, stats] = anovan(sigmaTestAll(:), factors, ...
         'nested', nest, ...
-        'random', 1, ... % Subject is random
-        'model', 3, ...   % up to 3 way interactions
+        'random', 1, ... 
+        'model', 3, ...   
         'varnames', varnames);
-
     fprintf('\nRunning ANOVA for Sigma Ref...\n');
     [pZero, tblZero, statsZero] = anovan(sigmaRefAll(:), factors, ...
         'nested', nest, ...
         'random', 1, ...
-        'model', 3, ...    % up to 3 way interactions
+        'model', 3, ...    
         'varnames', varnames);
-
-    % 5. Create a table for visualization
+        
     G_labels = {'Migraine', 'Control'};
     C_labels = {'Low', 'High'};
     L_labels = {'Low', 'High'};
-    F_labels = {'Freq1', 'Freq2', 'Freq3', 'Freq4', 'Freq5'}; % Update to your labels
-
-    % Display Means
+    F_labels = {'Freq1', 'Freq2', 'Freq3', 'Freq4', 'Freq5'}; 
+    
     T_sigma = table(G_idx(:), C_idx(:), L_idx(:), F_idx(:), sigmaTestAll(:), ...
         'VariableNames', {'Group', 'Contrast', 'Light', 'Freq', 'Sigma'});
-    % Group by all factors
     grpstats(T_sigma, {'Group', 'Contrast', 'Light', 'Freq'}, 'mean')
-
-    %Flatten Data
-    % Combine all conditions for Sigma Test
+    
     testM = sigmaTestM(:);
     testC = sigmaTestC(:);
-
-    % Combine all conditions for Sigma Ref
     refM  = sigmaRefM(:);
     refC  = sigmaRefC(:);
-
-    % --- Define Shared Bin Edges ---
+    
     allTest = [testM; testC];
     allRef  = [refM; refC];
     testEdges = linspace(min(allTest), max(allTest), 40);
     refEdges  = linspace(min(allRef), max(allRef), 40);
-
-    % Plot
+    
     figure;
-    % figure('Color', 'w', 'Position', [100 100 900 400]);
-    % t = tiledlayout(1, 2, 'TileSpacing', 'compact');
-
-    % Panel 1: Sigma Test
     nexttile; hold on;
     set(gca,'FontSize',30);
     set(gca,'TickLabelInterpreter','latex');
     histogram(testM, testEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
     histogram(testC, testEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-    % title('Distribution: Sigma Test', 'Interpreter', 'latex');
     xlabel('$\sigma$ value', 'Interpreter', 'latex');  ylabel('');
     xticks([0 1 2 3 4 5]);
     yticks([0 10 20 30 40]);
     legend({'Migraine', 'Control'}, 'Box', 'off', 'Interpreter', 'latex');
-    box off; grid on;
-
-    % Panel 2: Sigma Ref
-    % nexttile; hold on;
-    % set(gca,'FontSize',30);
-    % set(gca,'TickLabelInterpreter','latex');
-    % histogram(refM, refEdges, 'FaceColor', [0.8 0.3 0.3], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-    % histogram(refC, refEdges, 'FaceColor', [0.3 0.3 0.8], 'FaceAlpha', 0.4, 'EdgeColor', 'none');
-    % % title('Distribution: Sigma Ref', 'Interpreter', 'latex');
-    % xlabel('Sigma Value', 'Interpreter', 'latex'); ylabel('Count', 'Interpreter', 'latex');
-    % xlim([0 5]); % to match sigma test
-    % if options.superSubj
-    %     ylim([0 5]);
-    % else
-    %     ylim([0 40]);
-    % end
-    % legend({'Migraine', 'Control'}, 'Box', 'off', 'Interpreter', 'latex');
-    % box off; grid on;
-
+    box off; grid off;
 end
 
 end
