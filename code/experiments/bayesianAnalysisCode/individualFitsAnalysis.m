@@ -281,7 +281,7 @@ if options.effectOfFreq
     xlabel('Reference Frequency (Hz)', 'FontSize',35);
     ylabel('$\sigma_{test}$', 'Interpreter', 'latex', 'FontSize',45);
     xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
-    ylim([0 3]);
+    ylim([0 4]);
     set(gca,'XScale','log');
     grid off;
     set(gca,'XMinorGrid','off','YMinorGrid','off');
@@ -338,7 +338,7 @@ if options.effectOfFreq
     end
     set(gca,'XScale','log');
     xlabel('Reference Frequency (Hz)'); ylabel('Sigma Test');
-    ylim([0 3]); title('Frequency vs Sigma Test');
+    ylim([0 4]); title('Frequency vs Sigma Test');
     xticks([10 13 17 23 30]);
     legend('Location','northwest'); grid off; box off;
     xlim([min(refFreqHz)*0.9, max(refFreqHz)*1.1]);
