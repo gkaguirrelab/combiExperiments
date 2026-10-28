@@ -5,7 +5,7 @@ function output = individualFitsAnalysis(options)
 %   INDIVIDUALFITSANALYSIS(OPTIONS) loads model fit parameters across experimental
 %   conditions (Contrasts x Light Levels x Frequencies) for Migraine and Control
 %   groups (or super-subjects), generates comparative figures, and conducts
-%   omnibus ANOVAs with Bonferroni-corrected group follow-up t-tests.
+%   omnibus ANOVAs with FDR-corrected group follow-up t-tests.
 %
 %   INPUT OPTIONS (Name-Value Pairs):
 %     barPlot      - (Logical) Generate bar charts comparing sigma values across
@@ -600,13 +600,15 @@ if options.barPlot && ~options.superSubj
     lgd.FontSize = 20; box off; xlim([0.4 2.6]);
 end
 
-%% Unified Group Difference Bar Plot (Migraine - Control) with Connected Lines
+%% Unified Group Difference Bar Plot (Migraine - Control) with SEM Error Bars & No Connecting Lines
 if options.barPlot && ~options.superSubj
     condMap = [1, 1; 2, 1; 1, 2; 2, 2]; % [contrastIdx, lightIdx]
     nConditions = size(condMap, 1);
 
     diffSigmaTest = zeros(1, nConditions);
     diffSigmaRef  = zeros(1, nConditions);
+    errDiffTest   = zeros(1, nConditions);
+    errDiffRef    = zeros(1, nConditions);
 
     for c = 1:nConditions
         cIdx = condMap(c, 1);
@@ -619,6 +621,14 @@ if options.barPlot && ~options.superSubj
         
         diffSigmaTest(c) = mean(valsMigTest) - mean(valsCtrlTest);
         diffSigmaRef(c)  = mean(valsMigRef)  - mean(valsCtrlRef);
+        
+        semCtrlTest = std(valsCtrlTest) / sqrt(nSubjC);
+        semMigTest  = std(valsMigTest)  / sqrt(nSubjM);
+        errDiffTest(c) = sqrt(semMigTest^2 + semCtrlTest^2);
+        
+        semCtrlRef  = std(valsCtrlRef)  / sqrt(nSubjC);
+        semMigRef   = std(valsMigRef)   / sqrt(nSubjM);
+        errDiffRef(c)  = sqrt(semMigRef^2 + semCtrlRef^2);
     end
 
     figBarDiff = figure('Color', 'w', 'Position', [150, 150, 950, 520], 'Name', 'Group Differences in Sigma (Migraine - Control)');
@@ -631,13 +641,16 @@ if options.barPlot && ~options.superSubj
 
     % Grouped bar plot: 4 conditions x 2 parameters ([SigmaTest, SigmaRef])
     barData = [diffSigmaTest(:), diffSigmaRef(:)];
+    errData = [errDiffTest(:), errDiffRef(:)];
     b = bar(ax, barData, 'grouped', 'BarWidth', 0.7);
     b(1).FaceColor = [0.2 0.5 0.8]; % Sigma Test
     b(2).FaceColor = [0.8 0.4 0.2]; % Sigma Ref
 
-    % Add connecting lines across the bars for each series
-    plot(ax, b(1).XEndPoints, diffSigmaTest, '-o', 'Color', [0.1 0.3 0.5], 'LineWidth', 1.5, 'MarkerFaceColor', [0.2 0.5 0.8], 'MarkerSize', 6);
-    plot(ax, b(2).XEndPoints, diffSigmaRef, '-s', 'Color', [0.5 0.2 0.1], 'LineWidth', 1.5, 'MarkerFaceColor', [0.8 0.4 0.2], 'MarkerSize', 6);
+    % Add SEM error bars
+    for i = 1:numel(b)
+        errorbar(ax, b(i).XEndPoints, b(i).YData, errData(:, i), ...
+            'k', 'LineStyle', 'none', 'LineWidth', 2.0, 'CapSize', 6);
+    end
 
     set(ax, 'XTick', 1:4, 'XTickLabel', {'Low Contrast', 'High Contrast', 'Low Contrast', 'High Contrast'}, 'FontSize', 11, 'LineWidth', 1.2);
     ylabel('\Delta \sigma (Migraine - Control)', 'FontSize', 14, 'FontWeight', 'bold');
@@ -648,6 +661,63 @@ if options.barPlot && ~options.superSubj
     legend([b(1), b(2)], {'$\sigma_{test}$', '$\sigma_{ref}$'}, 'Interpreter', 'latex', ...
         'Location', 'northeast', 'Box', 'off', 'FontSize', 13);
     title('Group Differences in Sigma Parameters', 'FontSize', 15, 'FontWeight', 'bold');
+end
+
+%% Grand Average Bar Plot (Pooled 30 Participants across Conditions)
+if options.barPlot && ~options.superSubj
+    condMap = [1, 1; 2, 1; 1, 2; 2, 2]; % [contrastIdx, lightIdx]
+    nConditions = size(condMap, 1);
+
+    grandMeanTest = zeros(1, nConditions);
+    grandMeanRef  = zeros(1, nConditions);
+    grandSEMTest  = zeros(1, nConditions);
+    grandSEMRef   = zeros(1, nConditions);
+
+    sigmaTestCombined = cat(1, sigmaTestM, sigmaTestC);
+    sigmaRefCombined  = cat(1, sigmaRefM, sigmaRefC);
+    nTotalSubj = size(sigmaTestCombined, 1);
+
+    for c = 1:nConditions
+        cIdx = condMap(c, 1);
+        lIdx = condMap(c, 2);
+        
+        valsAllTest = squeeze(mean(sigmaTestCombined(:, cIdx, lIdx, :), 4));
+        valsAllRef  = squeeze(mean(sigmaRefCombined(:, cIdx, lIdx, :), 4));
+        
+        grandMeanTest(c) = mean(valsAllTest);
+        grandSEMTest(c)  = std(valsAllTest) / sqrt(nTotalSubj);
+        
+        grandMeanRef(c)  = mean(valsAllRef);
+        grandSEMRef(c)   = std(valsAllRef) / sqrt(nTotalSubj);
+    end
+
+    figGrandAvg = figure('Color', 'w', 'Position', [200, 200, 950, 520], 'Name', 'Grand Average Sigma (All 30 Participants)');
+    ax = gca; hold(ax, 'on');
+
+    patch(ax, [0.5 2.5 2.5 0.5], [0 0 4 4], ...
+        [0.92 0.92 0.92], 'EdgeColor', 'none', 'FaceAlpha', 0.6);
+    uistack(ax.Children(end), 'bottom'); 
+
+    grandBarData = [grandMeanTest(:), grandMeanRef(:)];
+    grandErrData = [grandSEMTest(:), grandSEMRef(:)];
+    bG = bar(ax, grandBarData, 'grouped', 'BarWidth', 0.7);
+    bG(1).FaceColor = [0.2 0.5 0.8]; % Sigma Test
+    bG(2).FaceColor = [0.8 0.4 0.2]; % Sigma Ref
+
+    for i = 1:numel(bG)
+        errorbar(ax, bG(i).XEndPoints, bG(i).YData, grandErrData(:, i), ...
+            'k', 'LineStyle', 'none', 'LineWidth', 2.0, 'CapSize', 6);
+    end
+
+    set(ax, 'XTick', 1:4, 'XTickLabel', {'Low Contrast', 'High Contrast', 'Low Contrast', 'High Contrast'}, 'FontSize', 11, 'LineWidth', 1.2);
+    ylabel('\sigma (Grand Average, N=30)', 'FontSize', 14, 'FontWeight', 'bold');
+    xlim([0.4 4.6]);
+    ylim([0 3.5]);
+    box(ax, 'off'); grid(ax, 'off');
+    
+    legend([bG(1), bG(2)], {'$\sigma_{test}$', '$\sigma_{ref}$'}, 'Interpreter', 'latex', ...
+        'Location', 'northeast', 'Box', 'off', 'FontSize', 13);
+    title('Grand Average Sigma Across Conditions (N=30)', 'FontSize', 15, 'FontWeight', 'bold');
 end
 
 %% Quality Control Histograms (fVal)
@@ -733,7 +803,7 @@ if options.fVal
     end
 end
 
-%% Omnibus ANOVAS & Bonferroni-Corrected Follow-Up t-Tests
+%% Omnibus ANOVAS & FDR-Corrected Follow-Up t-Tests
 if options.anova
     sigmaTestAll = cat(1, sigmaTestM, sigmaTestC);
     sigmaRefAll  = cat(1, sigmaRefM, sigmaRefC);
@@ -753,7 +823,7 @@ if options.anova
     [~, tblRef, ~] = anovan(sigmaRefAll(:), factors, ...
         'nested', nest, 'random', 1, 'model', 3, 'varnames', varnames, 'display', 'off');
         
-    % Print ANOVA tables with Bonferroni correction to console (bolding raw significant, star on Bonferroni)
+    % Print ANOVA tables with FDR correction to console (bolding raw significant, star on FDR)
     output.tblTest = printAndCorrectAnova(tblTest, 'Sigma Test');
     output.tblRef  = printAndCorrectAnova(tblRef,  'Sigma Ref');
         
@@ -783,7 +853,20 @@ if options.anova
 end
 end
 
-%% Helper function to print ANOVA tables to console
+%% Helper function for Benjamini-Hochberg FDR correction
+function pFDR = benjaminiHochberg(pVals)
+    pVals = pVals(:);
+    [pSorted, sortIdx] = sort(pVals);
+    n = numel(pSorted);
+    pFDR_sorted = pSorted .* n ./ (1:n)';
+    for i = n-1:-1:1
+        pFDR_sorted(i) = min(pFDR_sorted(i), pFDR_sorted(i+1));
+    end
+    pFDR = zeros(size(pVals));
+    pFDR(sortIdx) = min(1, pFDR_sorted);
+end
+
+%% Helper function to print ANOVA tables to console using FDR
 function tblOut = printAndCorrectAnova(tbl, paramName)
     if iscell(tbl)
         rawSource = tbl(2:end-1, 1);
@@ -812,21 +895,20 @@ function tblOut = printAndCorrectAnova(tbl, paramName)
     fCol      = fCol(:);
     pvalCol   = pvalCol(:);
     
-    nTerms    = length(pvalCol);
-    pBonf     = min(1, pvalCol * nTerms);
-    pBonf     = pBonf(:);
+    pFDR      = benjaminiHochberg(pvalCol);
+    pFDR      = pFDR(:);
     
     fprintf('\n========================================================================================\n');
-    fprintf('                          ANOVA RESULTS TABLE: %s\n', upper(paramName));
+    fprintf('                          ANOVA RESULTS TABLE (FDR): %s\n', upper(paramName));
     fprintf('========================================================================================\n');
-    fprintf('%-35s | %-10s | %-12s | %-14s\n', 'Source / Interaction Term', 'F-Value', 'Raw p-Value', 'Bonferroni p');
+    fprintf('%-35s | %-10s | %-12s | %-14s\n', 'Source / Interaction Term', 'F-Value', 'Raw p-Value', 'FDR p-Value');
     fprintf('----------------------------------------------------------------------------------------\n');
     
-    for i = 1:nTerms
+    for i = 1:length(pvalCol)
         termName = sourceCol(i);
         fVal = fCol(i);
         pRaw = pvalCol(i);
-        pAdj = pBonf(i);
+        pAdj = pFDR(i);
         
         starStr = if_then(pAdj < 0.05, ' *', '');
         
@@ -847,17 +929,16 @@ function tblOut = printAndCorrectAnova(tbl, paramName)
     end
     fprintf('========================================================================================\n');
     
-    tblOut = table(sourceCol, fCol, pvalCol, pBonf, 'VariableNames', {'Term', 'F_Value', 'p_Raw', 'p_Bonferroni'});
+    tblOut = table(sourceCol, fCol, pvalCol, pFDR, 'VariableNames', {'Term', 'F_Value', 'p_Raw', 'p_FDR'});
 end
 
-%% Helper function to compute, print, and return group t-test results table with text labels
+%% Helper function to compute, print, and return group t-test results table with FDR correction
 function tTestTable = runGroupThreeWayFollowUps(tbl, dataAll, G_idx, C_idx, L_idx, F_idx, refFreqHz, paramName)
     interaction_col = {};
     factor1_col = {};
     factor2_col = {};
     tstat_col = [];
     raw_p_col = [];
-    bonf_p_col = [];
     
     if iscell(tbl)
         rawSource = tbl(2:end-1, 1);
@@ -911,11 +992,9 @@ function tTestTable = runGroupThreeWayFollowUps(tbl, dataAll, G_idx, C_idx, L_id
                 factor2_col{end+1, 1}     = 'N/A';
                 tstat_col(end+1, 1)       = stats.tstat;
                 raw_p_col(end+1, 1)       = pRaw;
-                bonf_p_col(end+1, 1)      = pRaw;
             elseif numel(otherFactors) == 1
                 % 2-way interaction involving Group
                 f1Vals = unique(factorMap(char(otherFactors(1))));
-                nComparisons = numel(f1Vals);
                 
                 for f1 = f1Vals'
                     mask1 = (factorMap(char(otherFactors(1))) == f1) & (G_idx == 1);
@@ -925,21 +1004,17 @@ function tTestTable = runGroupThreeWayFollowUps(tbl, dataAll, G_idx, C_idx, L_id
                     group2Data = dataAll(mask2);
                     
                     [~, pRaw, ~, stats] = ttest2(group1Data, group2Data);
-                    pCorr = min(1, pRaw * nComparisons);
                     
                     interaction_col{end+1, 1} = char(termName);
                     factor1_col{end+1, 1}     = getFactorTextLabel(char(otherFactors(1)), f1, refFreqHz);
                     factor2_col{end+1, 1}     = 'N/A';
                     tstat_col(end+1, 1)       = stats.tstat;
                     raw_p_col(end+1, 1)       = pRaw;
-                    bonf_p_col(end+1, 1)      = pCorr;
                 end
             else
                 % 3-way interaction involving Group
                 f1Vals = unique(factorMap(char(otherFactors(1))));
                 f2Vals = unique(factorMap(char(otherFactors(2))));
-                
-                nComparisons = numel(f1Vals) * numel(f2Vals);
                 
                 for f1 = f1Vals'
                     for f2 = f2Vals'
@@ -950,14 +1025,12 @@ function tTestTable = runGroupThreeWayFollowUps(tbl, dataAll, G_idx, C_idx, L_id
                         group2Data = dataAll(mask2);
                         
                         [~, pRaw, ~, stats] = ttest2(group1Data, group2Data);
-                        pCorr = min(1, pRaw * nComparisons);
                         
                         interaction_col{end+1, 1} = char(termName);
                         factor1_col{end+1, 1}     = getFactorTextLabel(char(otherFactors(1)), f1, refFreqHz);
                         factor2_col{end+1, 1}     = getFactorTextLabel(char(otherFactors(2)), f2, refFreqHz);
                         tstat_col(end+1, 1)       = stats.tstat;
                         raw_p_col(end+1, 1)       = pRaw;
-                        bonf_p_col(end+1, 1)      = pCorr;
                     end
                 end
             end
@@ -965,13 +1038,15 @@ function tTestTable = runGroupThreeWayFollowUps(tbl, dataAll, G_idx, C_idx, L_id
     end
     
     if ~isempty(interaction_col)
-        tTestTable = table(string(interaction_col), string(factor1_col), string(factor2_col), tstat_col, raw_p_col, bonf_p_col, ...
-            'VariableNames', {'Interaction', 'Factor1', 'Factor2', 't_Stat', 'p_Raw', 'p_Bonferroni'});
+        fdr_p_col = benjaminiHochberg(raw_p_col);
+        
+        tTestTable = table(string(interaction_col), string(factor1_col), string(factor2_col), tstat_col, raw_p_col, fdr_p_col, ...
+            'VariableNames', {'Interaction', 'Factor1', 'Factor2', 't_Stat', 'p_Raw', 'p_FDR'});
         
         fprintf('\n========================================================================================\n');
-        fprintf('             GROUP FOLLOW-UP T-TESTS TABLE (Bonferroni Corrected): %s\n', upper(paramName));
+        fprintf('             GROUP FOLLOW-UP T-TESTS TABLE (FDR Corrected): %s\n', upper(paramName));
         fprintf('========================================================================================\n');
-        fprintf('%-28s | %-16s | %-16s | %-10s | %-12s | %-14s\n', 'Interaction Term', 'Factor 1', 'Factor 2', 't-Stat', 'Raw p-Value', 'Bonferroni p');
+        fprintf('%-28s | %-16s | %-16s | %-10s | %-12s | %-14s\n', 'Interaction Term', 'Factor 1', 'Factor 2', 't-Stat', 'Raw p-Value', 'FDR p-Value');
         fprintf('----------------------------------------------------------------------------------------\n');
         
         for r = 1:height(tTestTable)
@@ -980,7 +1055,7 @@ function tTestTable = runGroupThreeWayFollowUps(tbl, dataAll, G_idx, C_idx, L_id
             f2Str   = tTestTable.Factor2(r);
             tVal    = tTestTable.t_Stat(r);
             pRaw    = tTestTable.p_Raw(r);
-            pAdj    = tTestTable.p_Bonferroni(r);
+            pAdj    = tTestTable.p_FDR(r);
             
             starStr = if_then(pAdj < 0.05, ' *', '');
             
@@ -996,10 +1071,10 @@ function tTestTable = runGroupThreeWayFollowUps(tbl, dataAll, G_idx, C_idx, L_id
         fprintf('========================================================================================\n');
     else
         tTestTable = table(string.empty(0,1), string.empty(0,1), string.empty(0,1), zeros(0,1), zeros(0,1), zeros(0,1), ...
-            'VariableNames', {'Interaction', 'Factor1', 'Factor2', 't_Stat', 'p_Raw', 'p_Bonferroni'});
+            'VariableNames', {'Interaction', 'Factor1', 'Factor2', 't_Stat', 'p_Raw', 'p_FDR'});
             
         fprintf('\n========================================================================================\n');
-        fprintf('             GROUP FOLLOW-UP T-TESTS TABLE (Bonferroni Corrected): %s\n', upper(paramName));
+        fprintf('             GROUP FOLLOW-UP T-TESTS TABLE (FDR Corrected): %s\n', upper(paramName));
         fprintf('========================================================================================\n');
         fprintf('No terms involving Group reached raw ANOVA significance (p < 0.05).\n');
         fprintf('========================================================================================\n');
