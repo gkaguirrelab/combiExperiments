@@ -152,38 +152,81 @@ save([saveDir, '/fourierFitResultsSessions1and2.mat'], 'fourierFitResults', 'p',
 %% STATISTICAL SUMMARY %%
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
-% 1. Extract group-average amplitudes, phases, and SEMs from avgResults
-lf_high_amp   = avgResults.LF.High.amplitude;
-lf_high_phase = avgResults.LF.High.phase;
-lf_high_sem   = avgResults.LF.High.amplitudeSEM;
+% Define stimulus temporal frequency in cycles per minute (CPM)
+temporalFreqCPM = 1; 
+frequencyHz = temporalFreqCPM / 60;
 
-lf_low_amp    = avgResults.LF.Low.amplitude;
-lf_low_phase  = avgResults.LF.Low.phase;
-lf_low_sem    = avgResults.LF.Low.amplitudeSEM;
+% List conditions to summarize
+condNames = {'LF', 'Mel', 'LMS', 'S'};
+contrastNames = {'High', 'Low'};
 
-mel_high_amp   = avgResults.Mel.High.amplitude;
-mel_high_phase = avgResults.Mel.High.phase;
-mel_high_sem   = avgResults.Mel.High.amplitudeSEM;
+% Structure to hold calculated group summary statistics
+summaryData = struct();
 
-mel_low_amp    = avgResults.Mel.Low.amplitude;
-mel_low_phase  = avgResults.Mel.Low.phase;
-mel_low_sem    = avgResults.Mel.Low.amplitudeSEM;
+for dd = 1:length(condNames)
+    dirName = condNames{dd};
+    for cc = 1:length(contrastNames)
+        cName = contrastNames{cc};
+        
+        % Extract raw subject vectors directly from fourierFitResults
+        amps = fourierFitResults.(dirName).(cName).amplitude(:);
+        phases = fourierFitResults.(dirName).(cName).phase(:);
+        
+        % Convert subject polar coordinates to Cartesian (X, Y)
+        [x, y] = pol2cart(phases, amps);
+        
+        % Compute Cartesian Group Means
+        meanX = mean(x, 'omitnan');
+        meanY = mean(y, 'omitnan');
+        
+        % Convert Group Center back to Polar Form (Group Amplitude & Phase)
+        [meanPhase, meanAmp] = cart2pol(meanX, meanY);
+        
+        % Calculate Standard Error of the Mean (SEM) across subjects
+        nSubs = sum(~isnan(x));
+        semX = std(x, 'omitnan') / sqrt(nSubs);
+        semY = std(y, 'omitnan') / sqrt(nSubs);
+        ampSEM = sqrt(semX^2 + semY^2);
+        
+        % Store in summary structure
+        summaryData.(dirName).(cName).amplitude = meanAmp;
+        summaryData.(dirName).(cName).amplitudeSEM = ampSEM;
+        summaryData.(dirName).(cName).phase = meanPhase; % Radians [-pi, pi]
+    end
+end
 
-lms_high_amp   = avgResults.LMS.High.amplitude;
-lms_high_phase = avgResults.LMS.High.phase;
-lms_high_sem   = avgResults.LMS.High.amplitudeSEM;
+% 1. Extract group-average metrics matching the polar plot methodology
+lf_high_amp   = summaryData.LF.High.amplitude;
+lf_high_phase = summaryData.LF.High.phase;
+lf_high_sem   = summaryData.LF.High.amplitudeSEM;
 
-lms_low_amp    = avgResults.LMS.Low.amplitude;
-lms_low_phase  = avgResults.LMS.Low.phase;
-lms_low_sem    = avgResults.LMS.Low.amplitudeSEM;
+lf_low_amp    = summaryData.LF.Low.amplitude;
+lf_low_phase  = summaryData.LF.Low.phase;
+lf_low_sem    = summaryData.LF.Low.amplitudeSEM;
 
-s_high_amp     = avgResults.S.High.amplitude;
-s_high_phase   = avgResults.S.High.phase;
-s_high_sem     = avgResults.S.High.amplitudeSEM;
+mel_high_amp   = summaryData.Mel.High.amplitude;
+mel_high_phase = summaryData.Mel.High.phase;
+mel_high_sem   = summaryData.Mel.High.amplitudeSEM;
 
-s_low_amp      = avgResults.S.Low.amplitude;
-s_low_phase    = avgResults.S.Low.phase;
-s_low_sem      = avgResults.S.Low.amplitudeSEM;
+mel_low_amp    = summaryData.Mel.Low.amplitude;
+mel_low_phase  = summaryData.Mel.Low.phase;
+mel_low_sem    = summaryData.Mel.Low.amplitudeSEM;
+
+lms_high_amp   = summaryData.LMS.High.amplitude;
+lms_high_phase = summaryData.LMS.High.phase;
+lms_high_sem   = summaryData.LMS.High.amplitudeSEM;
+
+lms_low_amp    = summaryData.LMS.Low.amplitude;
+lms_low_phase  = summaryData.LMS.Low.phase;
+lms_low_sem    = summaryData.LMS.Low.amplitudeSEM;
+
+s_high_amp     = summaryData.S.High.amplitude;
+s_high_phase   = summaryData.S.High.phase;
+s_high_sem     = summaryData.S.High.amplitudeSEM;
+
+s_low_amp      = summaryData.S.Low.amplitude;
+s_low_phase    = summaryData.S.Low.phase;
+s_low_sem      = summaryData.S.Low.amplitudeSEM;
 
 % 2. Automatically sign the group bars using the cosine of the group phase
 lf_high_signed  = lf_high_amp  * sign(cos(lf_high_phase));
@@ -197,92 +240,99 @@ s_low_signed    = s_low_amp    * sign(cos(s_low_phase));
 
 % 3. Normalize all signed values to the absolute magnitude of the LF High baseline
 baseline_mag    = abs(lf_high_signed);
-
 lf_high_pct     = (lf_high_signed / baseline_mag) * 100;
 lf_high_sem_pct = (lf_high_sem / baseline_mag) * 100;
-
 lf_low_pct      = (lf_low_signed / baseline_mag) * 100;
 lf_low_sem_pct  = (lf_low_sem / baseline_mag) * 100;
 
 mel_high_pct    = (mel_high_signed / baseline_mag) * 100;
 mel_high_sem_pct= (mel_high_sem / baseline_mag) * 100;
-
 mel_low_pct     = (mel_low_signed / baseline_mag) * 100;
 mel_low_sem_pct = (mel_low_sem / baseline_mag) * 100;
 
 lms_high_pct    = (lms_high_signed / baseline_mag) * 100;
 lms_high_sem_pct= (lms_high_sem / baseline_mag) * 100;
-
 lms_low_pct     = (lms_low_signed / baseline_mag) * 100;
 lms_low_sem_pct = (lms_low_sem / baseline_mag) * 100;
 
 s_high_pct      = (s_high_signed / baseline_mag) * 100;
 s_high_sem_pct  = (s_high_sem / baseline_mag) * 100;
-
 s_low_pct       = (s_low_signed / baseline_mag) * 100;
 s_low_sem_pct   = (s_low_sem / baseline_mag) * 100;
 
-% 4. Convert phases from radians to degrees
-lf_high_deg  = rad2deg(lf_high_phase);
-lf_low_deg   = rad2deg(lf_low_phase);
-mel_high_deg = rad2deg(mel_high_phase);
-mel_low_deg  = rad2deg(mel_low_phase);
-lms_high_deg = rad2deg(lms_high_phase);
-lms_low_deg  = rad2deg(lms_low_phase);
-s_high_deg   = rad2deg(s_high_phase);
-s_low_deg    = rad2deg(s_low_phase);
+% 4. Convert phases from radians to degrees, determine Lead/Lag, and calculate time shift in seconds
+[lf_high_deg, lf_high_status, lf_high_sec] = computePhaseMetrics(lf_high_phase, frequencyHz);
+[lf_low_deg,  lf_low_status,  lf_low_sec]  = computePhaseMetrics(lf_low_phase, frequencyHz);
+[mel_high_deg,mel_high_status,mel_high_sec]= computePhaseMetrics(mel_high_phase, frequencyHz);
+[mel_low_deg, mel_low_status, mel_low_sec] = computePhaseMetrics(mel_low_phase, frequencyHz);
+[lms_high_deg,lms_high_status,lms_high_sec]= computePhaseMetrics(lms_high_phase, frequencyHz);
+[lms_low_deg, lms_low_status, lms_low_sec] = computePhaseMetrics(lms_low_phase, frequencyHz);
+[s_high_deg,  s_high_status,  s_high_sec]  = computePhaseMetrics(s_high_phase, frequencyHz);
+[s_low_deg,   s_low_status,   s_low_sec]   = computePhaseMetrics(s_low_phase, frequencyHz);
 
-% Print out the table
-fprintf('\n========================================================================================\n');
-fprintf('                EXPERIMENT 2 MODULATION DATA (Normalized to LF High)\n');
-fprintf('========================================================================================\n');
-fprintf('%-28s | %-22s | %-14s\n', 'Condition / Stimulus', 'Relative Amplitude ± SEM', 'Phase (deg)');
-fprintf('----------------------------------------------------------------------------------------\n');
-fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'LF High Baseline', lf_high_pct, lf_high_sem_pct, lf_high_deg);
-fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'LF Low Contrast', lf_low_pct, lf_low_sem_pct, lf_low_deg);
-fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'Mel High Contrast', mel_high_pct, mel_high_sem_pct, mel_high_deg);
-fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'Mel Low Contrast', mel_low_pct, mel_low_sem_pct, mel_low_deg);
-fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'LMS High Contrast', lms_high_pct, lms_high_sem_pct, lms_high_deg);
-fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'LMS Low Contrast', lms_low_pct, lms_low_sem_pct, lms_low_deg);
-fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'S High Contrast', s_high_pct, s_high_sem_pct, s_high_deg);
-fprintf('%-28s | %6.1f%% ± %5.1f%%        | %6.1f°\n', 'S Low Contrast', s_low_pct, s_low_sem_pct, s_low_deg);
-fprintf('========================================================================================\n\n');
+% Print out the main table
+fprintf('\n====================================================================================================================\n');
+fprintf('                           EXPERIMENT 2 MODULATION DATA SUMMARY (Freq: %.1f cpm)\n', temporalFreqCPM);
+fprintf('====================================================================================================================\n');
+fprintf('%-20s | %-12s | %-20s | %-8s | %-6s | %-10s\n', 'Condition', 'Raw Amp', 'Rel Amp ± SEM (%)', 'Phase', 'Lead/Lag', 'Time (s)');
+fprintf('--------------------------------------------------------------------------------------------------------------------\n');
+fprintf('%-20s | %12.4f | %6.1f%% ± %5.1f%%     | %6.1f°  | %-6s | %8.4fs\n', 'LF High Baseline', lf_high_amp, lf_high_pct, lf_high_sem_pct, lf_high_deg, lf_high_status, lf_high_sec);
+fprintf('%-20s | %12.4f | %6.1f%% ± %5.1f%%     | %6.1f°  | %-6s | %8.4fs\n', 'LF Low Contrast',  lf_low_amp,  lf_low_pct,  lf_low_sem_pct,  lf_low_deg,  lf_low_status,  lf_low_sec);
+fprintf('%-20s | %12.4f | %6.1f%% ± %5.1f%%     | %6.1f°  | %-6s | %8.4fs\n', 'Mel High Contrast',mel_high_amp,mel_high_pct,mel_high_sem_pct,mel_high_deg,mel_high_status,mel_high_sec);
+fprintf('%-20s | %12.4f | %6.1f%% ± %5.1f%%     | %6.1f°  | %-6s | %8.4fs\n', 'Mel Low Contrast', mel_low_amp, mel_low_pct, mel_low_sem_pct,  mel_low_deg,  mel_low_status,  mel_low_sec);
+fprintf('%-20s | %12.4f | %6.1f%% ± %5.1f%%     | %6.1f°  | %-6s | %8.4fs\n', 'LMS High Contrast',lms_high_amp,lms_high_pct,lms_high_sem_pct,lms_high_deg,lms_high_status,lms_high_sec);
+fprintf('%-20s | %12.4f | %6.1f%% ± %5.1f%%     | %6.1f°  | %-6s | %8.4fs\n', 'LMS Low Contrast', lms_low_amp, lms_low_pct, lms_low_sem_pct,  lms_low_deg,  lms_low_status,  lms_low_sec);
+fprintf('%-20s | %12.4f | %6.1f%% ± %5.1f%%     | %6.1f°  | %-6s | %8.4fs\n', 'S High Contrast',  s_high_amp,  s_high_pct,  s_high_sem_pct,  s_high_deg,  s_high_status,  s_high_sec);
+fprintf('%-20s | %12.4f | %6.1f%% ± %5.1f%%     | %6.1f°  | %-6s | %8.4fs\n', 'S Low Contrast',   s_low_amp,   s_low_pct,   s_low_sem_pct,   s_low_deg,   s_low_status,   s_low_sec);
+fprintf('====================================================================================================================\n\n');
+
 
 %% VECTOR ADDITION: LMS + Mel
-% 1. Convert polar representations (Amplitude, Phase) to Complex Vectors
+% 1. Convert group-level polar representations (Amplitude, Phase) to Complex Vectors
 z_lms_high = lms_high_amp * exp(1i * lms_high_phase);
 z_mel_high = mel_high_amp * exp(1i * mel_high_phase);
-
 z_lms_low  = lms_low_amp  * exp(1i * lms_low_phase);
 z_mel_low  = mel_low_amp  * exp(1i * mel_low_phase);
 
-% 2. Vector Addition
+% 2. Vector Addition of the Group Means
 z_sum_high = z_lms_high + z_mel_high;
 z_sum_low  = z_lms_low  + z_mel_low;
 
 % 3. Extract Resulting Amplitude and Phase
 sum_high_amp   = abs(z_sum_high);
 sum_high_phase = angle(z_sum_high); % Radians [-pi, pi]
-
 sum_low_amp    = abs(z_sum_low);
 sum_low_phase  = angle(z_sum_low);  % Radians [-pi, pi]
 
-% 4. Sign and Normalize to LF High Baseline (Matching existing table logic)
+% 4. Sign, Normalize to LF High Baseline, and Get Phase Info
 sum_high_signed  = sum_high_amp * sign(cos(sum_high_phase));
 sum_low_signed   = sum_low_amp  * sign(cos(sum_low_phase));
-
 sum_high_pct     = (sum_high_signed / baseline_mag) * 100;
 sum_low_pct      = (sum_low_signed / baseline_mag) * 100;
 
-sum_high_deg     = rad2deg(sum_high_phase);
-sum_low_deg      = rad2deg(sum_low_phase);
+[sum_high_deg, sum_high_status, sum_high_sec] = computePhaseMetrics(sum_high_phase, frequencyHz);
+[sum_low_deg,  sum_low_status,  sum_low_sec]  = computePhaseMetrics(sum_low_phase, frequencyHz);
 
-% 5. Print Vector Addition Results
-fprintf('\n========================================================================================\n');
-fprintf('                     VECTOR ADDITION: LMS + Mel SUMMARY\n');
-fprintf('========================================================================================\n');
-fprintf('%-28s | %-12s | %-12s | %-14s\n', 'Condition', 'Raw Amp', 'Rel Amp (%)', 'Phase (deg)');
-fprintf('----------------------------------------------------------------------------------------\n');
-fprintf('%-28s | %12.4f | %6.1f%%       | %6.1f°\n', 'LMS + Mel (High Contrast)', sum_high_amp, sum_high_pct, sum_high_deg);
-fprintf('%-28s | %12.4f | %6.1f%%       | %6.1f°\n', 'LMS + Mel (Low Contrast)',  sum_low_amp,  sum_low_pct,  sum_low_deg);
-fprintf('========================================================================================\n\n');
+% 5. Print Vector Addition Results Table
+fprintf('\n====================================================================================================================\n');
+fprintf('                           VECTOR ADDITION: LMS + Mel SUMMARY (Freq: %.1f cpm)\n', temporalFreqCPM);
+fprintf('====================================================================================================================\n');
+fprintf('%-25s | %-12s | %-15s | %-8s | %-6s | %-10s\n', 'Condition', 'Raw Amp', 'Rel Amp (%)', 'Phase', 'Lead/Lag', 'Time (s)');
+fprintf('--------------------------------------------------------------------------------------------------------------------\n');
+fprintf('%-25s | %12.4f | %6.1f%%          | %6.1f°  | %-6s | %8.4fs\n', 'LMS + Mel (High Contrast)', sum_high_amp, sum_high_pct, sum_high_deg, sum_high_status, sum_high_sec);
+fprintf('%-25s | %12.4f | %6.1f%%          | %6.1f°  | %-6s | %8.4fs\n', 'LMS + Mel (Low Contrast)',  sum_low_amp,  sum_low_pct,  sum_low_deg,  sum_low_status,  sum_low_sec);
+fprintf('====================================================================================================================\n\n');
+
+function [deg, status, sec] = computePhaseMetrics(p, frequencyHz)
+    % Converts phase angle in radians to degrees, determines lead/lag relative to 0,
+    % and calculates the absolute time shift in seconds.
+    deg = rad2deg(p);
+    if p > 0
+        status = 'Lag';   % Positive phase angle corresponds to response lag
+    elseif p < 0
+        status = 'Lead';  % Negative phase angle corresponds to response lead
+    else
+        status = 'None';
+    end
+    sec = abs(p) / (2 * pi * frequencyHz);
+end
