@@ -32,7 +32,7 @@ if obj.verbose
         currTrialIdx,obj.lightModPhase);
 end
 
-% Prepare some items for the trialData recod
+% Prepare some items for the trialData record
 trialStartTime = datetime();
 irVidTrialLabel = [];
 blinkTimeSecs = []; detected = []; responseTimeSecs = [];
