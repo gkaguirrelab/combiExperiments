@@ -19,7 +19,7 @@ analyzeSPAQ_LL(participantList)
 %}
 
 dropboxBaseDir = getpref('combiExperiments', 'dropboxBaseDir');
-dataDir = fullfile(dropboxBaseDir, '/FLIC_subject/NEWscriptedIndoorOutdoorVideos2026/Survey_Responses');
+dataDir = fullfile(dropboxBaseDir, '/FLIC_subject/scriptedIndoorOutdoor_2026_photophobia/Survey_Responses');
 
 % Load seasonal sensitivity data
 seasonFile = fullfile(dataDir, 'FLIC Seasonal Sensitivity (Responses).xlsx');

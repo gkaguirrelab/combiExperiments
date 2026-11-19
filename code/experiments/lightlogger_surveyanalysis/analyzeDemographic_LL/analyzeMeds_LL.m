@@ -13,7 +13,7 @@ analyzeMeds_LL(participantList)
 %}
 
 dropboxBaseDir = getpref('combiExperiments', 'dropboxBaseDir');
-dataDir = fullfile(dropboxBaseDir, '/FLIC_subject/NEWscriptedIndoorOutdoorVideos2026');
+dataDir = fullfile(dropboxBaseDir, '/FLIC_subject/scriptedIndoorOutdoor_2026_photophobia');
 
 % Load subj summary excel sheet
 % Analyzing meds in this file as this requires a more detailed analysis
